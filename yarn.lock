@@ -3757,6 +3757,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@nestjs/platform-ws@npm:^11.1.6":
+  version: 11.1.6
+  resolution: "@nestjs/platform-ws@npm:11.1.6"
+  dependencies:
+    tslib: "npm:2.8.1"
+    ws: "npm:8.18.3"
+  peerDependencies:
+    "@nestjs/common": ^11.0.0
+    "@nestjs/websockets": ^11.0.0
+    rxjs: ^7.1.0
+  checksum: 10c0/1b3f2e9888e6e903a52de84f1a4ba2148da3c6816bb411fb187a2be200d7b11247e9043c081a5f34482f21e69940c54a1d4b1978765c9578ced6ac0e8dd3a0a5
+  languageName: node
+  linkType: hard
+
 "@nestjs/schematics@npm:^11.0.0, @nestjs/schematics@npm:^11.0.1":
   version: 11.0.9
   resolution: "@nestjs/schematics@npm:11.0.9"
@@ -3788,6 +3802,26 @@ __metadata:
     "@nestjs/platform-express":
       optional: true
   checksum: 10c0/55475ccf5a2576f6281bb8423912ef705db254eb63f72e7b9167e73dca291579bbfb57756bc2a234cd8f370baa9ed28adfa855aff602dbf95437f6c02ee55b57
+  languageName: node
+  linkType: hard
+
+"@nestjs/websockets@npm:^11.1.6":
+  version: 11.1.6
+  resolution: "@nestjs/websockets@npm:11.1.6"
+  dependencies:
+    iterare: "npm:1.2.1"
+    object-hash: "npm:3.0.0"
+    tslib: "npm:2.8.1"
+  peerDependencies:
+    "@nestjs/common": ^11.0.0
+    "@nestjs/core": ^11.0.0
+    "@nestjs/platform-socket.io": ^11.0.0
+    reflect-metadata: ^0.1.12 || ^0.2.0
+    rxjs: ^7.1.0
+  peerDependenciesMeta:
+    "@nestjs/platform-socket.io":
+      optional: true
+  checksum: 10c0/2de058c67b0347ad05efc71cd5becc742109335bab6dd787d0228b2fbca3fa81b43c1c625551f22155dcbddbdcbee036767ada038582b8c57b5c1c456ce9cb32
   languageName: node
   linkType: hard
 
@@ -5305,9 +5339,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tesla-guard/api@workspace:apps":
+"@tesla-guard/api@workspace:apps/api":
   version: 0.0.0-use.local
-  resolution: "@tesla-guard/api@workspace:apps"
+  resolution: "@tesla-guard/api@workspace:apps/api"
   dependencies:
     "@nestjs/common": "npm:^11.0.0"
     "@nestjs/core": "npm:^11.0.0"
@@ -5328,8 +5362,10 @@ __metadata:
     "@nestjs/common": "npm:^11.1.6"
     "@nestjs/core": "npm:^11.1.6"
     "@nestjs/platform-express": "npm:^11.1.6"
+    "@nestjs/platform-ws": "npm:^11.1.6"
     "@nestjs/schematics": "npm:^11.0.0"
     "@nestjs/testing": "npm:^11.1.6"
+    "@nestjs/websockets": "npm:^11.1.6"
     "@nx/eslint": "npm:21.6.5"
     "@nx/eslint-plugin": "npm:21.6.5"
     "@nx/jest": "npm:21.6.5"
@@ -5358,6 +5394,7 @@ __metadata:
     "@vitest/coverage-v8": "npm:^3.0.5"
     "@vitest/ui": "npm:^3.0.0"
     autoprefixer: "npm:10.4.13"
+    axios: "npm:^1.12.2"
     eslint: "npm:^9.8.0"
     eslint-config-prettier: "npm:^10.0.0"
     eslint-plugin-import: "npm:2.31.0"
@@ -7342,7 +7379,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"axios@npm:^1.11.0, axios@npm:^1.12.0":
+"axios@npm:^1.11.0, axios@npm:^1.12.0, axios@npm:^1.12.2":
   version: 1.12.2
   resolution: "axios@npm:1.12.2"
   dependencies:
@@ -14373,7 +14410,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"object-hash@npm:^3.0.0":
+"object-hash@npm:3.0.0, object-hash@npm:^3.0.0":
   version: 3.0.0
   resolution: "object-hash@npm:3.0.0"
   checksum: 10c0/a06844537107b960c1c8b96cd2ac8592a265186bfa0f6ccafe0d34eabdb526f6fa81da1f37c43df7ed13b12a4ae3457a16071603bcd39d8beddb5f08c37b0f47
@@ -19658,7 +19695,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ws@npm:^8.13.0, ws@npm:^8.18.0":
+"ws@npm:8.18.3, ws@npm:^8.13.0, ws@npm:^8.18.0":
   version: 8.18.3
   resolution: "ws@npm:8.18.3"
   peerDependencies:
