@@ -5501,9 +5501,11 @@ __metadata:
     "@nestjs/core": "npm:^11.0.0"
     "@nestjs/platform-express": "npm:^11.0.0"
     "@nestjs/testing": "npm:^11.0.0"
+    axios: "npm:^1.6.0"
     reflect-metadata: "npm:^0.1.13"
     rxjs: "npm:^7.8.0"
     tslib: "npm:^2.3.0"
+    zeromq: "npm:^6.0.0"
   languageName: unknown
   linkType: soft
 
@@ -5539,6 +5541,7 @@ __metadata:
     "@testing-library/dom": "npm:10.4.0"
     "@testing-library/react": "npm:16.1.0"
     "@types/express": "npm:^5.0.3"
+    "@types/google-protobuf": "npm:^3.15.12"
     "@types/jest": "npm:^30.0.0"
     "@types/node": "npm:20.19.9"
     "@types/react": "npm:19.0.0"
@@ -5555,6 +5558,7 @@ __metadata:
     eslint-plugin-jsx-a11y: "npm:6.10.1"
     eslint-plugin-react: "npm:7.35.0"
     eslint-plugin-react-hooks: "npm:5.0.0"
+    google-protobuf: "npm:^4.0.0"
     jest: "npm:^30.2.0"
     jest-environment-node: "npm:^30.0.2"
     jest-util: "npm:^30.0.2"
@@ -5886,6 +5890,13 @@ __metadata:
     "@types/minimatch": "npm:*"
     "@types/node": "npm:*"
   checksum: 10c0/a8eb5d5cb5c48fc58c7ca3ff1e1ddf771ee07ca5043da6e4871e6757b4472e2e73b4cfef2644c38983174a4bc728c73f8da02845c28a1212f98cabd293ecae98
+  languageName: node
+  linkType: hard
+
+"@types/google-protobuf@npm:^3.15.12":
+  version: 3.15.12
+  resolution: "@types/google-protobuf@npm:3.15.12"
+  checksum: 10c0/721783234e627f367dd710c345a1eaa9dca4ac64910032cef0c851c1821e05d06ffb51e9d1693080f1c0797a8674f89130fa56a390395ec7791ea8506d2f3bfb
   languageName: node
   linkType: hard
 
@@ -7535,7 +7546,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"axios@npm:^1.11.0, axios@npm:^1.12.0, axios@npm:^1.12.2":
+"axios@npm:^1.11.0, axios@npm:^1.12.0, axios@npm:^1.12.2, axios@npm:^1.6.0":
   version: 1.12.2
   resolution: "axios@npm:1.12.2"
   dependencies:
@@ -8314,6 +8325,15 @@ __metadata:
   version: 1.0.4
   resolution: "clone@npm:1.0.4"
   checksum: 10c0/2176952b3649293473999a95d7bebfc9dc96410f6cbd3d2595cf12fd401f63a4bf41a7adbfd3ab2ff09ed60cb9870c58c6acdd18b87767366fabfc163700f13b
+  languageName: node
+  linkType: hard
+
+"cmake-ts@npm:1.0.2":
+  version: 1.0.2
+  resolution: "cmake-ts@npm:1.0.2"
+  bin:
+    cmake-ts: build/main.js
+  checksum: 10c0/8b4bf867215e19efb97cd54f6fc82f8d3bce9de6e48321416ec581685dd04cfbc233a2157bf550dcb6b9bf589ce1fc95e904ddaee0c9f23a3837fa3d564f58e3
   languageName: node
   linkType: hard
 
@@ -11484,6 +11504,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"google-protobuf@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "google-protobuf@npm:4.0.0"
+  checksum: 10c0/ce4f1554dec3d8416fe057a10bfed10da7cfb034c4a7f646f208197ca8554ccb85a46341cdbebf16be07d96016c88becfc1f5189d5871210ef5abe3d87fc0fec
+  languageName: node
+  linkType: hard
+
 "gopd@npm:^1.0.1, gopd@npm:^1.2.0":
   version: 1.2.0
   resolution: "gopd@npm:1.2.0"
@@ -14390,6 +14417,15 @@ __metadata:
   dependencies:
     node-gyp: "npm:latest"
   checksum: 10c0/fb32a206276d608037fa1bcd7e9921e177fe992fc610d098aa3128baca3c0050fc1e014fa007e9b3874cf865ddb4f5bd9f43ccb7cbbbe4efaff6a83e920b17e9
+  languageName: node
+  linkType: hard
+
+"node-addon-api@npm:^8.3.1":
+  version: 8.5.0
+  resolution: "node-addon-api@npm:8.5.0"
+  dependencies:
+    node-gyp: "npm:latest"
+  checksum: 10c0/e4de0b4e70998fed7ef41933946f60565fc3a17cb83b7d626a0c0bb1f734cf7852e0e596f12681e7c8ed424163ee3cdbb4f0abaa9cc269d03f48834c263ba162
   languageName: node
   linkType: hard
 
@@ -20113,5 +20149,15 @@ __metadata:
   version: 2.1.3
   resolution: "yoctocolors-cjs@npm:2.1.3"
   checksum: 10c0/584168ef98eb5d913473a4858dce128803c4a6cd87c0f09e954fa01126a59a33ab9e513b633ad9ab953786ed16efdd8c8700097a51635aafaeed3fef7712fa79
+  languageName: node
+  linkType: hard
+
+"zeromq@npm:^6.0.0":
+  version: 6.5.0
+  resolution: "zeromq@npm:6.5.0"
+  dependencies:
+    cmake-ts: "npm:1.0.2"
+    node-addon-api: "npm:^8.3.1"
+  checksum: 10c0/745931ccf00f8bc0b6475fde425da7df77f1250dff04deb8f1c674c4148982bc7ce1b8c8d5895a7ca7baa4502b3509eda3a3f985c93c3403221e683d91f7927b
   languageName: node
   linkType: hard

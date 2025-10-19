@@ -1,14 +1,19 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { TelemetryController } from './telemetry/telemetry.controller';
-import { TelemetryService } from './telemetry/telemetry.service';
-import { TelemetryGateway } from './telemetry/telemetry.gateway';
+import { TelemetryConfigController } from './telemetry/telemetry-config.controller';
+import { TelemetryConfigService } from './telemetry/telemetry-config.service';
 import { TelegramService } from './telegram/telegram.service';
+import { ZmqService } from './zmq/zmq.service';
 
 @Module({
   imports: [],
-  controllers: [AppController, TelemetryController],
-  providers: [AppService, TelemetryService, TelegramService, TelemetryGateway],
+  controllers: [AppController, TelemetryConfigController],
+  providers: [
+    AppService, 
+    TelemetryConfigService,
+    TelegramService, 
+    ZmqService
+  ],
 })
 export class AppModule {}
