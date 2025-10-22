@@ -48,3 +48,7 @@ vitest.config.*.timestamp*
 test-output
 
 .yarn
+
+# Next.js
+.next
+out

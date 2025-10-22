@@ -5,6 +5,9 @@
   "references": [
     {
       "path": "./apps/api"
+    },
+    {
+      "path": "./apps/webapp"
     }
   ]
 }

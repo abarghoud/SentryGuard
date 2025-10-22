@@ -60,7 +60,15 @@ export class AuthController {
    * GET /auth/user/:userId/profile
    */
   @Get('user/:userId/profile')
-  async getUserProfile(@Param('userId') userId: string) {
+  async getUserProfile(@Param('userId') userId: string): Promise<{
+    success: boolean;
+    profile?: {
+      email?: string;
+      full_name?: string;
+      profile_image_url?: string;
+    };
+    message?: string;
+  }> {
     this.logger.log(`👤 Retrieving profile for user: ${userId}`);
 
     const profile = await this.authService.getUserProfile(userId);
