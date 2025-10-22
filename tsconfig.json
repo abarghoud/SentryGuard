@@ -4,9 +4,6 @@
   "files": [],
   "references": [
     {
-      "path": "./apps/webapp"
-    },
-    {
       "path": "./apps/api"
     }
   ]
