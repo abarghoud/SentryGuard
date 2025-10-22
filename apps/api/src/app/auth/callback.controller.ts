@@ -20,17 +20,17 @@ export class CallbackController {
     @Query('issuer') issuer: string,
     @Res() res: Response
   ): Promise<void> {
-    this.logger.log('🔄 Réception du callback Tesla OAuth');
+    this.logger.log('🔄 Receiving Tesla OAuth callback');
     this.logger.log(`📝 Locale: ${locale}, Issuer: ${issuer}`);
 
     if (!code || !state) {
-      this.logger.error('❌ Code ou state manquant dans le callback');
+      this.logger.error('❌ Missing code or state in callback');
       res.status(400).send(`
         <!DOCTYPE html>
         <html>
           <head>
             <meta charset="UTF-8">
-            <title>Erreur d'authentification</title>
+            <title>Authentication Error</title>
             <style>
               body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
               .error { color: #d32f2f; }
@@ -38,8 +38,8 @@ export class CallbackController {
             </style>
           </head>
           <body>
-            <h1 class="error">❌ Erreur d'authentification</h1>
-            <p>Paramètres manquants dans le callback OAuth.</p>
+            <h1 class="error">❌ Authentication error</h1>
+            <p>Missing parameters in OAuth callback.</p>
           </body>
         </html>
       `);
@@ -47,16 +47,16 @@ export class CallbackController {
     }
 
     try {
-      const { userId, access_token } = await this.authService.exchangeCodeForTokens(code, state);
+      const { userId } = await this.authService.exchangeCodeForTokens(code, state);
 
-      this.logger.log(`✅ Authentification réussie pour l'utilisateur: ${userId}`);
+      this.logger.log(`✅ Authentication successful for user: ${userId}`);
 
       res.status(200).send(`
         <!DOCTYPE html>
         <html>
           <head>
             <meta charset="UTF-8">
-            <title>Authentification réussie</title>
+            <title>Authentication Successful</title>
             <style>
               body { 
                 font-family: Arial, sans-serif; 
@@ -96,34 +96,30 @@ export class CallbackController {
           </head>
           <body>
             <div class="success">
-              <h1>✅ Authentification réussie !</h1>
-              <p>Votre compte Tesla a été connecté avec succès.</p>
+              <h1>✅ Authentication successful!</h1>
+              <p>Your Tesla account has been successfully connected.</p>
               
-              <h3>Votre identifiant utilisateur :</h3>
+              <h3>Your user identifier:</h3>
               <div class="user-id">${userId}</div>
               
-              <div class="token-preview">
-                Token: ${access_token.substring(0, 20)}...
-              </div>
-              
               <div class="info">
-                <p>⚠️ Conservez cet identifiant pour accéder aux endpoints de l'API.</p>
-                <p>💡 Utilisez-le dans vos requêtes avec le header: <code>X-User-Id: ${userId}</code></p>
+                <p>⚠️ Keep this identifier to access the API endpoints.</p>
+                <p>💡 Use it in your requests with the header: <code>X-User-Id: ${userId}</code></p>
               </div>
             </div>
           </body>
         </html>
       `);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-      this.logger.error('❌ Erreur lors du traitement du callback:', errorMessage);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error('❌ Error processing callback:', errorMessage);
 
       res.status(401).send(`
         <!DOCTYPE html>
         <html>
           <head>
             <meta charset="UTF-8">
-            <title>Erreur d'authentification</title>
+            <title>Authentication Error</title>
             <style>
               body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
               .error { color: #d32f2f; }
@@ -131,9 +127,9 @@ export class CallbackController {
             </style>
           </head>
           <body>
-            <h1 class="error">❌ Échec de l'authentification</h1>
+            <h1 class="error">❌ Authentication failed</h1>
             <p>${errorMessage}</p>
-            <p><a href="/auth/tesla/login">Réessayer</a></p>
+            <p><a href="/auth/tesla/login">Try again</a></p>
           </body>
         </html>
       `);

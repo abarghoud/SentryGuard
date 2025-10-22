@@ -26,6 +26,7 @@ API server for managing Tesla alerts via ZMQ and Telegram notifications.
 - `GET /auth/tesla/login` - Generate Tesla OAuth login URL
 - `GET /callback/auth` - OAuth callback endpoint (handled automatically)
 - `GET /auth/user/:userId/status` - Check user authentication status
+- `GET /auth/user/:userId/profile` - Get user Tesla profile information
 - `GET /auth/stats` - Get authentication service statistics
 
 #### Telemetry Configuration
@@ -85,6 +86,7 @@ This returns a JSON response with:
 3. **Callback handling:**
 - User is automatically redirected to `/callback/auth`
 - The API exchanges the authorization code for access tokens
+- The API automatically fetches the user's Tesla profile
 - A success page displays the user's unique `userId`
 - **Save this `userId` for API requests**
 
@@ -109,7 +111,16 @@ curl http://localhost:3000/auth/user/YOUR_USER_ID/status
 Returns:
 - `authenticated`: boolean
 - `expires_at`: token expiration date
+- `has_profile`: boolean indicating if profile was fetched
 - `message`: status description
+
+### Getting User Profile
+
+```bash
+curl http://localhost:3000/auth/user/YOUR_USER_ID/profile
+```
+
+Returns the Tesla user profile information (email, name, etc.) that was automatically fetched during authentication.
 
 ### Notes
 

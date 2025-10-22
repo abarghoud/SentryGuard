@@ -9,6 +9,7 @@ describe('AuthController', () => {
   const mockAuthService = {
     generateLoginUrl: jest.fn(),
     getTokenInfo: jest.fn(),
+    getUserProfile: jest.fn(),
     getStats: jest.fn(),
   };
 
@@ -30,7 +31,7 @@ describe('AuthController', () => {
   });
 
   describe('loginWithTesla', () => {
-    it('devrait retourner une URL de connexion', () => {
+    it('should return a login URL', () => {
       const mockUrl = 'https://auth.tesla.com/oauth2/v3/authorize?state=test-state';
       const mockState = 'test-state';
 
@@ -43,17 +44,18 @@ describe('AuthController', () => {
 
       expect(result.url).toBe(mockUrl);
       expect(result.state).toBe(mockState);
-      expect(result.message).toBe('Utilisez cette URL pour vous authentifier avec Tesla');
+      expect(result.message).toBe('Use this URL to authenticate with Tesla');
       expect(authService.generateLoginUrl).toHaveBeenCalled();
     });
   });
 
   describe('getUserStatus', () => {
-    it('devrait retourner le statut pour un utilisateur authentifié', () => {
+    it('should return the status for an authenticated user', () => {
       const mockTokenInfo = {
         exists: true,
         expires_at: new Date('2025-12-31'),
         created_at: new Date('2025-01-01'),
+        has_profile: true,
       };
 
       mockAuthService.getTokenInfo.mockReturnValue(mockTokenInfo);
@@ -62,11 +64,12 @@ describe('AuthController', () => {
 
       expect(result.authenticated).toBe(true);
       expect(result.expires_at).toEqual(mockTokenInfo.expires_at);
-      expect(result.message).toBe('Token valide');
+      expect(result.has_profile).toBe(true);
+      expect(result.message).toBe('Valid token');
       expect(authService.getTokenInfo).toHaveBeenCalledWith('test-user-id');
     });
 
-    it('devrait retourner non authentifié pour un utilisateur sans token', () => {
+    it('should return unauthenticated for a user without a token', () => {
       mockAuthService.getTokenInfo.mockReturnValue({
         exists: false,
       });
@@ -74,13 +77,13 @@ describe('AuthController', () => {
       const result = controller.getUserStatus('test-user-id');
 
       expect(result.authenticated).toBe(false);
-      expect(result.message).toBe('Aucun token trouvé pour cet utilisateur');
+      expect(result.message).toBe('No token found for this user');
     });
 
-    it('devrait détecter un token expiré', () => {
+    it('should detect an expired token', () => {
       const mockTokenInfo = {
         exists: true,
-        expires_at: new Date('2020-01-01'), // Date passée
+        expires_at: new Date('2020-01-01'), // Past date
         created_at: new Date('2020-01-01'),
       };
 
@@ -89,12 +92,38 @@ describe('AuthController', () => {
       const result = controller.getUserStatus('test-user-id');
 
       expect(result.authenticated).toBe(false);
-      expect(result.message).toBe('Token expiré, veuillez vous réauthentifier');
+      expect(result.message).toBe('Token expired, please re-authenticate');
+    });
+  });
+
+  describe('getUserProfile', () => {
+    it('should return the user profile', () => {
+      const mockProfile = {
+        email: 'test@tesla.com',
+        full_name: 'Test User',
+      };
+
+      mockAuthService.getUserProfile.mockReturnValue(mockProfile);
+
+      const result = controller.getUserProfile('test-user-id');
+
+      expect(result.success).toBe(true);
+      expect(result.profile).toEqual(mockProfile);
+      expect(authService.getUserProfile).toHaveBeenCalledWith('test-user-id');
+    });
+
+    it('should handle profile not found', () => {
+      mockAuthService.getUserProfile.mockReturnValue(null);
+
+      const result = controller.getUserProfile('test-user-id');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Profile not found or token expired');
     });
   });
 
   describe('getStats', () => {
-    it('devrait retourner les statistiques du service', () => {
+    it('should return service statistics', () => {
       const mockStats = {
         activeUsers: 5,
         pendingStates: 2,

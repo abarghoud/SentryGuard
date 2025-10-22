@@ -38,7 +38,7 @@ describe('CallbackController', () => {
       };
     });
 
-    it('devrait traiter un callback valide et afficher une page de succès', async () => {
+    it('should process a valid callback and display success page', async () => {
       const mockUserId = 'test-user-id';
       const mockAccessToken = 'test-access-token';
 
@@ -57,11 +57,11 @@ describe('CallbackController', () => {
 
       expect(authService.exchangeCodeForTokens).toHaveBeenCalledWith('test-code', 'test-state');
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.send).toHaveBeenCalledWith(expect.stringContaining('Authentification réussie'));
+      expect(mockResponse.send).toHaveBeenCalledWith(expect.stringContaining('Authentication successful'));
       expect(mockResponse.send).toHaveBeenCalledWith(expect.stringContaining(mockUserId));
     });
 
-    it('devrait gérer un callback sans code ou state', async () => {
+    it('should handle callback without code or state', async () => {
       await controller.handleTeslaCallback(
         '',
         '',
@@ -71,11 +71,11 @@ describe('CallbackController', () => {
       );
 
       expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.send).toHaveBeenCalledWith(expect.stringContaining('Erreur d\'authentification'));
+      expect(mockResponse.send).toHaveBeenCalledWith(expect.stringContaining('Authentication error'));
       expect(authService.exchangeCodeForTokens).not.toHaveBeenCalled();
     });
 
-    it('devrait gérer une erreur d\'authentification', async () => {
+    it('should handle authentication error', async () => {
       mockAuthService.exchangeCodeForTokens.mockRejectedValue(
         new Error('Authentication failed')
       );
@@ -89,7 +89,7 @@ describe('CallbackController', () => {
       );
 
       expect(mockResponse.status).toHaveBeenCalledWith(401);
-      expect(mockResponse.send).toHaveBeenCalledWith(expect.stringContaining('Échec de l\'authentification'));
+      expect(mockResponse.send).toHaveBeenCalledWith(expect.stringContaining('Authentication failed'));
     });
   });
 });

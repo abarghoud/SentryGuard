@@ -20,24 +20,24 @@ export class AuthController {
     return {
       url,
       state,
-      message: 'Utilisez cette URL pour vous authentifier avec Tesla'
+      message: 'Use this URL to authenticate with Tesla'
     };
   }
 
   /**
-   * Vérifie le statut d'authentification d'un utilisateur
+   * Checks a user's authentication status
    * GET /auth/user/:userId/status
    */
   @Get('user/:userId/status')
   getUserStatus(@Param('userId') userId: string) {
-    this.logger.log(`🔍 Vérification du statut pour l'utilisateur: ${userId}`);
+    this.logger.log(`🔍 Checking status for user: ${userId}`);
 
     const tokenInfo = this.authService.getTokenInfo(userId);
 
     if (!tokenInfo.exists) {
       return {
         authenticated: false,
-        message: 'Aucun token trouvé pour cet utilisateur'
+        message: 'No token found for this user'
       };
     }
 
@@ -48,9 +48,33 @@ export class AuthController {
       authenticated: isValid,
       expires_at: tokenInfo.expires_at,
       created_at: tokenInfo.created_at,
+      has_profile: tokenInfo.has_profile,
       message: isValid 
-        ? 'Token valide' 
-        : 'Token expiré, veuillez vous réauthentifier'
+        ? 'Valid token' 
+        : 'Token expired, please re-authenticate'
+    };
+  }
+
+  /**
+   * Gets the Tesla user profile
+   * GET /auth/user/:userId/profile
+   */
+  @Get('user/:userId/profile')
+  getUserProfile(@Param('userId') userId: string) {
+    this.logger.log(`👤 Retrieving profile for user: ${userId}`);
+
+    const profile = this.authService.getUserProfile(userId);
+
+    if (!profile) {
+      return {
+        success: false,
+        message: 'Profile not found or token expired'
+      };
+    }
+
+    return {
+      success: true,
+      profile
     };
   }
 
