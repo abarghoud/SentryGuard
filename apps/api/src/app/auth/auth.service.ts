@@ -1,21 +1,17 @@
 import { Injectable, Logger, UnauthorizedException, OnModuleDestroy } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import axios from 'axios';
 import * as crypto from 'crypto';
 import * as https from 'https';
+import { User } from '../../entities/user.entity';
+import { encrypt, decrypt } from '../../common/utils/crypto.util';
 
 interface UserProfile {
   email?: string;
   full_name?: string;
   profile_image_url?: string;
   [key: string]: any;
-}
-
-interface TokenData {
-  access_token: string;
-  refresh_token: string;
-  expires_at: Date;
-  created_at: Date;
-  profile?: UserProfile;
 }
 
 interface PendingState {
@@ -26,7 +22,6 @@ interface PendingState {
 @Injectable()
 export class AuthService implements OnModuleDestroy {
   private readonly logger = new Logger(AuthService.name);
-  private readonly tokenStore = new Map<string, TokenData>();
   private readonly pendingStates = new Map<string, PendingState>();
   private readonly STATE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
   private cleanupInterval: NodeJS.Timeout;
@@ -42,7 +37,10 @@ export class AuthService implements OnModuleDestroy {
     })
   });
 
-  constructor() {
+  constructor(
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+  ) {
     // Clean expired states every minute
     this.cleanupInterval = setInterval(() => this.cleanupExpiredStates(), 60 * 1000);
   }
@@ -155,9 +153,6 @@ export class AuthService implements OnModuleDestroy {
 
       const { access_token, refresh_token, expires_in } = response.data;
 
-      // Generate a unique userId
-      const userId = crypto.randomBytes(16).toString('hex');
-
       // Calculate expiration date
       const expiresAt = new Date();
       expiresAt.setSeconds(expiresAt.getSeconds() + (expires_in || 3600));
@@ -171,16 +166,27 @@ export class AuthService implements OnModuleDestroy {
         this.logger.warn('⚠️ Unable to retrieve user profile, continuing anyway');
       }
 
-      // Store tokens and profile
-      this.tokenStore.set(userId, {
-        access_token,
-        refresh_token,
+      // Generate a unique userId
+      const userId = crypto.randomBytes(16).toString('hex');
+
+      // Encrypt tokens before storing
+      const encryptedAccessToken = encrypt(access_token);
+      const encryptedRefreshToken = encrypt(refresh_token);
+
+      // Create and save user
+      const user = this.userRepository.create({
+        userId,
+        email: profile?.email,
+        full_name: profile?.full_name,
+        profile_image_url: profile?.profile_image_url,
+        access_token: encryptedAccessToken,
+        refresh_token: encryptedRefreshToken,
         expires_at: expiresAt,
-        created_at: new Date(),
-        profile
       });
 
-      this.logger.log(`✅ Tokens stored for user: ${userId}`);
+      await this.userRepository.save(user);
+
+      this.logger.log(`✅ User saved to database: ${userId}`);
       this.logger.log(`📅 Token expiration: ${expiresAt.toISOString()}`);
 
       return { userId, access_token };
@@ -195,30 +201,36 @@ export class AuthService implements OnModuleDestroy {
   /**
    * Gets the access token for a user
    */
-  getAccessToken(userId: string): string | null {
-    const tokenData = this.tokenStore.get(userId);
+  async getAccessToken(userId: string): Promise<string | null> {
+    const user = await this.userRepository.findOne({ where: { userId } });
 
-    if (!tokenData) {
-      this.logger.warn(`⚠️ No token found for user: ${userId}`);
+    if (!user) {
+      this.logger.warn(`⚠️ No user found: ${userId}`);
       return null;
     }
 
     // Check if token has expired
     const now = new Date();
-    if (now > tokenData.expires_at) {
+    if (now > user.expires_at) {
       this.logger.warn(`⚠️ Token expired for user: ${userId}`);
-      this.tokenStore.delete(userId);
+      // TODO: Implement token refresh logic here
       return null;
     }
 
-    return tokenData.access_token;
+    // Decrypt token
+    try {
+      return decrypt(user.access_token);
+    } catch (error) {
+      this.logger.error(`❌ Failed to decrypt token for user: ${userId}`);
+      return null;
+    }
   }
 
   /**
    * Checks if a user has a valid token
    */
-  hasValidToken(userId: string): boolean {
-    const token = this.getAccessToken(userId);
+  async hasValidToken(userId: string): Promise<boolean> {
+    const token = await this.getAccessToken(userId);
     return token !== null;
   }
 
@@ -245,41 +257,51 @@ export class AuthService implements OnModuleDestroy {
   /**
    * Gets the stored user profile
    */
-  getUserProfile(userId: string): UserProfile | null {
-    const tokenData = this.tokenStore.get(userId);
+  async getUserProfile(userId: string): Promise<UserProfile | null> {
+    const user = await this.userRepository.findOne({ where: { userId } });
 
-    if (!tokenData) {
+    if (!user) {
       this.logger.warn(`⚠️ No profile found for user: ${userId}`);
       return null;
     }
 
     // Check if token has expired
     const now = new Date();
-    if (now > tokenData.expires_at) {
+    if (now > user.expires_at) {
       this.logger.warn(`⚠️ Token expired for user: ${userId}`);
-      this.tokenStore.delete(userId);
       return null;
     }
 
-    return tokenData.profile || null;
+    return {
+      email: user.email,
+      full_name: user.full_name,
+      profile_image_url: user.profile_image_url,
+    };
   }
 
   /**
    * Gets token information for a user
    */
-  getTokenInfo(userId: string): { exists: boolean; expires_at?: Date; created_at?: Date; has_profile?: boolean } {
-    const tokenData = this.tokenStore.get(userId);
+  async getTokenInfo(userId: string): Promise<{ exists: boolean; expires_at?: Date; created_at?: Date; has_profile?: boolean }> {
+    const user = await this.userRepository.findOne({ where: { userId } });
 
-    if (!tokenData) {
+    if (!user) {
       return { exists: false };
     }
 
     return {
       exists: true,
-      expires_at: tokenData.expires_at,
-      created_at: tokenData.created_at,
-      has_profile: !!tokenData.profile
+      expires_at: user.expires_at,
+      created_at: user.created_at,
+      has_profile: !!(user.email || user.full_name),
     };
+  }
+
+  /**
+   * Get user entity by userId
+   */
+  async getUserById(userId: string): Promise<User | null> {
+    return await this.userRepository.findOne({ where: { userId } });
   }
 
   /**
@@ -305,11 +327,12 @@ export class AuthService implements OnModuleDestroy {
   /**
    * Service statistics
    */
-  getStats(): { activeUsers: number; pendingStates: number } {
+  async getStats(): Promise<{ activeUsers: number; pendingStates: number }> {
+    const activeUsers = await this.userRepository.count();
+    
     return {
-      activeUsers: this.tokenStore.size,
+      activeUsers,
       pendingStates: this.pendingStates.size
     };
   }
 }
-

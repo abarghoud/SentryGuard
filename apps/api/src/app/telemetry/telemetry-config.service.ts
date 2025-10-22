@@ -1,7 +1,11 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import axios from 'axios';
 import * as https from 'https';
 import { AuthService } from '../auth/auth.service';
+import { Vehicle } from '../../entities/vehicle.entity';
+import { User } from '../../entities/user.entity';
 
 @Injectable()
 export class TelemetryConfigService {
@@ -17,15 +21,21 @@ export class TelemetryConfigService {
     })
   });
 
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    @InjectRepository(Vehicle)
+    private readonly vehicleRepository: Repository<Vehicle>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+  ) {}
 
   /**
    * Récupère le token d'accès pour un utilisateur
    * Fallback sur ACCESS_TOKEN si userId non fourni (compatibilité)
    */
-  private getAccessToken(userId?: string): string {
+  private async getAccessToken(userId?: string): Promise<string> {
     if (userId) {
-      const token = this.authService.getAccessToken(userId);
+      const token = await this.authService.getAccessToken(userId);
       if (!token) {
         throw new UnauthorizedException('Token invalide ou expiré pour cet utilisateur');
       }
@@ -41,19 +51,69 @@ export class TelemetryConfigService {
   }
 
   /**
-   * Récupère la liste des véhicules configurés
+   * Récupère la liste des véhicules depuis l'API Tesla
+   * et les synchronise avec la base de données
    */
   async getVehicles(userId?: string): Promise<any[]> {
     try {
-      const accessToken = this.getAccessToken(userId);
+      const accessToken = await this.getAccessToken(userId);
       const response = await this.teslaApi.get('/api/1/vehicles', {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });
-      return response.data.response;
+
+      const vehicles = response.data.response;
+
+      // Si userId est fourni, synchroniser avec la base de données
+      if (userId && vehicles.length > 0) {
+        await this.syncVehiclesToDatabase(userId, vehicles);
+      }
+
+      return vehicles;
     } catch (error: unknown) {
       this.logger.error('Erreur lors de la récupération des véhicules:', (error as any)?.response?.data || (error as any)?.message);
       return [];
     }
+  }
+
+  /**
+   * Synchronise les véhicules de l'API Tesla avec la base de données
+   */
+  private async syncVehiclesToDatabase(userId: string, teslaVehicles: any[]): Promise<void> {
+    for (const teslaVehicle of teslaVehicles) {
+      const existingVehicle = await this.vehicleRepository.findOne({
+        where: { userId, vin: teslaVehicle.vin }
+      });
+
+      if (!existingVehicle) {
+        // Créer un nouveau véhicule
+        const vehicle = this.vehicleRepository.create({
+          userId,
+          vin: teslaVehicle.vin,
+          display_name: teslaVehicle.display_name || teslaVehicle.vin,
+          model: teslaVehicle.vehicle_state?.car_type || null,
+          telemetry_enabled: false,
+        });
+
+        await this.vehicleRepository.save(vehicle);
+        this.logger.log(`✅ Véhicule ajouté à la DB: ${teslaVehicle.vin}`);
+      } else {
+        // Mettre à jour le nom si changé
+        if (teslaVehicle.display_name && existingVehicle.display_name !== teslaVehicle.display_name) {
+          existingVehicle.display_name = teslaVehicle.display_name;
+          await this.vehicleRepository.save(existingVehicle);
+        }
+      }
+    }
+  }
+
+  /**
+   * Récupère les véhicules d'un utilisateur depuis la base de données
+   */
+  async getUserVehiclesFromDB(userId: string): Promise<Vehicle[]> {
+    return await this.vehicleRepository.find({
+      where: { userId },
+      order: { created_at: 'ASC' }
+    });
   }
 
   /**
@@ -70,7 +130,7 @@ export class TelemetryConfigService {
     const decodedKey = Buffer.from(base64CAKey, 'base64').toString('utf8');
 
     try {
-      const accessToken = this.getAccessToken(userId);
+      const accessToken = await this.getAccessToken(userId);
       const response = await this.teslaApi.post('/api/1/vehicles/fleet_telemetry_config', {
         config: {
           ca: decodedKey,
@@ -89,6 +149,12 @@ export class TelemetryConfigService {
       });
 
       this.logger.log(`✅ Télémétrie configurée pour le VIN: ${vin}`);
+
+      // Mettre à jour le statut dans la base de données
+      if (userId) {
+        await this.updateVehicleTelemetryStatus(userId, vin, true);
+      }
+
       return response.data;
     } catch (error: unknown) {
       this.logger.error(`Erreur pour le VIN ${vin}:`, (error as any)?.response?.data || (error as any)?.message);
@@ -97,11 +163,26 @@ export class TelemetryConfigService {
   }
 
   /**
+   * Met à jour le statut de télémétrie d'un véhicule
+   */
+  async updateVehicleTelemetryStatus(userId: string, vin: string, enabled: boolean): Promise<void> {
+    const vehicle = await this.vehicleRepository.findOne({
+      where: { userId, vin }
+    });
+
+    if (vehicle) {
+      vehicle.telemetry_enabled = enabled;
+      await this.vehicleRepository.save(vehicle);
+      this.logger.log(`✅ Statut télémétrie mis à jour pour ${vin}: ${enabled}`);
+    }
+  }
+
+  /**
    * Vérifie la configuration de télémétrie pour un véhicule
    */
   async checkTelemetryConfig(vin: string, userId?: string): Promise<any> {
     try {
-      const accessToken = this.getAccessToken(userId);
+      const accessToken = await this.getAccessToken(userId);
       const response = await this.teslaApi.get(`/api/1/vehicles/${vin}/fleet_telemetry_config`, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });

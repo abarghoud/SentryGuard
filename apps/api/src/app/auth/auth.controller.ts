@@ -29,10 +29,10 @@ export class AuthController {
    * GET /auth/user/:userId/status
    */
   @Get('user/:userId/status')
-  getUserStatus(@Param('userId') userId: string) {
+  async getUserStatus(@Param('userId') userId: string) {
     this.logger.log(`🔍 Checking status for user: ${userId}`);
 
-    const tokenInfo = this.authService.getTokenInfo(userId);
+    const tokenInfo = await this.authService.getTokenInfo(userId);
 
     if (!tokenInfo.exists) {
       return {
@@ -60,10 +60,10 @@ export class AuthController {
    * GET /auth/user/:userId/profile
    */
   @Get('user/:userId/profile')
-  getUserProfile(@Param('userId') userId: string) {
+  async getUserProfile(@Param('userId') userId: string) {
     this.logger.log(`👤 Retrieving profile for user: ${userId}`);
 
-    const profile = this.authService.getUserProfile(userId);
+    const profile = await this.authService.getUserProfile(userId);
 
     if (!profile) {
       return {
@@ -83,8 +83,7 @@ export class AuthController {
    * GET /auth/stats
    */
   @Get('stats')
-  getStats() {
-    return this.authService.getStats();
+  async getStats() {
+    return await this.authService.getStats();
   }
 }
-
