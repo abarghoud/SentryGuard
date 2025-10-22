@@ -92,6 +92,39 @@ The API communicates with `tesla-vehicle-command` over HTTPS with `rejectUnautho
 - Uses self-signed certificates
 - ⚠️ **Never use this configuration for public Internet calls**
 
+### Rate Limiting Behind Reverse Proxies (Cloudflare, Nginx)
+
+If your API is behind Cloudflare and/or Nginx Proxy Manager, the rate limiting uses forwarded headers to identify real client IPs:
+
+**Priority order:**
+1. `CF-Connecting-IP` (Cloudflare's real client IP)
+2. `X-Forwarded-For` (Standard proxy header)
+3. `X-Real-IP` (Alternative proxy header)
+4. `req.ip` (Direct connection fallback)
+
+**Nginx Proxy Manager Configuration:**
+
+In your Proxy Host → Advanced tab, add:
+
+```nginx
+# Forward Cloudflare real IP
+proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+
+# Standard proxy headers
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header Host $host;
+```
+
+**Testing header forwarding:**
+
+```bash
+curl https://your-domain.com/test/headers
+```
+
+This will show which headers are received by the API. You should see `cf-connecting-ip` with your real IP address.
+
 ## Tesla OAuth Authentication
 
 ### Setting up OAuth
