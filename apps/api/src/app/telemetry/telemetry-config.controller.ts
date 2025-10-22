@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Param, Logger, Headers } from '@nestjs/common';
 import { TelemetryConfigService } from './telemetry-config.service';
 
 @Controller('telemetry-config')
@@ -8,29 +8,29 @@ export class TelemetryConfigController {
   constructor(private readonly telemetryConfigService: TelemetryConfigService) {}
 
   @Get('vehicles')
-  async getVehicles() {
-    this.logger.log('🔍 Récupération de la liste des véhicules');
-    return await this.telemetryConfigService.getVehicles();
+  async getVehicles(@Headers('x-user-id') userId?: string) {
+    this.logger.log(`🔍 Récupération de la liste des véhicules${userId ? ` pour l'utilisateur ${userId}` : ''}`);
+    return await this.telemetryConfigService.getVehicles(userId);
   }
 
   @Post('configure-all')
-  async configureAllVehicles() {
-    this.logger.log('🚗 Configuration de la télémétrie pour tous les véhicules');
-    await this.telemetryConfigService.configureAllVehicles();
+  async configureAllVehicles(@Headers('x-user-id') userId?: string) {
+    this.logger.log(`🚗 Configuration de la télémétrie pour tous les véhicules${userId ? ` (utilisateur ${userId})` : ''}`);
+    await this.telemetryConfigService.configureAllVehicles(userId);
     return { message: 'Configuration de télémétrie lancée pour tous les véhicules' };
   }
 
   @Post('configure/:vin')
-  async configureVehicle(@Param('vin') vin: string) {
-    this.logger.log(`🚗 Configuration de la télémétrie pour le VIN: ${vin}`);
-    const result = await this.telemetryConfigService.configureTelemetry(vin);
+  async configureVehicle(@Param('vin') vin: string, @Headers('x-user-id') userId?: string) {
+    this.logger.log(`🚗 Configuration de la télémétrie pour le VIN: ${vin}${userId ? ` (utilisateur ${userId})` : ''}`);
+    const result = await this.telemetryConfigService.configureTelemetry(vin, userId);
     return { message: `Configuration lancée pour le VIN: ${vin}`, result };
   }
 
   @Get('check/:vin')
-  async checkConfiguration(@Param('vin') vin: string) {
-    this.logger.log(`🔍 Vérification de la configuration pour le VIN: ${vin}`);
-    const result = await this.telemetryConfigService.checkTelemetryConfig(vin);
+  async checkConfiguration(@Param('vin') vin: string, @Headers('x-user-id') userId?: string) {
+    this.logger.log(`🔍 Vérification de la configuration pour le VIN: ${vin}${userId ? ` (utilisateur ${userId})` : ''}`);
+    const result = await this.telemetryConfigService.checkTelemetryConfig(vin, userId);
     return { message: `Configuration vérifiée pour le VIN: ${vin}`, result };
   }
 }

@@ -1,0 +1,201 @@
+{
+  "info": {
+    "name": "TeslaGuard API",
+    "description": "Collection to interact with the TeslaGuard API after Tesla OAuth authentication",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.1.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "YOUR_USER_ID_HERE",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Generate Login URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/tesla/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "tesla", "login"]
+            },
+            "description": "Generates the Tesla OAuth login URL. Copy the returned URL and open it in a browser to authenticate."
+          },
+          "response": []
+        },
+        {
+          "name": "Check User Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/user/{{userId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "user", "{{userId}}", "status"]
+            },
+            "description": "Checks user authentication status, token expiration, and profile presence."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/user/{{userId}}/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "user", "{{userId}}", "profile"]
+            },
+            "description": "Retrieves the Tesla user profile (email, name, etc.) that was automatically fetched during authentication."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Auth Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "stats"]
+            },
+            "description": "Retrieves authentication service statistics (number of active users, etc.)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Telemetry Configuration",
+      "item": [
+        {
+          "name": "Get Vehicles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/telemetry-config/vehicles",
+              "host": ["{{baseUrl}}"],
+              "path": ["telemetry-config", "vehicles"]
+            },
+            "description": "Retrieves the list of Tesla vehicles associated with the user's account."
+          },
+          "response": []
+        },
+        {
+          "name": "Configure All Vehicles",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/telemetry-config/configure-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["telemetry-config", "configure-all"]
+            },
+            "description": "Configures telemetry for all user's vehicles."
+          },
+          "response": []
+        },
+        {
+          "name": "Configure Specific Vehicle",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/telemetry-config/configure/:vin",
+              "host": ["{{baseUrl}}"],
+              "path": ["telemetry-config", "configure", ":vin"],
+              "variable": [
+                {
+                  "key": "vin",
+                  "value": "YOUR_VIN_HERE",
+                  "description": "VIN of the vehicle to configure"
+                }
+              ]
+            },
+            "description": "Configures telemetry for a specific vehicle (replace :vin with your vehicle's VIN)."
+          },
+          "response": []
+        },
+        {
+          "name": "Check Vehicle Configuration",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{userId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/telemetry-config/check/:vin",
+              "host": ["{{baseUrl}}"],
+              "path": ["telemetry-config", "check", ":vin"],
+              "variable": [
+                {
+                  "key": "vin",
+                  "value": "YOUR_VIN_HERE",
+                  "description": "VIN of the vehicle to check"
+                }
+              ]
+            },
+            "description": "Checks telemetry configuration for a specific vehicle."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "App Info",
+      "item": [
+        {
+          "name": "Get App Data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            },
+            "description": "Retrieves basic API information."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

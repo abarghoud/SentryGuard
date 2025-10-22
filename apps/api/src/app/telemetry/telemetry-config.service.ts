@@ -1,10 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
 import * as https from 'https';
+import { AuthService } from '../auth/auth.service';
 
 @Injectable()
 export class TelemetryConfigService {
   private readonly logger = new Logger(TelemetryConfigService.name);
+  
+  // NOTE SÉCURITÉ: rejectUnauthorized: false est acceptable ici car tesla-vehicle-command
+  // est un service local sur le même réseau Docker avec certificat auto-signé.
+  // ⚠️ NE PAS utiliser cette configuration pour des appels vers Internet public !
   private readonly teslaApi = axios.create({
     baseURL: 'https://tesla-vehicle-command:443',
     httpsAgent: new https.Agent({
@@ -12,13 +17,37 @@ export class TelemetryConfigService {
     })
   });
 
+  constructor(private readonly authService: AuthService) {}
+
+  /**
+   * Récupère le token d'accès pour un utilisateur
+   * Fallback sur ACCESS_TOKEN si userId non fourni (compatibilité)
+   */
+  private getAccessToken(userId?: string): string {
+    if (userId) {
+      const token = this.authService.getAccessToken(userId);
+      if (!token) {
+        throw new UnauthorizedException('Token invalide ou expiré pour cet utilisateur');
+      }
+      return token;
+    }
+
+    // Fallback sur l'ancien système avec ACCESS_TOKEN
+    const legacyToken = process.env.ACCESS_TOKEN;
+    if (!legacyToken) {
+      throw new UnauthorizedException('Aucun token d\'accès disponible');
+    }
+    return legacyToken;
+  }
+
   /**
    * Récupère la liste des véhicules configurés
    */
-  async getVehicles(): Promise<any[]> {
+  async getVehicles(userId?: string): Promise<any[]> {
     try {
+      const accessToken = this.getAccessToken(userId);
       const response = await this.teslaApi.get('/api/1/vehicles', {
-        headers: { 'Authorization': `Bearer ${process.env.ACCESS_TOKEN}` }
+        headers: { 'Authorization': `Bearer ${accessToken}` }
       });
       return response.data.response;
     } catch (error: unknown) {
@@ -30,7 +59,7 @@ export class TelemetryConfigService {
   /**
    * Configure la télémétrie pour un véhicule spécifique
    */
-  async configureTelemetry(vin: string): Promise<any> {
+  async configureTelemetry(vin: string, userId?: string): Promise<any> {
     const base64CAKey = process.env.LETS_ENCRYPT_CERTIFICATE;
 
     if (!base64CAKey) {
@@ -38,14 +67,10 @@ export class TelemetryConfigService {
       return null;
     }
 
-    if (!process.env.ACCESS_TOKEN) {
-      this.logger.error('❌ ACCESS_TOKEN non défini');
-      return null;
-    }
-
     const decodedKey = Buffer.from(base64CAKey, 'base64').toString('utf8');
 
     try {
+      const accessToken = this.getAccessToken(userId);
       const response = await this.teslaApi.post('/api/1/vehicles/fleet_telemetry_config', {
         config: {
           ca: decodedKey,
@@ -58,7 +83,7 @@ export class TelemetryConfigService {
         vins: [vin]
       }, {
         headers: {
-          'Authorization': `Bearer ${process.env.ACCESS_TOKEN}`,
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
         }
       });
@@ -74,10 +99,11 @@ export class TelemetryConfigService {
   /**
    * Vérifie la configuration de télémétrie pour un véhicule
    */
-  async checkTelemetryConfig(vin: string): Promise<any> {
+  async checkTelemetryConfig(vin: string, userId?: string): Promise<any> {
     try {
+      const accessToken = this.getAccessToken(userId);
       const response = await this.teslaApi.get(`/api/1/vehicles/${vin}/fleet_telemetry_config`, {
-        headers: { 'Authorization': `Bearer ${process.env.ACCESS_TOKEN}` }
+        headers: { 'Authorization': `Bearer ${accessToken}` }
       });
 
       this.logger.log(`Config pour ${vin}:`, response.data.response);
@@ -91,9 +117,9 @@ export class TelemetryConfigService {
   /**
    * Configure la télémétrie pour tous les véhicules disponibles
    */
-  async configureAllVehicles(): Promise<void> {
+  async configureAllVehicles(userId?: string): Promise<void> {
     this.logger.log('🔍 Récupération des véhicules...');
-    const vehicles = await this.getVehicles();
+    const vehicles = await this.getVehicles(userId);
 
     if (vehicles.length === 0) {
       this.logger.warn('⚠️ Aucun véhicule trouvé.');
@@ -105,11 +131,11 @@ export class TelemetryConfigService {
     // Configurer la télémétrie pour chaque véhicule
     for (const vehicle of vehicles) {
       this.logger.log(`\n🚗 Configuration ${vehicle.vin}...`);
-      const configResult = await this.configureTelemetry(vehicle.vin);
+      const configResult = await this.configureTelemetry(vehicle.vin, userId);
       this.logger.log('configResult', configResult);
 
       // Vérifier la configuration
-      const checkResult = await this.checkTelemetryConfig(vehicle.vin);
+      const checkResult = await this.checkTelemetryConfig(vehicle.vin, userId);
       if (checkResult) {
         this.logger.log(`✅ Configuration vérifiée pour ${vehicle.vin}:`, checkResult.fields);
       }

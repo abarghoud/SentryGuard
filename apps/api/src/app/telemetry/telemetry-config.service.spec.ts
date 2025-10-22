@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TelemetryConfigService } from './telemetry-config.service';
+import { AuthService } from '../auth/auth.service';
 import axios from 'axios';
 
 // Mock axios
@@ -14,6 +15,11 @@ const mockAxiosInstance = {
 
 mockedAxios.create = jest.fn().mockReturnValue(mockAxiosInstance);
 
+// Mock AuthService
+const mockAuthService = {
+  getAccessToken: jest.fn(),
+};
+
 describe('TelemetryConfigService', () => {
   let service: TelemetryConfigService;
 
@@ -23,7 +29,13 @@ describe('TelemetryConfigService', () => {
     process.env.LETS_ENCRYPT_CERTIFICATE = Buffer.from('test_certificate').toString('base64');
     
     const module: TestingModule = await Test.createTestingModule({
-      providers: [TelemetryConfigService],
+      providers: [
+        TelemetryConfigService,
+        {
+          provide: AuthService,
+          useValue: mockAuthService,
+        },
+      ],
     }).compile();
 
     service = module.get<TelemetryConfigService>(TelemetryConfigService);
@@ -68,6 +80,43 @@ describe('TelemetryConfigService', () => {
       mockAxiosInstance.get.mockRejectedValueOnce(new Error('API Error'));
 
       const result = await service.getVehicles();
+
+      expect(result).toEqual([]);
+      expect(loggerSpy).toHaveBeenCalled();
+      loggerSpy.mockRestore();
+    });
+
+    it('should use user token when userId is provided', async () => {
+      const userId = 'test-user-id';
+      const userToken = 'user-access-token';
+      mockAuthService.getAccessToken.mockReturnValue(userToken);
+
+      const mockVehicles = [
+        { vin: 'VIN123', display_name: 'Tesla Model 3' }
+      ];
+
+      mockAxiosInstance.get.mockResolvedValueOnce({
+        data: { response: mockVehicles }
+      });
+
+      const result = await service.getVehicles(userId);
+
+      expect(mockAuthService.getAccessToken).toHaveBeenCalledWith(userId);
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        '/api/1/vehicles',
+        expect.objectContaining({
+          headers: { 'Authorization': `Bearer ${userToken}` }
+        })
+      );
+      expect(result).toEqual(mockVehicles);
+    });
+
+    it('should return empty array when userId has invalid token', async () => {
+      const userId = 'test-user-id';
+      const loggerSpy = jest.spyOn(service['logger'], 'error').mockImplementation();
+      mockAuthService.getAccessToken.mockReturnValue(null);
+
+      const result = await service.getVehicles(userId);
 
       expect(result).toEqual([]);
       expect(loggerSpy).toHaveBeenCalled();
@@ -120,15 +169,39 @@ describe('TelemetryConfigService', () => {
       loggerSpy.mockRestore();
     });
 
-    it('should return null when ACCESS_TOKEN is not defined', async () => {
+    it('should return null when ACCESS_TOKEN is not defined and no userId provided', async () => {
       delete process.env.ACCESS_TOKEN;
       const loggerSpy = jest.spyOn(service['logger'], 'error').mockImplementation();
 
       const result = await service.configureTelemetry('TEST_VIN_123');
 
       expect(result).toBeNull();
-      expect(loggerSpy).toHaveBeenCalledWith('❌ ACCESS_TOKEN non défini');
+      expect(loggerSpy).toHaveBeenCalled();
       loggerSpy.mockRestore();
+    });
+
+    it('should use user token when userId is provided', async () => {
+      const userId = 'test-user-id';
+      const userToken = 'user-access-token';
+      mockAuthService.getAccessToken.mockReturnValue(userToken);
+
+      mockAxiosInstance.post.mockResolvedValueOnce({
+        data: { result: 'success' }
+      });
+
+      const result = await service.configureTelemetry('TEST_VIN_123', userId);
+
+      expect(mockAuthService.getAccessToken).toHaveBeenCalledWith(userId);
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+        '/api/1/vehicles/fleet_telemetry_config',
+        expect.any(Object),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: `Bearer ${userToken}`
+          })
+        })
+      );
+      expect(result).toBeDefined();
     });
 
     it('should handle API errors gracefully', async () => {
@@ -174,6 +247,30 @@ describe('TelemetryConfigService', () => {
       expect(result).toBeNull();
       expect(loggerSpy).toHaveBeenCalled();
       loggerSpy.mockRestore();
+    });
+
+    it('should use user token when userId is provided', async () => {
+      const vin = 'TEST_VIN_123';
+      const userId = 'test-user-id';
+      const userToken = 'user-access-token';
+      mockAuthService.getAccessToken.mockReturnValue(userToken);
+
+      const mockConfig = { fields: { SentryMode: { interval_seconds: 30 } } };
+
+      mockAxiosInstance.get.mockResolvedValueOnce({
+        data: { response: mockConfig }
+      });
+
+      const result = await service.checkTelemetryConfig(vin, userId);
+
+      expect(mockAuthService.getAccessToken).toHaveBeenCalledWith(userId);
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        `/api/1/vehicles/${vin}/fleet_telemetry_config`,
+        expect.objectContaining({
+          headers: { 'Authorization': `Bearer ${userToken}` }
+        })
+      );
+      expect(result).toEqual(mockConfig);
     });
   });
 
