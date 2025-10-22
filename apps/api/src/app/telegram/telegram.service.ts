@@ -1,42 +1,56 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios from 'axios';
+import { TelegramBotService } from './telegram-bot.service';
 
 @Injectable()
 export class TelegramService {
   private readonly logger = new Logger(TelegramService.name);
-  private readonly botToken = process.env.TELEGRAM_BOT_TOKEN;
-  private readonly chatId = process.env.TELEGRAM_CHAT_ID;
 
-  async sendSentryAlert(alertInfo: any) {
+  constructor(private readonly telegramBotService: TelegramBotService) {}
+
+  /**
+   * Envoie une alerte Sentry à un utilisateur spécifique
+   */
+  async sendSentryAlert(userId: string, alertInfo: any) {
     try {
       const message = this.formatSentryAlertMessage(alertInfo);
+      const success = await this.telegramBotService.sendMessageToUser(userId, message);
 
-      await axios.post(`https://api.telegram.org/bot${this.botToken}/sendMessage`, {
-        chat_id: this.chatId,
-        text: message,
-        parse_mode: 'HTML'
-      });
+      if (success) {
+        this.logger.log(`📱 Alerte Sentry envoyée à l'utilisateur: ${userId}`);
+      } else {
+        this.logger.warn(`⚠️ Impossible d'envoyer l'alerte à l'utilisateur: ${userId}`);
+      }
 
-      this.logger.log('📱 Notification Telegram envoyée avec succès');
+      return success;
     } catch (error) {
-      this.logger.error('❌ Erreur lors de l\'envoi de la notification Telegram:', error);
+      this.logger.error(`❌ Erreur lors de l'envoi de l'alerte Sentry à ${userId}:`, error);
+      return false;
     }
   }
 
-  async sendTelegramMessage(message: string) {
+  /**
+   * Envoie un message Telegram personnalisé à un utilisateur
+   */
+  async sendTelegramMessage(userId: string, message: string) {
     try {
-      await axios.post(`https://api.telegram.org/bot${this.botToken}/sendMessage`, {
-        chat_id: this.chatId,
-        text: message,
-        parse_mode: 'HTML'
-      });
+      const success = await this.telegramBotService.sendMessageToUser(userId, message);
 
-      this.logger.log('📱 Notification Telegram envoyée avec succès');
+      if (success) {
+        this.logger.log(`📱 Message Telegram envoyé à l'utilisateur: ${userId}`);
+      } else {
+        this.logger.warn(`⚠️ Impossible d'envoyer le message à l'utilisateur: ${userId}`);
+      }
+
+      return success;
     } catch (error) {
-      this.logger.error('❌ Erreur lors de l\'envoi de la notification Telegram:', error);
+      this.logger.error(`❌ Erreur lors de l'envoi du message Telegram à ${userId}:`, error);
+      return false;
     }
   }
 
+  /**
+   * Formate un message d'alerte Sentry
+   */
   private formatSentryAlertMessage(alertInfo: any): string {
     const timestamp = new Date(alertInfo.timestamp).toLocaleString('fr-FR', {
       timeZone: 'Europe/Paris',
@@ -62,5 +76,41 @@ export class TelegramService {
 
 <i>Mode Sentinel activé - Vérifiez votre véhicule!</i>
     `.trim();
+  }
+
+  /**
+   * Envoie une alerte Sentry (version legacy pour compatibilité)
+   * Utilise TELEGRAM_CHAT_ID de l'environnement si défini
+   */
+  async sendSentryAlertLegacy(alertInfo: any) {
+    const legacyChatId = process.env.TELEGRAM_CHAT_ID;
+    
+    if (!legacyChatId) {
+      this.logger.warn('⚠️ TELEGRAM_CHAT_ID non défini, impossible d\'envoyer l\'alerte legacy');
+      return false;
+    }
+
+    try {
+      const message = this.formatSentryAlertMessage(alertInfo);
+      const botToken = process.env.TELEGRAM_BOT_TOKEN;
+
+      if (!botToken) {
+        this.logger.error('❌ TELEGRAM_BOT_TOKEN non défini');
+        return false;
+      }
+
+      const axios = require('axios');
+      await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        chat_id: legacyChatId,
+        text: message,
+        parse_mode: 'HTML'
+      });
+
+      this.logger.log('📱 Alerte Sentry legacy envoyée avec succès');
+      return true;
+    } catch (error) {
+      this.logger.error('❌ Erreur lors de l\'envoi de l\'alerte legacy:', error);
+      return false;
+    }
   }
 }

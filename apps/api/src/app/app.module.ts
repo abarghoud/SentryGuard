@@ -4,10 +4,10 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { TelegramService } from './telegram/telegram.service';
 import { ZmqService } from './zmq/zmq.service';
 import { AuthModule } from './auth/auth.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
+import { TelegramModule } from './telegram/telegram.module';
 import { CloudflareThrottlerGuard } from '../common/guards/cloudflare-throttler.guard';
 import { getDatabaseConfig } from '../config/database.config';
 
@@ -16,6 +16,7 @@ import { getDatabaseConfig } from '../config/database.config';
     TypeOrmModule.forRoot(getDatabaseConfig()),
     AuthModule,
     TelemetryModule,
+    TelegramModule,
     ThrottlerModule.forRoot([{
       ttl: parseInt(process.env.THROTTLE_TTL || '60000', 10),  // milliseconds
       limit: parseInt(process.env.THROTTLE_LIMIT || '20', 10),  // requests
@@ -24,7 +25,6 @@ import { getDatabaseConfig } from '../config/database.config';
   controllers: [AppController],
   providers: [
     AppService,
-    TelegramService,
     ZmqService,
     {
       provide: APP_GUARD,
