@@ -56,7 +56,41 @@ TESLA_REDIRECT_URI=https://sentryguard.org/callback/auth
 
 # ZMQ
 ZMQ_ENDPOINT=tcp://10.0.2.12:5284
+
+# Rate Limiting (requests per minute per IP)
+THROTTLE_TTL=60000
+THROTTLE_LIMIT=20
 ```
+
+## Security
+
+### Rate Limiting
+
+The API includes rate limiting protection to prevent abuse. By default:
+- **20 requests per minute** per IP address
+- Configurable via `THROTTLE_LIMIT` and `THROTTLE_TTL` environment variables
+
+When rate limit is exceeded, the API returns:
+- HTTP Status: `429 Too Many Requests`
+- Header: `Retry-After: <seconds>`
+
+**Adjusting rate limits:**
+```bash
+# Allow 50 requests per minute
+THROTTLE_LIMIT=50
+THROTTLE_TTL=60000
+
+# Allow 100 requests per 5 minutes
+THROTTLE_LIMIT=100
+THROTTLE_TTL=300000
+```
+
+### SSL Configuration
+
+The API communicates with `tesla-vehicle-command` over HTTPS with `rejectUnauthorized: false`. This is acceptable because:
+- The service runs on a local Docker network
+- Uses self-signed certificates
+- ⚠️ **Never use this configuration for public Internet calls**
 
 ## Tesla OAuth Authentication
 
