@@ -5,9 +5,10 @@ import { TelemetryConfigController } from './telemetry/telemetry-config.controll
 import { TelemetryConfigService } from './telemetry/telemetry-config.service';
 import { TelegramService } from './telegram/telegram.service';
 import { ZmqService } from './zmq/zmq.service';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
-  imports: [],
+  imports: [AuthModule],
   controllers: [AppController, TelemetryConfigController],
   providers: [
     AppService, 

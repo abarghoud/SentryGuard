@@ -84,7 +84,7 @@ describe('TelemetryConfigController', () => {
         message: `Configuration lancée pour le VIN: ${vin}`,
         result: mockResult
       });
-      expect(service.configureTelemetry).toHaveBeenCalledWith(vin);
+      expect(service.configureTelemetry).toHaveBeenCalledWith(vin, undefined);
     });
 
     it('should handle service errors', async () => {
@@ -108,7 +108,7 @@ describe('TelemetryConfigController', () => {
         message: `Configuration vérifiée pour le VIN: ${vin}`,
         result: mockResult
       });
-      expect(service.checkTelemetryConfig).toHaveBeenCalledWith(vin);
+      expect(service.checkTelemetryConfig).toHaveBeenCalledWith(vin, undefined);
     });
 
     it('should handle service errors', async () => {

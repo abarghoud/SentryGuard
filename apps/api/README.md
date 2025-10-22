@@ -7,6 +7,7 @@ API server for managing Tesla alerts via ZMQ and Telegram notifications.
 - 🔌 **ZMQ Listening** : Receives telemetry messages via ZMQ on `tcp://10.0.2.12:5284`
 - 📱 **Telegram Notifications** : Automatically sends Sentry alerts via Telegram
 - 🚗 **Telemetry Configuration** : API to configure Tesla vehicle telemetry
+- 🔐 **Tesla OAuth Authentication** : Multi-user authentication with Tesla Fleet API
 - 🔍 **Monitoring** : Detailed logs of connections and messages
 
 ## Architecture
@@ -16,14 +17,22 @@ API server for managing Tesla alerts via ZMQ and Telegram notifications.
 - **ZmqService** : Listens to ZMQ messages and processes Sentry alerts
 - **TelegramService** : Sends formatted Telegram notifications
 - **TelemetryConfigService** : Manages Tesla telemetry configuration
+- **AuthService** : Handles Tesla OAuth 2.0 authentication and token management
 - **TelemetryService** : Processes telemetry data
 
 ### API Endpoints
 
-- `GET /telemetry-config/vehicles` - List vehicles
-- `POST /telemetry-config/configure-all` - Configure all vehicles
-- `POST /telemetry-config/configure/:vin` - Configure specific vehicle
-- `GET /telemetry-config/check/:vin` - Check configuration
+#### Authentication
+- `GET /auth/tesla/login` - Generate Tesla OAuth login URL
+- `GET /callback/auth` - OAuth callback endpoint (handled automatically)
+- `GET /auth/user/:userId/status` - Check user authentication status
+- `GET /auth/stats` - Get authentication service statistics
+
+#### Telemetry Configuration
+- `GET /telemetry-config/vehicles` - List vehicles (supports `X-User-Id` header)
+- `POST /telemetry-config/configure-all` - Configure all vehicles (supports `X-User-Id` header)
+- `POST /telemetry-config/configure/:vin` - Configure specific vehicle (supports `X-User-Id` header)
+- `GET /telemetry-config/check/:vin` - Check configuration (supports `X-User-Id` header)
 
 ## Configuration
 
@@ -34,13 +43,80 @@ Copy `env.example` to `.env` and configure:
 TELEGRAM_BOT_TOKEN=your_bot_token
 TELEGRAM_CHAT_ID=your_chat_id
 
-# Tesla API
+# Tesla API (Legacy - for backward compatibility)
 ACCESS_TOKEN=your_tesla_access_token
 LETS_ENCRYPT_CERTIFICATE=your_base64_certificate
+
+# Tesla OAuth (Recommended for multi-user)
+TESLA_CLIENT_ID=your_tesla_client_id
+TESLA_CLIENT_SECRET=your_tesla_client_secret
+TESLA_AUDIENCE=https://fleet-api.prd.na.vn.cloud.tesla.com
+TESLA_REDIRECT_URI=https://sentryguard.org/callback/auth
 
 # ZMQ
 ZMQ_ENDPOINT=tcp://10.0.2.12:5284
 ```
+
+## Tesla OAuth Authentication
+
+### Setting up OAuth
+
+1. **Get OAuth credentials** from Tesla Developer Portal
+2. **Configure environment variables** as shown above
+3. **Start the API server**
+
+### Authentication Flow
+
+1. **Generate login URL:**
+```bash
+curl http://localhost:3000/auth/tesla/login
+```
+
+This returns a JSON response with:
+- `url`: The Tesla OAuth authorization URL
+- `state`: A security token (managed automatically)
+- `message`: Instructions
+
+2. **User authenticates:**
+- Open the provided URL in a browser
+- Log in with Tesla credentials
+- Authorize the application
+
+3. **Callback handling:**
+- User is automatically redirected to `/callback/auth`
+- The API exchanges the authorization code for access tokens
+- A success page displays the user's unique `userId`
+- **Save this `userId` for API requests**
+
+4. **Using authenticated endpoints:**
+
+Include the `X-User-Id` header in your requests:
+
+```bash
+# List vehicles for authenticated user
+curl -H "X-User-Id: YOUR_USER_ID" http://localhost:3000/telemetry-config/vehicles
+
+# Configure telemetry
+curl -X POST -H "X-User-Id: YOUR_USER_ID" http://localhost:3000/telemetry-config/configure-all
+```
+
+### Checking Authentication Status
+
+```bash
+curl http://localhost:3000/auth/user/YOUR_USER_ID/status
+```
+
+Returns:
+- `authenticated`: boolean
+- `expires_at`: token expiration date
+- `message`: status description
+
+### Notes
+
+- Tokens are stored **in memory** and lost on server restart
+- No automatic token refresh - users must re-authenticate when tokens expire
+- Legacy `ACCESS_TOKEN` method still works if `X-User-Id` header is not provided
+- Multiple users can authenticate simultaneously with different `userId`s
 
 ## Installation
 
