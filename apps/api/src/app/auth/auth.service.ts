@@ -30,7 +30,7 @@ export class AuthService implements OnModuleDestroy {
   private readonly pendingStates = new Map<string, PendingState>();
   private readonly STATE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
   private cleanupInterval: NodeJS.Timeout;
-  
+
   // Axios instance for Tesla API (same configuration as TelemetryConfigService)
   // SECURITY NOTE: rejectUnauthorized: false is acceptable here because tesla-vehicle-command
   // is a local service on the same Docker network with self-signed certificate.
@@ -76,10 +76,11 @@ export class AuthService implements OnModuleDestroy {
 
     const params = new URLSearchParams({
       client_id: clientId,
-      locale: 'en-US',
+      locale: 'fr-FR',
       prompt: 'login',
       redirect_uri: redirectUri,
       response_type: 'code',
+      show_keypair_step: 'true',
       scope: 'openid vehicle_device_data offline_access user_data',
       state: state
     });
@@ -95,7 +96,7 @@ export class AuthService implements OnModuleDestroy {
    */
   private validateState(state: string): boolean {
     const pendingState = this.pendingStates.get(state);
-    
+
     if (!pendingState) {
       this.logger.warn(`⚠️ Invalid or expired state: ${state}`);
       return false;
