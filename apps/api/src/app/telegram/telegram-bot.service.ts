@@ -68,9 +68,12 @@ export class TelegramBotService implements OnModuleInit {
         );
       });
 
-      // Lancer le bot en mode polling
-      await this.bot.launch();
-      this.logger.log('✅ Telegram bot démarré avec succès');
+      // Lancer le bot en mode polling (non-bloquant)
+      this.bot.launch().then(() => {
+        this.logger.log('✅ Telegram bot démarré avec succès');
+      }).catch((error) => {
+        this.logger.error('❌ Erreur lors du démarrage du bot Telegram:', error);
+      });
 
       // Graceful stop
       process.once('SIGINT', () => this.bot?.stop('SIGINT'));

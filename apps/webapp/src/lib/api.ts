@@ -2,7 +2,7 @@
  * Client API pour communiquer avec le backend TeslaGuard
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 /**
  * Récupère le userId depuis le localStorage
@@ -98,11 +98,11 @@ export async function checkAuthStatus(): Promise<AuthStatus> {
 export async function getUserProfile(): Promise<UserProfile | null> {
   const userId = getUserId();
   if (!userId) return null;
-  
+
   const response = await apiRequest<{ success: boolean; profile?: UserProfile }>(
     `/auth/user/${userId}/profile`
   );
-  
+
   return response.success ? response.profile || null : null;
 }
 

@@ -55,6 +55,7 @@
     "@testing-library/react": "16.1.0",
     "@types/express": "^5.0.3",
     "@types/jest": "^30.0.0",
+    "@types/minimatch": "5.1.2",
     "@types/node": "20.19.9",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",

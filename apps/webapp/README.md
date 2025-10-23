@@ -18,7 +18,7 @@ Next.js-based SEO-friendly web application for TeslaGuard.
 Create a `.env.local` file in the root of this directory:
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:3000
+NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
 ## Development

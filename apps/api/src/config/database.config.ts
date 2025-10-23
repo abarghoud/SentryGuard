@@ -1,5 +1,8 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { DataSource, DataSourceOptions } from 'typeorm';
+import { User } from '../entities/user.entity';
+import { Vehicle } from '../entities/vehicle.entity';
+import { TelegramConfig } from '../entities/telegram-config.entity';
 
 export const getDatabaseConfig = (): TypeOrmModuleOptions => {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -11,14 +14,10 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
     username: process.env.DATABASE_USER || 'teslaguard',
     password: process.env.DATABASE_PASSWORD || 'teslaguard',
     database: process.env.DATABASE_NAME || 'teslaguard',
-    entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+    entities: [User, Vehicle, TelegramConfig],
     synchronize: !isProduction, // Auto-sync schema in dev, disable in production
     logging: process.env.DATABASE_LOGGING === 'true',
-    ssl: isProduction
-      ? {
-          rejectUnauthorized: false,
-        }
-      : false,
+    ssl: false,
   };
 };
 
@@ -30,8 +29,8 @@ export const dataSourceOptions: DataSourceOptions = {
   username: process.env.DATABASE_USER || 'teslaguard',
   password: process.env.DATABASE_PASSWORD || 'teslaguard',
   database: process.env.DATABASE_NAME || 'teslaguard',
-  entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-  migrations: [__dirname + '/../migrations/*{.ts,.js}'],
+  entities: [User, Vehicle, TelegramConfig],
+  migrations: [],
   synchronize: false,
 };
 

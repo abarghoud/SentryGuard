@@ -10,12 +10,12 @@ import { User } from '../../entities/user.entity';
 @Injectable()
 export class TelemetryConfigService {
   private readonly logger = new Logger(TelemetryConfigService.name);
-  
+
   // NOTE SÉCURITÉ: rejectUnauthorized: false est acceptable ici car tesla-vehicle-command
   // est un service local sur le même réseau Docker avec certificat auto-signé.
   // ⚠️ NE PAS utiliser cette configuration pour des appels vers Internet public !
   private readonly teslaApi = axios.create({
-    baseURL: 'https://tesla-vehicle-command:443',
+    baseURL: process.env.TESLA_API_BASE_URL || 'https://tesla-vehicle-command:443',
     httpsAgent: new https.Agent({
       rejectUnauthorized: false
     })

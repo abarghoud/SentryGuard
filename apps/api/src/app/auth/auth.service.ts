@@ -25,13 +25,13 @@ export class AuthService implements OnModuleDestroy {
   private readonly pendingStates = new Map<string, PendingState>();
   private readonly STATE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
   private cleanupInterval: NodeJS.Timeout;
-  
+
   // Axios instance for Tesla API (same configuration as TelemetryConfigService)
   // SECURITY NOTE: rejectUnauthorized: false is acceptable here because tesla-vehicle-command
   // is a local service on the same Docker network with self-signed certificate.
   // ⚠️ DO NOT use this configuration for calls to the public Internet!
   private readonly teslaApi = axios.create({
-    baseURL: 'https://tesla-vehicle-command:443',
+    baseURL: process.env.TESLA_API_BASE_URL || 'https://tesla-vehicle-command:443',
     httpsAgent: new https.Agent({
       rejectUnauthorized: false
     })
@@ -93,7 +93,7 @@ export class AuthService implements OnModuleDestroy {
    */
   private validateState(state: string): boolean {
     const pendingState = this.pendingStates.get(state);
-    
+
     if (!pendingState) {
       this.logger.warn(`⚠️ Invalid or expired state: ${state}`);
       return false;
@@ -329,7 +329,7 @@ export class AuthService implements OnModuleDestroy {
    */
   async getStats(): Promise<{ activeUsers: number; pendingStates: number }> {
     const activeUsers = await this.userRepository.count();
-    
+
     return {
       activeUsers,
       pendingStates: this.pendingStates.size

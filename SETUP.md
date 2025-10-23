@@ -158,7 +158,7 @@ Assurez-vous que votre application a les scopes suivants :
 Créez un fichier `apps/webapp/.env.local` :
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:3000
+NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
 Pour la production, utilisez votre URL d'API complète :
@@ -191,7 +191,7 @@ sudo systemctl status postgresql
 # Dans un terminal
 npx nx serve api
 
-# L'API démarre sur http://localhost:3000
+# L'API démarre sur http://localhost:3001
 # Le bot Telegram démarre automatiquement
 ```
 
@@ -209,7 +209,7 @@ npx nx serve webapp
 ### 1. Vérifier l'API
 
 ```bash
-curl http://localhost:3000/auth/stats
+curl http://localhost:3001/auth/stats
 # Devrait retourner : {"activeUsers":0,"pendingStates":0}
 ```
 
