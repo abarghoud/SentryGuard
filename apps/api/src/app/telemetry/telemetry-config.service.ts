@@ -63,9 +63,21 @@ export class TelemetryConfigService {
 
       const vehicles = response.data.response;
 
-      // Si userId est fourni, synchroniser avec la base de données
+      // Si userId est fourni, synchroniser avec la base de données et enrichir avec telemetry_enabled
       if (userId && vehicles.length > 0) {
         await this.syncVehiclesToDatabase(userId, vehicles);
+        
+        // Récupérer les véhicules depuis la DB avec le statut telemetry_enabled
+        const dbVehicles = await this.getUserVehiclesFromDB(userId);
+        
+        // Enrichir les véhicules Tesla avec les données de la DB
+        return vehicles.map((teslaVehicle: any) => {
+          const dbVehicle = dbVehicles.find(dbV => dbV.vin === teslaVehicle.vin);
+          return {
+            ...teslaVehicle,
+            telemetry_enabled: dbVehicle?.telemetry_enabled || false
+          };
+        });
       }
 
       return vehicles;
