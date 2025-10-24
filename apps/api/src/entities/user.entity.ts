@@ -13,9 +13,9 @@ import { TelegramConfig } from './telegram-config.entity';
 @Entity('users')
 export class User {
   @PrimaryColumn('varchar', { length: 64 })
-  userId: string;
+  userId!: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true, unique: true })
   email?: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
@@ -26,25 +26,25 @@ export class User {
 
   // Encrypted tokens - we'll encrypt these at the service level
   @Column({ type: 'text' })
-  access_token: string;
+  access_token!: string;
 
   @Column({ type: 'text' })
-  refresh_token: string;
+  refresh_token!: string;
 
   @Column({ type: 'timestamp' })
-  expires_at: Date;
+  expires_at!: Date;
 
   @CreateDateColumn()
-  created_at: Date;
+  created_at!: Date;
 
   @UpdateDateColumn()
-  updated_at: Date;
+  updated_at!: Date;
 
   // Relations
   @OneToMany(() => Vehicle, (vehicle) => vehicle.user)
-  vehicles: Vehicle[];
+  vehicles!: Vehicle[];
 
   @OneToOne(() => TelegramConfig, (config) => config.user)
-  telegramConfig: TelegramConfig;
+  telegramConfig!: TelegramConfig;
 }
 

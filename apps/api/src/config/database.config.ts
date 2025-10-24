@@ -5,8 +5,6 @@ import { Vehicle } from '../entities/vehicle.entity';
 import { TelegramConfig } from '../entities/telegram-config.entity';
 
 export const getDatabaseConfig = (): TypeOrmModuleOptions => {
-  const isProduction = process.env.NODE_ENV === 'production';
-
   return {
     type: 'postgres',
     host: process.env.DATABASE_HOST || 'localhost',
@@ -15,7 +13,7 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
     password: process.env.DATABASE_PASSWORD || 'teslaguard',
     database: process.env.DATABASE_NAME || 'teslaguard',
     entities: [User, Vehicle, TelegramConfig],
-    synchronize: !isProduction, // Auto-sync schema in dev, disable in production
+    synchronize: true,
     logging: process.env.DATABASE_LOGGING === 'true',
     ssl: false,
   };
@@ -31,7 +29,7 @@ export const dataSourceOptions: DataSourceOptions = {
   database: process.env.DATABASE_NAME || 'teslaguard',
   entities: [User, Vehicle, TelegramConfig],
   migrations: [],
-  synchronize: false,
+  synchronize: true,
 };
 
 const dataSource = new DataSource(dataSourceOptions);

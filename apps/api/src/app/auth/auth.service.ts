@@ -166,27 +166,48 @@ export class AuthService implements OnModuleDestroy {
         this.logger.warn('⚠️ Unable to retrieve user profile, continuing anyway');
       }
 
-      // Generate a unique userId
-      const userId = crypto.randomBytes(16).toString('hex');
-
       // Encrypt tokens before storing
       const encryptedAccessToken = encrypt(access_token);
       const encryptedRefreshToken = encrypt(refresh_token);
 
-      // Create and save user
-      const user = this.userRepository.create({
-        userId,
-        email: profile?.email,
-        full_name: profile?.full_name,
-        profile_image_url: profile?.profile_image_url,
-        access_token: encryptedAccessToken,
-        refresh_token: encryptedRefreshToken,
-        expires_at: expiresAt,
+      // Check if user already exists by email
+      const user = await this.userRepository.findOne({ 
+        where: { email: profile?.email } 
       });
 
-      await this.userRepository.save(user);
+      let userId: string;
 
-      this.logger.log(`✅ User saved to database: ${userId}`);
+      if (user) {
+        // Update existing user
+        user.access_token = encryptedAccessToken;
+        user.refresh_token = encryptedRefreshToken;
+        user.expires_at = expiresAt;
+        user.full_name = profile?.full_name;
+        user.profile_image_url = profile?.profile_image_url;
+        
+        await this.userRepository.save(user);
+        userId = user.userId;
+        
+        this.logger.log(`✅ User updated in database: ${userId}`);
+      } else {
+        // Create new user
+        userId = crypto.randomBytes(16).toString('hex');
+        
+        const newUser = this.userRepository.create({
+          userId,
+          email: profile?.email,
+          full_name: profile?.full_name,
+          profile_image_url: profile?.profile_image_url,
+          access_token: encryptedAccessToken,
+          refresh_token: encryptedRefreshToken,
+          expires_at: expiresAt,
+        });
+
+        await this.userRepository.save(newUser);
+        
+        this.logger.log(`✅ New user created in database: ${userId}`);
+      }
+
       this.logger.log(`📅 Token expiration: ${expiresAt.toISOString()}`);
 
       return { userId, access_token };
