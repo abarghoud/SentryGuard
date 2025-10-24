@@ -1,5 +1,8 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { TelegramService } from '../telegram/telegram.service';
+import { Vehicle } from '../../entities/vehicle.entity';
 import * as zmq from 'zeromq';
 
 export interface TelemetryMessage {
@@ -21,7 +24,11 @@ export class ZmqService implements OnModuleInit, OnModuleDestroy {
   private socket: zmq.Subscriber;
   private readonly zmqEndpoint = process.env.ZMQ_ENDPOINT || '';
 
-  constructor(private readonly telegramService: TelegramService) {
+  constructor(
+    private readonly telegramService: TelegramService,
+    @InjectRepository(Vehicle)
+    private readonly vehicleRepository: Repository<Vehicle>,
+  ) {
     this.socket = new zmq.Subscriber();
   }
 
@@ -61,6 +68,29 @@ export class ZmqService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Récupère l'ID utilisateur à partir du VIN du véhicule
+   */
+  private async getUserIdFromVin(vin: string): Promise<string | null> {
+    try {
+      const vehicle = await this.vehicleRepository.findOne({
+        where: { vin },
+        select: ['userId']
+      });
+
+      if (vehicle) {
+        this.logger.log(`👤 Utilisateur trouvé pour le VIN ${vin}: ${vehicle.userId}`);
+        return vehicle.userId;
+      } else {
+        this.logger.warn(`⚠️ Aucun véhicule trouvé pour le VIN: ${vin}`);
+        return null;
+      }
+    } catch (error) {
+      this.logger.error(`❌ Erreur lors de la récupération de l'utilisateur pour le VIN ${vin}:`, error);
+      return null;
+    }
+  }
+
   private async listenForMessages() {
     for await (const message of this.socket) {
       try {
@@ -83,7 +113,13 @@ export class ZmqService implements OnModuleInit, OnModuleDestroy {
           const telemetryData: TelemetryMessage = JSON.parse(jsonStr);
 
           if (process.env.DEBUG_MESSAGES === 'true') {
-            await this.telegramService.sendTelegramMessage(jsonStr);
+            // Récupérer l'userId pour les messages de debug
+            const userId = await this.getUserIdFromVin(telemetryData.vin);
+            if (userId) {
+              await this.telegramService.sendTelegramMessage(userId, jsonStr);
+            } else {
+              this.logger.warn(`⚠️ Impossible d'envoyer le message de debug - utilisateur non trouvé pour le VIN: ${telemetryData.vin}`);
+            }
           }
 
           await this.processTelemetryMessage(telemetryData);
@@ -103,6 +139,14 @@ export class ZmqService implements OnModuleInit, OnModuleDestroy {
     try {
       this.logger.log(`🚗 Traitement des données télémétrie pour VIN: ${message.vin}`);
 
+      // Récupérer l'userId à partir du VIN
+      const userId = await this.getUserIdFromVin(message.vin);
+      
+      if (!userId) {
+        this.logger.warn(`⚠️ Impossible de trouver l'utilisateur pour le VIN: ${message.vin}`);
+        return;
+      }
+
       // Vérifier si c'est une alerte Sentry
       const sentryData = message.data.find(item => item.key === 'SentryMode');
       const centerDisplayData = message.data.find(item => item.key === 'CenterDisplay');
@@ -121,7 +165,7 @@ export class ZmqService implements OnModuleInit, OnModuleDestroy {
           alarmState: 'Active'
         };
 
-        await this.telegramService.sendSentryAlert(alertInfo);
+        await this.telegramService.sendSentryAlert(userId, alertInfo);
       } else {
         this.logger.log(`📊 Données télémétrie reçues (non-alerte): ${JSON.stringify(message.data)}`);
       }

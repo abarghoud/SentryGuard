@@ -10,10 +10,12 @@ import { TelemetryModule } from './telemetry/telemetry.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { CloudflareThrottlerGuard } from '../common/guards/cloudflare-throttler.guard';
 import { getDatabaseConfig } from '../config/database.config';
+import { Vehicle } from '../entities/vehicle.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forRoot(getDatabaseConfig()),
+    TypeOrmModule.forFeature([Vehicle]),
     AuthModule,
     TelemetryModule,
     TelegramModule,
