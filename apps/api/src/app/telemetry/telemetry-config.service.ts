@@ -66,10 +66,10 @@ export class TelemetryConfigService {
       // Si userId est fourni, synchroniser avec la base de données et enrichir avec telemetry_enabled
       if (userId && vehicles.length > 0) {
         await this.syncVehiclesToDatabase(userId, vehicles);
-        
+
         // Récupérer les véhicules depuis la DB avec le statut telemetry_enabled
         const dbVehicles = await this.getUserVehiclesFromDB(userId);
-        
+
         // Enrichir les véhicules Tesla avec les données de la DB
         return vehicles.map((teslaVehicle: any) => {
           const dbVehicle = dbVehicles.find(dbV => dbV.vin === teslaVehicle.vin);
@@ -146,7 +146,7 @@ export class TelemetryConfigService {
       const response = await this.teslaApi.post('/api/1/vehicles/fleet_telemetry_config', {
         config: {
           ca: decodedKey,
-          hostname: "sentryguard.org",
+          hostname: process.env.TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME,
           port: 12345,
           fields: {
             SentryMode: { interval_seconds: 30 },
