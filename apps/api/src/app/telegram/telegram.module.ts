@@ -5,12 +5,12 @@ import { TelegramBotService } from './telegram-bot.service';
 import { TelegramController } from './telegram.controller';
 import { TelegramConfig } from '../../entities/telegram-config.entity';
 import { User } from '../../entities/user.entity';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TelegramConfig, User])],
+  imports: [TypeOrmModule.forFeature([TelegramConfig, User]), AuthModule],
   controllers: [TelegramController],
   providers: [TelegramService, TelegramBotService],
   exports: [TelegramService, TelegramBotService],
 })
 export class TelegramModule {}
-

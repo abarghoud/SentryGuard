@@ -1,11 +1,27 @@
-import { Controller, Post, Get, Delete, Headers, Logger, Body, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Delete,
+  Logger,
+  Body,
+  UseGuards,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import * as crypto from 'crypto';
-import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
+import {
+  TelegramConfig,
+  TelegramLinkStatus,
+} from '../../entities/telegram-config.entity';
 import { TelegramBotService } from './telegram-bot.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
+import { User } from '../../entities/user.entity';
 
 @Controller('telegram')
+@UseGuards(JwtAuthGuard)
 export class TelegramController {
   private readonly logger = new Logger(TelegramController.name);
   private readonly LINK_EXPIRATION_MINUTES = 15;
@@ -13,25 +29,25 @@ export class TelegramController {
   constructor(
     @InjectRepository(TelegramConfig)
     private readonly telegramConfigRepository: Repository<TelegramConfig>,
-    private readonly telegramBotService: TelegramBotService,
+    private readonly telegramBotService: TelegramBotService
   ) {}
 
   /**
-   * Génère un lien de liaison Telegram pour l'utilisateur
+   * Generate a Telegram linking URL for the authenticated user
    * POST /telegram/generate-link
-   * Header: X-User-Id
+   * Requires: Authorization Bearer JWT
    */
   @Post('generate-link')
-  async generateLink(@Headers('x-user-id') userId?: string) {
-    if (!userId) {
-      throw new BadRequestException('X-User-Id header is required');
-    }
+  async generateLink(@CurrentUser() user: User) {
+    const userId = user.userId;
 
-    this.logger.log(`📱 Génération d'un lien Telegram pour l'utilisateur: ${userId}`);
+    this.logger.log(
+      `📱 Generating Telegram link for user: ${userId} (${user.email})`
+    );
 
     // Vérifier s'il existe déjà une configuration
     const existingConfig = await this.telegramConfigRepository.findOne({
-      where: { userId }
+      where: { userId },
     });
 
     // Générer un token unique
@@ -58,7 +74,7 @@ export class TelegramController {
 
     // Récupérer le username du bot
     const botUsername = await this.telegramBotService.getBotUsername();
-    
+
     if (!botUsername) {
       throw new BadRequestException('Bot username not configured');
     }
@@ -77,32 +93,34 @@ export class TelegramController {
   }
 
   /**
-   * Vérifie le statut de la liaison Telegram
+   * Check Telegram link status for the authenticated user
    * GET /telegram/status
-   * Header: X-User-Id
+   * Requires: Authorization Bearer JWT
    */
   @Get('status')
-  async getStatus(@Headers('x-user-id') userId?: string) {
-    if (!userId) {
-      throw new BadRequestException('X-User-Id header is required');
-    }
+  async getStatus(@CurrentUser() user: User) {
+    const userId = user.userId;
 
-    this.logger.log(`🔍 Vérification du statut Telegram pour: ${userId}`);
+    this.logger.log(`🔍 Checking Telegram status for: ${userId}`);
 
     const config = await this.telegramConfigRepository.findOne({
-      where: { userId }
+      where: { userId },
     });
 
     if (!config) {
       return {
         linked: false,
         status: 'not_configured',
-        message: 'Aucune configuration Telegram trouvée'
+        message: 'Aucune configuration Telegram trouvée',
       };
     }
 
     // Vérifier si le lien a expiré
-    if (config.status === TelegramLinkStatus.PENDING && config.expires_at && new Date() > config.expires_at) {
+    if (
+      config.status === TelegramLinkStatus.PENDING &&
+      config.expires_at &&
+      new Date() > config.expires_at
+    ) {
       config.status = TelegramLinkStatus.EXPIRED;
       await this.telegramConfigRepository.save(config);
     }
@@ -112,92 +130,91 @@ export class TelegramController {
       status: config.status,
       linked_at: config.linked_at,
       expires_at: config.expires_at,
-      message: config.status === TelegramLinkStatus.LINKED 
-        ? 'Compte Telegram lié' 
-        : config.status === TelegramLinkStatus.PENDING
-        ? 'En attente de liaison'
-        : 'Lien expiré'
+      message:
+        config.status === TelegramLinkStatus.LINKED
+          ? 'Compte Telegram lié'
+          : config.status === TelegramLinkStatus.PENDING
+          ? 'En attente de liaison'
+          : 'Lien expiré',
     };
   }
 
   /**
-   * Dissocier le compte Telegram
+   * Unlink Telegram account for the authenticated user
    * DELETE /telegram/unlink
-   * Header: X-User-Id
+   * Requires: Authorization Bearer JWT
    */
   @Delete('unlink')
-  async unlinkAccount(@Headers('x-user-id') userId?: string) {
-    if (!userId) {
-      throw new BadRequestException('X-User-Id header is required');
-    }
+  async unlinkAccount(@CurrentUser() user: User) {
+    const userId = user.userId;
 
-    this.logger.log(`🔓 Dissociation du compte Telegram pour: ${userId}`);
+    this.logger.log(`🔓 Unlinking Telegram account for: ${userId}`);
 
     const result = await this.telegramConfigRepository.delete({ userId });
 
     if (result.affected === 0) {
       return {
         success: false,
-        message: 'Aucune configuration Telegram trouvée'
+        message: 'Aucune configuration Telegram trouvée',
       };
     }
 
     return {
       success: true,
-      message: 'Compte Telegram dissocié avec succès'
+      message: 'Compte Telegram dissocié avec succès',
     };
   }
 
   /**
-   * Envoie un message de test (pour le développement)
+   * Send a test message (for development)
    * POST /telegram/test-message
-   * Header: X-User-Id
+   * Requires: Authorization Bearer JWT
    * Body: { message: string }
    */
   @Post('test-message')
   async sendTestMessage(
-    @Headers('x-user-id') userId: string,
+    @CurrentUser() user: User,
     @Body('message') message?: string
   ) {
-    if (!userId) {
-      throw new BadRequestException('X-User-Id header is required');
-    }
+    const userId = user.userId;
 
     if (!message) {
-      message = '🧪 Message de test depuis TeslaGuard API';
+      message = '🧪 Test message from TeslaGuard API';
     }
 
-    this.logger.log(`📤 Envoi d'un message de test à: ${userId}`);
+    this.logger.log(`📤 Sending test message to: ${userId} (${user.email})`);
 
-    const success = await this.telegramBotService.sendMessageToUser(userId, message);
+    const success = await this.telegramBotService.sendMessageToUser(
+      userId,
+      message
+    );
 
     return {
       success,
-      message: success 
-        ? 'Message envoyé avec succès' 
-        : 'Échec de l\'envoi du message. Vérifiez que le compte est lié.'
+      message: success
+        ? 'Message sent successfully'
+        : 'Failed to send message. Verify that the account is linked.',
     };
   }
 
   /**
-   * Nettoie les tokens expirés (tâche de maintenance)
+   * Clean up expired tokens (maintenance task)
    * POST /telegram/cleanup-expired
    */
   @Post('cleanup-expired')
   async cleanupExpiredTokens() {
-    this.logger.log('🧹 Nettoyage des tokens expirés');
+    this.logger.log('🧹 Cleaning up expired tokens');
 
     const now = new Date();
     const result = await this.telegramConfigRepository.delete({
       status: TelegramLinkStatus.PENDING,
-      expires_at: LessThan(now)
+      expires_at: LessThan(now),
     });
 
     return {
       success: true,
       deleted: result.affected || 0,
-      message: `${result.affected || 0} token(s) expiré(s) supprimé(s)`
+      message: `${result.affected || 0} expired token(s) deleted`,
     };
   }
 }
-

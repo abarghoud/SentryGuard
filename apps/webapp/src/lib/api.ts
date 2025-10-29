@@ -1,109 +1,215 @@
 /**
- * Client API pour communiquer avec le backend TeslaGuard
+ * JWT-based API client for TeslaGuard
+ * All authenticated requests use JWT tokens via Authorization header
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+
+// ============ Token Management ============
 
 /**
- * Récupère le userId depuis le localStorage
+ * Get JWT token from localStorage
  */
-export function getUserId(): string | null {
+export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('userId');
+  return localStorage.getItem('jwt_token');
 }
 
 /**
- * Sauvegarde le userId dans le localStorage
+ * Save JWT token to localStorage
  */
-export function setUserId(userId: string): void {
+export function setToken(token: string): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem('userId', userId);
+  localStorage.setItem('jwt_token', token);
 }
 
 /**
- * Supprime le userId du localStorage
+ * Remove JWT token from localStorage
  */
-export function clearUserId(): void {
+export function clearToken(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem('userId');
+  localStorage.removeItem('jwt_token');
 }
 
 /**
- * Effectue une requête API avec gestion automatique du userId
+ * Check if user has a token (basic check)
+ */
+export function hasToken(): boolean {
+  return !!getToken();
+}
+
+// ============ API Request Helper ============
+
+export class ApiError extends Error {
+  constructor(message: string, public status?: number, public data?: any) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+/**
+ * Make an authenticated API request with JWT token
  */
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const userId = getUserId();
+  const token = getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> || {}),
+    ...((options.headers as Record<string, string>) || {}),
   };
 
-  if (userId) {
-    headers['X-User-Id'] = userId;
+  // Add JWT token if available
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const url = `${API_BASE_URL}${endpoint}`;
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error || `API Error: ${response.statusText}`);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    // Handle 401 Unauthorized (token expired or invalid)
+    if (response.status === 401) {
+      clearToken();
+      // Redirect to login if we're in the browser
+      if (typeof window !== 'undefined') {
+        window.location.href = '/?expired=true';
+      }
+      throw new ApiError('Authentication expired. Please log in again.', 401);
+    }
+
+    if (!response.ok) {
+      let errorMessage = `API Error: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+        throw new ApiError(errorMessage, response.status, errorData);
+      } catch (e) {
+        if (e instanceof ApiError) throw e;
+        throw new ApiError(errorMessage, response.status);
+      }
+    }
+
+    // Handle empty responses
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return response.json();
+    }
+
+    return {} as T;
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(
+      error instanceof Error ? error.message : 'Network error occurred'
+    );
   }
-
-  return response.json();
 }
 
 // ============ Auth API ============
 
+export interface LoginUrlResponse {
+  url: string;
+  state: string;
+  message: string;
+}
+
 export interface AuthStatus {
   authenticated: boolean;
+  userId: string;
+  email?: string;
   expires_at?: string;
+  jwt_expires_at?: string;
   created_at?: string;
   has_profile?: boolean;
   message: string;
 }
 
 export interface UserProfile {
+  userId: string;
   email?: string;
   full_name?: string;
   profile_image_url?: string;
 }
 
+export interface ValidateTokenResponse {
+  valid: boolean;
+  userId?: string;
+  email?: string;
+  message?: string;
+}
+
 /**
- * Génère une URL de connexion Tesla
+ * Get Tesla OAuth login URL
  */
-export async function getLoginUrl(): Promise<{ url: string; state: string }> {
+export async function getLoginUrl(): Promise<LoginUrlResponse> {
   return apiRequest('/auth/tesla/login');
 }
 
 /**
- * Vérifie le statut d'authentification de l'utilisateur
+ * Check authentication status (requires JWT)
  */
 export async function checkAuthStatus(): Promise<AuthStatus> {
-  const userId = getUserId();
-  if (!userId) {
-    return { authenticated: false, message: 'No user ID found' };
-  }
-  return apiRequest(`/auth/user/${userId}/status`);
+  return apiRequest('/auth/status');
 }
 
 /**
- * Récupère le profil de l'utilisateur
+ * Get user profile (requires JWT)
  */
 export async function getUserProfile(): Promise<UserProfile | null> {
-  const userId = getUserId();
-  if (!userId) return null;
+  try {
+    const response = await apiRequest<{
+      success: boolean;
+      profile: UserProfile;
+    }>('/auth/profile');
+    return response.success ? response.profile : null;
+  } catch (error) {
+    console.error('Failed to get user profile:', error);
+    return null;
+  }
+}
 
-  const response = await apiRequest<{ success: boolean; profile?: UserProfile }>(
-    `/auth/user/${userId}/profile`
-  );
+/**
+ * Validate JWT token
+ */
+export async function validateToken(): Promise<boolean> {
+  try {
+    const response = await apiRequest<ValidateTokenResponse>('/auth/validate');
+    return response.valid;
+  } catch (error) {
+    return false;
+  }
+}
 
-  return response.success ? response.profile || null : null;
+/**
+ * Logout (revoke JWT token)
+ */
+export async function logout(): Promise<void> {
+  try {
+    await apiRequest('/auth/logout');
+  } catch (error) {
+    console.error('Logout error:', error);
+  } finally {
+    clearToken();
+  }
+}
+
+/**
+ * Get auth service statistics
+ */
+export async function getAuthStats(): Promise<{
+  activeUsers: number;
+  pendingStates: number;
+  activeJwtTokens: number;
+}> {
+  return apiRequest('/auth/stats');
 }
 
 // ============ Vehicles API ============
@@ -119,34 +225,47 @@ export interface Vehicle {
 }
 
 /**
- * Récupère la liste des véhicules de l'utilisateur
+ * Get user's vehicles (requires JWT)
  */
 export async function getVehicles(): Promise<Vehicle[]> {
-  return apiRequest('/telemetry-config/vehicles');
+  try {
+    return await apiRequest('/telemetry-config/vehicles');
+  } catch (error) {
+    console.error('Failed to get vehicles:', error);
+    return [];
+  }
 }
 
 /**
- * Configure la télémétrie pour un véhicule spécifique
+ * Configure telemetry for a specific vehicle (requires JWT)
  */
-export async function configureTelemetry(vin: string): Promise<any> {
+export async function configureTelemetry(vin: string): Promise<{
+  message: string;
+  result: any;
+}> {
   return apiRequest(`/telemetry-config/configure/${vin}`, {
     method: 'POST',
   });
 }
 
 /**
- * Configure la télémétrie pour tous les véhicules
+ * Configure telemetry for all vehicles (requires JWT)
  */
-export async function configureAllVehicles(): Promise<any> {
+export async function configureAllVehicles(): Promise<{
+  message: string;
+}> {
   return apiRequest('/telemetry-config/configure-all', {
     method: 'POST',
   });
 }
 
 /**
- * Vérifie la configuration de télémétrie d'un véhicule
+ * Check telemetry configuration for a vehicle (requires JWT)
  */
-export async function checkTelemetryConfig(vin: string): Promise<any> {
+export async function checkTelemetryConfig(vin: string): Promise<{
+  message: string;
+  result: any;
+}> {
   return apiRequest(`/telemetry-config/check/${vin}`);
 }
 
@@ -169,7 +288,7 @@ export interface TelegramStatus {
 }
 
 /**
- * Génère un lien de liaison Telegram
+ * Generate Telegram linking URL (requires JWT)
  */
 export async function generateTelegramLink(): Promise<TelegramLinkInfo> {
   return apiRequest('/telegram/generate-link', {
@@ -178,28 +297,46 @@ export async function generateTelegramLink(): Promise<TelegramLinkInfo> {
 }
 
 /**
- * Vérifie le statut de la liaison Telegram
+ * Get Telegram link status (requires JWT)
  */
 export async function getTelegramStatus(): Promise<TelegramStatus> {
   return apiRequest('/telegram/status');
 }
 
 /**
- * Dissocier le compte Telegram
+ * Unlink Telegram account (requires JWT)
  */
-export async function unlinkTelegram(): Promise<{ success: boolean; message: string }> {
+export async function unlinkTelegram(): Promise<{
+  success: boolean;
+  message: string;
+}> {
   return apiRequest('/telegram/unlink', {
     method: 'DELETE',
   });
 }
 
 /**
- * Envoie un message de test
+ * Send test message via Telegram (requires JWT)
  */
-export async function sendTestMessage(message?: string): Promise<{ success: boolean; message: string }> {
+export async function sendTestMessage(message?: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
   return apiRequest('/telegram/test-message', {
     method: 'POST',
     body: JSON.stringify({ message }),
   });
 }
 
+/**
+ * Cleanup expired Telegram tokens (requires JWT)
+ */
+export async function cleanupExpiredTelegramTokens(): Promise<{
+  success: boolean;
+  deleted: number;
+  message: string;
+}> {
+  return apiRequest('/telegram/cleanup-expired', {
+    method: 'POST',
+  });
+}

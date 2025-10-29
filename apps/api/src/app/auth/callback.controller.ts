@@ -47,21 +47,27 @@ export class CallbackController {
     }
 
     try {
-      const { userId } = await this.authService.exchangeCodeForTokens(code, state);
+      const { jwt, userId } = await this.authService.exchangeCodeForTokens(
+        code,
+        state
+      );
 
       this.logger.log(`✅ Authentication successful for user: ${userId}`);
+      this.logger.log(`🔐 JWT token generated for secure session`);
 
-      // Redirect to webapp with userId
+      // Redirect to webapp with JWT token instead of userId
       const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
-      res.redirect(`${webappUrl}/callback?userId=${userId}`);
+      res.redirect(`${webappUrl}/callback?token=${encodeURIComponent(jwt)}`);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       this.logger.error('❌ Error processing callback:', errorMessage);
 
       // Redirect to webapp with error
       const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
-      res.redirect(`${webappUrl}/callback?error=${encodeURIComponent(errorMessage)}`);
+      res.redirect(
+        `${webappUrl}/callback?error=${encodeURIComponent(errorMessage)}`
+      );
     }
   }
 }
-

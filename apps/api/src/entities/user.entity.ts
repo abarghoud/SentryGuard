@@ -24,6 +24,13 @@ export class User {
   @Column({ type: 'varchar', length: 500, nullable: true })
   profile_image_url?: string;
 
+  // JWT token for secure session management
+  @Column({ type: 'text', nullable: true })
+  jwt_token?: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  jwt_expires_at?: Date;
+
   // Encrypted tokens - we'll encrypt these at the service level
   @Column({ type: 'text' })
   access_token!: string;
@@ -47,4 +54,3 @@ export class User {
   @OneToOne(() => TelegramConfig, (config) => config.user)
   telegramConfig!: TelegramConfig;
 }
-

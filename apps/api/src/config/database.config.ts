@@ -4,6 +4,13 @@ import { User } from '../entities/user.entity';
 import { Vehicle } from '../entities/vehicle.entity';
 import { TelegramConfig } from '../entities/telegram-config.entity';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+/**
+ * Get TypeORM configuration for NestJS application
+ * - Development: synchronize = true (auto schema updates)
+ * - Production: synchronize = false, migrationsRun = true (manual migrations)
+ */
 export const getDatabaseConfig = (): TypeOrmModuleOptions => {
   return {
     type: 'postgres',
@@ -13,13 +20,24 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
     password: process.env.DATABASE_PASSWORD || 'teslaguard',
     database: process.env.DATABASE_NAME || 'teslaguard',
     entities: [User, Vehicle, TelegramConfig],
-    synchronize: true,
+    // Use synchronize in development, migrations in production
+    synchronize: !isProduction,
+    migrationsRun: isProduction,
+    migrations: ['dist/migrations/*.js'],
     logging: process.env.DATABASE_LOGGING === 'true',
-    ssl: false,
+    ssl:
+      process.env.DATABASE_SSL === 'true'
+        ? {
+            rejectUnauthorized: false,
+          }
+        : false,
   };
 };
 
-// DataSource for migrations (if needed later)
+/**
+ * DataSource for TypeORM CLI (migrations)
+ * Used by: npm run migration:run, migration:generate, etc.
+ */
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
   host: process.env.DATABASE_HOST || 'localhost',
@@ -27,11 +45,18 @@ export const dataSourceOptions: DataSourceOptions = {
   username: process.env.DATABASE_USER || 'teslaguard',
   password: process.env.DATABASE_PASSWORD || 'teslaguard',
   database: process.env.DATABASE_NAME || 'teslaguard',
-  entities: [User, Vehicle, TelegramConfig],
-  migrations: [],
-  synchronize: true,
+  entities: ['src/entities/*.entity.ts'],
+  migrations: ['src/migrations/*.ts'],
+  synchronize: false,
+  logging: process.env.DATABASE_LOGGING === 'true',
+  ssl:
+    process.env.DATABASE_SSL === 'true'
+      ? {
+          rejectUnauthorized: false,
+        }
+      : false,
 };
 
+// Default export for TypeORM CLI
 const dataSource = new DataSource(dataSourceOptions);
 export default dataSource;
-

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getVehicles, configureTelemetry, type Vehicle } from './api';
+import { getVehicles, configureTelemetry, hasToken, type Vehicle } from './api';
 
 export function useVehicles() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -9,6 +9,12 @@ export function useVehicles() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchVehicles = async () => {
+    // Don't fetch if no token
+    if (!hasToken()) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -16,6 +22,7 @@ export function useVehicles() {
       const data = await getVehicles();
       setVehicles(data);
     } catch (err) {
+      console.error('Failed to fetch vehicles:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch vehicles');
     } finally {
       setIsLoading(false);
@@ -25,11 +32,14 @@ export function useVehicles() {
   const configureTelemetryForVehicle = async (vin: string) => {
     try {
       await configureTelemetry(vin);
-      // Rafraîchir la liste après configuration
+      // Refresh list after configuration
       await fetchVehicles();
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to configure telemetry');
+      console.error('Failed to configure telemetry:', err);
+      setError(
+        err instanceof Error ? err.message : 'Failed to configure telemetry'
+      );
       return false;
     }
   };
@@ -46,4 +56,3 @@ export function useVehicles() {
     configureTelemetryForVehicle,
   };
 }
-
