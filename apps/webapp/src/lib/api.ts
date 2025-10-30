@@ -220,6 +220,7 @@ export interface Vehicle {
   display_name?: string;
   model?: string;
   telemetry_enabled: boolean;
+  key_paired?: boolean;
   created_at: string;
   updated_at: string;
 }

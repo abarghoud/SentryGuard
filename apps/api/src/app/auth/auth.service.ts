@@ -376,6 +376,13 @@ export class AuthService implements OnModuleDestroy {
   }
 
   /**
+   * Gets the access token for a user by their user ID (public method)
+   */
+  async getAccessTokenForUserId(userId: string): Promise<string | null> {
+    return this.getAccessTokenByUserId(userId);
+  }
+
+  /**
    * Checks if a user has a valid token
    */
   async hasValidToken(user: User): Promise<boolean> {
