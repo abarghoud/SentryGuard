@@ -255,7 +255,7 @@ export class AuthService implements OnModuleDestroy {
         // Generate JWT token
         const jwtData = await this.generateJwtToken(userId, user.email || '');
         user.jwt_token = jwtData.token;
-        user.jwt_expires_at = jwtData.expiresAt;
+        user.jwt_expires_at = expiresAt;
 
         await this.userRepository.save(user);
 
@@ -282,7 +282,7 @@ export class AuthService implements OnModuleDestroy {
           refresh_token: encryptedRefreshToken,
           expires_at: expiresAt,
           jwt_token: jwtData.token,
-          jwt_expires_at: jwtData.expiresAt,
+          jwt_expires_at: expiresAt,
         });
 
         await this.userRepository.save(newUser);
