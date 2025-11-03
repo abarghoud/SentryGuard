@@ -32,7 +32,8 @@ describe('AuthController', () => {
 
   describe('loginWithTesla', () => {
     it('should return a login URL', () => {
-      const mockUrl = 'https://auth.tesla.com/oauth2/v3/authorize?state=test-state';
+      const mockUrl =
+        'https://auth.tesla.com/oauth2/v3/authorize?state=test-state';
       const mockState = 'test-state';
 
       mockAuthService.generateLoginUrl.mockReturnValue({
@@ -50,7 +51,7 @@ describe('AuthController', () => {
   });
 
   describe('getUserStatus', () => {
-    it('should return the status for an authenticated user', () => {
+    it('should return the status for an authenticated user', async () => {
       const mockTokenInfo = {
         exists: true,
         expires_at: new Date('2025-12-31'),
@@ -60,27 +61,39 @@ describe('AuthController', () => {
 
       mockAuthService.getTokenInfo.mockReturnValue(mockTokenInfo);
 
-      const result = controller.getUserStatus('test-user-id');
+      const mockUser = {
+        userId: 'test-user-id',
+        jwt_expires_at: new Date('2025-12-31'),
+        expires_at: new Date('2025-12-31'),
+        created_at: new Date('2025-01-01'),
+        email: 'test@example.com',
+      };
+
+      const result = await controller.getAuthStatus(mockUser);
 
       expect(result.authenticated).toBe(true);
-      expect(result.expires_at).toEqual(mockTokenInfo.expires_at);
+      expect(result.expires_at).toEqual(mockUser.expires_at);
       expect(result.has_profile).toBe(true);
-      expect(result.message).toBe('Valid token');
-      expect(authService.getTokenInfo).toHaveBeenCalledWith('test-user-id');
+      expect(result.message).toBe('Valid JWT token');
     });
 
-    it('should return unauthenticated for a user without a token', () => {
+    it('should return unauthenticated for a user without a token', async () => {
       mockAuthService.getTokenInfo.mockReturnValue({
         exists: false,
       });
 
-      const result = controller.getUserStatus('test-user-id');
+      const mockUser = {
+        userId: 'test-user-id',
+        jwt_expires_at: null,
+      };
+
+      const result = await controller.getAuthStatus(mockUser);
 
       expect(result.authenticated).toBe(false);
-      expect(result.message).toBe('No token found for this user');
+      expect(result.message).toBe('JWT token expired, please re-authenticate');
     });
 
-    it('should detect an expired token', () => {
+    it('should detect an expired token', async () => {
       const mockTokenInfo = {
         exists: true,
         expires_at: new Date('2020-01-01'), // Past date
@@ -89,15 +102,20 @@ describe('AuthController', () => {
 
       mockAuthService.getTokenInfo.mockReturnValue(mockTokenInfo);
 
-      const result = controller.getUserStatus('test-user-id');
+      const mockUser = {
+        userId: 'test-user-id',
+        jwt_expires_at: new Date('2025-01-01'), // Past date
+      };
+
+      const result = await controller.getAuthStatus(mockUser);
 
       expect(result.authenticated).toBe(false);
-      expect(result.message).toBe('Token expired, please re-authenticate');
+      expect(result.message).toBe('JWT token expired, please re-authenticate');
     });
   });
 
   describe('getUserProfile', () => {
-    it('should return the user profile', () => {
+    it('should return the user profile', async () => {
       const mockProfile = {
         email: 'test@tesla.com',
         full_name: 'Test User',
@@ -105,25 +123,33 @@ describe('AuthController', () => {
 
       mockAuthService.getUserProfile.mockReturnValue(mockProfile);
 
-      const result = controller.getUserProfile('test-user-id');
+      const mockUser = {
+        userId: 'test-user-id',
+        email: 'test@example.com',
+      };
+
+      const result = await controller.getProfile(mockUser);
 
       expect(result.success).toBe(true);
-      expect(result.profile).toEqual(mockProfile);
-      expect(authService.getUserProfile).toHaveBeenCalledWith('test-user-id');
+      expect(result.profile.userId).toBe('test-user-id');
+      expect(result.profile.email).toBe('test@example.com');
     });
 
-    it('should handle profile not found', () => {
-      mockAuthService.getUserProfile.mockReturnValue(null);
+    it('should handle profile with missing email', async () => {
+      const mockUser = {
+        userId: 'test-user-id',
+      };
 
-      const result = controller.getUserProfile('test-user-id');
+      const result = await controller.getProfile(mockUser);
 
-      expect(result.success).toBe(false);
-      expect(result.message).toBe('Profile not found or token expired');
+      expect(result.success).toBe(true);
+      expect(result.profile.userId).toBe('test-user-id');
+      expect(result.profile.email).toBeUndefined();
     });
   });
 
   describe('getStats', () => {
-    it('should return service statistics', () => {
+    it('should return service statistics', async () => {
       const mockStats = {
         activeUsers: 5,
         pendingStates: 2,
@@ -131,11 +157,10 @@ describe('AuthController', () => {
 
       mockAuthService.getStats.mockReturnValue(mockStats);
 
-      const result = controller.getStats();
+      const result = await controller.getStats();
 
       expect(result).toEqual(mockStats);
       expect(authService.getStats).toHaveBeenCalled();
     });
   });
 });
-

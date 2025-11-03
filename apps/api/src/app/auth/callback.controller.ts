@@ -47,93 +47,27 @@ export class CallbackController {
     }
 
     try {
-      const { userId } = await this.authService.exchangeCodeForTokens(code, state);
+      const { jwt, userId } = await this.authService.exchangeCodeForTokens(
+        code,
+        state
+      );
 
       this.logger.log(`✅ Authentication successful for user: ${userId}`);
+      this.logger.log(`🔐 JWT token generated for secure session`);
 
-      res.status(200).send(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="UTF-8">
-            <title>Authentication Successful</title>
-            <style>
-              body { 
-                font-family: Arial, sans-serif; 
-                max-width: 600px; 
-                margin: 50px auto; 
-                padding: 20px; 
-                text-align: center;
-                background-color: #f5f5f5;
-              }
-              .success { 
-                color: #2e7d32; 
-                background: white;
-                padding: 30px;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-              }
-              h1 { color: #2e7d32; margin-bottom: 20px; }
-              .user-id { 
-                background: #e8f5e9; 
-                padding: 15px; 
-                border-radius: 5px; 
-                font-family: monospace; 
-                word-break: break-all;
-                margin: 20px 0;
-              }
-              .info { color: #666; font-size: 14px; margin-top: 20px; }
-              .token-preview {
-                background: #f5f5f5;
-                padding: 10px;
-                border-radius: 5px;
-                font-family: monospace;
-                font-size: 12px;
-                margin: 15px 0;
-                color: #666;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="success">
-              <h1>✅ Authentication successful!</h1>
-              <p>Your Tesla account has been successfully connected.</p>
-              
-              <h3>Your user identifier:</h3>
-              <div class="user-id">${userId}</div>
-              
-              <div class="info">
-                <p>⚠️ Keep this identifier to access the API endpoints.</p>
-                <p>💡 Use it in your requests with the header: <code>X-User-Id: ${userId}</code></p>
-              </div>
-            </div>
-          </body>
-        </html>
-      `);
+      // Redirect to webapp with JWT token instead of userId
+      const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
+      res.redirect(`${webappUrl}/callback?token=${encodeURIComponent(jwt)}`);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       this.logger.error('❌ Error processing callback:', errorMessage);
 
-      res.status(401).send(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="UTF-8">
-            <title>Authentication Error</title>
-            <style>
-              body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
-              .error { color: #d32f2f; }
-              h1 { color: #333; }
-            </style>
-          </head>
-          <body>
-            <h1 class="error">❌ Authentication failed</h1>
-            <p>${errorMessage}</p>
-            <p><a href="/auth/tesla/login">Try again</a></p>
-          </body>
-        </html>
-      `);
+      // Redirect to webapp with error
+      const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
+      res.redirect(
+        `${webappUrl}/callback?error=${encodeURIComponent(errorMessage)}`
+      );
     }
   }
 }
-

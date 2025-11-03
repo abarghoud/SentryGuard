@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { ZmqService, TelemetryMessage } from './zmq.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { Vehicle } from '../../entities/vehicle.entity';
 
 // Mock zeromq
 jest.mock('zeromq', () => ({
@@ -10,8 +12,8 @@ jest.mock('zeromq', () => ({
     close: jest.fn().mockResolvedValue(undefined),
     [Symbol.asyncIterator]: jest.fn().mockReturnValue({
       [Symbol.asyncIterator]: () => ({
-        next: () => Promise.resolve({ value: 'test', done: true })
-      })
+        next: () => Promise.resolve({ value: 'test', done: true }),
+      }),
     }),
   })),
 }));
@@ -20,6 +22,11 @@ jest.mock('zeromq', () => ({
 const mockTelegramService = {
   sendSentryAlert: jest.fn().mockResolvedValue(undefined),
   sendTelegramMessage: jest.fn().mockResolvedValue(undefined),
+};
+
+// Mock VehicleRepository
+const mockVehicleRepository = {
+  findOne: jest.fn().mockResolvedValue({ userId: 'test-user-id' }),
 };
 
 describe('ZmqService', () => {
@@ -33,14 +40,19 @@ describe('ZmqService', () => {
           provide: TelegramService,
           useValue: mockTelegramService,
         },
+        {
+          provide: getRepositoryToken(Vehicle),
+          useValue: mockVehicleRepository,
+        },
       ],
     }).compile();
 
     service = module.get<ZmqService>(ZmqService);
-    
+
     // Reset mocks
     jest.clearAllMocks();
-    
+    mockVehicleRepository.findOne.mockResolvedValue({ userId: 'test-user-id' });
+
     // Set up environment variables
     process.env.ZMQ_ENDPOINT = 'tcp://test:1234';
     process.env.DEBUG_MESSAGES = 'false';
@@ -57,7 +69,9 @@ describe('ZmqService', () => {
 
   describe('onModuleInit', () => {
     it('should start listening when module initializes', async () => {
-      const startListeningSpy = jest.spyOn(service as any, 'startListening').mockResolvedValue();
+      const startListeningSpy = jest
+        .spyOn(service as any, 'startListening')
+        .mockResolvedValue();
 
       await service.onModuleInit();
 
@@ -67,7 +81,9 @@ describe('ZmqService', () => {
 
   describe('onModuleDestroy', () => {
     it('should stop listening when module destroys', async () => {
-      const stopListeningSpy = jest.spyOn(service as any, 'stopListening').mockResolvedValue();
+      const stopListeningSpy = jest
+        .spyOn(service as any, 'stopListening')
+        .mockResolvedValue();
 
       await service.onModuleDestroy();
 
@@ -81,30 +97,33 @@ describe('ZmqService', () => {
         data: [
           {
             key: 'SentryMode',
-            value: { stringValue: 'Aware' }
+            value: { stringValue: 'Aware' },
           },
           {
             key: 'CenterDisplay',
-            value: { displayStateValue: 'DisplayStateSentry' }
-          }
+            value: { displayStateValue: 'DisplayStateSentry' },
+          },
         ],
         createdAt: '2025-01-21T10:00:00.000Z',
         vin: 'TEST_VIN_123',
-        isResend: false
+        isResend: false,
       };
 
       await (service as any).processTelemetryMessage(message);
 
-      expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith({
-        vin: 'TEST_VIN_123',
-        timestamp: '2025-01-21T10:00:00.000Z',
-        sentryMode: 'Aware',
-        centerDisplay: 'DisplayStateSentry',
-        location: 'Non disponible',
-        batteryLevel: 'N/A',
-        vehicleSpeed: '0',
-        alarmState: 'Active'
-      });
+      expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith(
+        'test-user-id',
+        {
+          vin: 'TEST_VIN_123',
+          timestamp: '2025-01-21T10:00:00.000Z',
+          sentryMode: 'Aware',
+          centerDisplay: 'DisplayStateSentry',
+          location: 'Non disponible',
+          batteryLevel: 'N/A',
+          vehicleSpeed: '0',
+          alarmState: 'Active',
+        }
+      );
     });
 
     it('should not send alert when SentryMode is not Aware', async () => {
@@ -112,12 +131,12 @@ describe('ZmqService', () => {
         data: [
           {
             key: 'SentryMode',
-            value: { stringValue: 'Off' }
-          }
+            value: { stringValue: 'Off' },
+          },
         ],
         createdAt: '2025-01-21T10:00:00.000Z',
         vin: 'TEST_VIN_123',
-        isResend: false
+        isResend: false,
       };
 
       await (service as any).processTelemetryMessage(message);
@@ -130,12 +149,12 @@ describe('ZmqService', () => {
         data: [
           {
             key: 'OtherData',
-            value: { stringValue: 'SomeValue' }
-          }
+            value: { stringValue: 'SomeValue' },
+          },
         ],
         createdAt: '2025-01-21T10:00:00.000Z',
         vin: 'TEST_VIN_123',
-        isResend: false
+        isResend: false,
       };
 
       await (service as any).processTelemetryMessage(message);
@@ -144,19 +163,23 @@ describe('ZmqService', () => {
     });
 
     it('should handle processing errors', async () => {
-      const loggerSpy = jest.spyOn(service['logger'], 'error').mockImplementation();
-      mockTelegramService.sendSentryAlert.mockRejectedValue(new Error('Telegram error'));
+      const loggerSpy = jest
+        .spyOn(service['logger'], 'error')
+        .mockImplementation();
+      mockTelegramService.sendSentryAlert.mockRejectedValue(
+        new Error('Telegram error')
+      );
 
       const message: TelemetryMessage = {
         data: [
           {
             key: 'SentryMode',
-            value: { stringValue: 'Aware' }
-          }
+            value: { stringValue: 'Aware' },
+          },
         ],
         createdAt: '2025-01-21T10:00:00.000Z',
         vin: 'TEST_VIN_123',
-        isResend: false
+        isResend: false,
       };
 
       await (service as any).processTelemetryMessage(message);
@@ -169,12 +192,12 @@ describe('ZmqService', () => {
   describe('debug messages', () => {
     it('should not send debug message when DEBUG_MESSAGES is false', async () => {
       process.env.DEBUG_MESSAGES = 'false';
-      
+
       const message: TelemetryMessage = {
         data: [],
         createdAt: '2025-01-21T10:00:00.000Z',
         vin: 'TEST_VIN_123',
-        isResend: false
+        isResend: false,
       };
 
       await (service as any).processTelemetryMessage(message);

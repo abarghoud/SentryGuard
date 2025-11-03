@@ -4,10 +4,10 @@
   "files": [],
   "references": [
     {
-      "path": "./apps/webapp"
+      "path": "./apps/api"
     },
     {
-      "path": "./apps/api"
+      "path": "./apps/webapp"
     }
   ]
 }

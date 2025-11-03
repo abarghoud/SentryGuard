@@ -35,6 +35,7 @@ describe('CallbackController', () => {
       mockResponse = {
         status: jest.fn().mockReturnThis(),
         send: jest.fn(),
+        redirect: jest.fn(),
       };
     });
 
@@ -55,10 +56,13 @@ describe('CallbackController', () => {
         mockResponse as Response
       );
 
-      expect(authService.exchangeCodeForTokens).toHaveBeenCalledWith('test-code', 'test-state');
-      expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.send).toHaveBeenCalledWith(expect.stringContaining('Authentication successful'));
-      expect(mockResponse.send).toHaveBeenCalledWith(expect.stringContaining(mockUserId));
+      expect(authService.exchangeCodeForTokens).toHaveBeenCalledWith(
+        'test-code',
+        'test-state'
+      );
+      expect(mockResponse.redirect).toHaveBeenCalledWith(
+        expect.stringContaining('/callback?token=')
+      );
     });
 
     it('should handle callback without code or state', async () => {
@@ -71,7 +75,9 @@ describe('CallbackController', () => {
       );
 
       expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.send).toHaveBeenCalledWith(expect.stringContaining('Authentication error'));
+      expect(mockResponse.send).toHaveBeenCalledWith(
+        expect.stringContaining('Authentication error')
+      );
       expect(authService.exchangeCodeForTokens).not.toHaveBeenCalled();
     });
 
@@ -88,9 +94,9 @@ describe('CallbackController', () => {
         mockResponse as Response
       );
 
-      expect(mockResponse.status).toHaveBeenCalledWith(401);
-      expect(mockResponse.send).toHaveBeenCalledWith(expect.stringContaining('Authentication failed'));
+      expect(mockResponse.redirect).toHaveBeenCalledWith(
+        expect.stringContaining('/callback?error=Authentication%20failed')
+      );
     });
   });
 });
-
