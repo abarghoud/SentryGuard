@@ -7,8 +7,6 @@ import {
   OneToMany,
   OneToOne,
 } from 'typeorm';
-import { Vehicle } from './vehicle.entity';
-import { TelegramConfig } from './telegram-config.entity';
 
 @Entity('users')
 export class User {
@@ -48,9 +46,9 @@ export class User {
   updated_at!: Date;
 
   // Relations
-  @OneToMany(() => Vehicle, (vehicle) => vehicle.user)
-  vehicles!: Vehicle[];
+  @OneToMany('Vehicle', 'user')
+  vehicles!: any[];
 
-  @OneToOne(() => TelegramConfig, (config) => config.user)
-  telegramConfig!: TelegramConfig;
+  @OneToOne('TelegramConfig', 'user')
+  telegramConfig!: any;
 }

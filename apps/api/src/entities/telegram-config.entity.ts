@@ -8,7 +8,6 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
-import { User } from './user.entity';
 
 export enum TelegramLinkStatus {
   PENDING = 'pending',
@@ -51,8 +50,7 @@ export class TelegramConfig {
   updated_at: Date;
 
   // Relations
-  @OneToOne(() => User, (user) => user.telegramConfig, { onDelete: 'CASCADE' })
+  @OneToOne('User', 'telegramConfig', { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
-  user: User;
+  user: any;
 }
-

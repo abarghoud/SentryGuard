@@ -8,19 +8,18 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
-import { User } from './user.entity';
 
 @Entity('vehicles')
 @Index(['userId', 'vin'], { unique: true })
 export class Vehicle {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ type: 'varchar', length: 64 })
-  userId: string;
+  userId!: string;
 
   @Column({ type: 'varchar', length: 17 })
-  vin: string;
+  vin!: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   display_name?: string;
@@ -29,17 +28,16 @@ export class Vehicle {
   model?: string;
 
   @Column({ type: 'boolean', default: false })
-  telemetry_enabled: boolean;
+  telemetry_enabled!: boolean;
 
   @CreateDateColumn()
-  created_at: Date;
+  created_at!: Date;
 
   @UpdateDateColumn()
-  updated_at: Date;
+  updated_at!: Date;
 
   // Relations
-  @ManyToOne(() => User, (user) => user.vehicles, { onDelete: 'CASCADE' })
+  @ManyToOne('User', 'vehicles', { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
-  user: User;
+  user!: any;
 }
-

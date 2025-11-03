@@ -1,10 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TelegramService } from './telegram.service';
+import { TelegramBotService } from './telegram-bot.service';
 import axios from 'axios';
 
 // Mock axios
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
+
+// Mock TelegramBotService
+const mockTelegramBotService = {
+  sendMessageToUser: jest.fn().mockResolvedValue(true),
+};
 
 describe('TelegramService', () => {
   let service: TelegramService;
@@ -13,13 +19,19 @@ describe('TelegramService', () => {
     // Set up environment variables before creating the module
     process.env.TELEGRAM_BOT_TOKEN = 'test_bot_token';
     process.env.TELEGRAM_CHAT_ID = 'test_chat_id';
-    
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [TelegramService],
+      providers: [
+        TelegramService,
+        {
+          provide: TelegramBotService,
+          useValue: mockTelegramBotService,
+        },
+      ],
     }).compile();
 
     service = module.get<TelegramService>(TelegramService);
-    
+
     // Reset mocks
     jest.clearAllMocks();
   });
@@ -43,30 +55,28 @@ describe('TelegramService', () => {
         location: 'Test Location',
         batteryLevel: '85',
         vehicleSpeed: '0',
-        alarmState: 'Active'
+        alarmState: 'Active',
       };
 
       mockedAxios.post.mockResolvedValueOnce({ data: { ok: true } });
 
-      await service.sendSentryAlert(alertInfo);
+      await service.sendSentryAlert('test-user-id', alertInfo);
 
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        'https://api.telegram.org/bottest_bot_token/sendMessage',
-        expect.objectContaining({
-          chat_id: 'test_chat_id',
-          text: expect.stringContaining('ALERTE SENTINEL TESLA'),
-          parse_mode: 'HTML'
-        })
+      expect(mockTelegramBotService.sendMessageToUser).toHaveBeenCalledWith(
+        'test-user-id',
+        expect.stringContaining('ALERTE SENTINEL TESLA')
       );
     });
 
     it('should handle axios errors gracefully', async () => {
       const alertInfo = {
         vin: 'TEST_VIN_123',
-        timestamp: '2025-01-21T10:00:00.000Z'
+        timestamp: '2025-01-21T10:00:00.000Z',
       };
 
-      const loggerSpy = jest.spyOn(service['logger'], 'error').mockImplementation();
+      const loggerSpy = jest
+        .spyOn(service['logger'], 'error')
+        .mockImplementation();
       mockedAxios.post.mockRejectedValueOnce(new Error('Network error'));
 
       await service.sendSentryAlert(alertInfo);
@@ -80,26 +90,26 @@ describe('TelegramService', () => {
     it('should send a telegram message successfully', async () => {
       const message = 'Test message';
 
-      mockedAxios.post.mockResolvedValueOnce({ data: { ok: true } });
+      mockTelegramBotService.sendMessageToUser.mockResolvedValue(true);
 
-      await service.sendTelegramMessage(message);
+      await service.sendTelegramMessage('test-user-id', message);
 
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        'https://api.telegram.org/bottest_bot_token/sendMessage',
-        {
-          chat_id: 'test_chat_id',
-          text: message,
-          parse_mode: 'HTML'
-        }
+      expect(mockTelegramBotService.sendMessageToUser).toHaveBeenCalledWith(
+        'test-user-id',
+        'Test message'
       );
     });
 
-    it('should handle axios errors gracefully', async () => {
+    it('should handle errors gracefully', async () => {
       const message = 'Test message';
-      const loggerSpy = jest.spyOn(service['logger'], 'error').mockImplementation();
-      mockedAxios.post.mockRejectedValueOnce(new Error('Network error'));
+      const loggerSpy = jest
+        .spyOn(service['logger'], 'error')
+        .mockImplementation();
+      mockTelegramBotService.sendMessageToUser.mockRejectedValue(
+        new Error('Network error')
+      );
 
-      await service.sendTelegramMessage(message);
+      await service.sendTelegramMessage('test-user-id', message);
 
       expect(loggerSpy).toHaveBeenCalled();
       loggerSpy.mockRestore();
@@ -116,34 +126,36 @@ describe('TelegramService', () => {
         location: 'Test Location',
         batteryLevel: '85',
         vehicleSpeed: '0',
-        alarmState: 'Active'
+        alarmState: 'Active',
       };
 
-      mockedAxios.post.mockResolvedValueOnce({ data: { ok: true } });
+      mockTelegramBotService.sendMessageToUser.mockResolvedValue(true);
 
-      await service.sendSentryAlert(alertInfo);
+      await service.sendSentryAlert('test-user-id', alertInfo);
 
-      const callArgs = mockedAxios.post.mock.calls[0][1];
-      expect(callArgs.text).toContain('ALERTE SENTINEL TESLA');
-      expect(callArgs.text).toContain('TEST_VIN_123');
-      expect(callArgs.text).toContain('Test Location');
-      expect(callArgs.text).toContain('85%');
-      expect(callArgs.text).toContain('Aware');
+      const callArgs =
+        mockTelegramBotService.sendMessageToUser.mock.calls[0][1];
+      expect(callArgs).toContain('ALERTE SENTINEL TESLA');
+      expect(callArgs).toContain('TEST_VIN_123');
+      expect(callArgs).toContain('Test Location');
+      expect(callArgs).toContain('85%');
+      expect(callArgs).toContain('Aware');
     });
 
     it('should handle missing optional fields', async () => {
       const alertInfo = {
         vin: 'TEST_VIN_123',
-        timestamp: '2025-01-21T10:00:00.000Z'
+        timestamp: '2025-01-21T10:00:00.000Z',
       };
 
-      mockedAxios.post.mockResolvedValueOnce({ data: { ok: true } });
+      mockTelegramBotService.sendMessageToUser.mockResolvedValue(true);
 
-      await service.sendSentryAlert(alertInfo);
+      await service.sendSentryAlert('test-user-id', alertInfo);
 
-      const callArgs = mockedAxios.post.mock.calls[0][1];
-      expect(callArgs.text).toContain('Non disponible');
-      expect(callArgs.text).toContain('N/A');
+      const callArgs =
+        mockTelegramBotService.sendMessageToUser.mock.calls[0][1];
+      expect(callArgs).toContain('Non disponible');
+      expect(callArgs).toContain('N/A');
     });
   });
 });

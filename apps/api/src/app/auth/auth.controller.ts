@@ -38,7 +38,7 @@ export class AuthController {
     this.logger.log(`🔍 Checking JWT status for user: ${user.userId}`);
 
     const now = new Date();
-    const isValid = user.jwt_expires_at && now < user.jwt_expires_at;
+    const isValid = !!user.jwt_expires_at && now < user.jwt_expires_at;
 
     return {
       authenticated: isValid,

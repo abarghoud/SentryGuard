@@ -22,7 +22,9 @@ describe('TelemetryConfigController', () => {
       ],
     }).compile();
 
-    controller = module.get<TelemetryConfigController>(TelemetryConfigController);
+    controller = module.get<TelemetryConfigController>(
+      TelemetryConfigController
+    );
     service = module.get<TelemetryConfigService>(TelemetryConfigService);
   });
 
@@ -34,21 +36,29 @@ describe('TelemetryConfigController', () => {
     it('should return vehicles list', async () => {
       const mockVehicles = [
         { vin: 'VIN123', display_name: 'Tesla Model 3' },
-        { vin: 'VIN456', display_name: 'Tesla Model Y' }
+        { vin: 'VIN456', display_name: 'Tesla Model Y' },
       ];
 
       jest.spyOn(service, 'getVehicles').mockResolvedValue(mockVehicles);
 
-      const result = await controller.getVehicles();
+      const mockUser = { userId: 'test-user-id' };
+
+      const result = await controller.getVehicles(mockUser);
 
       expect(result).toEqual(mockVehicles);
-      expect(service.getVehicles).toHaveBeenCalled();
+      expect(service.getVehicles).toHaveBeenCalledWith('test-user-id');
     });
 
     it('should handle service errors', async () => {
-      jest.spyOn(service, 'getVehicles').mockRejectedValue(new Error('Service error'));
+      jest
+        .spyOn(service, 'getVehicles')
+        .mockRejectedValue(new Error('Service error'));
 
-      await expect(controller.getVehicles()).rejects.toThrow('Service error');
+      const mockUser = { userId: 'test-user-id' };
+
+      await expect(controller.getVehicles(mockUser)).rejects.toThrow(
+        'Service error'
+      );
     });
   });
 
@@ -56,18 +66,26 @@ describe('TelemetryConfigController', () => {
     it('should configure all vehicles and return success message', async () => {
       jest.spyOn(service, 'configureAllVehicles').mockResolvedValue();
 
-      const result = await controller.configureAllVehicles();
+      const mockUser = { userId: 'test-user-id' };
+
+      const result = await controller.configureAllVehicles(mockUser);
 
       expect(result).toEqual({
-        message: 'Configuration de télémétrie lancée pour tous les véhicules'
+        message: 'Telemetry configuration started for all vehicles',
       });
-      expect(service.configureAllVehicles).toHaveBeenCalled();
+      expect(service.configureAllVehicles).toHaveBeenCalledWith('test-user-id');
     });
 
     it('should handle service errors', async () => {
-      jest.spyOn(service, 'configureAllVehicles').mockRejectedValue(new Error('Service error'));
+      jest
+        .spyOn(service, 'configureAllVehicles')
+        .mockRejectedValue(new Error('Service error'));
 
-      await expect(controller.configureAllVehicles()).rejects.toThrow('Service error');
+      const mockUser = { userId: 'test-user-id' };
+
+      await expect(controller.configureAllVehicles(mockUser)).rejects.toThrow(
+        'Service error'
+      );
     });
   });
 
@@ -78,20 +96,31 @@ describe('TelemetryConfigController', () => {
 
       jest.spyOn(service, 'configureTelemetry').mockResolvedValue(mockResult);
 
-      const result = await controller.configureVehicle(vin);
+      const mockUser = { userId: 'test-user-id' };
+
+      const result = await controller.configureVehicle(vin, mockUser);
 
       expect(result).toEqual({
-        message: `Configuration lancée pour le VIN: ${vin}`,
-        result: mockResult
+        message: `Configuration started for VIN: ${vin}`,
+        result: mockResult,
       });
-      expect(service.configureTelemetry).toHaveBeenCalledWith(vin, undefined);
+      expect(service.configureTelemetry).toHaveBeenCalledWith(
+        vin,
+        'test-user-id'
+      );
     });
 
     it('should handle service errors', async () => {
       const vin = 'TEST_VIN_123';
-      jest.spyOn(service, 'configureTelemetry').mockRejectedValue(new Error('Service error'));
+      jest
+        .spyOn(service, 'configureTelemetry')
+        .mockRejectedValue(new Error('Service error'));
 
-      await expect(controller.configureVehicle(vin)).rejects.toThrow('Service error');
+      const mockUser = { userId: 'test-user-id' };
+
+      await expect(controller.configureVehicle(vin, mockUser)).rejects.toThrow(
+        'Service error'
+      );
     });
   });
 
@@ -102,20 +131,31 @@ describe('TelemetryConfigController', () => {
 
       jest.spyOn(service, 'checkTelemetryConfig').mockResolvedValue(mockResult);
 
-      const result = await controller.checkConfiguration(vin);
+      const mockUser = { userId: 'test-user-id' };
+
+      const result = await controller.checkConfiguration(vin, mockUser);
 
       expect(result).toEqual({
-        message: `Configuration vérifiée pour le VIN: ${vin}`,
-        result: mockResult
+        message: `Configuration checked for VIN: ${vin}`,
+        result: mockResult,
       });
-      expect(service.checkTelemetryConfig).toHaveBeenCalledWith(vin, undefined);
+      expect(service.checkTelemetryConfig).toHaveBeenCalledWith(
+        vin,
+        'test-user-id'
+      );
     });
 
     it('should handle service errors', async () => {
       const vin = 'TEST_VIN_123';
-      jest.spyOn(service, 'checkTelemetryConfig').mockRejectedValue(new Error('Service error'));
+      jest
+        .spyOn(service, 'checkTelemetryConfig')
+        .mockRejectedValue(new Error('Service error'));
 
-      await expect(controller.checkConfiguration(vin)).rejects.toThrow('Service error');
+      const mockUser = { userId: 'test-user-id' };
+
+      await expect(
+        controller.checkConfiguration(vin, mockUser)
+      ).rejects.toThrow('Service error');
     });
   });
 });

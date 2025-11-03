@@ -24,37 +24,27 @@ export class TelemetryConfigService {
   constructor(
     private readonly authService: AuthService,
     @InjectRepository(Vehicle)
-    private readonly vehicleRepository: Repository<Vehicle>,
+    private readonly vehicleRepository: Repository<Vehicle>
   ) {}
 
   /**
    * Récupère le token d'accès pour un utilisateur
-   * Fallback sur ACCESS_TOKEN si userId non fourni (compatibilité)
    */
-  private async getAccessToken(userId?: string): Promise<string> {
-    if (userId) {
-      const token = await this.authService.getAccessTokenForUserId(userId);
-      if (!token) {
-        throw new UnauthorizedException(
-          'Token invalide ou expiré pour cet utilisateur'
-        );
-      }
-      return token;
+  private async getAccessToken(userId: string): Promise<string> {
+    const token = await this.authService.getAccessTokenForUserId(userId);
+    if (!token) {
+      throw new UnauthorizedException(
+        'Token invalide ou expiré pour cet utilisateur'
+      );
     }
-
-    // Fallback sur l'ancien système avec ACCESS_TOKEN
-    const legacyToken = process.env.ACCESS_TOKEN;
-    if (!legacyToken) {
-      throw new UnauthorizedException("Aucun token d'accès disponible");
-    }
-    return legacyToken;
+    return token;
   }
 
   /**
    * Récupère la liste des véhicules depuis l'API Tesla
    * et les synchronise avec la base de données
    */
-  async getVehicles(userId?: string): Promise<any[]> {
+  async getVehicles(userId: string): Promise<any[]> {
     try {
       const accessToken = await this.getAccessToken(userId);
       const response = await this.teslaApi.get('/api/1/vehicles', {
@@ -153,7 +143,7 @@ export class TelemetryConfigService {
   /**
    * Configure la télémétrie pour un véhicule spécifique
    */
-  async configureTelemetry(vin: string, userId?: string): Promise<any> {
+  async configureTelemetry(vin: string, userId: string): Promise<any> {
     const base64CAKey = process.env.LETS_ENCRYPT_CERTIFICATE;
 
     if (!base64CAKey) {
@@ -227,7 +217,7 @@ export class TelemetryConfigService {
   /**
    * Vérifie la configuration de télémétrie pour un véhicule
    */
-  async checkTelemetryConfig(vin: string, userId?: string): Promise<any> {
+  async checkTelemetryConfig(vin: string, userId: string): Promise<any> {
     try {
       const accessToken = await this.getAccessToken(userId);
       const response = await this.teslaApi.get(
@@ -251,7 +241,7 @@ export class TelemetryConfigService {
   /**
    * Configure la télémétrie pour tous les véhicules disponibles
    */
-  async configureAllVehicles(userId?: string): Promise<void> {
+  async configureAllVehicles(userId: string): Promise<void> {
     this.logger.log('🔍 Récupération des véhicules...');
     const vehicles = await this.getVehicles(userId);
 

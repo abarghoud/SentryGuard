@@ -75,7 +75,6 @@ ENCRYPTION_KEY=your_encryption_key_here_min_32_chars_generate_with_crypto
 # Telegram Bot Configuration
 TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
 TELEGRAM_BOT_USERNAME=your_bot_username
-# TELEGRAM_CHAT_ID is deprecated - now managed per user in database
 
 # Tesla OAuth Configuration
 TESLA_CLIENT_ID=your_tesla_client_id
@@ -146,6 +145,7 @@ help - Show available commands
 ### 2. Configurer les scopes
 
 Assurez-vous que votre application a les scopes suivants :
+
 - `openid`
 - `vehicle_device_data`
 - `offline_access`
@@ -368,6 +368,7 @@ vercel deploy --prod
 ### Variables d'environnement de production
 
 N'oubliez pas de mettre à jour :
+
 - `WEBAPP_URL` → URL de votre webapp en production
 - `TESLA_REDIRECT_URI` → URL de callback en production
 - `NEXT_PUBLIC_API_URL` → URL de votre API en production
@@ -384,10 +385,10 @@ N'oubliez pas de mettre à jour :
 ## 🆘 Support
 
 Si vous rencontrez des problèmes, vérifiez :
+
 1. Que toutes les dépendances sont installées (`yarn install`)
 2. Que PostgreSQL tourne et est accessible
 3. Que tous les fichiers `.env` sont configurés
 4. Les logs de l'API et de la webapp
 
 Bon déploiement ! 🚀
-
