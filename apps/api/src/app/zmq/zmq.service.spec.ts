@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ZmqService, TelemetryMessage } from './zmq.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { Vehicle } from '../../entities/vehicle.entity';
+import { User } from '../../entities/user.entity';
 
 // Mock zeromq
 jest.mock('zeromq', () => ({
@@ -29,6 +30,13 @@ const mockVehicleRepository = {
   findOne: jest.fn().mockResolvedValue({ userId: 'test-user-id' }),
 };
 
+// Mock UserRepository
+const mockUserRepository = {
+  findOne: jest
+    .fn()
+    .mockResolvedValue({ userId: 'test-user-id', debug_messages: false }),
+};
+
 describe('ZmqService', () => {
   let service: ZmqService;
 
@@ -44,6 +52,10 @@ describe('ZmqService', () => {
           provide: getRepositoryToken(Vehicle),
           useValue: mockVehicleRepository,
         },
+        {
+          provide: getRepositoryToken(User),
+          useValue: mockUserRepository,
+        },
       ],
     }).compile();
 
@@ -52,6 +64,10 @@ describe('ZmqService', () => {
     // Reset mocks
     jest.clearAllMocks();
     mockVehicleRepository.findOne.mockResolvedValue({ userId: 'test-user-id' });
+    mockUserRepository.findOne.mockResolvedValue({
+      userId: 'test-user-id',
+      debug_messages: false,
+    });
 
     // Set up environment variables
     process.env.ZMQ_ENDPOINT = 'tcp://test:1234';
@@ -190,8 +206,11 @@ describe('ZmqService', () => {
   });
 
   describe('debug messages', () => {
-    it('should not send debug message when DEBUG_MESSAGES is false', async () => {
-      process.env.DEBUG_MESSAGES = 'false';
+    it('should not send debug message when user debug_messages is false', async () => {
+      mockUserRepository.findOne.mockResolvedValue({
+        userId: 'test-user-id',
+        debug_messages: false,
+      });
 
       const message: TelemetryMessage = {
         data: [],
@@ -203,6 +222,27 @@ describe('ZmqService', () => {
       await (service as any).processTelemetryMessage(message);
 
       expect(mockTelegramService.sendTelegramMessage).not.toHaveBeenCalled();
+    });
+
+    it('should send debug message when user debug_messages is true', async () => {
+      mockUserRepository.findOne.mockResolvedValue({
+        userId: 'test-user-id',
+        debug_messages: true,
+      });
+
+      const message: TelemetryMessage = {
+        data: [],
+        createdAt: '2025-01-21T10:00:00.000Z',
+        vin: 'TEST_VIN_123',
+        isResend: false,
+      };
+
+      await (service as any).processTelemetryMessage(message);
+
+      expect(mockTelegramService.sendTelegramMessage).toHaveBeenCalledWith(
+        'test-user-id',
+        expect.any(String)
+      );
     });
   });
 });

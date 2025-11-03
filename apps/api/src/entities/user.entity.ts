@@ -39,6 +39,9 @@ export class User {
   @Column({ type: 'timestamp' })
   expires_at!: Date;
 
+  @Column({ type: 'boolean', default: false })
+  debug_messages!: boolean;
+
   @CreateDateColumn()
   created_at!: Date;
 
