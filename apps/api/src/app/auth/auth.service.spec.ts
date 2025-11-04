@@ -5,15 +5,26 @@ import { UnauthorizedException } from '@nestjs/common';
 import { User } from '../../entities/user.entity';
 import { JwtService } from '@nestjs/jwt';
 import axios from 'axios';
+import { decode } from 'jsonwebtoken';
 
+// Mock axios
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
+
+// Mock crypto
+jest.mock('crypto');
+import * as crypto from 'crypto';
+const mockedRandomBytes = crypto.randomBytes as jest.MockedFunction<typeof crypto.randomBytes>;
 
 // Mock crypto utils
 jest.mock('../../common/utils/crypto.util');
 import { encrypt, decrypt } from '../../common/utils/crypto.util';
 const mockedEncrypt = encrypt as jest.MockedFunction<typeof encrypt>;
 const mockedDecrypt = decrypt as jest.MockedFunction<typeof decrypt>;
+
+// Mock jsonwebtoken decode
+jest.mock('jsonwebtoken');
+const mockedDecode = decode as jest.MockedFunction<typeof decode>;
 
 // Mock l'instance axios créée par axios.create pour l'API Tesla Fleet
 const mockAxiosInstance = {
@@ -68,6 +79,7 @@ describe('AuthService', () => {
     jest.clearAllMocks();
     mockedDecrypt.mockClear();
     mockedEncrypt.mockClear();
+    mockedDecode.mockClear();
 
     // Reset repository mocks
     mockUserRepository.findOne.mockResolvedValue(null);
@@ -78,6 +90,20 @@ describe('AuthService', () => {
     process.env.TESLA_CLIENT_SECRET = 'test-client-secret';
     process.env.TESLA_REDIRECT_URI = 'https://test.com/callback';
     process.env.ENCRYPTION_KEY = 'test-encryption-key';
+
+    // Mock crypto.randomBytes to return predictable values
+    mockedRandomBytes.mockImplementation((size: number) => {
+      if (size === 32) {
+        return Buffer.alloc(32, 'a'); // For state generation
+      } else {
+        return Buffer.from('test-user-id'); // For user ID generation
+      }
+    });
+
+    // Mock decode to return valid JWT with required scopes
+    mockedDecode.mockReturnValue({
+      scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
+    } as any);
   });
 
   afterEach(() => {
@@ -112,6 +138,47 @@ describe('AuthService', () => {
     });
   });
 
+  describe('generateScopeChangeUrl', () => {
+    it('should generate a scope change URL with prompt_missing_scopes=true', () => {
+      const result = service.generateScopeChangeUrl();
+
+      expect(result.url).toContain(
+        'https://auth.tesla.com/oauth2/v3/authorize'
+      );
+      expect(result.url).toContain('client_id=test-client-id');
+      expect(result.url).toContain(
+        'redirect_uri=https%3A%2F%2Ftest.com%2Fcallback'
+      );
+      expect(result.url).toContain('response_type=code');
+      expect(result.url).toContain('prompt_missing_scopes=true');
+      expect(result.url).toContain('scope=openid');
+      expect(result.url).toContain(`state=${result.state}`);
+      expect(result.state).toHaveLength(64); // 32 bytes in hex = 64 characters
+    });
+
+    it('should include missing scopes in the URL when provided', () => {
+      const missingScopes = ['vehicle_device_data', 'offline_access'];
+      const result = service.generateScopeChangeUrl(missingScopes);
+
+      expect(result.url).toContain('prompt_missing_scopes=true');
+      expect(result.url).toContain('scope=openid');
+      // The URL should contain all required scopes
+      expect(result.url).toContain('vehicle_device_data');
+      expect(result.url).toContain('offline_access');
+      expect(result.url).toContain('user_data');
+    });
+
+
+
+    it('should throw an error if TESLA_CLIENT_ID is not defined', () => {
+      delete process.env.TESLA_CLIENT_ID;
+
+      expect(() => service.generateScopeChangeUrl()).toThrow(
+        'TESLA_CLIENT_ID not defined'
+      );
+    });
+  });
+
   describe('exchangeCodeForTokens', () => {
     it('should exchange a valid code for tokens', async () => {
       const { state } = service.generateLoginUrl();
@@ -124,6 +191,9 @@ describe('AuthService', () => {
       };
 
       mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
+      mockedDecode.mockReturnValueOnce({
+        scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
+      } as any);
 
       const result = await service.exchangeCodeForTokens('test-code', state);
 
@@ -158,11 +228,31 @@ describe('AuthService', () => {
 
     it('should throw an error if credentials are not defined', async () => {
       const { state } = service.generateLoginUrl();
-      delete process.env.TESLA_CLIENT_SECRET;
+      process.env.TESLA_CLIENT_SECRET = undefined;
 
       await expect(
         service.exchangeCodeForTokens('test-code', state)
-      ).rejects.toThrow('TESLA_CLIENT_ID or TESLA_CLIENT_SECRET not defined');
+      ).rejects.toThrow('Tesla authentication failed');
+    });
+
+    it('should throw error for invalid JWT scopes', async () => {
+      const { state } = service.generateLoginUrl();
+      const mockTokenResponse = {
+        data: {
+          access_token: 'test-access-token',
+          refresh_token: 'test-refresh-token',
+          expires_in: 3600,
+        },
+      };
+
+      mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
+      mockedDecode.mockReturnValueOnce({
+        scp: ['openid'], // Missing required scopes
+      } as any);
+
+      await expect(
+        service.exchangeCodeForTokens('test-code', state)
+      ).rejects.toThrow('Missing required permissions: vehicle_device_data, offline_access, user_data');
     });
   });
 
@@ -181,6 +271,9 @@ describe('AuthService', () => {
       mockedDecrypt.mockReturnValue('test-access-token');
 
       mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
+      mockedDecode.mockReturnValueOnce({
+        scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
+      } as any);
 
       // Mock user repository
       mockUserRepository.findOne.mockImplementation((options: any) => {
@@ -233,6 +326,9 @@ describe('AuthService', () => {
       };
 
       mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
+      mockedDecode.mockReturnValueOnce({
+        scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
+      } as any);
 
       const { userId } = await service.exchangeCodeForTokens(
         'test-code',
@@ -262,6 +358,9 @@ describe('AuthService', () => {
       mockedDecrypt.mockReturnValue('test-access-token');
 
       mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
+      mockedDecode.mockReturnValueOnce({
+        scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
+      } as any);
 
       // Mock user repository
       mockUserRepository.findOne.mockImplementation((options: any) => {
@@ -365,6 +464,9 @@ describe('AuthService', () => {
       };
 
       mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
+      mockedDecode.mockReturnValueOnce({
+        scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
+      } as any);
       mockAxiosInstance.get.mockRejectedValueOnce(
         new Error('Profile API Error')
       );
@@ -399,6 +501,9 @@ describe('AuthService', () => {
       };
 
       mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
+      mockedDecode.mockReturnValueOnce({
+        scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
+      } as any);
       mockAxiosInstance.get.mockResolvedValueOnce(mockProfileResponse);
 
       const { userId } = await service.exchangeCodeForTokens(
@@ -441,6 +546,9 @@ describe('AuthService', () => {
       };
 
       mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
+      mockedDecode.mockReturnValueOnce({
+        scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
+      } as any);
       mockAxiosInstance.get.mockResolvedValueOnce(mockProfileResponse);
 
       await service.exchangeCodeForTokens('test-code', state);
@@ -448,6 +556,180 @@ describe('AuthService', () => {
       stats = await service.getStats();
       expect(stats.activeUsers).toBe(1);
       expect(stats.pendingStates).toBe(0); // State deleted after validation
+    });
+  });
+
+  describe('validateJwtScopes', () => {
+    it('should validate JWT with all required scopes', () => {
+      const validToken = 'valid.jwt.token';
+      mockedDecode.mockReturnValueOnce({
+        scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
+      } as any);
+
+      expect(() => {
+        (service as any).validateJwtScopes(validToken);
+      }).not.toThrow();
+    });
+
+    it('should throw error for missing scopes', () => {
+      const invalidToken = 'invalid.jwt.token';
+      mockedDecode.mockReturnValueOnce({
+        scp: ['openid', 'vehicle_device_data'], // Missing offline_access and user_data
+      } as any);
+
+      expect(() => {
+        (service as any).validateJwtScopes(invalidToken);
+      }).toThrow(UnauthorizedException);
+    });
+
+    it('should throw error for missing scp property', () => {
+      const invalidToken = 'invalid.jwt.token';
+      mockedDecode.mockReturnValueOnce({} as any); // No scp property
+
+      expect(() => {
+        (service as any).validateJwtScopes(invalidToken);
+      }).toThrow(UnauthorizedException);
+    });
+
+    it('should throw error for null decoded token', () => {
+      const invalidToken = 'invalid.jwt.token';
+      mockedDecode.mockReturnValueOnce(null);
+
+      expect(() => {
+        (service as any).validateJwtScopes(invalidToken);
+      }).toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('fetchUserProfileSafely', () => {
+    it('should return user profile when successful', async () => {
+      const accessToken = 'test-access-token';
+      const expectedProfile = { email: 'test@tesla.com', full_name: 'Test User' };
+
+      mockAxiosInstance.get.mockResolvedValueOnce({
+        data: { response: expectedProfile },
+      });
+
+      const result = await (service as any).fetchUserProfileSafely(accessToken);
+      expect(result).toEqual(expectedProfile);
+    });
+
+    it('should return undefined when profile fetch fails', async () => {
+      const accessToken = 'test-access-token';
+
+      mockAxiosInstance.get.mockRejectedValueOnce(new Error('API Error'));
+
+      const result = await (service as any).fetchUserProfileSafely(accessToken);
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('createOrUpdateUser', () => {
+    const mockTokens = {
+      access_token: 'test-access-token',
+      refresh_token: 'test-refresh-token',
+      expiresAt: new Date(),
+    };
+
+    it('should create new user when no existing user found', async () => {
+      const profile = { email: 'new@test.com', full_name: 'New User' };
+
+      mockUserRepository.findOne.mockResolvedValue(null);
+      mockUserRepository.create.mockReturnValue({} as User);
+      mockUserRepository.save.mockResolvedValue({ userId: 'test-user-id' } as User);
+
+      const result = await (service as any).createOrUpdateUser(mockTokens, profile);
+      expect(result).toBe('746573742d757365722d6964');
+      expect(mockUserRepository.create).toHaveBeenCalled();
+    });
+
+    it('should update existing user when found', async () => {
+      const profile = { email: 'existing@test.com', full_name: 'Existing User' };
+      const existingUser = { userId: 'existing-user-id', email: 'existing@test.com' } as User;
+
+      mockUserRepository.findOne.mockResolvedValue(existingUser);
+      mockUserRepository.save.mockResolvedValue(existingUser);
+
+      const result = await (service as any).createOrUpdateUser(mockTokens, profile);
+      expect(result).toBe('existing-user-id');
+      expect(mockUserRepository.save).toHaveBeenCalledWith(existingUser);
+    });
+  });
+
+  describe('updateExistingUser', () => {
+    it('should update existing user with new token data and profile', async () => {
+      const existingUser = {
+        userId: 'test-user-id',
+        email: 'test@test.com',
+      } as User;
+
+      const tokens = {
+        expiresAt: new Date(),
+      };
+
+      const profile = {
+        full_name: 'Updated Name',
+        profile_image_url: 'https://example.com/image.jpg',
+      };
+
+      mockJwtService.signAsync.mockResolvedValue('new-jwt-token');
+
+      const result = await (service as any).updateExistingUser(
+        existingUser,
+        tokens,
+        profile,
+        'encrypted-access',
+        'encrypted-refresh'
+      );
+
+      expect(result).toBe('test-user-id');
+      expect(existingUser.access_token).toBe('encrypted-access');
+      expect(existingUser.refresh_token).toBe('encrypted-refresh');
+      expect(existingUser.expires_at).toBe(tokens.expiresAt);
+      expect(existingUser.full_name).toBe(profile.full_name);
+      expect(existingUser.profile_image_url).toBe(profile.profile_image_url);
+      expect(mockJwtService.signAsync).toHaveBeenCalled();
+    });
+  });
+
+  describe('createNewUser', () => {
+    it('should create and save a new user', async () => {
+      const tokens = {
+        expiresAt: new Date(),
+      };
+
+      const profile = {
+        email: 'new@test.com',
+        full_name: 'New User',
+        profile_image_url: 'https://example.com/image.jpg',
+      };
+
+      const newUser = {
+        userId: '746573742d757365722d6964',
+        email: profile.email,
+        full_name: profile.full_name,
+        profile_image_url: profile.profile_image_url,
+        access_token: 'encrypted-access',
+        refresh_token: 'encrypted-refresh',
+        expires_at: tokens.expiresAt,
+        jwt_token: 'jwt-token',
+        jwt_expires_at: tokens.expiresAt,
+      };
+
+      mockJwtService.signAsync.mockResolvedValue('jwt-token');
+      mockUserRepository.create.mockReturnValue(newUser as User);
+      mockUserRepository.save.mockResolvedValue(newUser as User);
+
+      const result = await (service as any).createNewUser(
+        tokens,
+        profile,
+        'encrypted-access',
+        'encrypted-refresh'
+      );
+
+      expect(result).toBe('746573742d757365722d6964');
+      expect(mockUserRepository.create).toHaveBeenCalledWith(newUser);
+      expect(mockUserRepository.save).toHaveBeenCalledWith(newUser);
     });
   });
 });

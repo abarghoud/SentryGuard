@@ -48,6 +48,13 @@ export class ApiError extends Error {
   }
 }
 
+export class ScopeError extends Error {
+  constructor(public missingScopes: string[], public returnUrl?: string) {
+    super('Missing required permissions');
+    this.name = 'ScopeError';
+  }
+}
+
 /**
  * Make an authenticated API request with JWT token
  */
@@ -89,9 +96,16 @@ async function apiRequest<T>(
       try {
         const errorData = await response.json();
         errorMessage = errorData.message || errorMessage;
+
+        // Detect scope-related errors
+        if (errorData.message?.includes('Missing required permissions')) {
+          const missingScopes = errorData.message.match(/Missing required permissions: (.+)/)?.[1]?.split(', ') || [];
+          throw new ScopeError(missingScopes);
+        }
+
         throw new ApiError(errorMessage, response.status, errorData);
       } catch (e) {
-        if (e instanceof ApiError) throw e;
+        if (e instanceof ScopeError || e instanceof ApiError) throw e;
         throw new ApiError(errorMessage, response.status);
       }
     }
@@ -151,6 +165,21 @@ export interface ValidateTokenResponse {
  */
 export async function getLoginUrl(): Promise<LoginUrlResponse> {
   return apiRequest('/auth/tesla/login');
+}
+
+/**
+ * Get Tesla OAuth scope change URL for missing permissions
+ */
+export async function getScopeChangeUrl(missingScopes?: string[]): Promise<LoginUrlResponse> {
+  const params = new URLSearchParams();
+  if (missingScopes && missingScopes.length > 0) {
+    params.set('missing', missingScopes.join(','));
+  }
+
+  const queryString = params.toString();
+  const endpoint = queryString ? `/auth/tesla/scope-change?${queryString}` : '/auth/tesla/scope-change';
+
+  return apiRequest(endpoint);
 }
 
 /**
