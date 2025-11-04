@@ -4,15 +4,22 @@ import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../lib/useAuth';
+import MissingScopesBanner from '../../components/MissingScopesBanner';
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, isLoading, logout, profile } = useAuth();
+  const { isAuthenticated, isLoading, logout, profile, scopeError } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+
+  const handleFixScopes = () => {
+    const missingScopes = scopeError?.missingScopes.join(',') || '';
+    const currentPath = pathname;
+    router.push(`/scopes-fix?missing=${missingScopes}&return=${encodeURIComponent(currentPath)}`);
+  };
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -40,6 +47,18 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Show scope banner if there's a scope error */}
+      {scopeError && (
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <MissingScopesBanner
+              missingScopes={scopeError.missingScopes}
+              onFixClick={handleFixScopes}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Navigation */}
       <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

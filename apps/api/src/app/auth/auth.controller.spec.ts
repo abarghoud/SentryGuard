@@ -8,6 +8,7 @@ describe('AuthController', () => {
 
   const mockAuthService = {
     generateLoginUrl: jest.fn(),
+    generateScopeChangeUrl: jest.fn(),
     getTokenInfo: jest.fn(),
     getUserProfile: jest.fn(),
     getStats: jest.fn(),
@@ -48,6 +49,47 @@ describe('AuthController', () => {
       expect(result.message).toBe('Use this URL to authenticate with Tesla');
       expect(authService.generateLoginUrl).toHaveBeenCalled();
     });
+  });
+
+  describe('scopeChangeWithTesla', () => {
+    it('should return a scope change URL without parameters', () => {
+      const mockUrl =
+        'https://auth.tesla.com/oauth2/v3/authorize?prompt_missing_scopes=true&state=test-state';
+      const mockState = 'test-state';
+
+      mockAuthService.generateScopeChangeUrl.mockReturnValue({
+        url: mockUrl,
+        state: mockState,
+      });
+
+      const result = controller.scopeChangeWithTesla();
+
+      expect(result.url).toBe(mockUrl);
+      expect(result.state).toBe(mockState);
+      expect(result.message).toBe('Use this URL to grant additional permissions to TeslaGuard');
+      expect(authService.generateScopeChangeUrl).toHaveBeenCalledWith(undefined);
+    });
+
+    it('should return a scope change URL with missing scopes', () => {
+      const mockUrl =
+        'https://auth.tesla.com/oauth2/v3/authorize?prompt_missing_scopes=true&state=test-state';
+      const mockState = 'test-state';
+      const missingScopes = 'vehicle_device_data,offline_access';
+
+      mockAuthService.generateScopeChangeUrl.mockReturnValue({
+        url: mockUrl,
+        state: mockState,
+      });
+
+      const result = controller.scopeChangeWithTesla(missingScopes);
+
+      expect(result.url).toBe(mockUrl);
+      expect(result.state).toBe(mockState);
+      expect(result.message).toBe('Use this URL to grant additional permissions to TeslaGuard');
+      expect(authService.generateScopeChangeUrl).toHaveBeenCalledWith(['vehicle_device_data', 'offline_access']);
+    });
+
+
   });
 
   describe('getUserStatus', () => {

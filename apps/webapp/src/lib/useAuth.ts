@@ -10,6 +10,7 @@ import {
   validateToken,
   type UserProfile,
   type AuthStatus,
+  ScopeError,
 } from './api';
 
 export function useAuth() {
@@ -18,10 +19,12 @@ export function useAuth() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [scopeError, setScopeError] = useState<ScopeError | null>(null);
 
   const checkAuth = async () => {
     setIsLoading(true);
     setError(null);
+    setScopeError(null);
 
     try {
       const token = getToken();
@@ -60,14 +63,21 @@ export function useAuth() {
         setProfile(null);
       }
     } catch (err) {
-      console.error('Auth check error:', err);
-      setError(
-        err instanceof Error ? err.message : 'Authentication check failed'
-      );
-      setIsAuthenticated(false);
-      setProfile(null);
-      setAuthStatus(null);
-      clearToken();
+      if (err instanceof ScopeError) {
+        setScopeError(err);
+        setIsAuthenticated(false);
+        setProfile(null);
+        setAuthStatus(null);
+      } else {
+        console.error('Auth check error:', err);
+        setError(
+          err instanceof Error ? err.message : 'Authentication check failed'
+        );
+        setIsAuthenticated(false);
+        setProfile(null);
+        setAuthStatus(null);
+        clearToken();
+      }
     } finally {
       setIsLoading(false);
     }
@@ -97,6 +107,10 @@ export function useAuth() {
     checkAuth();
   };
 
+  const clearScopeError = () => {
+    setScopeError(null);
+  };
+
   useEffect(() => {
     checkAuth();
   }, []);
@@ -107,8 +121,10 @@ export function useAuth() {
     profile,
     authStatus,
     error,
+    scopeError,
     checkAuth,
     refreshAuth,
     logout,
+    clearScopeError,
   };
 }

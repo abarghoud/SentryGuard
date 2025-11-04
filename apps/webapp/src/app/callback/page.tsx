@@ -18,6 +18,16 @@ function CallbackContent() {
       const error = searchParams.get('error');
 
       if (error) {
+        // Check if it's a scope-related error
+        if (error.includes('Missing required permissions')) {
+          const missingScopes = error.match(/Missing required permissions: (.+)/)?.[1]?.split(', ') || [];
+          const params = new URLSearchParams({
+            missing: missingScopes.join(',')
+          });
+          router.push(`/scopes-fix?${params.toString()}`);
+          return;
+        }
+
         setStatus('error');
         setMessage(`Authentication failed: ${error}`);
         return;

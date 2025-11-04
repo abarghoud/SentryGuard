@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import axios from 'axios';
 import * as crypto from 'crypto';
 import * as https from 'https';
+import { decode } from 'jsonwebtoken';
 import { User } from '../../entities/user.entity';
 import { encrypt, decrypt } from '../../common/utils/crypto.util';
 
@@ -102,6 +103,42 @@ export class AuthService implements OnModuleDestroy {
   }
 
   /**
+    * Generates a Tesla OAuth scope change URL for missing permissions
+    */
+   generateScopeChangeUrl(missingScopes?: string[]): { url: string; state: string } {
+    const state = crypto.randomBytes(32).toString('hex');
+    const clientId = process.env.TESLA_CLIENT_ID;
+    const redirectUri =
+      process.env.TESLA_REDIRECT_URI || 'https://sentryguard.org/callback/auth';
+
+    if (!clientId) {
+      throw new Error('TESLA_CLIENT_ID not defined');
+    }
+
+    // Store state temporarily
+    this.pendingStates.set(state, {
+      state,
+      created_at: new Date(),
+    });
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      locale: 'fr-FR',
+      prompt_missing_scopes: 'true', // Tesla-specific parameter for scope changes
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      show_keypair_step: 'true',
+      scope: 'openid vehicle_device_data offline_access user_data',
+      state: state,
+    });
+
+    const url = `https://auth.tesla.com/oauth2/v3/authorize?${params.toString()}`;
+
+    this.logger.log(`🔄 Scope change URL generated with state: ${state}${missingScopes ? ` (missing: ${missingScopes.join(', ')})` : ''}`);
+    return { url, state };
+  }
+
+  /**
    * Validates OAuth state
    */
   private validateState(state: string): boolean {
@@ -181,6 +218,40 @@ export class AuthService implements OnModuleDestroy {
       throw new UnauthorizedException('Invalid or expired state');
     }
 
+    try {
+      const tokens = await this.exchangeCodeForTeslaTokens(code);
+      const profile = await this.fetchUserProfileSafely(tokens.access_token);
+      const userId = await this.createOrUpdateUser(tokens, profile);
+
+      const savedUser = await this.userRepository.findOne({
+        where: { userId },
+      });
+      const jwt = savedUser?.jwt_token || '';
+
+      return { jwt, userId, access_token: tokens.access_token };
+    } catch (error: unknown) {
+      const errorData = (error as any)?.response?.data;
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error('❌ Error exchanging code:', errorData || errorMessage);
+
+      if (error instanceof UnauthorizedException && errorMessage.includes('Missing required permissions')) {
+        throw error;
+      }
+
+      throw new UnauthorizedException('Tesla authentication failed');
+    }
+  }
+
+  /**
+   * Exchanges authorization code for Tesla tokens
+   */
+  private async exchangeCodeForTeslaTokens(code: string): Promise<{
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+    expiresAt: Date;
+  }> {
     const clientId = process.env.TESLA_CLIENT_ID;
     const clientSecret = process.env.TESLA_CLIENT_SECRET;
     const audience =
@@ -193,123 +264,171 @@ export class AuthService implements OnModuleDestroy {
       throw new Error('TESLA_CLIENT_ID or TESLA_CLIENT_SECRET not defined');
     }
 
-    try {
-      this.logger.log('🔄 Exchanging authorization code for tokens...');
+    this.logger.log('🔄 Exchanging authorization code for tokens...');
 
-      const response = await axios.post(
-        'https://fleet-auth.prd.vn.cloud.tesla.com/oauth2/v3/token',
-        new URLSearchParams({
-          grant_type: 'authorization_code',
-          client_id: clientId,
-          client_secret: clientSecret,
-          code: code,
-          audience: audience,
-          redirect_uri: redirectUri,
-        }),
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        }
-      );
-
-      const { access_token, refresh_token, expires_in } = response.data;
-
-      // Calculate expiration date
-      const expiresAt = new Date();
-      expiresAt.setSeconds(expiresAt.getSeconds() + (expires_in || 3600));
-
-      // Retrieve user profile from Tesla API
-      let profile: UserProfile | undefined;
-      try {
-        profile = await this.fetchUserProfile(access_token);
-        this.logger.log(
-          `👤 User profile retrieved: ${profile?.email || 'N/A'}`
-        );
-      } catch (profileError) {
-        this.logger.warn(
-          '⚠️ Unable to retrieve user profile, continuing anyway'
-        );
+    const response = await axios.post(
+      'https://fleet-auth.prd.vn.cloud.tesla.com/oauth2/v3/token',
+      new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: clientId,
+        client_secret: clientSecret,
+        code: code,
+        audience: audience,
+        redirect_uri: redirectUri,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
       }
+    );
 
-      // Encrypt tokens before storing
-      const encryptedAccessToken = encrypt(access_token);
-      const encryptedRefreshToken = encrypt(refresh_token);
+    const { access_token, refresh_token, expires_in } = response.data;
 
-      // Check if user already exists by email
-      const user = await this.userRepository.findOne({
-        where: { email: profile?.email },
-      });
+    // Validate JWT scopes
+    this.validateJwtScopes(access_token);
 
-      let userId: string;
+    // Calculate expiration date
+    const expiresAt = new Date();
+    expiresAt.setSeconds(expiresAt.getSeconds() + (expires_in || 3600));
 
-      if (user) {
-        // Update existing user
-        user.access_token = encryptedAccessToken;
-        user.refresh_token = encryptedRefreshToken;
-        user.expires_at = expiresAt;
-        user.full_name = profile?.full_name;
-        user.profile_image_url = profile?.profile_image_url;
+    this.logger.log(`📅 Tesla token expiration: ${expiresAt.toISOString()}`);
 
-        userId = user.userId;
+    return { access_token, refresh_token, expires_in, expiresAt };
+  }
 
-        // Generate JWT token
-        const jwtData = await this.generateJwtToken(userId, user.email || '');
-        user.jwt_token = jwtData.token;
-        user.jwt_expires_at = expiresAt;
-
-        await this.userRepository.save(user);
-
-        this.logger.log(`✅ User updated in database: ${userId}`);
-        this.logger.log(
-          `🔐 JWT token generated, expires at: ${jwtData.expiresAt.toISOString()}`
-        );
-      } else {
-        // Create new user
-        userId = crypto.randomBytes(16).toString('hex');
-
-        // Generate JWT token
-        const jwtData = await this.generateJwtToken(
-          userId,
-          profile?.email || ''
-        );
-
-        const newUser = this.userRepository.create({
-          userId,
-          email: profile?.email,
-          full_name: profile?.full_name,
-          profile_image_url: profile?.profile_image_url,
-          access_token: encryptedAccessToken,
-          refresh_token: encryptedRefreshToken,
-          expires_at: expiresAt,
-          jwt_token: jwtData.token,
-          jwt_expires_at: expiresAt,
-        });
-
-        await this.userRepository.save(newUser);
-
-        this.logger.log(`✅ New user created in database: ${userId}`);
-        this.logger.log(
-          `🔐 JWT token generated, expires at: ${jwtData.expiresAt.toISOString()}`
-        );
-      }
-
-      this.logger.log(`📅 Tesla token expiration: ${expiresAt.toISOString()}`);
-
-      // Get the JWT token for response
-      const savedUser = await this.userRepository.findOne({
-        where: { userId },
-      });
-      const jwt = savedUser?.jwt_token || '';
-
-      return { jwt, userId, access_token };
-    } catch (error: unknown) {
-      const errorData = (error as any)?.response?.data;
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error('❌ Error exchanging code:', errorData || errorMessage);
-      throw new UnauthorizedException('Tesla authentication failed');
+  /**
+   * Validates JWT scopes in the access token
+   */
+  private validateJwtScopes(accessToken: string): void {
+    const decodedToken = decode(accessToken) as any;
+    if (!decodedToken || !decodedToken.scp) {
+      throw new UnauthorizedException('Invalid JWT token: missing scopes');
     }
+
+    const requiredScopes = ['openid', 'vehicle_device_data', 'offline_access', 'user_data'];
+    const tokenScopes = decodedToken.scp as string[];
+    const missingScopes = requiredScopes.filter(scope => !tokenScopes.includes(scope));
+
+    if (missingScopes.length > 0) {
+      this.logger.warn(`⚠️ Missing required scopes: ${missingScopes.join(', ')}`);
+      throw new UnauthorizedException(`Missing required permissions: ${missingScopes.join(', ')}`);
+    }
+
+    this.logger.log(`✅ JWT scopes validated: ${tokenScopes.join(', ')}`);
+  }
+
+  /**
+   * Fetches user profile safely with error handling
+   */
+  private async fetchUserProfileSafely(accessToken: string): Promise<UserProfile | undefined> {
+    try {
+      const profile = await this.fetchUserProfile(accessToken);
+      this.logger.log(
+        `👤 User profile retrieved: ${profile?.email || 'N/A'}`
+      );
+      return profile;
+    } catch (error) {
+      this.logger.warn(
+        '⚠️ Unable to retrieve user profile, continuing anyway'
+      );
+      return undefined;
+    }
+  }
+
+  /**
+   * Creates or updates user in database
+   */
+  private async createOrUpdateUser(
+    tokens: { access_token: string; refresh_token: string; expiresAt: Date },
+    profile?: UserProfile
+  ): Promise<string> {
+    // Encrypt tokens before storing
+    const encryptedAccessToken = encrypt(tokens.access_token);
+    const encryptedRefreshToken = encrypt(tokens.refresh_token);
+
+    // Check if user already exists by email
+    const existingUser = await this.userRepository.findOne({
+      where: { email: profile?.email },
+    });
+
+    if (existingUser) {
+      return await this.updateExistingUser(existingUser, tokens, profile, encryptedAccessToken, encryptedRefreshToken);
+    } else {
+      return await this.createNewUser(tokens, profile, encryptedAccessToken, encryptedRefreshToken);
+    }
+  }
+
+  /**
+   * Updates an existing user
+   */
+  private async updateExistingUser(
+    user: User,
+    tokens: { expiresAt: Date },
+    profile: UserProfile | undefined,
+    encryptedAccessToken: string,
+    encryptedRefreshToken: string
+  ): Promise<string> {
+    user.access_token = encryptedAccessToken;
+    user.refresh_token = encryptedRefreshToken;
+    user.expires_at = tokens.expiresAt;
+    user.full_name = profile?.full_name;
+    user.profile_image_url = profile?.profile_image_url;
+
+    const userId = user.userId;
+
+    // Generate JWT token
+    const jwtData = await this.generateJwtToken(userId, user.email || '');
+    user.jwt_token = jwtData.token;
+    user.jwt_expires_at = tokens.expiresAt;
+
+    await this.userRepository.save(user);
+
+    this.logger.log(`✅ User updated in database: ${userId}`);
+    this.logger.log(
+      `🔐 JWT token generated, expires at: ${jwtData.expiresAt.toISOString()}`
+    );
+
+    return userId;
+  }
+
+  /**
+   * Creates a new user
+   */
+  private async createNewUser(
+    tokens: { expiresAt: Date },
+    profile: UserProfile | undefined,
+    encryptedAccessToken: string,
+    encryptedRefreshToken: string
+  ): Promise<string> {
+    const userId = crypto.randomBytes(16).toString('hex');
+
+    // Generate JWT token
+    const jwtData = await this.generateJwtToken(
+      userId,
+      profile?.email || ''
+    );
+
+    const newUser = this.userRepository.create({
+      userId,
+      email: profile?.email,
+      full_name: profile?.full_name,
+      profile_image_url: profile?.profile_image_url,
+      access_token: encryptedAccessToken,
+      refresh_token: encryptedRefreshToken,
+      expires_at: tokens.expiresAt,
+      jwt_token: jwtData.token,
+      jwt_expires_at: tokens.expiresAt,
+    });
+
+    await this.userRepository.save(newUser);
+
+    this.logger.log(`✅ New user created in database: ${userId}`);
+    this.logger.log(
+      `🔐 JWT token generated, expires at: ${jwtData.expiresAt.toISOString()}`
+    );
+
+    return userId;
   }
 
   /**

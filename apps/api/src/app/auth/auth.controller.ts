@@ -1,4 +1,4 @@
-import { Controller, Get, Logger, UseGuards, Headers } from '@nestjs/common';
+import { Controller, Get, Logger, UseGuards, Headers, Query } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
@@ -24,6 +24,27 @@ export class AuthController {
       url,
       state,
       message: 'Use this URL to authenticate with Tesla',
+    };
+  }
+
+  /**
+   * Initiate Tesla OAuth scope change for missing permissions
+   * GET /auth/tesla/scope-change
+   */
+  @Get('tesla/scope-change')
+  scopeChangeWithTesla(
+    @Query('missing') missing?: string
+  ): { url: string; state: string; message: string } {
+    const missingScopes = missing ? missing.split(',').map(s => s.trim()) : undefined;
+
+    this.logger.log(`🔄 New Tesla OAuth scope change request${missingScopes ? ` (missing: ${missingScopes.join(', ')})` : ''}`);
+
+    const { url, state } = this.authService.generateScopeChangeUrl(missingScopes);
+
+    return {
+      url,
+      state,
+      message: 'Use this URL to grant additional permissions to TeslaGuard',
     };
   }
 
