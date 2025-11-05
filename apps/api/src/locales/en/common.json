@@ -1,0 +1,22 @@
+{
+  "Alarm State": "Alarm State",
+  "An error occurred": "An error occurred",
+  "Available commands": "Available commands",
+  "Battery": "Battery",
+  "Display": "Display",
+  "Invalid or expired token": "Invalid or expired token",
+  "Location": "Location",
+  "N/A": "N/A",
+  "No account linked": "No account linked",
+  "Not available": "Not available",
+  "Sentry Mode": "Sentry Mode",
+  "Sentry Mode activated - Check your vehicle!": "Sentry Mode activated - Check your vehicle!",
+  "Speed": "Speed",
+  "TESLA SENTRY ALERT": "TESLA SENTRY ALERT",
+  "This token has expired": "This token has expired",
+  "Time": "Time",
+  "Vehicle": "Vehicle",
+  "Welcome to TeslaGuard Bot": "Welcome to TeslaGuard Bot",
+  "Your account is linked and active!": "Your account is linked and active!",
+  "Your TeslaGuard account has been linked successfully!": "Your TeslaGuard account has been linked successfully!"
+}

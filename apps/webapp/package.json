@@ -3,13 +3,24 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
-    "next": "~15.2.4",
+    "i18next": "^25.6.0",
+    "next": "15.1.7",
+    "next-i18next": "^15.4.2",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-i18next": "^16.2.4"
   },
   "devDependencies": {
     "autoprefixer": "10.4.20",
+    "i18next-parser": "^9.3.0",
     "postcss": "8.4.49",
     "tailwindcss": "3.4.17"
+  },
+  "nx": {
+    "targets": {
+      "extract-i18n": {
+        "command": "cd apps/webapp && npx i18next-parser --config i18next-parser.config.js"
+      }
+    }
   }
 }

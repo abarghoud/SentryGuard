@@ -1,0 +1,25 @@
+module.exports = {
+  output: 'src/locales/$LOCALE/$NAMESPACE.json',
+  input: 'src/**/*.{ts,tsx}',
+  functions: ['t'],
+  defaultNamespace: 'common',
+  keySeparator: false,
+  nsSeparator: false,
+  useKeysAsDefaultValue: true,
+  useKeysAsDefaultValueForDerivedKeys: true,
+  sort: true,
+  indentation: 2,
+  locales: ['en', 'fr'],
+  defaultValue: (locale, namespace, key) => {
+    if (locale === 'en') {
+      return key;
+    }
+
+    return '';
+  },
+  keepRemoved: false,
+  lexers: {
+    ts: ['JavascriptLexer'],
+    tsx: ['JavascriptLexer'],
+  },
+};

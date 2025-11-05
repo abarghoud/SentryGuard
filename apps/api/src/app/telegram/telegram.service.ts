@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import i18n from '../../i18n';
 import { TelegramBotService } from './telegram-bot.service';
 
 @Injectable()
@@ -70,8 +71,8 @@ export class TelegramService {
    * Formate un message d'alerte Sentry
    */
   private formatSentryAlertMessage(alertInfo: any): string {
-    const timestamp = new Date(alertInfo.timestamp).toLocaleString('fr-FR', {
-      timeZone: 'Europe/Paris',
+    const timestamp = new Date(alertInfo.timestamp).toLocaleString('en-US', {
+      timeZone: 'America/New_York', // or keep as is, but change to English
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -81,18 +82,20 @@ export class TelegramService {
     });
 
     return `
-🚨 <b>ALERTE SENTINEL TESLA</b> 🚨
+🚨 <b>${i18n.t('TESLA SENTRY ALERT')}</b> 🚨
 
-🚗 <b>Véhicule:</b> ${alertInfo.vin}
-⏰ <b>Heure:</b> ${timestamp}
-📍 <b>Localisation:</b> ${alertInfo.location || 'Non disponible'}
-🔋 <b>Batterie:</b> ${alertInfo.batteryLevel || 'N/A'}%
-🚗 <b>Vitesse:</b> ${alertInfo.vehicleSpeed || '0'} km/h
-🔔 <b>Mode Sentry:</b> ${alertInfo.sentryMode || 'Aware'}
-📱 <b>Affichage:</b> ${alertInfo.centerDisplay || 'Unknown'}
-🚨 <b>État d'alarme:</b> ${alertInfo.alarmState || 'Active'}
+🚗 <b>${i18n.t('Vehicle')}:</b> ${alertInfo.vin}
+⏰ <b>${i18n.t('Time')}:</b> ${timestamp}
+📍 <b>${i18n.t('Location')}:</b> ${
+      alertInfo.location || i18n.t('Not available')
+    }
+🔋 <b>${i18n.t('Battery')}:</b> ${alertInfo.batteryLevel || i18n.t('N/A')}%
+🚗 <b>${i18n.t('Speed')}:</b> ${alertInfo.vehicleSpeed || '0'} km/h
+🔔 <b>${i18n.t('Sentry Mode')}:</b> ${alertInfo.sentryMode || 'Aware'}
+📱 <b>${i18n.t('Display')}:</b> ${alertInfo.centerDisplay || 'Unknown'}
+🚨 <b>${i18n.t('Alarm State')}:</b> ${alertInfo.alarmState || 'Active'}
 
-<i>Mode Sentinel activé - Vérifiez votre véhicule!</i>
+<i>${i18n.t('Sentry Mode activated - Check your vehicle!')}</i>
     `.trim();
   }
 }
