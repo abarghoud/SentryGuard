@@ -1,5 +1,5 @@
 {
-  "🧪 Test message from TeslaGuard API": "🧪 Test message from TeslaGuard API",
+  "🧪 Test message from SentryGuard API": "🧪 Test message from SentryGuard API",
   "Alarm State": "Alarm State",
   "An error occurred": "An error occurred",
   "Available commands": "Available commands",
@@ -17,7 +17,7 @@
   "This token has expired": "This token has expired",
   "Time": "Time",
   "Vehicle": "Vehicle",
-  "Welcome to TeslaGuard Bot": "Welcome to TeslaGuard Bot",
+  "Welcome to SentryGuard Bot": "Welcome to SentryGuard Bot",
   "Your account is linked and active!": "Your account is linked and active!",
-  "Your TeslaGuard account has been linked successfully!": "Your TeslaGuard account has been linked successfully!"
+  "Your SentryGuard account has been linked successfully!": "Your SentryGuard account has been linked successfully!"
 }

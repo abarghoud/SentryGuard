@@ -138,7 +138,7 @@ export default function VehiclesPage() {
                     </p>
                     <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
                       {t(
-                        'You need to pair your Tesla account with a virtual key to use TeslaGuard.'
+                        'You need to pair your Tesla account with a virtual key to use SentryGuard.'
                       )}
                     </p>
                   </div>
@@ -237,7 +237,7 @@ export default function VehiclesPage() {
             <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
               <p>
                 {t(
-                  "Enabling telemetry allows TeslaGuard to monitor your vehicle's Sentry Mode status in real-time. When suspicious activity is detected, you'll receive instant alerts via Telegram."
+                  "Enabling telemetry allows SentryGuard to monitor your vehicle's Sentry Mode status in real-time. When suspicious activity is detected, you'll receive instant alerts via Telegram."
                 )}
               </p>
               <ul className="list-disc list-inside mt-2 space-y-1">

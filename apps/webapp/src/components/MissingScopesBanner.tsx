@@ -53,7 +53,7 @@ export default function MissingScopesBanner({
             <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
               <p>
                 {t(
-                  'Your Tesla account needs additional permissions to use TeslaGuard'
+                  'Your Tesla account needs additional permissions to use SentryGuard'
                 )}
               </p>
               <ul className="mt-1 list-disc list-inside space-y-1">

@@ -180,7 +180,7 @@ export class TelegramController {
     const userId = user.userId;
 
     if (!message) {
-      message = i18n.t('🧪 Test message from TeslaGuard API');
+      message = i18n.t('🧪 Test message from SentryGuard API');
     }
 
     this.logger.log(`📤 Sending test message to: ${userId} (${user.email})`);

@@ -45,7 +45,7 @@ export class TelegramBotService implements OnModuleInit {
           const lng = await this.getUserLanguageFromChatId(
             ctx.chat.id.toString()
           );
-          await ctx.reply(i18n.t('Welcome to TeslaGuard Bot', { lng }));
+          await ctx.reply(i18n.t('Welcome to SentryGuard Bot', { lng }));
         }
       });
 
@@ -128,7 +128,7 @@ export class TelegramBotService implements OnModuleInit {
       );
 
       await ctx.reply(
-        i18n.t('Your TeslaGuard account has been linked successfully!', { lng })
+        i18n.t('Your SentryGuard account has been linked successfully!', { lng })
       );
     } catch (error) {
       this.logger.error('❌ Erreur lors de la liaison du token:', error);

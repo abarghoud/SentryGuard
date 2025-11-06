@@ -1,6 +1,6 @@
-# TeslaGuard - Guide de Setup Complet
+# SentryGuard - Guide de Setup Complet
 
-Ce guide vous accompagne dans la configuration complète de TeslaGuard avec la nouvelle webapp Next.js SEO-friendly.
+Ce guide vous accompagne dans la configuration complète de SentryGuard avec la nouvelle webapp Next.js SEO-friendly.
 
 ## 📋 Prérequis
 
@@ -33,11 +33,11 @@ psql --version
 psql postgres
 
 # Créer l'utilisateur et la base de données
-CREATE USER teslaguard WITH PASSWORD 'your_secure_password';
-CREATE DATABASE teslaguard OWNER teslaguard;
+CREATE USER sentryguard WITH PASSWORD 'your_secure_password';
+CREATE DATABASE sentryguard OWNER sentryguard;
 
 # Donner les permissions
-GRANT ALL PRIVILEGES ON DATABASE teslaguard TO teslaguard;
+GRANT ALL PRIVILEGES ON DATABASE sentryguard TO sentryguard;
 
 # Quitter
 \q
@@ -46,7 +46,7 @@ GRANT ALL PRIVILEGES ON DATABASE teslaguard TO teslaguard;
 ### 3. Vérifier la connexion
 
 ```bash
-psql -U teslaguard -d teslaguard -h localhost
+psql -U sentryguard -d sentryguard -h localhost
 # Si la connexion réussit, tapez \q pour quitter
 ```
 
@@ -57,16 +57,16 @@ psql -U teslaguard -d teslaguard -h localhost
 Créez un fichier `apps/api/.env` basé sur `apps/api/env.example` :
 
 ```env
-# Configuration TeslaGuard API
+# Configuration SentryGuard API
 PORT=3000
 WEBAPP_URL=http://localhost:4200
 
 # Database Configuration
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
-DATABASE_USER=teslaguard
+DATABASE_USER=sentryguard
 DATABASE_PASSWORD=your_secure_password
-DATABASE_NAME=teslaguard
+DATABASE_NAME=sentryguard
 DATABASE_LOGGING=false
 
 # Security
@@ -114,7 +114,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 2. Envoyez `/newbot`
 3. Suivez les instructions pour nommer votre bot
 4. Copiez le token fourni dans `TELEGRAM_BOT_TOKEN`
-5. Notez le username du bot (ex: @TeslaGuardBot) dans `TELEGRAM_BOT_USERNAME`
+5. Notez le username du bot (ex: @SentryGuardBot) dans `TELEGRAM_BOT_USERNAME`
 
 ### 2. Configurer le bot
 
@@ -124,11 +124,11 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 # Entrez : "Receive real-time alerts from your Tesla vehicle"
 
 /setabouttext @YourBotUsername
-# Entrez : "TeslaGuard Bot - Tesla Vehicle Security Monitoring"
+# Entrez : "SentryGuard Bot - Tesla Vehicle Security Monitoring"
 
 /setcommands @YourBotUsername
 # Entrez :
-start - Link your TeslaGuard account
+start - Link your SentryGuard account
 status - Check connection status
 help - Show available commands
 ```
@@ -216,7 +216,7 @@ curl http://localhost:3001/auth/stats
 ### 2. Vérifier la base de données
 
 ```bash
-psql -U teslaguard -d teslaguard -h localhost
+psql -U sentryguard -d sentryguard -h localhost
 
 # Dans psql, vérifier les tables :
 \dt
@@ -293,11 +293,11 @@ npx nx test webapp
 
 ```bash
 # Réinitialiser complètement la base de données
-psql -U teslaguard -d teslaguard -h localhost
+psql -U sentryguard -d sentryguard -h localhost
 
 DROP SCHEMA public CASCADE;
 CREATE SCHEMA public;
-GRANT ALL ON SCHEMA public TO teslaguard;
+GRANT ALL ON SCHEMA public TO sentryguard;
 \q
 
 # Redémarrer l'API pour recréer les tables (synchronize: true en dev)
@@ -322,12 +322,12 @@ npx nx serve api
 
 ```bash
 # Vérifier que PostgreSQL accepte les connexions
-psql -U teslaguard -d teslaguard -h localhost
+psql -U sentryguard -d sentryguard -h localhost
 
 # Si erreur "role does not exist", recréer l'utilisateur
 sudo -u postgres psql
-CREATE USER teslaguard WITH PASSWORD 'password';
-GRANT ALL PRIVILEGES ON DATABASE teslaguard TO teslaguard;
+CREATE USER sentryguard WITH PASSWORD 'password';
+GRANT ALL PRIVILEGES ON DATABASE sentryguard TO sentryguard;
 ```
 
 ### La webapp ne se connecte pas à l'API
@@ -348,7 +348,7 @@ npx nx build api
 # Déployez avec PM2, Docker, ou votre solution préférée
 
 # Exemple PM2
-pm2 start apps/api/dist/main.js --name "teslaguard-api"
+pm2 start apps/api/dist/main.js --name "sentryguard-api"
 ```
 
 ### WebApp
@@ -380,7 +380,7 @@ N'oubliez pas de mettre à jour :
 
 - [API README](./apps/api/README.md)
 - [WebApp README](./apps/webapp/README.md)
-- [Architecture Plan](./teslaguard-seo-webapp.plan.md)
+- [Architecture Plan](./sentryguard-seo-webapp.plan.md)
 
 ## 🆘 Support
 

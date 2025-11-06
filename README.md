@@ -1,8 +1,8 @@
-# TeslaGuard
+# SentryGuard
 
 **Real-time Tesla vehicle monitoring and security alerts via Telegram**
 
-TeslaGuard is a comprehensive security monitoring solution for Tesla vehicles. It tracks your vehicle's Sentry Mode status and sends instant Telegram notifications when suspicious activity is detected.
+SentryGuard is a comprehensive security monitoring solution for Tesla vehicles. It tracks your vehicle's Sentry Mode status and sends instant Telegram notifications when suspicious activity is detected.
 
 ## ✨ Features
 
@@ -50,14 +50,14 @@ This is an Nx monorepo containing:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/TeslaGuard.git
-cd TeslaGuard
+git clone https://github.com/yourusername/SentryGuard.git
+cd SentryGuard
 
 # Install dependencies
 yarn install
 
 # Setup PostgreSQL database
-createdb teslaguard
+createdb sentryguard
 
 # Configure environment variables
 cp apps/api/env.example apps/api/.env
@@ -139,7 +139,7 @@ npx nx lint webapp
 ## 📊 Project Structure
 
 ```
-TeslaGuard/
+SentryGuard/
 ├── apps/
 │   ├── api/                    # NestJS Backend
 │   │   ├── src/
@@ -199,7 +199,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## ⚠️ Disclaimer
 
-TeslaGuard is not affiliated with, endorsed by, or connected to Tesla, Inc. 
+SentryGuard is not affiliated with, endorsed by, or connected to Tesla, Inc. 
 Tesla and the Tesla logo are trademarks of Tesla, Inc.
 
 Use this software at your own risk. The authors are not responsible for any damage or issues that may arise from using this software.

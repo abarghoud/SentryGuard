@@ -1,5 +1,5 @@
 /**
- * TeslaGuard API Server
+ * SentryGuard API Server
  * Serveur API pour la gestion des alertes Tesla via ZMQ
  */
 
