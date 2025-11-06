@@ -37,7 +37,7 @@ function ScopesFixContent() {
             {t('Permission Update Required')}
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            {t('TeslaGuard needs additional permissions to work properly')}
+            {t('SentryGuard needs additional permissions to work properly')}
           </p>
         </div>
 

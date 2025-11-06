@@ -93,7 +93,7 @@ export default function DashboardLayout({
                     <path d="M12 5.362l2.475-3.026h-4.95L12 5.362zm-2.475 4.07L7.05 6.406 2.475 11.93h7.05v-2.5zm4.95 0v2.5h7.05l-4.575-5.525-2.475 3.025zM12 14.407l2.475 3.025 2.475-3.025H12zm-6.525-2.407L2 19.594h9V12H5.475zm13.05 0H14v7.594h9L19.525 12z" />
                   </svg>
                   <span className="text-xl font-bold text-gray-900 dark:text-white">
-                    {t('TeslaGuard')}
+                    {t('SentryGuard')}
                   </span>
                 </Link>
               </div>

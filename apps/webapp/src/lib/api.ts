@@ -1,5 +1,5 @@
 /**
- * JWT-based API client for TeslaGuard
+ * JWT-based API client for SentryGuard
  * All authenticated requests use JWT tokens via Authorization header
  */
 

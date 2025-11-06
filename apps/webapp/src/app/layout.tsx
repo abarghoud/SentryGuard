@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import I18nProvider from '../components/I18nProvider';
 
 export const metadata: Metadata = {
-  title: 'TeslaGuard - Protect Your Tesla',
+  title: 'SentryGuard - Protect Your Tesla',
   description:
     'Monitor and protect your Tesla vehicle with real-time alerts and telemetry',
   keywords: [
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     'Telemetry',
   ],
   openGraph: {
-    title: 'TeslaGuard - Protect Your Tesla',
+    title: 'SentryGuard - Protect Your Tesla',
     description:
       'Monitor and protect your Tesla vehicle with real-time alerts and telemetry',
     type: 'website',

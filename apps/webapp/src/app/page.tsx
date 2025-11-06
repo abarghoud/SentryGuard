@@ -19,7 +19,7 @@ export default function HomePage() {
             >
               <path d="M12 5.362l2.475-3.026h-4.95L12 5.362zm-2.475 4.07L7.05 6.406 2.475 11.93h7.05v-2.5zm4.95 0v2.5h7.05l-4.575-5.525-2.475 3.025zM12 14.407l2.475 3.025 2.475-3.025H12zm-6.525-2.407L2 19.594h9V12H5.475zm13.05 0H14v7.594h9L19.525 12z" />
             </svg>
-            <h1 className="text-2xl font-bold">{t('TeslaGuard')}</h1>
+            <h1 className="text-2xl font-bold">{t('SentryGuard')}</h1>
           </div>
           <div className="flex items-center gap-4">
             <LanguageSwitcher />
@@ -50,7 +50,7 @@ export default function HomePage() {
           </p>
           <p className="text-lg text-gray-600 mb-12 max-w-2xl mx-auto">
             {t(
-              "TeslaGuard monitors your vehicle's Sentry Mode and sends instant Telegram alerts when suspicious activity is detected. Configure telemetry, track your vehicle, and stay informed 24/7."
+              "SentryGuard monitors your vehicle's Sentry Mode and sends instant Telegram alerts when suspicious activity is detected. Configure telemetry, track your vehicle, and stay informed 24/7."
             )}
           </p>
 
@@ -145,11 +145,11 @@ export default function HomePage() {
       <div className="container mx-auto px-6 py-12">
         <div className="max-w-3xl mx-auto text-center">
           <h3 className="text-2xl font-semibold mb-4 text-gray-600">
-            {t('Support TeslaGuard')}
+            {t('Support SentryGuard')}
           </h3>
           <p className="text-gray-600 mb-4">
             {t(
-              'TeslaGuard is a non-profit, open-source project built by the community for Tesla owners. It depends on donations to cover server and development costs.'
+              'SentryGuard is a non-profit, open-source project built by the community for Tesla owners. It depends on donations to cover server and development costs.'
             )}
           </p>
           <p className="text-gray-600 text-sm mb-6">
@@ -164,7 +164,7 @@ export default function HomePage() {
       <footer className="container mx-auto px-6 py-8 border-t border-gray-300">
         <div className="text-center text-gray-700 text-sm">
           <p>
-            {t('© {{year}} TeslaGuard. All rights reserved.', {
+            {t('© {{year}} SentryGuard. All rights reserved.', {
               year: new Date().getFullYear(),
             })}
           </p>
@@ -175,7 +175,7 @@ export default function HomePage() {
           </p>
           <p className="mt-2">
             {t(
-              'TeslaGuard is a non-profit, open-source project developed by the community for Tesla owners.'
+              'SentryGuard is a non-profit, open-source project developed by the community for Tesla owners.'
             )}
           </p>
         </div>
@@ -187,7 +187,7 @@ export default function HomePage() {
         src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js"
         data-id="sentryguardorg"
         data-description="Support me on Buy me a coffee!"
-        data-message={t("TeslaGuard depends on donations to operate. Your support keeps us running! ☕")}
+        data-message={t("SentryGuard depends on donations to operate. Your support keeps us running! ☕")}
         data-color="#b91c1c"
         data-position="Right"
         data-x_margin="18"

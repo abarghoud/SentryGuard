@@ -42,7 +42,7 @@ export class AuthController {
     return {
       url,
       state,
-      message: 'Use this URL to grant additional permissions to TeslaGuard',
+      message: 'Use this URL to grant additional permissions to SentryGuard',
     };
   }
 

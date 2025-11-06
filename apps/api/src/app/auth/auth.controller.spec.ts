@@ -66,7 +66,7 @@ describe('AuthController', () => {
 
       expect(result.url).toBe(mockUrl);
       expect(result.state).toBe(mockState);
-      expect(result.message).toBe('Use this URL to grant additional permissions to TeslaGuard');
+      expect(result.message).toBe('Use this URL to grant additional permissions to SentryGuard');
       expect(authService.generateScopeChangeUrl).toHaveBeenCalledWith('en', undefined);
     });
 
@@ -85,7 +85,7 @@ describe('AuthController', () => {
 
       expect(result.url).toBe(mockUrl);
       expect(result.state).toBe(mockState);
-      expect(result.message).toBe('Use this URL to grant additional permissions to TeslaGuard');
+      expect(result.message).toBe('Use this URL to grant additional permissions to SentryGuard');
       expect(authService.generateScopeChangeUrl).toHaveBeenCalledWith('en', ['vehicle_device_data', 'offline_access']);
     });
 
