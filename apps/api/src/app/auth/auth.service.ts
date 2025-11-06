@@ -13,6 +13,7 @@ import * as https from 'https';
 import { decode } from 'jsonwebtoken';
 import { User } from '../../entities/user.entity';
 import { encrypt, decrypt } from '../../common/utils/crypto.util';
+import { normalizeTeslaLocale } from '../../common/utils/language.util';
 
 interface UserProfile {
   email?: string;
@@ -24,6 +25,7 @@ interface UserProfile {
 interface PendingState {
   state: string;
   created_at: Date;
+  userLocale?: 'en' | 'fr';
 }
 
 @Injectable()
@@ -69,7 +71,7 @@ export class AuthService implements OnModuleDestroy {
   /**
    * Generates a Tesla OAuth login URL
    */
-  generateLoginUrl(): { url: string; state: string } {
+  generateLoginUrl(userLocale: 'en' | 'fr' = 'en'): { url: string; state: string } {
     const state = crypto.randomBytes(32).toString('hex');
     const clientId = process.env.TESLA_CLIENT_ID;
     const redirectUri =
@@ -79,15 +81,16 @@ export class AuthService implements OnModuleDestroy {
       throw new Error('TESLA_CLIENT_ID not defined');
     }
 
-    // Store state temporarily
+    // Store state temporarily with user locale
     this.pendingStates.set(state, {
       state,
       created_at: new Date(),
+      userLocale,
     });
 
     const params = new URLSearchParams({
       client_id: clientId,
-      locale: 'fr-FR',
+      locale: normalizeTeslaLocale(userLocale),
       prompt: 'login',
       redirect_uri: redirectUri,
       response_type: 'code',
@@ -98,14 +101,11 @@ export class AuthService implements OnModuleDestroy {
 
     const url = `https://auth.tesla.com/oauth2/v3/authorize?${params.toString()}`;
 
-    this.logger.log(`🔐 Login URL generated with state: ${state}`);
+    this.logger.log(`🔐 Login URL generated with state: ${state} and locale: ${userLocale}`);
     return { url, state };
   }
 
-  /**
-    * Generates a Tesla OAuth scope change URL for missing permissions
-    */
-   generateScopeChangeUrl(missingScopes?: string[]): { url: string; state: string } {
+  generateScopeChangeUrl(userLocale: 'en' | 'fr' = 'en', missingScopes?: string[]): { url: string; state: string } {
     const state = crypto.randomBytes(32).toString('hex');
     const clientId = process.env.TESLA_CLIENT_ID;
     const redirectUri =
@@ -115,16 +115,16 @@ export class AuthService implements OnModuleDestroy {
       throw new Error('TESLA_CLIENT_ID not defined');
     }
 
-    // Store state temporarily
     this.pendingStates.set(state, {
       state,
       created_at: new Date(),
+      userLocale,
     });
 
     const params = new URLSearchParams({
       client_id: clientId,
-      locale: 'fr-FR',
-      prompt_missing_scopes: 'true', // Tesla-specific parameter for scope changes
+      locale: normalizeTeslaLocale(userLocale),
+      prompt_missing_scopes: 'true',
       redirect_uri: redirectUri,
       response_type: 'code',
       show_keypair_step: 'true',
@@ -134,7 +134,7 @@ export class AuthService implements OnModuleDestroy {
 
     const url = `https://auth.tesla.com/oauth2/v3/authorize?${params.toString()}`;
 
-    this.logger.log(`🔄 Scope change URL generated with state: ${state}${missingScopes ? ` (missing: ${missingScopes.join(', ')})` : ''}`);
+    this.logger.log(`🔄 Scope change URL generated with state: ${state} and locale: ${userLocale}${missingScopes ? ` (missing: ${missingScopes.join(', ')})` : ''}`);
     return { url, state };
   }
 
@@ -206,22 +206,21 @@ export class AuthService implements OnModuleDestroy {
     return { token, expiresAt };
   }
 
-  /**
-   * Exchanges the authorization code for tokens
-   */
   async exchangeCodeForTokens(
     code: string,
     state: string
   ): Promise<{ jwt: string; userId: string; access_token: string }> {
-    // Validate state
     if (!this.validateState(state)) {
       throw new UnauthorizedException('Invalid or expired state');
     }
 
+    const pendingState = this.pendingStates.get(state);
+    const userLocale = pendingState?.userLocale || 'en';
+
     try {
       const tokens = await this.exchangeCodeForTeslaTokens(code);
       const profile = await this.fetchUserProfileSafely(tokens.access_token);
-      const userId = await this.createOrUpdateUser(tokens, profile);
+      const userId = await this.createOrUpdateUser(tokens, profile, userLocale);
 
       const savedUser = await this.userRepository.findOne({
         where: { userId },
@@ -336,18 +335,14 @@ export class AuthService implements OnModuleDestroy {
     }
   }
 
-  /**
-   * Creates or updates user in database
-   */
   private async createOrUpdateUser(
     tokens: { access_token: string; refresh_token: string; expiresAt: Date },
-    profile?: UserProfile
+    profile: UserProfile | undefined,
+    userLocale: 'en' | 'fr'
   ): Promise<string> {
-    // Encrypt tokens before storing
     const encryptedAccessToken = encrypt(tokens.access_token);
     const encryptedRefreshToken = encrypt(tokens.refresh_token);
 
-    // Check if user already exists by email
     const existingUser = await this.userRepository.findOne({
       where: { email: profile?.email },
     });
@@ -355,7 +350,7 @@ export class AuthService implements OnModuleDestroy {
     if (existingUser) {
       return await this.updateExistingUser(existingUser, tokens, profile, encryptedAccessToken, encryptedRefreshToken);
     } else {
-      return await this.createNewUser(tokens, profile, encryptedAccessToken, encryptedRefreshToken);
+      return await this.createNewUser(tokens, profile, encryptedAccessToken, encryptedRefreshToken, userLocale);
     }
   }
 
@@ -392,18 +387,15 @@ export class AuthService implements OnModuleDestroy {
     return userId;
   }
 
-  /**
-   * Creates a new user
-   */
   private async createNewUser(
     tokens: { expiresAt: Date },
     profile: UserProfile | undefined,
     encryptedAccessToken: string,
-    encryptedRefreshToken: string
+    encryptedRefreshToken: string,
+    userLocale: 'en' | 'fr'
   ): Promise<string> {
     const userId = crypto.randomBytes(16).toString('hex');
 
-    // Generate JWT token
     const jwtData = await this.generateJwtToken(
       userId,
       profile?.email || ''
@@ -419,11 +411,12 @@ export class AuthService implements OnModuleDestroy {
       expires_at: tokens.expiresAt,
       jwt_token: jwtData.token,
       jwt_expires_at: tokens.expiresAt,
+      preferred_language: userLocale,
     });
 
     await this.userRepository.save(newUser);
 
-    this.logger.log(`✅ New user created in database: ${userId}`);
+    this.logger.log(`✅ New user created in database: ${userId} with locale: ${userLocale}`);
     this.logger.log(
       `🔐 JWT token generated, expires at: ${jwtData.expiresAt.toISOString()}`
     );

@@ -1,4 +1,5 @@
 {
+  "🧪 Test message from TeslaGuard API": "🧪 Message de test envoyé depuis SentryGuard.",
   "Alarm State": "État de l'alarme",
   "An error occurred": "❌ Une erreur s'est produite. Veuillez réessayer plus tard.",
   "Available commands": "📖 Commandes disponibles :\n\n/start - Démarrer et lier votre compte\n/status - Vérifier l'état du lien\n/help - Afficher l'aide",

@@ -7,6 +7,7 @@ import {
   TelegramConfig,
   TelegramLinkStatus,
 } from '../../entities/telegram-config.entity';
+import { UserLanguageService } from '../user/user-language.service';
 
 @Injectable()
 export class TelegramBotService implements OnModuleInit {
@@ -16,7 +17,8 @@ export class TelegramBotService implements OnModuleInit {
 
   constructor(
     @InjectRepository(TelegramConfig)
-    private readonly telegramConfigRepository: Repository<TelegramConfig>
+    private readonly telegramConfigRepository: Repository<TelegramConfig>,
+    private readonly userLanguageService: UserLanguageService
   ) {}
 
   /**
@@ -33,37 +35,39 @@ export class TelegramBotService implements OnModuleInit {
     try {
       this.bot = new Telegraf(this.botToken);
 
-      // Commande /start avec deep linking
       this.bot.start(async (ctx) => {
         const args = ctx.message.text.split(' ');
 
         if (args.length > 1) {
-          // Token fourni dans le deep link
           const linkToken = args[1];
           await this.handleLinkToken(ctx, linkToken);
         } else {
-          // Message par défaut
-          await ctx.reply(i18n.t('Welcome to TeslaGuard Bot'));
+          const lng = await this.getUserLanguageFromChatId(
+            ctx.chat.id.toString()
+          );
+          await ctx.reply(i18n.t('Welcome to TeslaGuard Bot', { lng }));
         }
       });
 
-      // Commande /status pour vérifier l'état de la liaison
       this.bot.command('status', async (ctx) => {
         const chatId = ctx.chat.id.toString();
+        const lng = await this.getUserLanguageFromChatId(chatId);
         const config = await this.telegramConfigRepository.findOne({
           where: { chat_id: chatId, status: TelegramLinkStatus.LINKED },
         });
 
         if (config) {
-          await ctx.reply(i18n.t('Your account is linked and active!'));
+          await ctx.reply(i18n.t('Your account is linked and active!', { lng }));
         } else {
-          await ctx.reply(i18n.t('No account linked'));
+          await ctx.reply(i18n.t('No account linked', { lng }));
         }
       });
 
-      // Commande /help
       this.bot.help(async (ctx) => {
-        await ctx.reply(i18n.t('Available commands'));
+        const lng = await this.getUserLanguageFromChatId(
+          ctx.chat.id.toString()
+        );
+        await ctx.reply(i18n.t('Available commands', { lng }));
       });
 
       // Lancer le bot en mode polling (non-bloquant)
@@ -88,33 +92,31 @@ export class TelegramBotService implements OnModuleInit {
     }
   }
 
-  /**
-   * Gère le token de liaison envoyé via /start
-   */
   private async handleLinkToken(
     ctx: Context,
     linkToken: string
   ): Promise<void> {
     try {
-      // Rechercher le token dans la base de données
       const config = await this.telegramConfigRepository.findOne({
         where: { link_token: linkToken, status: TelegramLinkStatus.PENDING },
       });
 
+      const lng = config
+        ? await this.userLanguageService.getUserLanguage(config.userId)
+        : 'en';
+
       if (!config) {
-        await ctx.reply(i18n.t('Invalid or expired token'));
+        await ctx.reply(i18n.t('Invalid or expired token', { lng }));
         return;
       }
 
-      // Vérifier si le token n'est pas expiré
       if (config.expires_at && new Date() > config.expires_at) {
         config.status = TelegramLinkStatus.EXPIRED;
         await this.telegramConfigRepository.save(config);
-        await ctx.reply(i18n.t('This token has expired'));
+        await ctx.reply(i18n.t('This token has expired', { lng }));
         return;
       }
 
-      // Associer le chat_id
       const chatId = ctx.chat.id.toString();
       config.chat_id = chatId;
       config.status = TelegramLinkStatus.LINKED;
@@ -126,7 +128,7 @@ export class TelegramBotService implements OnModuleInit {
       );
 
       await ctx.reply(
-        i18n.t('Your TeslaGuard account has been linked successfully!')
+        i18n.t('Your TeslaGuard account has been linked successfully!', { lng })
       );
     } catch (error) {
       this.logger.error('❌ Erreur lors de la liaison du token:', error);
@@ -173,9 +175,6 @@ export class TelegramBotService implements OnModuleInit {
     }
   }
 
-  /**
-   * Récupère le bot username depuis l'API
-   */
   async getBotUsername(): Promise<string | null> {
     if (!this.bot) {
       return process.env.TELEGRAM_BOT_USERNAME || null;
@@ -190,6 +189,27 @@ export class TelegramBotService implements OnModuleInit {
         error
       );
       return process.env.TELEGRAM_BOT_USERNAME || null;
+    }
+  }
+
+  private async getUserLanguageFromChatId(
+    chatId: string
+  ): Promise<'en' | 'fr'> {
+    try {
+      const config = await this.telegramConfigRepository.findOne({
+        where: { chat_id: chatId, status: TelegramLinkStatus.LINKED },
+      });
+
+      if (!config) {
+        return 'en';
+      }
+
+      return await this.userLanguageService.getUserLanguage(config.userId);
+    } catch (error) {
+      this.logger.warn(
+        `⚠️ Unable to get user language for chatId ${chatId}, defaulting to 'en'`
+      );
+      return 'en';
     }
   }
 }

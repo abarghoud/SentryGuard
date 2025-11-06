@@ -1,8 +1,9 @@
 'use client';
 
-import { createInstance, Resource } from 'i18next';
+import { createInstance, Resource, i18n as I18n } from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import { useEffect, useState } from 'react';
+import { getUserLanguage, hasToken } from '../lib/api';
 
 const resources: Resource = {
   en: {
@@ -13,7 +14,7 @@ const resources: Resource = {
   },
 };
 
-export const i18n = createInstance({
+export const i18n: I18n = createInstance({
   lng: 'en',
   fallbackLng: 'en',
   defaultNS: 'common',
@@ -29,16 +30,25 @@ export default function I18nProvider({ children }: I18nProviderProps) {
   const [currentLng, setCurrentLng] = useState('en');
 
   useEffect(() => {
-    i18n.init().then(() => {
-      const browserLang = navigator.language.split('-')[0];
-      if (browserLang === 'fr') {
-        i18n.changeLanguage('fr');
-        document.documentElement.lang = 'fr';
-        setCurrentLng('fr');
+    i18n.init().then(async () => {
+      let languageToUse = 'en';
+
+      if (hasToken()) {
+        try {
+          const response = await getUserLanguage();
+          languageToUse = response.language;
+        } catch {
+          const browserLang = navigator.language.split('-')[0];
+          languageToUse = browserLang === 'fr' ? 'fr' : 'en';
+        }
       } else {
-        document.documentElement.lang = 'en';
-        setCurrentLng('en');
+        const browserLang = navigator.language.split('-')[0];
+        languageToUse = browserLang === 'fr' ? 'fr' : 'en';
       }
+
+      i18n.changeLanguage(languageToUse);
+      document.documentElement.lang = languageToUse;
+      setCurrentLng(languageToUse);
       setIsLoaded(true);
     });
 

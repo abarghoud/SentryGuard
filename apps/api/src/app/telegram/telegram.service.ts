@@ -1,19 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 import i18n from '../../i18n';
 import { TelegramBotService } from './telegram-bot.service';
+import { UserLanguageService } from '../user/user-language.service';
 
 @Injectable()
 export class TelegramService {
   private readonly logger = new Logger(TelegramService.name);
 
-  constructor(private readonly telegramBotService: TelegramBotService) {}
+  constructor(
+    private readonly telegramBotService: TelegramBotService,
+    private readonly userLanguageService: UserLanguageService
+  ) {}
 
-  /**
-   * Envoie une alerte Sentry à un utilisateur spécifique
-   */
   async sendSentryAlert(userId: string, alertInfo: any) {
     try {
-      const message = this.formatSentryAlertMessage(alertInfo);
+      const userLanguage = await this.userLanguageService.getUserLanguage(
+        userId
+      );
+      const message = this.formatSentryAlertMessage(alertInfo, userLanguage);
       const success = await this.telegramBotService.sendMessageToUser(
         userId,
         message
@@ -67,12 +71,12 @@ export class TelegramService {
     }
   }
 
-  /**
-   * Formate un message d'alerte Sentry
-   */
-  private formatSentryAlertMessage(alertInfo: any): string {
+  private formatSentryAlertMessage(
+    alertInfo: any,
+    lng: 'en' | 'fr'
+  ): string {
     const timestamp = new Date(alertInfo.timestamp).toLocaleString('en-US', {
-      timeZone: 'America/New_York', // or keep as is, but change to English
+      timeZone: 'America/New_York',
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -82,20 +86,20 @@ export class TelegramService {
     });
 
     return `
-🚨 <b>${i18n.t('TESLA SENTRY ALERT')}</b> 🚨
+🚨 <b>${i18n.t('TESLA SENTRY ALERT', { lng })}</b> 🚨
 
-🚗 <b>${i18n.t('Vehicle')}:</b> ${alertInfo.vin}
-⏰ <b>${i18n.t('Time')}:</b> ${timestamp}
-📍 <b>${i18n.t('Location')}:</b> ${
-      alertInfo.location || i18n.t('Not available')
+🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${alertInfo.vin}
+⏰ <b>${i18n.t('Time', { lng })}:</b> ${timestamp}
+📍 <b>${i18n.t('Location', { lng })}:</b> ${
+      alertInfo.location || i18n.t('Not available', { lng })
     }
-🔋 <b>${i18n.t('Battery')}:</b> ${alertInfo.batteryLevel || i18n.t('N/A')}%
-🚗 <b>${i18n.t('Speed')}:</b> ${alertInfo.vehicleSpeed || '0'} km/h
-🔔 <b>${i18n.t('Sentry Mode')}:</b> ${alertInfo.sentryMode || 'Aware'}
-📱 <b>${i18n.t('Display')}:</b> ${alertInfo.centerDisplay || 'Unknown'}
-🚨 <b>${i18n.t('Alarm State')}:</b> ${alertInfo.alarmState || 'Active'}
+🔋 <b>${i18n.t('Battery', { lng })}:</b> ${alertInfo.batteryLevel || i18n.t('N/A', { lng })}%
+🚗 <b>${i18n.t('Speed', { lng })}:</b> ${alertInfo.vehicleSpeed || '0'} km/h
+🔔 <b>${i18n.t('Sentry Mode', { lng })}:</b> ${alertInfo.sentryMode || 'Aware'}
+📱 <b>${i18n.t('Display', { lng })}:</b> ${alertInfo.centerDisplay || 'Unknown'}
+🚨 <b>${i18n.t('Alarm State', { lng })}:</b> ${alertInfo.alarmState || 'Active'}
 
-<i>${i18n.t('Sentry Mode activated - Check your vehicle!')}</i>
+<i>${i18n.t('Sentry Mode activated - Check your vehicle!', { lng })}</i>
     `.trim();
   }
 }

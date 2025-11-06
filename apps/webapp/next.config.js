@@ -13,8 +13,6 @@ const nextConfig = {
   images: {
     domains: ['img.buymeacoffee.com'],
   },
-  // Note: i18n config is for Pages Router only, not App Router
-  // We handle i18n client-side with react-i18next
 };
 
 const plugins = [

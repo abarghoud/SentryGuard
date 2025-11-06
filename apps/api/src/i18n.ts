@@ -17,7 +17,7 @@ const resources = {
 
 i18n.init({
   lng: 'en',
-  fallbackLng: 'fr',
+  fallbackLng: 'en',
   defaultNS: 'common',
   resources,
 });

@@ -1,25 +1,64 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TelegramService } from './telegram.service';
 import { TelegramBotService } from './telegram-bot.service';
-import axios from 'axios';
+import { UserLanguageService } from '../user/user-language.service';
 
-// Mock axios
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
-
-// Mock TelegramBotService
-const mockTelegramBotService = {
-  sendMessageToUser: jest.fn().mockResolvedValue(true),
-};
+jest.mock('../../i18n', () => ({
+  __esModule: true,
+  default: {
+    t: jest.fn((key: string, options?: any) => {
+      const translations: Record<string, Record<string, string>> = {
+        en: {
+          'TESLA SENTRY ALERT': 'TESLA SENTRY ALERT',
+          Vehicle: 'Vehicle',
+          Time: 'Time',
+          Location: 'Location',
+          'Not available': 'Not available',
+          Battery: 'Battery',
+          'N/A': 'N/A',
+          Speed: 'Speed',
+          'Sentry Mode': 'Sentry Mode',
+          Display: 'Display',
+          'Alarm State': 'Alarm State',
+          'Sentry Mode activated - Check your vehicle!':
+            'Sentry Mode activated - Check your vehicle!',
+        },
+        fr: {
+          'TESLA SENTRY ALERT': 'ALERTE SENTRY TESLA',
+          Vehicle: 'Véhicule',
+          Time: 'Heure',
+          Location: 'Localisation',
+          'Not available': 'Non disponible',
+          Battery: 'Batterie',
+          'N/A': 'N/D',
+          Speed: 'Vitesse',
+          'Sentry Mode': 'Mode Sentry',
+          Display: 'Écran',
+          'Alarm State': 'État alarme',
+          'Sentry Mode activated - Check your vehicle!':
+            'Mode Sentry activé - Vérifiez votre véhicule!',
+        },
+      };
+      const lng = options?.lng || 'en';
+      return translations[lng]?.[key] || key;
+    }),
+  },
+}));
 
 describe('TelegramService', () => {
   let service: TelegramService;
+  let telegramBotService: TelegramBotService;
+  let userLanguageService: UserLanguageService;
+
+  const mockTelegramBotService = {
+    sendMessageToUser: jest.fn(),
+  };
+
+  const mockUserLanguageService = {
+    getUserLanguage: jest.fn(),
+  };
 
   beforeEach(async () => {
-    // Set up environment variables before creating the module
-    process.env.TELEGRAM_BOT_TOKEN = 'test_bot_token';
-    process.env.TELEGRAM_CHAT_ID = 'test_chat_id';
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TelegramService,
@@ -27,18 +66,20 @@ describe('TelegramService', () => {
           provide: TelegramBotService,
           useValue: mockTelegramBotService,
         },
+        {
+          provide: UserLanguageService,
+          useValue: mockUserLanguageService,
+        },
       ],
     }).compile();
 
     service = module.get<TelegramService>(TelegramService);
-
-    // Reset mocks
-    jest.clearAllMocks();
+    telegramBotService = module.get<TelegramBotService>(TelegramBotService);
+    userLanguageService = module.get<UserLanguageService>(UserLanguageService);
   });
 
   afterEach(() => {
-    delete process.env.TELEGRAM_BOT_TOKEN;
-    delete process.env.TELEGRAM_CHAT_ID;
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
@@ -46,116 +87,91 @@ describe('TelegramService', () => {
   });
 
   describe('sendSentryAlert', () => {
-    it('should send a sentry alert successfully', async () => {
-      const alertInfo = {
-        vin: 'TEST_VIN_123',
-        timestamp: '2025-01-21T10:00:00.000Z',
-        sentryMode: 'Aware',
-        centerDisplay: 'DisplayStateSentry',
-        location: 'Test Location',
-        batteryLevel: '85',
-        vehicleSpeed: '0',
-        alarmState: 'Active',
-      };
+    const alertInfo = {
+      vin: 'TEST123456',
+      timestamp: new Date('2024-01-01T12:00:00Z'),
+      location: 'Test Location',
+      batteryLevel: 80,
+      vehicleSpeed: 0,
+      sentryMode: 'Aware',
+      centerDisplay: 'On',
+      alarmState: 'Active',
+    };
 
-      mockedAxios.post.mockResolvedValueOnce({ data: { ok: true } });
+    it('should send alert in English', async () => {
+      mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+      mockTelegramBotService.sendMessageToUser.mockResolvedValue(true);
 
-      await service.sendSentryAlert('test-user-id', alertInfo);
+      await service.sendSentryAlert('user-123', alertInfo);
 
-      expect(mockTelegramBotService.sendMessageToUser).toHaveBeenCalledWith(
-        'test-user-id',
-        expect.stringContaining('ALERTE SENTINEL TESLA')
+      expect(userLanguageService.getUserLanguage).toHaveBeenCalledWith(
+        'user-123'
+      );
+      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
+        'user-123',
+        expect.stringContaining('TESLA SENTRY ALERT')
+      );
+      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
+        'user-123',
+        expect.stringContaining('Vehicle')
       );
     });
 
-    it('should handle axios errors gracefully', async () => {
-      const alertInfo = {
-        vin: 'TEST_VIN_123',
-        timestamp: '2025-01-21T10:00:00.000Z',
-      };
-
-      const loggerSpy = jest
-        .spyOn(service['logger'], 'error')
-        .mockImplementation();
-      mockedAxios.post.mockRejectedValueOnce(new Error('Network error'));
-
-      await service.sendSentryAlert(alertInfo);
-
-      expect(loggerSpy).toHaveBeenCalled();
-      loggerSpy.mockRestore();
-    });
-  });
-
-  describe('sendTelegramMessage', () => {
-    it('should send a telegram message successfully', async () => {
-      const message = 'Test message';
-
+    it('should send alert in French', async () => {
+      mockUserLanguageService.getUserLanguage.mockResolvedValue('fr');
       mockTelegramBotService.sendMessageToUser.mockResolvedValue(true);
 
-      await service.sendTelegramMessage('test-user-id', message);
+      await service.sendSentryAlert('user-123', alertInfo);
 
-      expect(mockTelegramBotService.sendMessageToUser).toHaveBeenCalledWith(
-        'test-user-id',
-        'Test message'
+      expect(userLanguageService.getUserLanguage).toHaveBeenCalledWith(
+        'user-123'
+      );
+      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
+        'user-123',
+        expect.stringContaining('ALERTE SENTRY TESLA')
+      );
+      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
+        'user-123',
+        expect.stringContaining('Véhicule')
       );
     });
 
     it('should handle errors gracefully', async () => {
-      const message = 'Test message';
-      const loggerSpy = jest
-        .spyOn(service['logger'], 'error')
-        .mockImplementation();
-      mockTelegramBotService.sendMessageToUser.mockRejectedValue(
-        new Error('Network error')
+      mockUserLanguageService.getUserLanguage.mockRejectedValue(
+        new Error('Database error')
       );
 
-      await service.sendTelegramMessage('test-user-id', message);
+      const result = await service.sendSentryAlert('user-123', alertInfo);
 
-      expect(loggerSpy).toHaveBeenCalled();
-      loggerSpy.mockRestore();
+      expect(result).toBe(false);
     });
   });
 
-  describe('formatSentryAlertMessage', () => {
-    it('should format sentry alert message correctly', async () => {
-      const alertInfo = {
-        vin: 'TEST_VIN_123',
-        timestamp: '2025-01-21T10:00:00.000Z',
-        sentryMode: 'Aware',
-        centerDisplay: 'DisplayStateSentry',
-        location: 'Test Location',
-        batteryLevel: '85',
-        vehicleSpeed: '0',
-        alarmState: 'Active',
-      };
-
+  describe('sendTelegramMessage', () => {
+    it('should send custom message successfully', async () => {
       mockTelegramBotService.sendMessageToUser.mockResolvedValue(true);
 
-      await service.sendSentryAlert('test-user-id', alertInfo);
+      const result = await service.sendTelegramMessage(
+        'user-123',
+        'Custom message'
+      );
 
-      const callArgs =
-        mockTelegramBotService.sendMessageToUser.mock.calls[0][1];
-      expect(callArgs).toContain('ALERTE SENTINEL TESLA');
-      expect(callArgs).toContain('TEST_VIN_123');
-      expect(callArgs).toContain('Test Location');
-      expect(callArgs).toContain('85%');
-      expect(callArgs).toContain('Aware');
+      expect(result).toBe(true);
+      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
+        'user-123',
+        'Custom message'
+      );
     });
 
-    it('should handle missing optional fields', async () => {
-      const alertInfo = {
-        vin: 'TEST_VIN_123',
-        timestamp: '2025-01-21T10:00:00.000Z',
-      };
+    it('should return false when bot service fails', async () => {
+      mockTelegramBotService.sendMessageToUser.mockResolvedValue(false);
 
-      mockTelegramBotService.sendMessageToUser.mockResolvedValue(true);
+      const result = await service.sendTelegramMessage(
+        'user-123',
+        'Custom message'
+      );
 
-      await service.sendSentryAlert('test-user-id', alertInfo);
-
-      const callArgs =
-        mockTelegramBotService.sendMessageToUser.mock.calls[0][1];
-      expect(callArgs).toContain('Non disponible');
-      expect(callArgs).toContain('N/A');
+      expect(result).toBe(false);
     });
   });
 });

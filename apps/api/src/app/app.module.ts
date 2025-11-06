@@ -8,6 +8,7 @@ import { ZmqService } from './zmq/zmq.service';
 import { AuthModule } from './auth/auth.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 import { TelegramModule } from './telegram/telegram.module';
+import { UserModule } from './user/user.module';
 import { CloudflareThrottlerGuard } from '../common/guards/cloudflare-throttler.guard';
 import { getDatabaseConfig } from '../config/database.config';
 import { Vehicle } from '../entities/vehicle.entity';
@@ -20,9 +21,10 @@ import { User } from '../entities/user.entity';
     AuthModule,
     TelemetryModule,
     TelegramModule,
+    UserModule,
     ThrottlerModule.forRoot([{
-      ttl: parseInt(process.env.THROTTLE_TTL || '60000', 10),  // milliseconds
-      limit: parseInt(process.env.THROTTLE_LIMIT || '20', 10),  // requests
+      ttl: parseInt(process.env.THROTTLE_TTL || '60000', 10),
+      limit: parseInt(process.env.THROTTLE_LIMIT || '20', 10),
     }]),
   ],
   controllers: [AppController],

@@ -370,3 +370,23 @@ export async function cleanupExpiredTelegramTokens(): Promise<{
     method: 'POST',
   });
 }
+
+export interface UpdateLanguageResponse {
+  success: boolean;
+  language: string;
+}
+
+export async function getUserLanguage(): Promise<{ language: string }> {
+  return apiRequest('/user/language', {
+    method: 'GET',
+  });
+}
+
+export async function updateUserLanguage(
+  language: 'en' | 'fr'
+): Promise<UpdateLanguageResponse> {
+  return apiRequest('/user/language', {
+    method: 'PATCH',
+    body: JSON.stringify({ language }),
+  });
+}

@@ -62,12 +62,12 @@ describe('AuthController', () => {
         state: mockState,
       });
 
-      const result = controller.scopeChangeWithTesla();
+      const result = controller.scopeChangeWithTesla(undefined, undefined);
 
       expect(result.url).toBe(mockUrl);
       expect(result.state).toBe(mockState);
       expect(result.message).toBe('Use this URL to grant additional permissions to TeslaGuard');
-      expect(authService.generateScopeChangeUrl).toHaveBeenCalledWith(undefined);
+      expect(authService.generateScopeChangeUrl).toHaveBeenCalledWith('en', undefined);
     });
 
     it('should return a scope change URL with missing scopes', () => {
@@ -81,12 +81,12 @@ describe('AuthController', () => {
         state: mockState,
       });
 
-      const result = controller.scopeChangeWithTesla(missingScopes);
+      const result = controller.scopeChangeWithTesla(undefined, missingScopes);
 
       expect(result.url).toBe(mockUrl);
       expect(result.state).toBe(mockState);
       expect(result.message).toBe('Use this URL to grant additional permissions to TeslaGuard');
-      expect(authService.generateScopeChangeUrl).toHaveBeenCalledWith(['vehicle_device_data', 'offline_access']);
+      expect(authService.generateScopeChangeUrl).toHaveBeenCalledWith('en', ['vehicle_device_data', 'offline_access']);
     });
 
 

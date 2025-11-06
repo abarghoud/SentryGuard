@@ -42,6 +42,9 @@ export class User {
   @Column({ type: 'boolean', default: false })
   debug_messages!: boolean;
 
+  @Column({ type: 'varchar', length: 2, default: 'en' })
+  preferred_language!: string;
+
   @CreateDateColumn()
   created_at!: Date;
 

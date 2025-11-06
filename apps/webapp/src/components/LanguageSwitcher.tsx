@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { i18n } from './I18nProvider';
+import { updateUserLanguage, hasToken } from '../lib/api';
 
 export default function LanguageSwitcher() {
   const [currentLang, setCurrentLang] = useState('en');
@@ -19,9 +20,17 @@ export default function LanguageSwitcher() {
     };
   }, []);
 
-  const changeLanguage = (lng: string) => {
+  const changeLanguage = async (lng: string) => {
     i18n.changeLanguage(lng);
     document.documentElement.lang = lng;
+
+    if (hasToken()) {
+      try {
+        await updateUserLanguage(lng as 'en' | 'fr');
+      } catch (error) {
+        console.warn('Failed to update language on server:', error);
+      }
+    }
   };
 
   return (

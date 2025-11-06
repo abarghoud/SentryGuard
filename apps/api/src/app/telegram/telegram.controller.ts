@@ -19,6 +19,7 @@ import { TelegramBotService } from './telegram-bot.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { User } from '../../entities/user.entity';
+import i18n from '../../i18n';
 
 @Controller('telegram')
 @UseGuards(JwtAuthGuard)
@@ -179,7 +180,7 @@ export class TelegramController {
     const userId = user.userId;
 
     if (!message) {
-      message = '🧪 Test message from TeslaGuard API';
+      message = i18n.t('🧪 Test message from TeslaGuard API');
     }
 
     this.logger.log(`📤 Sending test message to: ${userId} (${user.email})`);
