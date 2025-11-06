@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import { User } from '../../entities/user.entity';
+import { extractPreferredLanguage } from '../../common/utils/language.util';
 
 @Controller('auth')
 export class AuthController {
@@ -10,15 +11,14 @@ export class AuthController {
 
   constructor(private readonly authService: AuthService) {}
 
-  /**
-   * Initiate Tesla OAuth login
-   * GET /auth/tesla/login
-   */
   @Get('tesla/login')
-  loginWithTesla(): { url: string; state: string; message: string } {
-    this.logger.log('🚀 New Tesla OAuth login request');
+  loginWithTesla(
+    @Headers('accept-language') acceptLanguage?: string
+  ): { url: string; state: string; message: string } {
+    const userLocale = extractPreferredLanguage(acceptLanguage);
+    this.logger.log(`🚀 New Tesla OAuth login request with locale: ${userLocale}`);
 
-    const { url, state } = this.authService.generateLoginUrl();
+    const { url, state } = this.authService.generateLoginUrl(userLocale);
 
     return {
       url,
@@ -27,19 +27,17 @@ export class AuthController {
     };
   }
 
-  /**
-   * Initiate Tesla OAuth scope change for missing permissions
-   * GET /auth/tesla/scope-change
-   */
   @Get('tesla/scope-change')
   scopeChangeWithTesla(
+    @Headers('accept-language') acceptLanguage?: string,
     @Query('missing') missing?: string
   ): { url: string; state: string; message: string } {
+    const userLocale = extractPreferredLanguage(acceptLanguage);
     const missingScopes = missing ? missing.split(',').map(s => s.trim()) : undefined;
 
-    this.logger.log(`🔄 New Tesla OAuth scope change request${missingScopes ? ` (missing: ${missingScopes.join(', ')})` : ''}`);
+    this.logger.log(`🔄 New Tesla OAuth scope change request with locale: ${userLocale}${missingScopes ? ` (missing: ${missingScopes.join(', ')})` : ''}`);
 
-    const { url, state } = this.authService.generateScopeChangeUrl(missingScopes);
+    const { url, state } = this.authService.generateScopeChangeUrl(userLocale, missingScopes);
 
     return {
       url,

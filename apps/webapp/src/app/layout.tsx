@@ -1,13 +1,22 @@
 import './global.css';
 import type { Metadata } from 'next';
+import I18nProvider from '../components/I18nProvider';
 
 export const metadata: Metadata = {
   title: 'TeslaGuard - Protect Your Tesla',
-  description: 'Monitor and protect your Tesla vehicle with real-time alerts and telemetry',
-  keywords: ['Tesla', 'Security', 'Sentry Mode', 'Vehicle Monitoring', 'Telemetry'],
+  description:
+    'Monitor and protect your Tesla vehicle with real-time alerts and telemetry',
+  keywords: [
+    'Tesla',
+    'Security',
+    'Sentry Mode',
+    'Vehicle Monitoring',
+    'Telemetry',
+  ],
   openGraph: {
     title: 'TeslaGuard - Protect Your Tesla',
-    description: 'Monitor and protect your Tesla vehicle with real-time alerts and telemetry',
+    description:
+      'Monitor and protect your Tesla vehicle with real-time alerts and telemetry',
     type: 'website',
   },
 };
@@ -18,8 +27,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning>
+        <I18nProvider>{children}</I18nProvider>
+      </body>
     </html>
   );
 }

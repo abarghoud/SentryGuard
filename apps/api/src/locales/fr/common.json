@@ -1,0 +1,23 @@
+{
+  "🧪 Test message from TeslaGuard API": "🧪 Message de test envoyé depuis SentryGuard.",
+  "Alarm State": "État de l'alarme",
+  "An error occurred": "❌ Une erreur s'est produite. Veuillez réessayer plus tard.",
+  "Available commands": "📖 Commandes disponibles :\n\n/start - Démarrer et lier votre compte\n/status - Vérifier l'état du lien\n/help - Afficher l'aide",
+  "Battery": "Batterie",
+  "Display": "Affichage",
+  "Invalid or expired token": "❌ Token invalide ou expiré. Veuillez générer un nouveau lien depuis l'application.",
+  "Location": "Localisation",
+  "N/A": "N/A",
+  "No account linked": "❌ Aucun compte lié. Utilisez le lien depuis l'application web.",
+  "Not available": "Non disponible",
+  "Sentry Mode": "Mode Sentry",
+  "Sentry Mode activated - Check your vehicle!": "Mode Sentry activé - Vérifiez votre véhicule !",
+  "Speed": "Vitesse",
+  "TESLA SENTRY ALERT": "ALERTE SENTRY TESLA",
+  "This token has expired": "⏰ Ce token a expiré. Veuillez générer un nouveau lien depuis l'application.",
+  "Time": "Heure",
+  "Vehicle": "Véhicule",
+  "Welcome to TeslaGuard Bot": "🚗 Bienvenue sur le bot TeslaGuard !\n\nPour lier votre compte, utilisez le lien fourni dans l'application web.",
+  "Your account is linked and active!": "✅ Votre compte est lié et actif !",
+  "Your TeslaGuard account has been linked successfully!": "✅ Votre compte TeslaGuard a été lié avec succès !\n\nVous recevrez désormais des alertes sur le véhicule ici."
+}
