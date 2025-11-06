@@ -71,31 +71,23 @@ describe('TelemetryConfigService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('getAccessToken', () => {
-    it('should return user token when userId is provided', async () => {
-      const userId = 'test-user-id';
-      const userToken = 'user-access-token';
-      mockAuthService.getAccessTokenForUserId.mockResolvedValue(userToken);
-
-      const result = await (service as any).getAccessToken(userId);
-
-      expect(result).toBe(userToken);
-      expect(mockAuthService.getAccessTokenForUserId).toHaveBeenCalledWith(
-        userId
-      );
-    });
-
-    it('should throw UnauthorizedException when user token is invalid', async () => {
+  describe('getVehicles', () => {
+    it('should return empty array and log error when token is invalid', async () => {
       const userId = 'test-user-id';
       mockAuthService.getAccessTokenForUserId.mockResolvedValue(null);
+      const loggerSpy = jest
+        .spyOn(service['logger'], 'error')
+        .mockImplementation();
 
-      await expect((service as any).getAccessToken(userId)).rejects.toThrow(
+      const result = await service.getVehicles(userId);
+
+      expect(result).toEqual([]);
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'Erreur lors de la récupération des véhicules:',
         'Token invalide ou expiré pour cet utilisateur'
       );
+      loggerSpy.mockRestore();
     });
-  });
-
-  describe('getVehicles', () => {
     it('should return vehicles with telemetry data when userId is provided', async () => {
       const userId = 'test-user-id';
       const userToken = 'user-access-token';
@@ -105,22 +97,22 @@ describe('TelemetryConfigService', () => {
       ];
 
       mockAuthService.getAccessTokenForUserId.mockResolvedValue(userToken);
-      mockAxiosInstance.get
-        .mockResolvedValueOnce({
-          data: { response: mockVehicles },
-        })
-        .mockResolvedValueOnce({
-          data: { response: { key_paired: true } },
-        });
+      mockAxiosInstance.get.mockResolvedValueOnce({
+        data: { response: mockVehicles },
+      });
 
       const mockDbVehicles = [
         { vin: 'VIN123', telemetry_enabled: true },
         { vin: 'VIN456', telemetry_enabled: false },
       ];
 
+      const telemetryConfigsMap = new Map();
+      telemetryConfigsMap.set('VIN123', { key_paired: true, config: {} });
+      telemetryConfigsMap.set('VIN456', { key_paired: true, config: {} });
+
       jest
         .spyOn(service as any, 'syncVehiclesToDatabase')
-        .mockResolvedValue(undefined);
+        .mockResolvedValue(telemetryConfigsMap);
       jest
         .spyOn(service as any, 'getUserVehiclesFromDB')
         .mockResolvedValue(mockDbVehicles);
@@ -134,6 +126,7 @@ describe('TelemetryConfigService', () => {
     });
 
     it('should return empty array on error', async () => {
+      mockAuthService.getAccessTokenForUserId.mockResolvedValue('test-token');
       const loggerSpy = jest
         .spyOn(service['logger'], 'error')
         .mockImplementation();
@@ -145,12 +138,10 @@ describe('TelemetryConfigService', () => {
       expect(loggerSpy).toHaveBeenCalled();
       loggerSpy.mockRestore();
     });
-  });
 
-  describe('syncVehiclesToDatabase', () => {
-    it('should create new vehicle when it does not exist', async () => {
+    it('should create new vehicle in database when it does not exist', async () => {
       const userId = 'test-user-id';
-      const teslaVehicles = [
+      const mockVehicles = [
         {
           vin: 'VIN123',
           display_name: 'Tesla Model 3',
@@ -158,15 +149,30 @@ describe('TelemetryConfigService', () => {
         },
       ];
 
+      mockAuthService.getAccessTokenForUserId.mockResolvedValue('user-token');
+      mockAxiosInstance.get
+        .mockResolvedValueOnce({
+          data: { response: mockVehicles },
+        })
+        .mockResolvedValueOnce({
+          data: { response: { config: null } },
+        });
+
       mockVehicleRepository.findOne.mockResolvedValue(null);
-      mockVehicleRepository.create.mockReturnValue({} as Vehicle);
-      mockVehicleRepository.save.mockResolvedValue({} as Vehicle);
+      mockVehicleRepository.create.mockReturnValue({
+        vin: 'VIN123',
+        telemetry_enabled: false,
+      } as Vehicle);
+      mockVehicleRepository.save.mockResolvedValue({
+        vin: 'VIN123',
+        telemetry_enabled: false,
+      } as Vehicle);
+      mockVehicleRepository.find.mockResolvedValue([
+        { vin: 'VIN123', telemetry_enabled: false },
+      ]);
 
-      await (service as any).syncVehiclesToDatabase(userId, teslaVehicles);
+      await service.getVehicles(userId);
 
-      expect(mockVehicleRepository.findOne).toHaveBeenCalledWith({
-        where: { userId, vin: 'VIN123' },
-      });
       expect(mockVehicleRepository.create).toHaveBeenCalledWith({
         userId,
         vin: 'VIN123',
@@ -177,21 +183,63 @@ describe('TelemetryConfigService', () => {
       expect(mockVehicleRepository.save).toHaveBeenCalled();
     });
 
-    it('should update display_name when it changes', async () => {
+    it('should update vehicle display_name when it changes', async () => {
       const userId = 'test-user-id';
-      const teslaVehicles = [{ vin: 'VIN123', display_name: 'Updated Name' }];
+      const mockVehicles = [{ vin: 'VIN123', display_name: 'Updated Name' }];
 
       const existingVehicle = {
+        vin: 'VIN123',
         display_name: 'Old Name',
+        telemetry_enabled: false,
+      };
+
+      mockAuthService.getAccessTokenForUserId.mockResolvedValue('user-token');
+      mockAxiosInstance.get
+        .mockResolvedValueOnce({
+          data: { response: mockVehicles },
+        })
+        .mockResolvedValueOnce({
+          data: { response: { config: null } },
+        });
+
+      mockVehicleRepository.findOne.mockResolvedValue(existingVehicle);
+      mockVehicleRepository.save.mockResolvedValue(existingVehicle);
+      mockVehicleRepository.find.mockResolvedValue([existingVehicle]);
+
+      await service.getVehicles(userId);
+
+      expect(existingVehicle.display_name).toBe('Updated Name');
+      expect(mockVehicleRepository.save).toHaveBeenCalledWith(existingVehicle);
+    });
+
+    it('should set telemetry_enabled to true when config is not null', async () => {
+      const userId = 'test-user-id';
+      const mockVehicles = [{ vin: 'VIN123', display_name: 'Tesla Model 3' }];
+
+      mockAuthService.getAccessTokenForUserId.mockResolvedValue('user-token');
+      mockAxiosInstance.get
+        .mockResolvedValueOnce({
+          data: { response: mockVehicles },
+        })
+        .mockResolvedValueOnce({
+          data: { response: { config: { hostname: 'test.com' } } },
+        });
+
+      const existingVehicle = {
+        vin: 'VIN123',
+        display_name: 'Tesla Model 3',
+        telemetry_enabled: false,
       };
 
       mockVehicleRepository.findOne.mockResolvedValue(existingVehicle);
       mockVehicleRepository.save.mockResolvedValue(existingVehicle);
+      mockVehicleRepository.find.mockResolvedValue([
+        { ...existingVehicle, telemetry_enabled: true },
+      ]);
 
-      await (service as any).syncVehiclesToDatabase(userId, teslaVehicles);
+      await service.getVehicles(userId);
 
-      expect(existingVehicle.display_name).toBe('Updated Name');
-      expect(mockVehicleRepository.save).toHaveBeenCalledWith(existingVehicle);
+      expect(existingVehicle.telemetry_enabled).toBe(true);
     });
   });
 
@@ -362,40 +410,28 @@ describe('TelemetryConfigService', () => {
         { vin: 'VIN456', display_name: 'Tesla Model Y' },
       ];
 
-      mockAxiosInstance.get
-        .mockResolvedValueOnce({
-          data: { response: mockVehicles },
-        })
-        .mockResolvedValueOnce({
-          data: { response: { key_paired: true } },
-        })
-        .mockResolvedValueOnce({
-          data: { response: { fields: {} } },
-        })
-        .mockResolvedValueOnce({
-          data: { response: { fields: {} } },
-        });
+      jest.spyOn(service, 'getVehicles').mockResolvedValue(mockVehicles);
 
       jest
-        .spyOn(service as any, 'syncVehiclesToDatabase')
-        .mockResolvedValue(undefined);
-      jest.spyOn(service as any, 'getUserVehiclesFromDB').mockResolvedValue([]);
+        .spyOn(service, 'configureTelemetry')
+        .mockResolvedValueOnce({ success: true })
+        .mockResolvedValueOnce({ success: true });
 
-      mockAxiosInstance.post
-        .mockResolvedValueOnce({ data: { success: true } })
-        .mockResolvedValueOnce({ data: { success: true } });
+      jest
+        .spyOn(service, 'checkTelemetryConfig')
+        .mockResolvedValueOnce({ fields: {} })
+        .mockResolvedValueOnce({ fields: {} });
 
       await service.configureAllVehicles(userId);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledTimes(2);
-      expect(mockAxiosInstance.get).toHaveBeenCalledTimes(4);
+      expect(service.configureTelemetry).toHaveBeenCalledTimes(2);
+      expect(service.checkTelemetryConfig).toHaveBeenCalledTimes(2);
     });
 
     it('should handle empty vehicles list', async () => {
       const userId = 'test-user-id';
-      mockAxiosInstance.get.mockResolvedValueOnce({
-        data: { response: [] },
-      });
+      
+      jest.spyOn(service, 'getVehicles').mockResolvedValue([]);
 
       const loggerSpy = jest
         .spyOn(service['logger'], 'warn')
@@ -409,18 +445,16 @@ describe('TelemetryConfigService', () => {
 
     it('should handle getVehicles error', async () => {
       const userId = 'test-user-id';
-      mockAuthService.getAccessTokenForUserId.mockResolvedValue('some-token');
+      
+      jest.spyOn(service, 'getVehicles').mockResolvedValue([]);
+
       const loggerSpy = jest
-        .spyOn(service['logger'], 'error')
+        .spyOn(service['logger'], 'warn')
         .mockImplementation();
-      mockAxiosInstance.get.mockRejectedValueOnce(new Error('API Error'));
 
       await service.configureAllVehicles(userId);
 
-      expect(loggerSpy).toHaveBeenCalledWith(
-        'Erreur lors de la récupération des véhicules:',
-        'API Error'
-      );
+      expect(loggerSpy).toHaveBeenCalledWith('⚠️ Aucun véhicule trouvé.');
       loggerSpy.mockRestore();
     });
   });

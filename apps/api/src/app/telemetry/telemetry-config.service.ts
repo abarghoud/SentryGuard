@@ -55,19 +55,16 @@ export class TelemetryConfigService {
 
       // Si userId est fourni, synchroniser avec la base de données et enrichir avec telemetry_enabled et key_paired
       if (userId && vehicles.length > 0) {
-        await this.syncVehiclesToDatabase(userId, vehicles);
+        const telemetryConfigs = await this.syncVehiclesToDatabase(userId, vehicles);
 
         // Récupérer les véhicules depuis la DB avec le statut telemetry_enabled
         const dbVehicles = await this.getUserVehiclesFromDB(userId);
 
         // Vérifier le statut key_paired pour le premier véhicule (suffisant pour le compte)
         let keyPaired = false;
-        if (vehicles.length > 0) {
-          const telemetryConfig = await this.checkTelemetryConfig(
-            vehicles[0].vin,
-            userId
-          );
-          keyPaired = telemetryConfig?.key_paired || false;
+        if (vehicles.length > 0 && telemetryConfigs.size > 0) {
+          const firstConfig = telemetryConfigs.get(vehicles[0].vin);
+          keyPaired = firstConfig?.key_paired || false;
         }
 
         // Enrichir les véhicules Tesla avec les données de la DB et key_paired
@@ -95,12 +92,23 @@ export class TelemetryConfigService {
 
   /**
    * Synchronise les véhicules de l'API Tesla avec la base de données
+   * Retourne un Map des configurations de télémétrie par VIN
    */
   private async syncVehiclesToDatabase(
     userId: string,
     teslaVehicles: any[]
-  ): Promise<void> {
+  ): Promise<Map<string, any>> {
+    const telemetryConfigsMap = new Map<string, any>();
+
     for (const teslaVehicle of teslaVehicles) {
+      const telemetryConfig = await this.checkTelemetryConfig(
+        teslaVehicle.vin,
+        userId
+      );
+      telemetryConfigsMap.set(teslaVehicle.vin, telemetryConfig);
+      
+      const isTelemetryConfigured = telemetryConfig && telemetryConfig.config !== null;
+
       const existingVehicle = await this.vehicleRepository.findOne({
         where: { userId, vin: teslaVehicle.vin },
       });
@@ -112,11 +120,11 @@ export class TelemetryConfigService {
           vin: teslaVehicle.vin,
           display_name: teslaVehicle.display_name || teslaVehicle.vin,
           model: teslaVehicle.vehicle_state?.car_type || null,
-          telemetry_enabled: false,
+          telemetry_enabled: isTelemetryConfigured,
         });
 
         await this.vehicleRepository.save(vehicle);
-        this.logger.log(`✅ Véhicule ajouté à la DB: ${teslaVehicle.vin}`);
+        this.logger.log(`✅ Véhicule ajouté à la DB: ${teslaVehicle.vin} (télémétrie: ${isTelemetryConfigured})`);
       } else {
         // Mettre à jour le nom si changé
         if (
@@ -124,10 +132,15 @@ export class TelemetryConfigService {
           existingVehicle.display_name !== teslaVehicle.display_name
         ) {
           existingVehicle.display_name = teslaVehicle.display_name;
-          await this.vehicleRepository.save(existingVehicle);
         }
+        
+        existingVehicle.telemetry_enabled = isTelemetryConfigured;
+        await this.vehicleRepository.save(existingVehicle);
+        this.logger.log(`✅ Véhicule mis à jour: ${teslaVehicle.vin} (télémétrie: ${isTelemetryConfigured})`);
       }
     }
+
+    return telemetryConfigsMap;
   }
 
   /**
