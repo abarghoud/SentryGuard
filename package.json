@@ -2,6 +2,7 @@
   "name": "@tesla-guard/source",
   "version": "0.0.0",
   "license": "MIT",
+  "packageManager": "yarn@4.9.2",
   "engines": {
     "node": ">=20"
   },
