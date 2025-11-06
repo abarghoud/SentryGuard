@@ -18,7 +18,7 @@ export default function VehiclesPage() {
   const isKeyPaired = vehicles.length > 0 ? vehicles[0].key_paired : null;
 
   const handlePairVirtualKey = () => {
-    window.location.href = 'https://www.tesla.com/_ak/ws.sentryguard.org';
+    window.open('https://www.tesla.com/_ak/ws.sentryguard.org', '_blank');
   };
 
   if (isLoading) {
