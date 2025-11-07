@@ -11,30 +11,12 @@ jest.mock('../../i18n', () => ({
         en: {
           'TESLA SENTRY ALERT': 'TESLA SENTRY ALERT',
           Vehicle: 'Vehicle',
-          Time: 'Time',
-          Location: 'Location',
-          'Not available': 'Not available',
-          Battery: 'Battery',
-          'N/A': 'N/A',
-          Speed: 'Speed',
-          'Sentry Mode': 'Sentry Mode',
-          Display: 'Display',
-          'Alarm State': 'Alarm State',
           'Sentry Mode activated - Check your vehicle!':
             'Sentry Mode activated - Check your vehicle!',
         },
         fr: {
           'TESLA SENTRY ALERT': 'ALERTE SENTRY TESLA',
           Vehicle: 'Véhicule',
-          Time: 'Heure',
-          Location: 'Localisation',
-          'Not available': 'Non disponible',
-          Battery: 'Batterie',
-          'N/A': 'N/D',
-          Speed: 'Vitesse',
-          'Sentry Mode': 'Mode Sentry',
-          Display: 'Écran',
-          'Alarm State': 'État alarme',
           'Sentry Mode activated - Check your vehicle!':
             'Mode Sentry activé - Vérifiez votre véhicule!',
         },
@@ -87,18 +69,11 @@ describe('TelegramService', () => {
   });
 
   describe('sendSentryAlert', () => {
-    const alertInfo = {
-      vin: 'TEST123456',
-      timestamp: new Date('2024-01-01T12:00:00Z'),
-      location: 'Test Location',
-      batteryLevel: 80,
-      vehicleSpeed: 0,
-      sentryMode: 'Aware',
-      centerDisplay: 'On',
-      alarmState: 'Active',
-    };
+    it('should send alert in English with VIN only', async () => {
+      const alertInfo = {
+        vin: 'TEST123456',
+      };
 
-    it('should send alert in English', async () => {
       mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
       mockTelegramBotService.sendMessageToUser.mockResolvedValue(true);
 
@@ -115,9 +90,18 @@ describe('TelegramService', () => {
         'user-123',
         expect.stringContaining('Vehicle')
       );
+      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
+        'user-123',
+        expect.stringContaining('TEST123456')
+      );
     });
 
-    it('should send alert in French', async () => {
+    it('should send alert in French with display name', async () => {
+      const alertInfo = {
+        vin: 'TEST123456',
+        display_name: 'Mon Tesla',
+      };
+
       mockUserLanguageService.getUserLanguage.mockResolvedValue('fr');
       mockTelegramBotService.sendMessageToUser.mockResolvedValue(true);
 
@@ -134,9 +118,17 @@ describe('TelegramService', () => {
         'user-123',
         expect.stringContaining('Véhicule')
       );
+      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
+        'user-123',
+        expect.stringContaining('Mon Tesla (TEST123456)')
+      );
     });
 
     it('should handle errors gracefully', async () => {
+      const alertInfo = {
+        vin: 'TEST123456',
+      };
+
       mockUserLanguageService.getUserLanguage.mockRejectedValue(
         new Error('Database error')
       );

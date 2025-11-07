@@ -78,18 +78,19 @@ export class ZmqService implements OnModuleInit, OnModuleDestroy {
   /**
    * Récupère l'ID utilisateur à partir du VIN du véhicule
    */
-  private async getUserIdFromVin(vin: string): Promise<string | null> {
+  private async getUserIdFromVin(vin: string): Promise<{ userId: string, display_name?: string } | null> {
     try {
       const vehicle = await this.vehicleRepository.findOne({
         where: { vin },
-        select: ['userId'],
+        select: ['userId', 'display_name'],
       });
 
       if (vehicle) {
         this.logger.log(
           `👤 Utilisateur trouvé pour le VIN ${vin}: ${vehicle.userId}`
         );
-        return vehicle.userId;
+
+        return vehicle;
       } else {
         this.logger.warn(`⚠️ Aucun véhicule trouvé pour le VIN: ${vin}`);
         return null;
@@ -147,9 +148,9 @@ export class ZmqService implements OnModuleInit, OnModuleDestroy {
       );
 
       // Récupérer l'userId à partir du VIN
-      const userId = await this.getUserIdFromVin(message.vin);
+      const vehicle = await this.getUserIdFromVin(message.vin);
 
-      if (!userId) {
+      if (!vehicle) {
         this.logger.warn(
           `⚠️ Impossible de trouver l'utilisateur pour le VIN: ${message.vin}`
         );
@@ -157,36 +158,26 @@ export class ZmqService implements OnModuleInit, OnModuleDestroy {
       }
 
       const user = await this.userRepository.findOne({
-        where: { userId },
+        where: { userId: vehicle.userId },
         select: ['debug_messages'],
       });
 
       if (user?.debug_messages) {
         const jsonStr = JSON.stringify(message);
-        await this.telegramService.sendTelegramMessage(userId, jsonStr);
+        await this.telegramService.sendTelegramMessage(vehicle.userId, jsonStr);
       }
 
       const sentryData = message.data.find((item) => item.key === 'SentryMode');
-      const centerDisplayData = message.data.find(
-        (item) => item.key === 'CenterDisplay'
-      );
 
       if (sentryData && sentryData.value.stringValue === 'Aware') {
         this.logger.log('🚨 Alerte Sentry détectée!');
 
         const alertInfo = {
           vin: message.vin,
-          timestamp: message.createdAt,
-          sentryMode: sentryData.value.stringValue,
-          centerDisplay:
-            centerDisplayData?.value.displayStateValue || 'Unknown',
-          location: 'Non disponible', // À améliorer si d'autres données sont disponibles
-          batteryLevel: 'N/A', // À améliorer si d'autres données sont disponibles
-          vehicleSpeed: '0', // À améliorer si d'autres données sont disponibles
-          alarmState: 'Active',
+          display_name: vehicle.display_name
         };
 
-        await this.telegramService.sendSentryAlert(userId, alertInfo);
+        await this.telegramService.sendSentryAlert(vehicle.userId, alertInfo);
       } else {
         this.logger.log(
           `📊 Données télémétrie reçues (non-alerte): ${JSON.stringify(

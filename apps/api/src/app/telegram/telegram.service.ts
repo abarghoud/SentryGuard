@@ -12,7 +12,7 @@ export class TelegramService {
     private readonly userLanguageService: UserLanguageService
   ) {}
 
-  async sendSentryAlert(userId: string, alertInfo: any) {
+  async sendSentryAlert(userId: string, alertInfo: { vin: string, display_name?: string }) {
     try {
       const userLanguage = await this.userLanguageService.getUserLanguage(
         userId
@@ -72,32 +72,13 @@ export class TelegramService {
   }
 
   private formatSentryAlertMessage(
-    alertInfo: any,
+    { display_name, vin }: { vin: string, display_name?: string },
     lng: 'en' | 'fr'
   ): string {
-    const timestamp = new Date(alertInfo.timestamp).toLocaleString('en-US', {
-      timeZone: 'America/New_York',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-
     return `
 🚨 <b>${i18n.t('TESLA SENTRY ALERT', { lng })}</b> 🚨
 
-🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${alertInfo.vin}
-⏰ <b>${i18n.t('Time', { lng })}:</b> ${timestamp}
-📍 <b>${i18n.t('Location', { lng })}:</b> ${
-      alertInfo.location || i18n.t('Not available', { lng })
-    }
-🔋 <b>${i18n.t('Battery', { lng })}:</b> ${alertInfo.batteryLevel || i18n.t('N/A', { lng })}%
-🚗 <b>${i18n.t('Speed', { lng })}:</b> ${alertInfo.vehicleSpeed || '0'} km/h
-🔔 <b>${i18n.t('Sentry Mode', { lng })}:</b> ${alertInfo.sentryMode || 'Aware'}
-📱 <b>${i18n.t('Display', { lng })}:</b> ${alertInfo.centerDisplay || 'Unknown'}
-🚨 <b>${i18n.t('Alarm State', { lng })}:</b> ${alertInfo.alarmState || 'Active'}
+🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${display_name ? `${display_name} (${vin})`: vin} 
 
 <i>${i18n.t('Sentry Mode activated - Check your vehicle!', { lng })}</i>
     `.trim();
