@@ -1,11 +1,38 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../lib/useAuth';
 import TeslaLoginButton from '../components/TeslaLoginButton';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function HomePage() {
   const { t } = useTranslation('common');
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.push('/dashboard');
+    }
+  }, [isLoading, isAuthenticated, router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+          <p className="mt-4 text-gray-600">{t('Loading...')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return null;
+  }
+
   return (
     <main className="min-h-screen bg-gray-50 text-black">
       {/* Navigation */}
