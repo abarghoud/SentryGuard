@@ -37,7 +37,7 @@ export default function VehiclesPage() {
             {t('Your Vehicles')}
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            {t('Manage telemetry configuration for your Tesla vehicles')}
+            {t('Manage Sentry Mode telemetry monitoring')}
           </p>
         </div>
         <div className="mt-4 sm:mt-0">

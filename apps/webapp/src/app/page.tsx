@@ -50,7 +50,7 @@ export default function HomePage() {
           </p>
           <p className="text-lg text-gray-600 mb-12 max-w-2xl mx-auto">
             {t(
-              "SentryGuard monitors your vehicle's Sentry Mode and sends instant Telegram alerts when suspicious activity is detected. Configure telemetry, track your vehicle, and stay informed 24/7."
+              "Telemetry monitors Sentry Mode and sends alerts without draining battery"
             )}
           </p>
 
@@ -105,11 +105,11 @@ export default function HomePage() {
             </svg>
           </div>
           <h3 className="text-xl font-semibold mb-2">
-            {t('Telemetry Monitoring')}
+            {t('Battery-Efficient Monitoring')}
           </h3>
           <p className="text-gray-600">
             {t(
-              'Configure and monitor vehicle telemetry data for comprehensive security coverage.'
+              'Monitor Sentry Mode via telemetry without battery drain'
             )}
           </p>
         </div>
