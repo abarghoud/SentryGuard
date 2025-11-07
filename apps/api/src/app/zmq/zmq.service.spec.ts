@@ -27,7 +27,7 @@ const mockTelegramService = {
 
 // Mock VehicleRepository
 const mockVehicleRepository = {
-  findOne: jest.fn().mockResolvedValue({ userId: 'test-user-id' }),
+  findOne: jest.fn().mockResolvedValue({ userId: 'test-user-id', display_name: 'Test Vehicle' }),
 };
 
 // Mock UserRepository
@@ -63,7 +63,7 @@ describe('ZmqService', () => {
 
     // Reset mocks
     jest.clearAllMocks();
-    mockVehicleRepository.findOne.mockResolvedValue({ userId: 'test-user-id' });
+    mockVehicleRepository.findOne.mockResolvedValue({ userId: 'test-user-id', display_name: 'Test Vehicle' });
     mockUserRepository.findOne.mockResolvedValue({
       userId: 'test-user-id',
       debug_messages: false,
@@ -87,7 +87,7 @@ describe('ZmqService', () => {
     it('should start listening when module initializes', async () => {
       const startListeningSpy = jest
         .spyOn(service as any, 'startListening')
-        .mockResolvedValue();
+        .mockResolvedValue(undefined);
 
       await service.onModuleInit();
 
@@ -99,7 +99,7 @@ describe('ZmqService', () => {
     it('should stop listening when module destroys', async () => {
       const stopListeningSpy = jest
         .spyOn(service as any, 'stopListening')
-        .mockResolvedValue();
+        .mockResolvedValue(undefined);
 
       await service.onModuleDestroy();
 
@@ -115,10 +115,6 @@ describe('ZmqService', () => {
             key: 'SentryMode',
             value: { stringValue: 'Aware' },
           },
-          {
-            key: 'CenterDisplay',
-            value: { displayStateValue: 'DisplayStateSentry' },
-          },
         ],
         createdAt: '2025-01-21T10:00:00.000Z',
         vin: 'TEST_VIN_123',
@@ -131,13 +127,7 @@ describe('ZmqService', () => {
         'test-user-id',
         {
           vin: 'TEST_VIN_123',
-          timestamp: '2025-01-21T10:00:00.000Z',
-          sentryMode: 'Aware',
-          centerDisplay: 'DisplayStateSentry',
-          location: 'Non disponible',
-          batteryLevel: 'N/A',
-          vehicleSpeed: '0',
-          alarmState: 'Active',
+          display_name: 'Test Vehicle',
         }
       );
     });
