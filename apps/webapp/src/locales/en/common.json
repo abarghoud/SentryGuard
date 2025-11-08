@@ -10,7 +10,6 @@
   "Authentication Failed": "Authentication Failed",
   "Authentication failed {{error}}": "Authentication failed {{error}}",
   "Authentication successful! Redirecting to dashboard...": "Authentication successful! Redirecting to dashboard...",
-  "Battery and location tracking": "Battery and location tracking",
   "Battery-Efficient Monitoring": "Battery-Efficient Monitoring",
   "Click \"Fix Permissions\" to re-authenticate with Tesla and grant the required permissions. You'll be redirected back here automatically.": "Click \"Fix Permissions\" to re-authenticate with Tesla and grant the required permissions. You'll be redirected back here automatically.",
   "Click \"Generate Telegram Link\" to create a unique connection link that expires in 15 minutes.": "Click \"Generate Telegram Link\" to create a unique connection link that expires in 15 minutes.",

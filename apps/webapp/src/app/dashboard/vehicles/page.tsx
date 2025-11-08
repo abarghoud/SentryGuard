@@ -243,7 +243,6 @@ export default function VehiclesPage() {
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li>{t('Real-time Sentry Mode monitoring')}</li>
                 <li>{t('Instant Telegram notifications')}</li>
-                <li>{t('Battery and location tracking')}</li>
                 <li>{t('Secure end-to-end encryption')}</li>
               </ul>
             </div>

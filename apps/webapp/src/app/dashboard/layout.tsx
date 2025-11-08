@@ -116,7 +116,7 @@ export default function DashboardLayout({
                 })}
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="hidden sm:flex items-center gap-4">
               <LanguageSwitcher />
               {profile && (
                 <div className="hidden sm:block text-sm text-gray-700 dark:text-gray-300">
@@ -152,6 +152,22 @@ export default function DashboardLayout({
                 </Link>
               );
             })}
+          </div>
+          <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="px-4 space-y-3">
+              {profile && (
+                <div className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                  {profile.full_name || profile.email || 'User'}
+                </div>
+              )}
+              <LanguageSwitcher />
+              <button
+                onClick={logout}
+                className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+              >
+                {t('Logout')}
+              </button>
+            </div>
           </div>
         </div>
       </nav>

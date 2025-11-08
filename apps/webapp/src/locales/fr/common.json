@@ -10,7 +10,6 @@
   "Authentication Failed": "Échec de l'authentification",
   "Authentication failed {{error}}": "Échec de l'authentification : {{error}}",
   "Authentication successful! Redirecting to dashboard...": "Authentification réussie ! Redirection vers le tableau de bord...",
-  "Battery and location tracking": "Suivi de la batterie et de la localisation",
   "Battery-Efficient Monitoring": "Surveillance Économe en Énergie",
   "Click \"Fix Permissions\" to re-authenticate with Tesla and grant the required permissions. You'll be redirected back here automatically.": "Cliquez sur \"Corriger les permissions\" pour vous ré-authentifier avec Tesla et accorder les permissions requises. Vous serez redirigé automatiquement ici.",
   "Click \"Generate Telegram Link\" to create a unique connection link that expires in 15 minutes.": "Cliquez sur \"Générer le lien Telegram\" pour créer un lien de connexion unique qui expire dans 15 minutes.",
