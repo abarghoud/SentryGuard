@@ -41,6 +41,16 @@
 
 ---
 
+## 🎥 Demo Video
+
+> **See SentryGuard in action!** Watch our demo video to understand how the platform works.
+
+[![SentryGuard Demo](https://img.youtube.com/vi/dP61FmbPsKI/maxresdefault.jpg)](https://youtu.be/dP61FmbPsKI)
+
+*Click the image above to watch the demo video on YouTube*
+
+---
+
 SentryGuard is a comprehensive security monitoring solution for Tesla vehicles. It tracks your vehicle's Sentry Mode status and sends instant Telegram notifications when suspicious activity is detected.
 
 ## ✨ Features
