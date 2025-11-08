@@ -29,6 +29,18 @@
 
 ---
 
+## 🚀 Join the Beta
+
+> **Want to try SentryGuard?** We're currently in beta and looking for Tesla owners to test the platform!
+> 
+> **Sign up for beta access here**:
+> - [French](https://tally.so/r/LZ1WDv)
+> - [English](https://tally.so/r/EkzNoX)
+> 
+> Help us improve SentryGuard by being an early adopter. Your feedback will shape the future of the platform!
+
+---
+
 SentryGuard is a comprehensive security monitoring solution for Tesla vehicles. It tracks your vehicle's Sentry Mode status and sends instant Telegram notifications when suspicious activity is detected.
 
 ## ✨ Features
