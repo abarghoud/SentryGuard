@@ -234,7 +234,7 @@ Use this software at your own risk. The authors are not responsible for any dama
 
 ## 🙏 Acknowledgments
 
-- [Tesla](https://www.tesla.com/) for the Fleet API
+- [Tesla](https://developer.tesla.com/) for the Fleet API
 - [Telegram](https://telegram.org/) for the Bot API
 - [Cloudflare](https://www.cloudflare.com/) for Project Alexandria support
 - [Nx](https://nx.dev/) team for the amazing monorepo tools
