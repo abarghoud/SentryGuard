@@ -1,7 +1,33 @@
 {
   "name": "@tesla-guard/source",
-  "version": "0.0.0",
-  "license": "MIT",
+  "version": "0.1.0",
+  "description": "Real-time Tesla vehicle monitoring and security alerts via Telegram",
+  "license": "AGPL-3.0",
+  "author": "Anas Barghoud",
+  "homepage": "https://github.com/abarghoud/SentryGuard#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abarghoud/SentryGuard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/abarghoud/SentryGuard/issues"
+  },
+  "keywords": [
+    "tesla",
+    "monitoring",
+    "security",
+    "telegram",
+    "sentry-mode",
+    "fleet-api",
+    "nx-monorepo",
+    "nestjs",
+    "nextjs",
+    "typescript",
+    "real-time",
+    "alerts",
+    "vehicle",
+    "cloudflare"
+  ],
   "packageManager": "yarn@4.9.2",
   "engines": {
     "node": ">=20"

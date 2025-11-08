@@ -52,3 +52,20 @@ test-output
 # Next.js
 .next
 out
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+.env.test
+.env.*.local
+
+# Logs
+*.log
+error.log
+
+# Security sensitive files
+*.pem
+*.key
+*.cert
