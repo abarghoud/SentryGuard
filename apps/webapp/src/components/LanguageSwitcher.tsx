@@ -34,10 +34,10 @@ export default function LanguageSwitcher() {
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2 w-full sm:w-auto">
       <button
         onClick={() => changeLanguage('en')}
-        className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+        className={`flex-1 sm:flex-none px-3 py-1 rounded text-sm font-medium transition-colors ${
           currentLang === 'en'
             ? 'bg-blue-500 text-white'
             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -47,7 +47,7 @@ export default function LanguageSwitcher() {
       </button>
       <button
         onClick={() => changeLanguage('fr')}
-        className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+        className={`flex-1 sm:flex-none px-3 py-1 rounded text-sm font-medium transition-colors ${
           currentLang === 'fr'
             ? 'bg-blue-500 text-white'
             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
