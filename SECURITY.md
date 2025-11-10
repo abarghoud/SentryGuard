@@ -70,7 +70,7 @@ When deploying SentryGuard:
 - **HTTPS only**: Always use HTTPS in production
 - **Keep updated**: Regularly update to the latest version
 - **Environment variables**: Never expose `.env` files publicly
-- **Rate limiting**: Differentiated rate limits protect API endpoints (default: 100 req/min, configurable via `THROTTLE_LIMIT` env var or `apps/api/src/config/throttle.config.ts`)
+- **Rate limiting**: Differentiated rate limits protect API endpoints (fully configurable via environment variables - see `apps/api/env.example` for all available options)
 - **Backup tokens**: Securely backup Tesla access tokens
 - **Monitor logs**: Regularly check logs for suspicious activity
 
@@ -99,13 +99,15 @@ When deploying SentryGuard:
 
 - **Differentiated rate limiting** with per-endpoint controls:
   - Centralized configuration in `apps/api/src/config/throttle.config.ts`
-  - Global default: 100 requests/minute (configurable via `THROTTLE_LIMIT` env var)
-  - Sensitive public endpoints (OAuth): 40 req/min
-  - Authenticated read endpoints: 200 req/min
-  - Authenticated write endpoints: 100 req/min
-  - Critical/intensive endpoints: 50 req/min
-  - Test endpoints: 30 req/min
-  - All limits defined as named constants
+  - **All limits fully configurable** via environment variables (see `apps/api/env.example`)
+  - Global default: 100 requests/minute (`THROTTLE_LIMIT_DEFAULT`)
+  - Sensitive public endpoints (OAuth): 40 req/min (`THROTTLE_LIMIT_PUBLIC_SENSITIVE`)
+  - Authenticated read endpoints: 200 req/min (`THROTTLE_LIMIT_AUTHENTICATED_READ`)
+  - Authenticated write endpoints: 100 req/min (`THROTTLE_LIMIT_AUTHENTICATED_WRITE`)
+  - Critical/intensive endpoints: 50 req/min (`THROTTLE_LIMIT_CRITICAL`)
+  - Test endpoints: 30 req/min (`THROTTLE_LIMIT_TEST`)
+  - All limits defined as named constants (no magic numbers)
+  - Nullish coalescing operator (`??`) ensures proper env var handling
 - JWT tokens for session management
 - CORS configured to restrict access
 - Input validation on all endpoints
