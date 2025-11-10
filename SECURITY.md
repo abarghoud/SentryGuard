@@ -4,10 +4,10 @@
 
 We take security seriously and aim to fix vulnerabilities as quickly as possible. Currently, we support the following versions:
 
-| Version | Supported          |
-| ------- | ------------------ |
-| latest  | :white_check_mark: |
-| < latest| :x:                |
+| Version  | Supported          |
+|----------|--------------------|
+| latest   | :white_check_mark: |
+| < latest | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -30,6 +30,7 @@ If you discover a security vulnerability in SentryGuard, please report it respon
 ### What to Include
 
 When reporting a vulnerability, please include:
+
 - Type of issue (e.g., SQL injection, XSS, authentication bypass)
 - Full paths of source file(s) related to the vulnerability
 - Location of the affected source code (tag/branch/commit or direct URL)
@@ -40,6 +41,7 @@ When reporting a vulnerability, please include:
 ### What to Expect
 
 After you submit a report:
+
 1. **Confirmation**: We'll acknowledge receipt within 48 hours
 2. **Assessment**: We'll investigate and assess the severity (typically 7-14 days)
 3. **Updates**: We'll keep you informed of progress
@@ -51,21 +53,24 @@ After you submit a report:
 ### For Developers
 
 When contributing to SentryGuard:
+
 - Never commit secrets, API keys, or tokens to the repository
 - Use environment variables for all sensitive configuration
 - Follow secure coding practices (input validation, output encoding, etc.)
 - Keep dependencies up to date
 - Run security linting tools before submitting PRs
+- Rate limiting configuration: Modify constants in `apps/api/src/config/throttle.config.ts`
 
 ### For Users
 
 When deploying SentryGuard:
+
 - **Use strong encryption keys**: Generate secure random keys for `ENCRYPTION_KEY`
 - **Secure your database**: Use strong passwords and restrict network access
 - **HTTPS only**: Always use HTTPS in production
 - **Keep updated**: Regularly update to the latest version
 - **Environment variables**: Never expose `.env` files publicly
-- **Rate limiting**: Configure appropriate rate limits for your use case
+- **Rate limiting**: Differentiated rate limits protect API endpoints (default: 100 req/min, configurable via `THROTTLE_LIMIT` env var or `apps/api/src/config/throttle.config.ts`)
 - **Backup tokens**: Securely backup Tesla access tokens
 - **Monitor logs**: Regularly check logs for suspicious activity
 
@@ -92,7 +97,15 @@ When deploying SentryGuard:
 
 ### API Security
 
-- Rate limiting is enforced (configurable via `THROTTLE_LIMIT`)
+- **Differentiated rate limiting** with per-endpoint controls:
+  - Centralized configuration in `apps/api/src/config/throttle.config.ts`
+  - Global default: 100 requests/minute (configurable via `THROTTLE_LIMIT` env var)
+  - Sensitive public endpoints (OAuth): 40 req/min
+  - Authenticated read endpoints: 200 req/min
+  - Authenticated write endpoints: 100 req/min
+  - Critical/intensive endpoints: 50 req/min
+  - Test endpoints: 30 req/min
+  - All limits defined as named constants
 - JWT tokens for session management
 - CORS configured to restrict access
 - Input validation on all endpoints
@@ -100,6 +113,7 @@ When deploying SentryGuard:
 ## Security Updates
 
 Security updates will be released as soon as possible after a vulnerability is confirmed. Users will be notified through:
+
 - GitHub Security Advisories
 - Release notes
 - README updates
@@ -107,6 +121,7 @@ Security updates will be released as soon as possible after a vulnerability is c
 ## Responsible Disclosure
 
 We follow a responsible disclosure policy:
+
 1. Security issues are fixed privately
 2. Fixes are released in a new version
 3. Public disclosure occurs after users have had time to update (typically 7-14 days)
@@ -131,4 +146,3 @@ For general questions, see [CONTRIBUTING.md](CONTRIBUTING.md).
 ---
 
 Thank you for helping keep SentryGuard and its users safe!
-

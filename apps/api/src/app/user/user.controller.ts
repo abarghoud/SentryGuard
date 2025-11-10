@@ -7,10 +7,12 @@ import {
   Logger,
   BadRequestException,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { User } from '../../entities/user.entity';
 import { UserLanguageService } from './user-language.service';
+import { ThrottleOptions } from '../../config/throttle.config';
 
 interface UpdateLanguageDto {
   language: string;
@@ -22,6 +24,7 @@ export class UserController {
 
   constructor(private readonly userLanguageService: UserLanguageService) {}
 
+  @Throttle(ThrottleOptions.authenticatedRead())
   @UseGuards(JwtAuthGuard)
   @Get('language')
   async getLanguage(
@@ -34,6 +37,7 @@ export class UserController {
     return { language };
   }
 
+  @Throttle(ThrottleOptions.authenticatedWrite())
   @UseGuards(JwtAuthGuard)
   @Patch('language')
   async updateLanguage(
