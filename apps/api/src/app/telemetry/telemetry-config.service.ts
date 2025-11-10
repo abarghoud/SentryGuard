@@ -176,7 +176,7 @@ export class TelemetryConfigService {
             hostname: process.env.TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME,
             port: 12345,
             fields: {
-              SentryMode: { interval_seconds: 30 },
+              SentryMode: { interval_seconds: parseInt(process.env.SENTRY_MODE_INTERVAL_SECONDS || '30', 10) },
             },
           },
           vins: [vin],
