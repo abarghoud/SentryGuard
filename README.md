@@ -12,8 +12,9 @@
 ## 💝 Free & Non-Profit Project
 
 > **SentryGuard is currently 100% free and open-source.** This project is run on a non-profit basis and relies entirely on community donations to cover operational costs (hosting, infrastructure, API fees).
-> 
+>
 > 🎯 **Our Commitment:**
+>
 > - ✅ **Currently free** - no premium features, no paid tiers
 > - ✅ **Transparent costs** - detailed expense reports available on request
 > - ✅ **Community-driven** - funded by Tesla owners, for Tesla owners
@@ -32,11 +33,12 @@
 ## 🚀 Join the Beta
 
 > **Want to try SentryGuard?** We're currently in beta and looking for Tesla owners to test the platform!
-> 
+>
 > **Sign up for beta access here**:
+>
 > - [French](https://tally.so/r/LZ1WDv)
 > - [English](https://tally.so/r/EkzNoX)
-> 
+>
 > Help us improve SentryGuard by being an early adopter. Your feedback will shape the future of the platform!
 
 ---
@@ -73,6 +75,7 @@ This is an Nx monorepo containing:
 ### Tech Stack
 
 **Backend:**
+
 - NestJS - Node.js framework
 - TypeORM - ORM with PostgreSQL
 - Telegraf - Telegram Bot API
@@ -80,6 +83,7 @@ This is an Nx monorepo containing:
 - Tesla Command Proxy
 
 **Frontend:**
+
 - Next.js 15 - React framework with SSR
 - React 19 - UI library
 - Tailwind CSS - Styling
@@ -90,16 +94,19 @@ This is an Nx monorepo containing:
 ## 📱 How to Use
 
 ### 1. Login with Tesla
+
 - Visit the webapp and click "Login with Tesla"
 - Authenticate with your Tesla account
 - You'll be redirected to your dashboard
 
 ### 2. Configure Vehicles
+
 - Go to the Vehicles page
 - Your Tesla vehicles will be automatically synced
 - Enable telemetry for each vehicle you want to monitor
 
 ### 3. Link Telegram
+
 - Go to the Telegram page
 - Click "Generate Telegram Link"
 - Open the link in Telegram
@@ -107,21 +114,25 @@ This is an Nx monorepo containing:
 - Test with "Send Test Message"
 
 ### 4. Receive Alerts
+
 - When Sentry Mode is triggered, you'll receive an instant Telegram notification
 
 ## 🔧 Development
 
 ### Run the API
+
 ```bash
 npx nx serve api
 ```
 
 ### Run the WebApp
+
 ```bash
 npx nx serve webapp
 ```
 
 ### Build for production
+
 ```bash
 # API
 npx nx build api
@@ -131,6 +142,7 @@ npx nx build webapp
 ```
 
 ### Run tests
+
 ```bash
 # API tests
 npx nx test api
@@ -140,6 +152,7 @@ npx nx test webapp
 ```
 
 ### Lint code
+
 ```bash
 npx nx lint api
 npx nx lint webapp
@@ -147,7 +160,7 @@ npx nx lint webapp
 
 ## 📊 Project Structure
 
-```
+```bash
 SentryGuard/
 ├── apps/
 │   ├── api/                    # NestJS Backend
@@ -178,14 +191,17 @@ SentryGuard/
 ## 🗄️ Database Schema
 
 ### Users
+
 - Stores Tesla OAuth tokens (encrypted)
 - User profile information
 
 ### Vehicles
+
 - Vehicle details (VIN, model, name)
 - Telemetry configuration status
 
 ### Telegram Configs
+
 - Link tokens for deep linking
 - Chat IDs for sending alerts
 
@@ -193,9 +209,13 @@ SentryGuard/
 
 - **Token Encryption**: All Tesla access tokens are encrypted before storage
 - **Secure Communication**: HTTPS only in production
-- **Rate Limiting**: API endpoints are rate-limited
+- **Differentiated Rate Limiting**: Endpoints protected with adaptive rate limits (30-200 req/min depending on sensitivity)
+  - Centralized configuration in `apps/api/src/config/throttle.config.ts`
+  - No magic numbers - all limits defined as named constants
 - **OAuth 2.0**: Secure authentication flow with Tesla
 - **No Plaintext Secrets**: All sensitive data encrypted
+
+For detailed security information, see [SECURITY.md](SECURITY.md)
 
 ## ☁️ Cloudflare Integration
 
@@ -205,7 +225,7 @@ SentryGuard is designed to work seamlessly with Cloudflare's infrastructure:
 
 - **SSL/TLS**: Cloudflare provides automatic HTTPS with flexible SSL options
 - **DDoS Protection**: Built-in protection against DDoS attacks
-- **Rate Limiting**: Additional rate limiting at the edge
+- **Rate Limiting**: Additional edge-level rate limiting complements API-level controls
 - **Caching**: Static assets cached at Cloudflare's edge network
 - **Analytics**: Real-time analytics and insights
 
@@ -234,6 +254,7 @@ This project is licensed under the GNU Affero General Public License v3.0 - see 
 ### Why AGPL-3.0?
 
 We chose AGPL-3.0 to ensure that:
+
 - The software remains free and open source
 - Any modifications or improvements are shared with the community
 - Network usage (SaaS) requires source code disclosure
@@ -241,7 +262,7 @@ We chose AGPL-3.0 to ensure that:
 
 ## ⚠️ Disclaimer
 
-SentryGuard is not affiliated with, endorsed by, or connected to Tesla, Inc. 
+SentryGuard is not affiliated with, endorsed by, or connected to Tesla, Inc.
 Tesla and the Tesla logo are trademarks of Tesla, Inc.
 
 Use this software at your own risk. The authors are not responsible for any damage or issues that may arise from using this software.

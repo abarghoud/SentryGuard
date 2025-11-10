@@ -1,16 +1,20 @@
 import { Controller, Get, Req } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AppService } from './app.service';
 import type { Request } from 'express';
+import { ThrottleOptions } from '../config/throttle.config';
 
 @Controller('/test')
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
+  @Throttle(ThrottleOptions.test())
   @Get()
   getData() {
     return this.appService.getData();
   }
 
+  @Throttle(ThrottleOptions.test())
   @Get('headers')
   getHeaders(@Req() req: Request) {
     return {

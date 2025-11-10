@@ -1,6 +1,8 @@
 import { Controller, Get, Query, Logger, Res } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
+import { ThrottleOptions } from '../../config/throttle.config';
 
 @Controller('callback')
 export class CallbackController {
@@ -12,6 +14,7 @@ export class CallbackController {
    * Endpoint de callback OAuth Tesla
    * GET /callback/auth?code=xxx&state=xxx&locale=en-US&issuer=xxx
    */
+  @Throttle(ThrottleOptions.publicSensitive())
   @Get('auth')
   async handleTeslaCallback(
     @Query('code') code: string,

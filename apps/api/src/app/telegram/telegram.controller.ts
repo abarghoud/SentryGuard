@@ -8,6 +8,7 @@ import {
   UseGuards,
   BadRequestException,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import * as crypto from 'crypto';
@@ -20,6 +21,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { User } from '../../entities/user.entity';
 import i18n from '../../i18n';
+import { ThrottleOptions } from '../../config/throttle.config';
 
 @Controller('telegram')
 @UseGuards(JwtAuthGuard)
@@ -38,6 +40,7 @@ export class TelegramController {
    * POST /telegram/generate-link
    * Requires: Authorization Bearer JWT
    */
+  @Throttle(ThrottleOptions.authenticatedWrite())
   @Post('generate-link')
   async generateLink(@CurrentUser() user: User) {
     const userId = user.userId;
@@ -98,6 +101,7 @@ export class TelegramController {
    * GET /telegram/status
    * Requires: Authorization Bearer JWT
    */
+  @Throttle(ThrottleOptions.authenticatedRead())
   @Get('status')
   async getStatus(@CurrentUser() user: User) {
     const userId = user.userId;
@@ -145,6 +149,7 @@ export class TelegramController {
    * DELETE /telegram/unlink
    * Requires: Authorization Bearer JWT
    */
+  @Throttle(ThrottleOptions.authenticatedWrite())
   @Delete('unlink')
   async unlinkAccount(@CurrentUser() user: User) {
     const userId = user.userId;
@@ -172,6 +177,7 @@ export class TelegramController {
    * Requires: Authorization Bearer JWT
    * Body: { message: string }
    */
+  @Throttle(ThrottleOptions.critical())
   @Post('test-message')
   async sendTestMessage(
     @CurrentUser() user: User,
@@ -202,6 +208,7 @@ export class TelegramController {
    * Clean up expired tokens (maintenance task)
    * POST /telegram/cleanup-expired
    */
+  @Throttle(ThrottleOptions.critical())
   @Post('cleanup-expired')
   async cleanupExpiredTokens() {
     this.logger.log('🧹 Cleaning up expired tokens');

@@ -11,6 +11,7 @@ import { TelegramModule } from './telegram/telegram.module';
 import { UserModule } from './user/user.module';
 import { CloudflareThrottlerGuard } from '../common/guards/cloudflare-throttler.guard';
 import { getDatabaseConfig } from '../config/database.config';
+import { getThrottleConfig } from '../config/throttle.config';
 import { Vehicle } from '../entities/vehicle.entity';
 import { User } from '../entities/user.entity';
 
@@ -22,10 +23,7 @@ import { User } from '../entities/user.entity';
     TelemetryModule,
     TelegramModule,
     UserModule,
-    ThrottlerModule.forRoot([{
-      ttl: parseInt(process.env.THROTTLE_TTL || '60000', 10),
-      limit: parseInt(process.env.THROTTLE_LIMIT || '20', 10),
-    }]),
+    ThrottlerModule.forRoot([getThrottleConfig()]),
   ],
   controllers: [AppController],
   providers: [

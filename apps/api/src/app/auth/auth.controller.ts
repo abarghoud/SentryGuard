@@ -1,9 +1,11 @@
 import { Controller, Get, Logger, UseGuards, Headers, Query } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import { User } from '../../entities/user.entity';
 import { extractPreferredLanguage } from '../../common/utils/language.util';
+import { ThrottleOptions } from '../../config/throttle.config';
 
 @Controller('auth')
 export class AuthController {
@@ -11,6 +13,7 @@ export class AuthController {
 
   constructor(private readonly authService: AuthService) {}
 
+  @Throttle(ThrottleOptions.publicSensitive())
   @Get('tesla/login')
   loginWithTesla(
     @Headers('accept-language') acceptLanguage?: string
@@ -27,6 +30,7 @@ export class AuthController {
     };
   }
 
+  @Throttle(ThrottleOptions.publicSensitive())
   @Get('tesla/scope-change')
   scopeChangeWithTesla(
     @Headers('accept-language') acceptLanguage?: string,
@@ -51,6 +55,7 @@ export class AuthController {
    * GET /auth/status
    * Requires: Authorization: Bearer <jwt>
    */
+  @Throttle(ThrottleOptions.authenticatedRead())
   @Get('status')
   @UseGuards(JwtAuthGuard)
   async getAuthStatus(@CurrentUser() user: User) {
@@ -78,6 +83,7 @@ export class AuthController {
    * GET /auth/profile
    * Requires: Authorization: Bearer <jwt>
    */
+  @Throttle(ThrottleOptions.authenticatedRead())
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   async getProfile(@CurrentUser() user: User): Promise<{
@@ -107,6 +113,7 @@ export class AuthController {
    * GET /auth/validate
    * Requires: Authorization header with Bearer token
    */
+  @Throttle(ThrottleOptions.authenticatedRead())
   @Get('validate')
   async validateToken(
     @Headers('authorization') authorization?: string
@@ -146,6 +153,7 @@ export class AuthController {
    * GET /auth/logout
    * Requires: Authorization: Bearer <jwt>
    */
+  @Throttle(ThrottleOptions.authenticatedWrite())
   @Get('logout')
   @UseGuards(JwtAuthGuard)
   async logout(@CurrentUser() user: User): Promise<{
@@ -166,6 +174,7 @@ export class AuthController {
    * Authentication service statistics
    * GET /auth/stats
    */
+  @Throttle(ThrottleOptions.authenticatedRead())
   @Get('stats')
   async getStats() {
     return await this.authService.getStats();
