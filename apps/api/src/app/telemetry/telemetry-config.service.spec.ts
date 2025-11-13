@@ -3,27 +3,35 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { TelemetryConfigService } from './telemetry-config.service';
 import { AuthService } from '../auth/auth.service';
 import { Vehicle } from '../../entities/vehicle.entity';
+import { TeslaVehicleWithStatus } from './telemetry-config.types';
 import axios from 'axios';
 
-// Mock axios
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-// Mock the axios instance methods
+const createMockVehicle = (
+  overrides: Partial<TeslaVehicleWithStatus>
+): TeslaVehicleWithStatus => ({
+  vin: 'VIN123',
+  display_name: 'Tesla Model 3',
+  telemetry_enabled: false,
+  key_paired: false,
+  ...overrides,
+});
+
 const mockAxiosInstance = {
   get: jest.fn(),
   post: jest.fn(),
+  delete: jest.fn(),
 };
 
 mockedAxios.create = jest.fn().mockReturnValue(mockAxiosInstance);
 
-// Mock AuthService
 const mockAuthService = {
   getAccessTokenForUserId: jest.fn(),
   getAccessToken: jest.fn(), // For backward compatibility
 };
 
-// Mock VehicleRepository
 const mockVehicleRepository = {
   findOne: jest.fn(),
   create: jest.fn(),
@@ -35,7 +43,6 @@ describe('TelemetryConfigService', () => {
   let service: TelemetryConfigService;
 
   beforeEach(async () => {
-    // Set up environment variables before creating the module
     process.env.ACCESS_TOKEN = 'test_access_token';
     process.env.LETS_ENCRYPT_CERTIFICATE =
       Buffer.from('test_certificate').toString('base64');
@@ -57,7 +64,6 @@ describe('TelemetryConfigService', () => {
 
     service = module.get<TelemetryConfigService>(TelemetryConfigService);
 
-    // Reset mocks
     jest.clearAllMocks();
   });
 
@@ -83,8 +89,8 @@ describe('TelemetryConfigService', () => {
 
       expect(result).toEqual([]);
       expect(loggerSpy).toHaveBeenCalledWith(
-        'Erreur lors de la récupération des véhicules:',
-        'Token invalide ou expiré pour cet utilisateur'
+        'Error fetching vehicles:',
+        'Invalid or expired token for this user'
       );
       loggerSpy.mockRestore();
     });
@@ -406,21 +412,21 @@ describe('TelemetryConfigService', () => {
     it('should configure telemetry for all vehicles', async () => {
       const userId = 'test-user-id';
       const mockVehicles = [
-        { vin: 'VIN123', display_name: 'Tesla Model 3' },
-        { vin: 'VIN456', display_name: 'Tesla Model Y' },
+        createMockVehicle({ vin: 'VIN123', display_name: 'Tesla Model 3' }),
+        createMockVehicle({ vin: 'VIN456', display_name: 'Tesla Model Y' }),
       ];
 
       jest.spyOn(service, 'getVehicles').mockResolvedValue(mockVehicles);
 
       jest
         .spyOn(service, 'configureTelemetry')
-        .mockResolvedValueOnce({ success: true })
-        .mockResolvedValueOnce({ success: true });
+        .mockResolvedValueOnce({ response: { success: true } })
+        .mockResolvedValueOnce({ response: { success: true } });
 
       jest
         .spyOn(service, 'checkTelemetryConfig')
-        .mockResolvedValueOnce({ fields: {} })
-        .mockResolvedValueOnce({ fields: {} });
+        .mockResolvedValueOnce({ config: null, fields: {} })
+        .mockResolvedValueOnce({ config: null, fields: {} });
 
       await service.configureAllVehicles(userId);
 
@@ -430,7 +436,7 @@ describe('TelemetryConfigService', () => {
 
     it('should handle empty vehicles list', async () => {
       const userId = 'test-user-id';
-      
+
       jest.spyOn(service, 'getVehicles').mockResolvedValue([]);
 
       const loggerSpy = jest
@@ -439,13 +445,13 @@ describe('TelemetryConfigService', () => {
 
       await service.configureAllVehicles(userId);
 
-      expect(loggerSpy).toHaveBeenCalledWith('⚠️ Aucun véhicule trouvé.');
+      expect(loggerSpy).toHaveBeenCalledWith('⚠️ No vehicles found.');
       loggerSpy.mockRestore();
     });
 
     it('should handle getVehicles error', async () => {
       const userId = 'test-user-id';
-      
+
       jest.spyOn(service, 'getVehicles').mockResolvedValue([]);
 
       const loggerSpy = jest
@@ -454,7 +460,120 @@ describe('TelemetryConfigService', () => {
 
       await service.configureAllVehicles(userId);
 
-      expect(loggerSpy).toHaveBeenCalledWith('⚠️ Aucun véhicule trouvé.');
+      expect(loggerSpy).toHaveBeenCalledWith('⚠️ No vehicles found.');
+      loggerSpy.mockRestore();
+    });
+  });
+
+  describe('deleteTelemetryConfig', () => {
+    it('should delete telemetry config successfully', async () => {
+      const vin = 'VIN123';
+      const userId = 'test-user-id';
+      const userToken = 'user-access-token';
+
+      mockAuthService.getAccessTokenForUserId.mockResolvedValue(userToken);
+      mockAxiosInstance.delete.mockResolvedValueOnce({
+        data: { success: true },
+      });
+
+      const updateSpy = jest
+        .spyOn(service, 'updateVehicleTelemetryStatus')
+        .mockResolvedValue(undefined);
+
+      const result = await service.deleteTelemetryConfig(vin, userId);
+
+      expect(result).toEqual({
+        success: true,
+        message: 'Telemetry configuration deleted successfully',
+      });
+      expect(mockAxiosInstance.delete).toHaveBeenCalledWith(
+        `/api/1/vehicles/${vin}/fleet_telemetry_config`,
+        expect.objectContaining({
+          headers: { Authorization: `Bearer ${userToken}` },
+        })
+      );
+      expect(updateSpy).toHaveBeenCalledWith(userId, vin, false);
+    });
+
+    it('should handle 404 error gracefully (config already deleted)', async () => {
+      const vin = 'VIN123';
+      const userId = 'test-user-id';
+      const userToken = 'user-access-token';
+
+      mockAuthService.getAccessTokenForUserId.mockResolvedValue(userToken);
+      mockAxiosInstance.delete.mockRejectedValueOnce({
+        isAxiosError: true,
+        response: { status: 404 },
+        message: 'Not Found',
+      });
+
+      const updateSpy = jest
+        .spyOn(service, 'updateVehicleTelemetryStatus')
+        .mockResolvedValue(undefined);
+
+      const loggerSpy = jest
+        .spyOn(service['logger'], 'log')
+        .mockImplementation();
+
+      const result = await service.deleteTelemetryConfig(vin, userId);
+
+      expect(result).toEqual({
+        success: true,
+        message: 'No telemetry configuration found (already deleted)',
+      });
+      expect(updateSpy).toHaveBeenCalledWith(userId, vin, false);
+      expect(loggerSpy).toHaveBeenCalledWith(
+        `ℹ️ No configuration found for ${vin} (already deleted)`
+      );
+      loggerSpy.mockRestore();
+    });
+
+    it('should return error on API failure', async () => {
+      const vin = 'VIN123';
+      const userId = 'test-user-id';
+      const userToken = 'user-access-token';
+
+      mockAuthService.getAccessTokenForUserId.mockResolvedValue(userToken);
+      mockAxiosInstance.delete.mockRejectedValueOnce({
+        isAxiosError: true,
+        response: { status: 500, data: { error: 'Internal Server Error' } },
+        message: 'Server Error',
+      });
+
+      const loggerSpy = jest
+        .spyOn(service['logger'], 'error')
+        .mockImplementation();
+
+      const result = await service.deleteTelemetryConfig(vin, userId);
+
+      expect(result).toEqual({
+        success: false,
+        message: 'Error deleting telemetry configuration',
+      });
+      expect(loggerSpy).toHaveBeenCalledWith(
+        `❌ Error deleting config for ${vin}:`,
+        { error: 'Internal Server Error' }
+      );
+      loggerSpy.mockRestore();
+    });
+
+    it('should handle unauthorized error', async () => {
+      const vin = 'VIN123';
+      const userId = 'test-user-id';
+
+      mockAuthService.getAccessTokenForUserId.mockResolvedValue(null);
+
+      const loggerSpy = jest
+        .spyOn(service['logger'], 'error')
+        .mockImplementation();
+
+      const result = await service.deleteTelemetryConfig(vin, userId);
+
+      expect(result).toEqual({
+        success: false,
+        message: 'Error deleting telemetry configuration',
+      });
+      expect(loggerSpy).toHaveBeenCalled();
       loggerSpy.mockRestore();
     });
   });

@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Param,
   Logger,
   UseGuards,
@@ -72,5 +73,18 @@ export class TelemetryConfigController {
       userId
     );
     return { message: `Configuration checked for VIN: ${vin}`, result };
+  }
+
+  @Throttle(ThrottleOptions.authenticatedWrite())
+  @Delete('delete/:vin')
+  async deleteTelemetryConfig(
+    @Param('vin') vin: string,
+    @CurrentUser() user: User
+  ) {
+    const userId = user.userId;
+    this.logger.log(
+      `🗑️ Deleting telemetry configuration for VIN: ${vin} (user: ${userId})`
+    );
+    return await this.telemetryConfigService.deleteTelemetryConfig(vin, userId);
   }
 }
