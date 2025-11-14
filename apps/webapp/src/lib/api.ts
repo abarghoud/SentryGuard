@@ -299,6 +299,18 @@ export async function checkTelemetryConfig(vin: string): Promise<{
   return apiRequest(`/telemetry-config/check/${vin}`);
 }
 
+/**
+ * Delete telemetry configuration for a vehicle (requires JWT)
+ */
+export async function deleteTelemetryConfig(vin: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  return apiRequest(`/telemetry-config/${vin}`, {
+    method: 'DELETE',
+  });
+}
+
 // ============ Telegram API ============
 
 export interface TelegramLinkInfo {
