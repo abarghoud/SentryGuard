@@ -76,7 +76,7 @@ export class TelemetryConfigController {
   }
 
   @Throttle(ThrottleOptions.authenticatedWrite())
-  @Delete('delete/:vin')
+  @Delete(':vin')
   async deleteTelemetryConfig(
     @Param('vin') vin: string,
     @CurrentUser() user: User

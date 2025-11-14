@@ -7,14 +7,17 @@ import type { Vehicle } from '../lib/api';
 interface VehicleCardProps {
   vehicle: Vehicle;
   onToggleTelemetry: (vin: string) => Promise<boolean>;
+  onDeleteTelemetry: (vin: string) => Promise<boolean>;
 }
 
 export default function VehicleCard({
   vehicle,
   onToggleTelemetry,
+  onDeleteTelemetry,
 }: VehicleCardProps) {
   const { t } = useTranslation('common');
   const [isConfiguring, setIsConfiguring] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleToggle = async () => {
     if (vehicle.telemetry_enabled) return; // Already configured
@@ -22,6 +25,20 @@ export default function VehicleCard({
     setIsConfiguring(true);
     await onToggleTelemetry(vehicle.vin);
     setIsConfiguring(false);
+  };
+
+  const handleDelete = async () => {
+    // Confirmation before deletion
+    if (!window.confirm(t('Are you sure you want to delete the telemetry configuration for this vehicle?'))) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await onDeleteTelemetry(vehicle.vin);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -96,6 +113,16 @@ export default function VehicleCard({
             className="px-4 py-2 bg-tesla-600 hover:bg-tesla-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isConfiguring ? t('Configuring...') : t('Enable Telemetry')}
+          </button>
+        )}
+
+        {vehicle.telemetry_enabled && (
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-red-700 dark:hover:bg-red-800"
+          >
+            {isDeleting ? t('Deleting...') : t('Delete Configuration')}
           </button>
         )}
       </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getVehicles, configureTelemetry, hasToken, type Vehicle } from './api';
+import { getVehicles, configureTelemetry, deleteTelemetryConfig, hasToken, type Vehicle } from './api';
 
 export function useVehicles() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -44,6 +44,25 @@ export function useVehicles() {
     }
   };
 
+  const deleteTelemetryForVehicle = async (vin: string): Promise<boolean> => {
+    try {
+      const result = await deleteTelemetryConfig(vin);
+      if (result.success) {
+        // Refresh list after deletion
+        await fetchVehicles();
+        return true;
+      }
+      setError(result.message);
+      return false;
+    } catch (err) {
+      console.error('Failed to delete telemetry config:', err);
+      setError(
+        err instanceof Error ? err.message : 'Failed to delete telemetry configuration'
+      );
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchVehicles();
   }, []);
@@ -54,5 +73,6 @@ export function useVehicles() {
     error,
     fetchVehicles,
     configureTelemetryForVehicle,
+    deleteTelemetryForVehicle,
   };
 }
