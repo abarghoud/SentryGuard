@@ -15,7 +15,6 @@ export default function VehiclesPage() {
     deleteTelemetryForVehicle,
   } = useVehicles();
 
-  // Vérifier le statut key_paired depuis le premier véhicule (si disponible)
   const isKeyPaired = vehicles.length > 0 ? vehicles[0].key_paired : null;
 
   const handlePairVirtualKey = () => {

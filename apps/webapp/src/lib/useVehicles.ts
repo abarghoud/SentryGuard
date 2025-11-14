@@ -9,7 +9,6 @@ export function useVehicles() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchVehicles = async () => {
-    // Don't fetch if no token
     if (!hasToken()) {
       setIsLoading(false);
       return;
@@ -32,7 +31,6 @@ export function useVehicles() {
   const configureTelemetryForVehicle = async (vin: string) => {
     try {
       await configureTelemetry(vin);
-      // Refresh list after configuration
       await fetchVehicles();
       return true;
     } catch (err) {
@@ -48,7 +46,6 @@ export function useVehicles() {
     try {
       const result = await deleteTelemetryConfig(vin);
       if (result.success) {
-        // Refresh list after deletion
         await fetchVehicles();
         return true;
       }

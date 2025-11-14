@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Vehicle } from '../lib/api';
+import Spinner from './Spinner';
 
 interface VehicleCardProps {
   vehicle: Vehicle;
@@ -27,9 +28,8 @@ export default function VehicleCard({
     setIsConfiguring(false);
   };
 
-  const handleDelete = async () => {
-    // Confirmation before deletion
-    if (!window.confirm(t('Are you sure you want to delete the telemetry configuration for this vehicle?'))) {
+  const handleDisable = async () => {
+    if (!window.confirm(t('Are you sure you want to disable telemetry for this vehicle?'))) {
       return;
     }
 
@@ -110,19 +110,55 @@ export default function VehicleCard({
           <button
             onClick={handleToggle}
             disabled={isConfiguring}
-            className="px-4 py-2 bg-tesla-600 hover:bg-tesla-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-tesla-600 hover:bg-tesla-700 text-white text-xs font-medium rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            title={t('Enable Telemetry')}
           >
-            {isConfiguring ? t('Configuring...') : t('Enable Telemetry')}
+            {isConfiguring ? (
+              <Spinner />
+            ) : (
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
+              </svg>
+            )}
+            <span>{isConfiguring ? t('Configuring...') : t('Enable')}</span>
           </button>
         )}
 
         {vehicle.telemetry_enabled && (
           <button
-            onClick={handleDelete}
+            onClick={handleDisable}
             disabled={isDeleting}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-red-700 dark:hover:bg-red-800"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 hover:text-gray-700 text-xs font-medium rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-400 dark:hover:text-gray-300 border border-gray-200 dark:border-gray-700"
+            title={t('Disable Telemetry')}
           >
-            {isDeleting ? t('Deleting...') : t('Delete Configuration')}
+            {isDeleting ? (
+              <Spinner />
+            ) : (
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                />
+              </svg>
+            )}
+            <span>{isDeleting ? t('Disabling...') : t('Disable')}</span>
           </button>
         )}
       </div>
