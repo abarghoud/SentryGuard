@@ -57,4 +57,7 @@ export class User {
 
   @OneToOne('TelegramConfig', 'user')
   telegramConfig!: any;
+
+  @OneToMany('UserConsent', 'user')
+  consents!: any[];
 }

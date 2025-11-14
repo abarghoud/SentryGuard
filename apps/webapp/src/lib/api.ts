@@ -390,3 +390,68 @@ export async function updateUserLanguage(
     body: JSON.stringify({ language }),
   });
 }
+
+// ============ Consent API ============
+
+export interface ConsentStatus {
+  hasConsent: boolean;
+  latestConsent?: {
+    id: string;
+    acceptedAt: string;
+    version: string;
+    locale: string;
+  };
+  isRevoked: boolean;
+}
+
+export interface ConsentAcceptRequest {
+  version: string;
+  locale: string;
+  appTitle: string;
+  partnerName: string;
+  vehiclesSnapshot?: string[];
+}
+
+export interface ConsentAcceptResponse {
+  success: boolean;
+  consent: {
+    id: string;
+    acceptedAt: string;
+    version: string;
+  };
+}
+
+/**
+ * Get current consent status (requires JWT)
+ */
+export async function getConsentStatus(): Promise<ConsentStatus> {
+  return apiRequest('/consent/current');
+}
+
+/**
+ * Accept consent terms (requires JWT)
+ */
+export async function acceptConsent(
+  consentData: ConsentAcceptRequest
+): Promise<ConsentAcceptResponse> {
+  return apiRequest('/consent/accept', {
+    method: 'POST',
+    body: JSON.stringify(consentData),
+  });
+}
+
+/**
+ * Revoke consent (requires JWT)
+ */
+export async function revokeConsent(): Promise<{ success: boolean; message: string }> {
+  return apiRequest('/consent/revoke', {
+    method: 'POST',
+  });
+}
+
+/**
+ * Get consent history (requires JWT)
+ */
+export async function getConsentHistory(): Promise<any[]> {
+  return apiRequest('/consent/history');
+}

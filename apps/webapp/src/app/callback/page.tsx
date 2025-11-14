@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { setToken } from '../../lib/api';
+import { setToken, getConsentStatus } from '../../lib/api';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 function CallbackContent() {
@@ -43,12 +43,30 @@ function CallbackContent() {
         // Save JWT token to localStorage
         setToken(token);
         setStatus('success');
-        setMessage(t('Authentication successful! Redirecting to dashboard...'));
+        setMessage(t('Authentication successful! Checking consent status...'));
 
-        // Redirect to dashboard after 1.5 seconds
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 1500);
+        // Check consent status and redirect accordingly
+        try {
+          const consentStatus = await getConsentStatus();
+          if (!consentStatus.hasConsent) {
+            setMessage(t('Authentication successful! Redirecting to consent form...'));
+            setTimeout(() => {
+              router.push('/consent');
+            }, 1500);
+          } else {
+            setMessage(t('Authentication successful! Redirecting to dashboard...'));
+            setTimeout(() => {
+              router.push('/dashboard');
+            }, 1500);
+          }
+        } catch (error) {
+          // If consent check fails, redirect to consent to be safe
+          console.warn('Failed to check consent status, redirecting to consent:', error);
+          setMessage(t('Authentication successful! Redirecting to consent form...'));
+          setTimeout(() => {
+            router.push('/consent');
+          }, 1500);
+        }
       } else {
         setStatus('error');
         setMessage(

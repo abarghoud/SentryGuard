@@ -9,12 +9,13 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { TelemetryConfigService } from './telemetry-config.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { ConsentGuard } from '../../common/guards/consent.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { User } from '../../entities/user.entity';
 import { ThrottleOptions } from '../../config/throttle.config';
 
 @Controller('telemetry-config')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ConsentGuard)
 export class TelemetryConfigController {
   private readonly logger = new Logger(TelemetryConfigController.name);
 

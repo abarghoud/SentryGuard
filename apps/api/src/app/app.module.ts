@@ -6,6 +6,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ZmqService } from './zmq/zmq.service';
 import { AuthModule } from './auth/auth.module';
+import { ConsentModule } from './consent/consent.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { UserModule } from './user/user.module';
@@ -20,6 +21,7 @@ import { User } from '../entities/user.entity';
     TypeOrmModule.forRoot(getDatabaseConfig()),
     TypeOrmModule.forFeature([Vehicle, User]),
     AuthModule,
+    ConsentModule,
     TelemetryModule,
     TelegramModule,
     UserModule,
