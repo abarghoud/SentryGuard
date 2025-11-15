@@ -732,4 +732,110 @@ describe('AuthService', () => {
       expect(mockUserRepository.save).toHaveBeenCalledWith(newUser);
     });
   });
+
+  describe('invalidateUserTokens', () => {
+    it('should invalidate JWT token and mark token as revoked', async () => {
+      const userId = 'test-user-id';
+      const mockUser = {
+        userId,
+        email: 'test@example.com',
+        jwt_token: 'valid-jwt-token',
+        jwt_expires_at: new Date(Date.now() + 3600000),
+        token_status: 'active',
+        token_revoked_at: null,
+      } as unknown as User;
+
+      mockUserRepository.findOne.mockResolvedValue(mockUser);
+      mockUserRepository.save.mockResolvedValue({
+        ...mockUser,
+        jwt_token: undefined,
+        jwt_expires_at: undefined,
+        token_status: 'revoked',
+        token_revoked_at: expect.any(Date),
+      });
+
+      const loggerSpy = jest
+        .spyOn(service['logger'], 'warn')
+        .mockImplementation();
+
+      await service.invalidateUserTokens(userId);
+
+      expect(mockUserRepository.findOne).toHaveBeenCalledWith({
+        where: { userId },
+      });
+
+      expect(mockUserRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId,
+          jwt_token: undefined,
+          jwt_expires_at: undefined,
+          token_status: 'revoked',
+          token_revoked_at: expect.any(Date),
+        })
+      );
+
+      expect(loggerSpy).toHaveBeenCalledWith(
+        expect.stringContaining('All tokens invalidated for user')
+      );
+
+      loggerSpy.mockRestore();
+    });
+
+    it('should log warning when user is not found', async () => {
+      const userId = 'non-existent-user';
+      mockUserRepository.findOne.mockResolvedValue(null);
+
+      const loggerSpy = jest
+        .spyOn(service['logger'], 'warn')
+        .mockImplementation();
+
+      await service.invalidateUserTokens(userId);
+
+      expect(mockUserRepository.findOne).toHaveBeenCalledWith({
+        where: { userId },
+      });
+
+      expect(mockUserRepository.save).not.toHaveBeenCalled();
+
+      expect(loggerSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Cannot invalidate tokens: user not found')
+      );
+
+      loggerSpy.mockRestore();
+    });
+
+    it('should set token_revoked_at to current timestamp', async () => {
+      const userId = 'test-user-id';
+      const mockUser = {
+        userId,
+        email: 'test@example.com',
+        jwt_token: 'valid-jwt-token',
+        jwt_expires_at: new Date(Date.now() + 3600000),
+        token_status: 'active',
+        token_revoked_at: null,
+      } as unknown as User;
+
+      const beforeTime = new Date();
+      mockUserRepository.findOne.mockResolvedValue(mockUser);
+
+      let savedUser: User | undefined;
+      mockUserRepository.save.mockImplementation((user: User) => {
+        savedUser = user;
+        return Promise.resolve(user);
+      });
+
+      await service.invalidateUserTokens(userId);
+
+      const afterTime = new Date();
+
+      expect(savedUser).toBeDefined();
+      expect(savedUser?.token_revoked_at).toBeDefined();
+      expect(savedUser?.token_revoked_at?.getTime()).toBeGreaterThanOrEqual(
+        beforeTime.getTime()
+      );
+      expect(savedUser?.token_revoked_at?.getTime()).toBeLessThanOrEqual(
+        afterTime.getTime()
+      );
+    });
+  });
 });
