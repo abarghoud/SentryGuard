@@ -52,3 +52,36 @@ export function is404Error(error: unknown): boolean {
   }
   return false;
 }
+
+/**
+ * Type guard to check if an error indicates a revoked Tesla token
+ * Checks for both 401 status and specific "token revoked" message
+ *
+ * @param error - The error object to check
+ * @returns True if the error indicates token revocation, false otherwise
+ */
+export function isTokenRevokedError(error: unknown): boolean {
+  if (isAxiosError(error)) {
+    const axiosError = error as AxiosError;
+
+    if (axiosError.response?.status !== 401) {
+      return false;
+    }
+
+    const responseData = axiosError.response?.data;
+    if (
+      responseData &&
+      typeof responseData === 'object' &&
+      'error' in responseData
+    ) {
+      const errorMessage = (responseData as { error: unknown }).error;
+      return (
+        typeof errorMessage === 'string' &&
+        errorMessage.toLowerCase().includes('token revoked')
+      );
+    }
+
+    return false;
+  }
+  return false;
+}
