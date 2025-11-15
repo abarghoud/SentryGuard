@@ -39,6 +39,12 @@ export class User {
   @Column({ type: 'timestamp' })
   expires_at!: Date;
 
+  @Column({ type: 'varchar', length: 20, default: 'active' })
+  token_status!: 'active' | 'revoked' | 'expired';
+
+  @Column({ type: 'timestamp', nullable: true })
+  token_revoked_at?: Date;
+
   @Column({ type: 'boolean', default: false })
   debug_messages!: boolean;
 

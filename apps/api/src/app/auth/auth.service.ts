@@ -377,6 +377,10 @@ export class AuthService implements OnModuleDestroy {
     user.jwt_token = jwtData.token;
     user.jwt_expires_at = tokens.expiresAt;
 
+    // Reset token status to active (in case user was previously revoked)
+    user.token_status = 'active';
+    user.token_revoked_at = undefined;
+
     await this.userRepository.save(user);
 
     this.logger.log(`✅ User updated in database: ${userId}`);
@@ -412,6 +416,8 @@ export class AuthService implements OnModuleDestroy {
       jwt_token: jwtData.token,
       jwt_expires_at: tokens.expiresAt,
       preferred_language: userLocale,
+      token_status: 'active',
+      token_revoked_at: undefined,
     });
 
     await this.userRepository.save(newUser);
@@ -559,6 +565,37 @@ export class AuthService implements OnModuleDestroy {
       await this.userRepository.save(user);
       this.logger.log(`🔓 JWT token revoked for user: ${userId}`);
     }
+  }
+
+  /**
+   * Invalidates all tokens for a user when their Tesla OAuth token is revoked
+   * This method is called when Tesla API returns a "token revoked" error
+   *
+   * SECURITY NOTE: This ensures that users cannot continue using the app
+   * with revoked Tesla credentials. Both JWT and token status are invalidated
+   * to force re-authentication.
+   *
+   * @param userId - The ID of the user whose tokens should be invalidated
+   */
+  async invalidateUserTokens(userId: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { userId } });
+
+    if (!user) {
+      this.logger.warn(`⚠️ Cannot invalidate tokens: user not found: ${userId}`);
+      return;
+    }
+
+    user.jwt_token = undefined;
+    user.jwt_expires_at = undefined;
+
+    user.token_status = 'revoked';
+    user.token_revoked_at = new Date();
+
+    await this.userRepository.save(user);
+
+    this.logger.warn(
+      `🔒 All tokens invalidated for user ${userId} due to Tesla token revocation`
+    );
   }
 
   /**

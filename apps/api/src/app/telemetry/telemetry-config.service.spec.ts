@@ -30,6 +30,7 @@ mockedAxios.create = jest.fn().mockReturnValue(mockAxiosInstance);
 const mockAuthService = {
   getAccessTokenForUserId: jest.fn(),
   getAccessToken: jest.fn(), // For backward compatibility
+  invalidateUserTokens: jest.fn(),
 };
 
 const mockVehicleRepository = {
@@ -575,6 +576,181 @@ describe('TelemetryConfigService', () => {
       });
       expect(loggerSpy).toHaveBeenCalled();
       loggerSpy.mockRestore();
+    });
+  });
+
+  describe('Token Revocation Handling', () => {
+    beforeEach(() => {
+      mockAuthService.invalidateUserTokens = jest.fn().mockResolvedValue(undefined);
+    });
+
+    describe('getVehicles with revoked token', () => {
+      it('should call invalidateUserTokens when token is revoked', async () => {
+        const userId = 'test-user-id';
+        const revokedTokenError = {
+          isAxiosError: true,
+          response: {
+            status: 401,
+            data: { error: 'token revoked' },
+          },
+        };
+
+        mockAuthService.getAccessTokenForUserId.mockResolvedValue('revoked-token');
+        mockAxiosInstance.get.mockRejectedValue(revokedTokenError);
+
+        const loggerWarnSpy = jest
+          .spyOn(service['logger'], 'warn')
+          .mockImplementation();
+
+        // We expect handleTokenRevocation to throw, so we catch it
+        try {
+          await service.getVehicles(userId);
+        } catch {
+          // Expected TokenRevokedException
+        }
+
+        expect(loggerWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Detected revoked Tesla token')
+        );
+        expect(mockAuthService.invalidateUserTokens).toHaveBeenCalledWith(userId);
+
+        loggerWarnSpy.mockRestore();
+      });
+    });
+
+    describe('configureTelemetry with revoked token', () => {
+      it('should call invalidateUserTokens when token is revoked', async () => {
+        const vin = 'VIN123';
+        const userId = 'test-user-id';
+        const revokedTokenError = {
+          isAxiosError: true,
+          response: {
+            status: 401,
+            data: { error: 'token revoked' },
+          },
+        };
+
+        mockAuthService.getAccessTokenForUserId.mockResolvedValue('revoked-token');
+        mockAxiosInstance.post.mockRejectedValue(revokedTokenError);
+
+        const loggerWarnSpy = jest
+          .spyOn(service['logger'], 'warn')
+          .mockImplementation();
+
+        try {
+          await service.configureTelemetry(vin, userId);
+        } catch {
+          // Expected TokenRevokedException
+        }
+
+        expect(loggerWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Detected revoked Tesla token')
+        );
+        expect(mockAuthService.invalidateUserTokens).toHaveBeenCalledWith(userId);
+
+        loggerWarnSpy.mockRestore();
+      });
+    });
+
+    describe('checkTelemetryConfig with revoked token', () => {
+      it('should call invalidateUserTokens when token is revoked', async () => {
+        const vin = 'VIN123';
+        const userId = 'test-user-id';
+        const revokedTokenError = {
+          isAxiosError: true,
+          response: {
+            status: 401,
+            data: { error: 'token revoked' },
+          },
+        };
+
+        mockAuthService.getAccessTokenForUserId.mockResolvedValue('revoked-token');
+        mockAxiosInstance.get.mockRejectedValue(revokedTokenError);
+
+        const loggerWarnSpy = jest
+          .spyOn(service['logger'], 'warn')
+          .mockImplementation();
+
+        try {
+          await service.checkTelemetryConfig(vin, userId);
+        } catch {
+          // Expected TokenRevokedException
+        }
+
+        expect(loggerWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Detected revoked Tesla token')
+        );
+        expect(mockAuthService.invalidateUserTokens).toHaveBeenCalledWith(userId);
+
+        loggerWarnSpy.mockRestore();
+      });
+    });
+
+    describe('deleteTelemetryConfig with revoked token', () => {
+      it('should call invalidateUserTokens when token is revoked', async () => {
+        const vin = 'VIN123';
+        const userId = 'test-user-id';
+        const revokedTokenError = {
+          isAxiosError: true,
+          response: {
+            status: 401,
+            data: { error: 'token revoked' },
+          },
+        };
+
+        mockAuthService.getAccessTokenForUserId.mockResolvedValue('revoked-token');
+        mockAxiosInstance.delete.mockRejectedValue(revokedTokenError);
+
+        const loggerWarnSpy = jest
+          .spyOn(service['logger'], 'warn')
+          .mockImplementation();
+
+        try {
+          await service.deleteTelemetryConfig(vin, userId);
+        } catch {
+          // Expected TokenRevokedException
+        }
+
+        expect(loggerWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Detected revoked Tesla token')
+        );
+        expect(mockAuthService.invalidateUserTokens).toHaveBeenCalledWith(userId);
+
+        loggerWarnSpy.mockRestore();
+      });
+    });
+
+    describe('non-revoked 401 errors', () => {
+      it('should NOT call invalidateUserTokens for generic 401 errors', async () => {
+        const userId = 'test-user-id';
+        const genericUnauthorizedError = {
+          isAxiosError: true,
+          response: {
+            status: 401,
+            data: { error: 'invalid credentials' },
+          },
+        };
+
+        mockAuthService.getAccessTokenForUserId.mockResolvedValue('valid-token');
+        mockAxiosInstance.get.mockRejectedValue(genericUnauthorizedError);
+
+        const loggerWarnSpy = jest
+          .spyOn(service['logger'], 'warn')
+          .mockImplementation();
+        const loggerErrorSpy = jest
+          .spyOn(service['logger'], 'error')
+          .mockImplementation();
+
+        await service.getVehicles(userId);
+
+        expect(loggerWarnSpy).not.toHaveBeenCalledWith(
+          expect.stringContaining('Detected revoked Tesla token')
+        );
+        expect(mockAuthService.invalidateUserTokens).not.toHaveBeenCalled();
+
+        loggerWarnSpy.mockRestore();
+        loggerErrorSpy.mockRestore();
+      });
     });
   });
 });
