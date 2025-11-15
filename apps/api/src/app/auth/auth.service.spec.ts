@@ -714,6 +714,9 @@ describe('AuthService', () => {
         expires_at: tokens.expiresAt,
         jwt_token: 'jwt-token',
         jwt_expires_at: tokens.expiresAt,
+        preferred_language: 'en',
+        token_status: 'active',
+        token_revoked_at: undefined,
       };
 
       mockJwtService.signAsync.mockResolvedValue('jwt-token');
@@ -724,7 +727,8 @@ describe('AuthService', () => {
         tokens,
         profile,
         'encrypted-access',
-        'encrypted-refresh'
+        'encrypted-refresh',
+        'en'
       );
 
       expect(result).toBe('746573742d757365722d6964');
