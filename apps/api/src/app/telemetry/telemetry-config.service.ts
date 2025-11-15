@@ -23,7 +23,12 @@ import {
   TESLA_API_ENDPOINTS,
   WARNING_MESSAGES,
 } from './telemetry-config.constants';
-import { extractErrorDetails, is404Error } from './telemetry-config.helpers';
+import {
+  extractErrorDetails,
+  is404Error,
+  isTokenRevokedError,
+} from './telemetry-config.helpers';
+import { TokenRevokedException } from '../../common/exceptions/token-revoked.exception';
 
 @Injectable()
 export class TelemetryConfigService {
@@ -54,6 +59,24 @@ export class TelemetryConfigService {
       throw new UnauthorizedException(ERROR_MESSAGES.INVALID_TOKEN);
     }
     return token;
+  }
+
+  /**
+   * Handles Tesla token revocation by invalidating user tokens and throwing exception
+   *
+   * SECURITY NOTE: This method is called when Tesla API returns a 401 "token revoked" error.
+   * It ensures the user's session is immediately invalidated to prevent further API calls
+   * with revoked credentials.
+   *
+   * @param userId - The ID of the user whose token was revoked
+   * @throws TokenRevokedException - Always throws to trigger global exception filter
+   */
+  private async handleTokenRevocation(userId: string): Promise<never> {
+    this.logger.warn(`🔒 Detected revoked Tesla token for user: ${userId}`);
+
+    await this.authService.invalidateUserTokens(userId);
+
+    throw new TokenRevokedException(userId);
   }
 
   /**
@@ -104,6 +127,11 @@ export class TelemetryConfigService {
         ERROR_MESSAGES.ERROR_FETCHING_VEHICLES,
         extractErrorDetails(error)
       );
+
+      if (isTokenRevokedError(error)) {
+        await this.handleTokenRevocation(userId);
+      }
+
       return [];
     }
   }
@@ -235,6 +263,11 @@ export class TelemetryConfigService {
         ERROR_MESSAGES.ERROR_CONFIGURING_VIN(vin),
         extractErrorDetails(error)
       );
+
+      if (isTokenRevokedError(error)) {
+        await this.handleTokenRevocation(userId);
+      }
+
       return null;
     }
   }
@@ -281,6 +314,11 @@ export class TelemetryConfigService {
         ERROR_MESSAGES.ERROR_CHECKING_CONFIG(vin),
         extractErrorDetails(error)
       );
+
+      if (isTokenRevokedError(error)) {
+        await this.handleTokenRevocation(userId);
+      }
+
       return null;
     }
   }
@@ -320,6 +358,10 @@ export class TelemetryConfigService {
           success: true,
           message: INFO_MESSAGES.NO_CONFIG_FOUND_ALREADY_DELETED,
         };
+      }
+
+      if (isTokenRevokedError(error)) {
+        await this.handleTokenRevocation(userId);
       }
 
       this.logger.error(
