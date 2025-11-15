@@ -81,10 +81,28 @@ async function apiRequest<T>(
       headers,
     });
 
-    // Handle 401 Unauthorized (token expired or invalid)
+    // Handle 401 Unauthorized (token expired, invalid, or revoked)
     if (response.status === 401) {
+      let errorData: any = {};
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        // Ignore JSON parse errors
+      }
+
       clearToken();
-      // Redirect to login if we're in the browser
+
+      if (errorData?.error === 'TOKEN_REVOKED') {
+        if (typeof window !== 'undefined') {
+          window.location.href = '/revoked';
+        }
+        throw new ApiError(
+          errorData.message || 'Your Tesla authorization has been revoked.',
+          401,
+          errorData
+        );
+      }
+
       if (typeof window !== 'undefined') {
         window.location.href = '/?expired=true';
       }
