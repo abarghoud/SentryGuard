@@ -158,7 +158,7 @@ describe('AuthService', () => {
 
     it('should include missing scopes in the URL when provided', () => {
       const missingScopes = ['vehicle_device_data', 'offline_access'];
-      const result = service.generateScopeChangeUrl(missingScopes);
+      const result = service.generateScopeChangeUrl('en', missingScopes);
 
       expect(result.url).toContain('prompt_missing_scopes=true');
       expect(result.url).toContain('scope=openid');
@@ -714,6 +714,8 @@ describe('AuthService', () => {
         expires_at: tokens.expiresAt,
         jwt_token: 'jwt-token',
         jwt_expires_at: tokens.expiresAt,
+        preferred_language: 'en',
+        token_revoked_at: undefined,
       };
 
       mockJwtService.signAsync.mockResolvedValue('jwt-token');
@@ -724,12 +726,116 @@ describe('AuthService', () => {
         tokens,
         profile,
         'encrypted-access',
-        'encrypted-refresh'
+        'encrypted-refresh',
+        'en'
       );
 
       expect(result).toBe('746573742d757365722d6964');
       expect(mockUserRepository.create).toHaveBeenCalledWith(newUser);
       expect(mockUserRepository.save).toHaveBeenCalledWith(newUser);
+    });
+  });
+
+  describe('invalidateUserTokens', () => {
+    it('should invalidate JWT token and mark token as revoked', async () => {
+      const userId = 'test-user-id';
+      const mockUser = {
+        userId,
+        email: 'test@example.com',
+        jwt_token: 'valid-jwt-token',
+        jwt_expires_at: new Date(Date.now() + 3600000),
+        token_revoked_at: null,
+      } as unknown as User;
+
+      mockUserRepository.findOne.mockResolvedValue(mockUser);
+      mockUserRepository.save.mockResolvedValue({
+        ...mockUser,
+        jwt_token: undefined,
+        jwt_expires_at: undefined,
+        token_revoked_at: expect.any(Date),
+      });
+
+      const loggerSpy = jest
+        .spyOn(service['logger'], 'warn')
+        .mockImplementation();
+
+      await service.invalidateUserTokens(userId);
+
+      expect(mockUserRepository.findOne).toHaveBeenCalledWith({
+        where: { userId },
+      });
+
+      expect(mockUserRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId,
+          jwt_token: null,
+          jwt_expires_at: null,
+          token_revoked_at: expect.any(Date),
+        })
+      );
+
+      expect(loggerSpy).toHaveBeenCalledWith(
+        expect.stringContaining('All tokens invalidated for user')
+      );
+
+      loggerSpy.mockRestore();
+    });
+
+    it('should log warning when user is not found', async () => {
+      const userId = 'non-existent-user';
+      mockUserRepository.findOne.mockResolvedValue(null);
+
+      const loggerSpy = jest
+        .spyOn(service['logger'], 'warn')
+        .mockImplementation();
+
+      await service.invalidateUserTokens(userId);
+
+      expect(mockUserRepository.findOne).toHaveBeenCalledWith({
+        where: { userId },
+      });
+
+      expect(mockUserRepository.save).not.toHaveBeenCalled();
+
+      expect(loggerSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Cannot invalidate tokens: user not found')
+      );
+
+      loggerSpy.mockRestore();
+    });
+
+    it('should set token_revoked_at to current timestamp', async () => {
+      const userId = 'test-user-id';
+      const mockUser = {
+        userId,
+        email: 'test@example.com',
+        jwt_token: 'valid-jwt-token',
+        jwt_expires_at: new Date(Date.now() + 3600000),
+        token_status: 'active',
+        token_revoked_at: null,
+      } as unknown as User;
+
+      const beforeTime = new Date();
+      mockUserRepository.findOne.mockResolvedValue(mockUser);
+
+      let savedUser: User | undefined;
+      mockUserRepository.save.mockImplementation((user: User) => {
+        savedUser = user;
+        return Promise.resolve(user);
+      });
+
+      await service.invalidateUserTokens(userId);
+
+      const afterTime = new Date();
+
+      expect(savedUser).toBeDefined();
+      expect(savedUser?.token_revoked_at).toBeDefined();
+      expect(savedUser?.token_revoked_at?.getTime()).toBeGreaterThanOrEqual(
+        beforeTime.getTime()
+      );
+      expect(savedUser?.token_revoked_at?.getTime()).toBeLessThanOrEqual(
+        afterTime.getTime()
+      );
     });
   });
 });

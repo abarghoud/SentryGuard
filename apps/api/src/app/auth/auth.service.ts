@@ -372,10 +372,10 @@ export class AuthService implements OnModuleDestroy {
 
     const userId = user.userId;
 
-    // Generate JWT token
     const jwtData = await this.generateJwtToken(userId, user.email || '');
     user.jwt_token = jwtData.token;
     user.jwt_expires_at = tokens.expiresAt;
+    user.token_revoked_at = undefined;
 
     await this.userRepository.save(user);
 
@@ -412,6 +412,7 @@ export class AuthService implements OnModuleDestroy {
       jwt_token: jwtData.token,
       jwt_expires_at: tokens.expiresAt,
       preferred_language: userLocale,
+      token_revoked_at: undefined,
     });
 
     await this.userRepository.save(newUser);
@@ -559,6 +560,30 @@ export class AuthService implements OnModuleDestroy {
       await this.userRepository.save(user);
       this.logger.log(`🔓 JWT token revoked for user: ${userId}`);
     }
+  }
+
+  /**
+   * Invalidates all tokens for a user when their Tesla OAuth token is revoked
+   *
+   * @param userId - The ID of the user whose tokens should be invalidated
+   */
+  async invalidateUserTokens(userId: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { userId } });
+
+    if (!user) {
+      this.logger.warn(`⚠️ Cannot invalidate tokens: user not found: ${userId}`);
+      return;
+    }
+
+    user.jwt_token = null;
+    user.jwt_expires_at = null;
+    user.token_revoked_at = new Date();
+
+    await this.userRepository.save(user);
+
+    this.logger.warn(
+      `🔒 All tokens invalidated for user ${userId} due to Tesla token revocation`
+    );
   }
 
   /**

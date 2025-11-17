@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
@@ -10,6 +10,7 @@ import { TelemetryModule } from './telemetry/telemetry.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { UserModule } from './user/user.module';
 import { CloudflareThrottlerGuard } from '../common/guards/cloudflare-throttler.guard';
+import { TokenRevokedExceptionFilter } from '../common/filters/token-revoked-exception.filter';
 import { getDatabaseConfig } from '../config/database.config';
 import { getThrottleConfig } from '../config/throttle.config';
 import { Vehicle } from '../entities/vehicle.entity';
@@ -32,6 +33,10 @@ import { User } from '../entities/user.entity';
     {
       provide: APP_GUARD,
       useClass: CloudflareThrottlerGuard,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: TokenRevokedExceptionFilter,
     },
   ],
 })

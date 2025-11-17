@@ -23,7 +23,12 @@ import {
   TESLA_API_ENDPOINTS,
   WARNING_MESSAGES,
 } from './telemetry-config.constants';
-import { extractErrorDetails, is404Error } from './telemetry-config.helpers';
+import {
+  extractErrorDetails,
+  is404Error,
+  isTokenRevokedError,
+} from './telemetry-config.helpers';
+import { TokenRevokedException } from '../../common/exceptions/token-revoked.exception';
 
 @Injectable()
 export class TelemetryConfigService {
@@ -54,6 +59,25 @@ export class TelemetryConfigService {
       throw new UnauthorizedException(ERROR_MESSAGES.INVALID_TOKEN);
     }
     return token;
+  }
+
+  /**
+   * Handles Tesla token revocation by invalidating user tokens and throwing exception
+   *
+   * @param userId - The ID of the user whose token was revoked
+   * @param error - The error object to check for token revocation
+   * @throws TokenRevokedException - Throws only if error is a token revocation error
+   */
+  private async handleTokenRevocation(userId: string, error: unknown): Promise<void> {
+    if (!isTokenRevokedError(error)) {
+      return;
+    }
+
+    this.logger.warn(`🔒 Detected revoked Tesla token for user: ${userId}`);
+
+    await this.authService.invalidateUserTokens(userId);
+
+    throw new TokenRevokedException(userId);
   }
 
   /**
@@ -104,6 +128,9 @@ export class TelemetryConfigService {
         ERROR_MESSAGES.ERROR_FETCHING_VEHICLES,
         extractErrorDetails(error)
       );
+
+      await this.handleTokenRevocation(userId, error);
+
       return [];
     }
   }
@@ -235,6 +262,9 @@ export class TelemetryConfigService {
         ERROR_MESSAGES.ERROR_CONFIGURING_VIN(vin),
         extractErrorDetails(error)
       );
+
+      await this.handleTokenRevocation(userId, error);
+
       return null;
     }
   }
@@ -281,6 +311,9 @@ export class TelemetryConfigService {
         ERROR_MESSAGES.ERROR_CHECKING_CONFIG(vin),
         extractErrorDetails(error)
       );
+
+      await this.handleTokenRevocation(userId, error);
+
       return null;
     }
   }
@@ -321,6 +354,8 @@ export class TelemetryConfigService {
           message: INFO_MESSAGES.NO_CONFIG_FOUND_ALREADY_DELETED,
         };
       }
+
+      await this.handleTokenRevocation(userId, error);
 
       this.logger.error(
         ERROR_MESSAGES.ERROR_DELETING_CONFIG(vin),
