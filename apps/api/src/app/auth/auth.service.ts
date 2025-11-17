@@ -372,13 +372,9 @@ export class AuthService implements OnModuleDestroy {
 
     const userId = user.userId;
 
-    // Generate JWT token
     const jwtData = await this.generateJwtToken(userId, user.email || '');
     user.jwt_token = jwtData.token;
     user.jwt_expires_at = tokens.expiresAt;
-
-    // Reset token status to active (in case user was previously revoked)
-    user.token_status = 'active';
     user.token_revoked_at = undefined;
 
     await this.userRepository.save(user);
@@ -416,7 +412,6 @@ export class AuthService implements OnModuleDestroy {
       jwt_token: jwtData.token,
       jwt_expires_at: tokens.expiresAt,
       preferred_language: userLocale,
-      token_status: 'active',
       token_revoked_at: undefined,
     });
 
@@ -569,11 +564,6 @@ export class AuthService implements OnModuleDestroy {
 
   /**
    * Invalidates all tokens for a user when their Tesla OAuth token is revoked
-   * This method is called when Tesla API returns a "token revoked" error
-   *
-   * SECURITY NOTE: This ensures that users cannot continue using the app
-   * with revoked Tesla credentials. Both JWT and token status are invalidated
-   * to force re-authentication.
    *
    * @param userId - The ID of the user whose tokens should be invalidated
    */
@@ -585,10 +575,8 @@ export class AuthService implements OnModuleDestroy {
       return;
     }
 
-    user.jwt_token = undefined;
-    user.jwt_expires_at = undefined;
-
-    user.token_status = 'revoked';
+    user.jwt_token = null;
+    user.jwt_expires_at = null;
     user.token_revoked_at = new Date();
 
     await this.userRepository.save(user);

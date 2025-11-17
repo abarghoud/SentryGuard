@@ -64,14 +64,15 @@ export class TelemetryConfigService {
   /**
    * Handles Tesla token revocation by invalidating user tokens and throwing exception
    *
-   * SECURITY NOTE: This method is called when Tesla API returns a 401 "token revoked" error.
-   * It ensures the user's session is immediately invalidated to prevent further API calls
-   * with revoked credentials.
-   *
    * @param userId - The ID of the user whose token was revoked
-   * @throws TokenRevokedException - Always throws to trigger global exception filter
+   * @param error - The error object to check for token revocation
+   * @throws TokenRevokedException - Throws only if error is a token revocation error
    */
-  private async handleTokenRevocation(userId: string): Promise<never> {
+  private async handleTokenRevocation(userId: string, error: unknown): Promise<void> {
+    if (!isTokenRevokedError(error)) {
+      return;
+    }
+
     this.logger.warn(`🔒 Detected revoked Tesla token for user: ${userId}`);
 
     await this.authService.invalidateUserTokens(userId);
@@ -128,9 +129,7 @@ export class TelemetryConfigService {
         extractErrorDetails(error)
       );
 
-      if (isTokenRevokedError(error)) {
-        await this.handleTokenRevocation(userId);
-      }
+      await this.handleTokenRevocation(userId, error);
 
       return [];
     }
@@ -264,9 +263,7 @@ export class TelemetryConfigService {
         extractErrorDetails(error)
       );
 
-      if (isTokenRevokedError(error)) {
-        await this.handleTokenRevocation(userId);
-      }
+      await this.handleTokenRevocation(userId, error);
 
       return null;
     }
@@ -315,9 +312,7 @@ export class TelemetryConfigService {
         extractErrorDetails(error)
       );
 
-      if (isTokenRevokedError(error)) {
-        await this.handleTokenRevocation(userId);
-      }
+      await this.handleTokenRevocation(userId, error);
 
       return null;
     }
@@ -360,9 +355,7 @@ export class TelemetryConfigService {
         };
       }
 
-      if (isTokenRevokedError(error)) {
-        await this.handleTokenRevocation(userId);
-      }
+      await this.handleTokenRevocation(userId, error);
 
       this.logger.error(
         ERROR_MESSAGES.ERROR_DELETING_CONFIG(vin),

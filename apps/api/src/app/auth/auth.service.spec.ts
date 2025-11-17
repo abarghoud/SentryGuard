@@ -158,7 +158,7 @@ describe('AuthService', () => {
 
     it('should include missing scopes in the URL when provided', () => {
       const missingScopes = ['vehicle_device_data', 'offline_access'];
-      const result = service.generateScopeChangeUrl(missingScopes);
+      const result = service.generateScopeChangeUrl('en', missingScopes);
 
       expect(result.url).toContain('prompt_missing_scopes=true');
       expect(result.url).toContain('scope=openid');
@@ -715,7 +715,6 @@ describe('AuthService', () => {
         jwt_token: 'jwt-token',
         jwt_expires_at: tokens.expiresAt,
         preferred_language: 'en',
-        token_status: 'active',
         token_revoked_at: undefined,
       };
 
@@ -745,7 +744,6 @@ describe('AuthService', () => {
         email: 'test@example.com',
         jwt_token: 'valid-jwt-token',
         jwt_expires_at: new Date(Date.now() + 3600000),
-        token_status: 'active',
         token_revoked_at: null,
       } as unknown as User;
 
@@ -754,7 +752,6 @@ describe('AuthService', () => {
         ...mockUser,
         jwt_token: undefined,
         jwt_expires_at: undefined,
-        token_status: 'revoked',
         token_revoked_at: expect.any(Date),
       });
 
@@ -771,9 +768,8 @@ describe('AuthService', () => {
       expect(mockUserRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           userId,
-          jwt_token: undefined,
-          jwt_expires_at: undefined,
-          token_status: 'revoked',
+          jwt_token: null,
+          jwt_expires_at: null,
           token_revoked_at: expect.any(Date),
         })
       );
