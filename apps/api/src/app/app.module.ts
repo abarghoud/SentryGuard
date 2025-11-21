@@ -13,6 +13,9 @@ import { CloudflareThrottlerGuard } from '../common/guards/cloudflare-throttler.
 import { TokenRevokedExceptionFilter } from '../common/filters/token-revoked-exception.filter';
 import { getDatabaseConfig } from '../config/database.config';
 import { getThrottleConfig } from '../config/throttle.config';
+import { getOciLoggingConfig } from '../config/oci-logging.config';
+import { OciLoggingService } from '../common/services/oci-logging.service';
+import { OciLoggerService } from '../common/loggers/oci-logger.service';
 import { Vehicle } from '../entities/vehicle.entity';
 import { User } from '../entities/user.entity';
 
@@ -30,6 +33,11 @@ import { User } from '../entities/user.entity';
   providers: [
     AppService,
     ZmqService,
+    {
+      provide: OciLoggingService,
+      useFactory: () => new OciLoggingService(getOciLoggingConfig()),
+    },
+    OciLoggerService,
     {
       provide: APP_GUARD,
       useClass: CloudflareThrottlerGuard,
