@@ -78,7 +78,7 @@ export class TelegramService {
     return `
 🚨 <b>${i18n.t('TESLA SENTRY ALERT', { lng })}</b> 🚨
 
-🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${display_name ? `${display_name} (${vin})`: vin} 
+🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${display_name ?? vin}
 
 <i>${i18n.t('Sentry Mode activated - Check your vehicle!', { lng })}</i>
     `.trim();
