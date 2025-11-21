@@ -94,6 +94,10 @@ describe('TelegramService', () => {
         'user-123',
         expect.stringContaining('TEST123456')
       );
+      expect(telegramBotService.sendMessageToUser).not.toHaveBeenCalledWith(
+        'user-123',
+        expect.stringContaining('(TEST123456)')
+      );
     });
 
     it('should send alert in French with display name', async () => {
@@ -120,7 +124,11 @@ describe('TelegramService', () => {
       );
       expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
         'user-123',
-        expect.stringContaining('Mon Tesla (TEST123456)')
+        expect.stringContaining('Mon Tesla')
+      );
+      expect(telegramBotService.sendMessageToUser).not.toHaveBeenCalledWith(
+        'user-123',
+        expect.stringContaining('TEST123456')
       );
     });
 
