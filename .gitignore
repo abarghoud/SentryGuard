@@ -4,6 +4,7 @@
 dist
 tmp
 out-tsc
+*.tsbuildinfo
 
 # dependencies
 node_modules
@@ -69,3 +70,6 @@ error.log
 *.pem
 *.key
 *.cert
+
+# Cursor
+.cursor/custom/*
