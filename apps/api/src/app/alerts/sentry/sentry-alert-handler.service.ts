@@ -3,7 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TelegramService } from '../../telegram/telegram.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
-import { TelemetryEventHandler, TelemetryMessage } from '../../telemetry/interfaces/telemetry-event-handler.interface';
+import { TelemetryEventHandler } from '../../telemetry/interfaces/telemetry-event-handler.interface';
+import { SentryModeState, TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 
 @Injectable()
 export class SentryAlertHandlerService implements TelemetryEventHandler {
@@ -16,9 +17,15 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
   ) {}
 
   async handle(telemetryMessage: TelemetryMessage): Promise<void> {
-    const sentryData = telemetryMessage.data.find((item) => item.key === 'SentryMode');
+    if (!telemetryMessage.validateContainsSentryMode() || !telemetryMessage.validateSentryModeValue()) {
+      this.logger.warn('Telemetry message does not contain SentryMode data', telemetryMessage);
+      return;
+    }
 
-    if (sentryData && sentryData.value.stringValue === 'Aware') {
+    const sentryData = telemetryMessage.data.find(item => item.key === 'SentryMode');
+    const sentryMode = sentryData?.value.sentryModeStateValue;
+
+    if (sentryMode === SentryModeState.Aware) {
       await this.sendSentryAlert(telemetryMessage);
     }
   }

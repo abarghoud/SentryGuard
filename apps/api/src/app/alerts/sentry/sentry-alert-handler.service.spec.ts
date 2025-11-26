@@ -1,10 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { plainToInstance } from 'class-transformer';
 import { SentryAlertHandlerService } from './sentry-alert-handler.service';
 import { TelegramService } from '../../telegram/telegram.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
 import { User } from '../../../entities/user.entity';
-import { TelemetryMessage } from './interfaces/telemetry-event-handler.interface';
+import { TelemetryMessage, SentryModeState } from '../../telemetry/models/telemetry-message.model';
 import { mock } from 'jest-mock-extended';
 import { Repository } from 'typeorm';
 
@@ -44,17 +45,75 @@ describe('The SentryAlertHandlerService class', () => {
   });
 
   describe('The handle method', () => {
-    const baseTelemetryMessage: TelemetryMessage = {
+    describe('when message does not contain valid SentryMode', () => {
+      it('should skip message without SentryMode', async () => {
+        const invalidMessage = plainToInstance(TelemetryMessage, {
+          data: [{ key: 'OtherField', value: { stringValue: 'value' } }],
+          createdAt: '2025-01-21T10:00:00.000Z',
+          vin: 'TEST_VIN_123',
+          isResend: false,
+        });
+
+        await service.handle(invalidMessage);
+
+        expect(mockVehicleRepository.findOne).not.toHaveBeenCalled();
+        expect(mockTelegramService.sendSentryAlert).not.toHaveBeenCalled();
+      });
+
+      it('should skip message with invalid SentryMode value', async () => {
+        const invalidMessage = plainToInstance(TelemetryMessage, {
+          data: [{ key: 'SentryMode', value: { sentryModeStateValue: 'InvalidState' } }],
+          createdAt: '2025-01-21T10:00:00.000Z',
+          vin: 'TEST_VIN_123',
+          isResend: false,
+        });
+
+        await service.handle(invalidMessage);
+
+        expect(mockVehicleRepository.findOne).not.toHaveBeenCalled();
+        expect(mockTelegramService.sendSentryAlert).not.toHaveBeenCalled();
+      });
+
+      it('should skip message with null SentryMode value', async () => {
+        const invalidMessage = plainToInstance(TelemetryMessage, {
+          data: [{ key: 'SentryMode', value: { sentryModeStateValue: null } }],
+          createdAt: '2025-01-21T10:00:00.000Z',
+          vin: 'TEST_VIN_123',
+          isResend: false,
+        });
+
+        await service.handle(invalidMessage);
+
+        expect(mockVehicleRepository.findOne).not.toHaveBeenCalled();
+        expect(mockTelegramService.sendSentryAlert).not.toHaveBeenCalled();
+      });
+
+      it('should skip message with invalid sentryModeStateValue', async () => {
+        const invalidMessage = plainToInstance(TelemetryMessage, {
+          data: [{ key: 'SentryMode', value: { sentryModeStateValue: 'InvalidState' } }],
+          createdAt: '2025-01-21T10:00:00.000Z',
+          vin: 'TEST_VIN_123',
+          isResend: false,
+        });
+
+        await service.handle(invalidMessage);
+
+        expect(mockVehicleRepository.findOne).not.toHaveBeenCalled();
+        expect(mockTelegramService.sendSentryAlert).not.toHaveBeenCalled();
+      });
+    });
+
+    const baseTelemetryMessage = plainToInstance(TelemetryMessage, {
       data: [
         {
           key: 'SentryMode',
-          value: { stringValue: 'Aware' },
+          value: { sentryModeStateValue: 'SentryModeStateAware' },
         },
       ],
       createdAt: '2025-01-21T10:00:00.000Z',
       vin: 'TEST_VIN_123',
       isResend: false,
-    };
+    });
 
     let handlePromise: Promise<void>;
 
@@ -86,15 +145,15 @@ describe('The SentryAlertHandlerService class', () => {
 
     describe('when SentryMode is not Aware', () => {
       beforeEach(async () => {
-        const telemetryMessage = {
+        const telemetryMessage = plainToInstance(TelemetryMessage, {
           ...baseTelemetryMessage,
           data: [
             {
               key: 'SentryMode',
-              value: { stringValue: 'Off' },
+              value: { sentryModeStateValue: SentryModeState.Off },
             },
           ],
-        };
+        });
 
         handlePromise = service.handle(telemetryMessage);
       });
@@ -109,15 +168,17 @@ describe('The SentryAlertHandlerService class', () => {
 
     describe('when SentryMode data is missing', () => {
       beforeEach(async () => {
-        const telemetryMessage = {
-          ...baseTelemetryMessage,
+        const telemetryMessage = plainToInstance(TelemetryMessage, {
           data: [
             {
               key: 'OtherData',
               value: { stringValue: 'SomeValue' },
             },
           ],
-        };
+          createdAt: baseTelemetryMessage.createdAt,
+          vin: baseTelemetryMessage.vin,
+          isResend: baseTelemetryMessage.isResend,
+        });
 
         handlePromise = service.handle(telemetryMessage);
       });
@@ -171,6 +232,44 @@ describe('The SentryAlertHandlerService class', () => {
 
       it('should throw error', async () => {
         await expect(handlePromise).rejects.toThrow('Telegram error');
+      });
+    });
+
+    describe('when SentryMode is provided as sentryModeStateValue and is Aware', () => {
+      beforeEach(async () => {
+        mockVehicleRepository.findOne.mockResolvedValue({
+          userId: 'test-user',
+          display_name: 'Test Vehicle'
+        } as Vehicle);
+        mockTelegramService.sendSentryAlert.mockResolvedValue(true);
+
+        const message = plainToInstance(TelemetryMessage, {
+          data: [
+            {
+              key: 'SentryMode',
+              value: { sentryModeStateValue: 'SentryModeStateAware' },
+            },
+          ],
+          createdAt: '2025-01-21T10:00:00.000Z',
+          vin: 'TEST_VIN_123',
+          isResend: false,
+        });
+
+        handlePromise = service.handle(message);
+      });
+
+      it('should send Sentry alert', async () => {
+        await handlePromise;
+
+        expect(mockVehicleRepository.findOne).toHaveBeenCalledWith({
+          where: { vin: 'TEST_VIN_123' },
+          select: ['userId', 'display_name'],
+        });
+
+        expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith('test-user', {
+          vin: 'TEST_VIN_123',
+          display_name: 'Test Vehicle',
+        });
       });
     });
   });

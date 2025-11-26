@@ -4,7 +4,8 @@ import { Repository } from 'typeorm';
 import { TelegramService } from '../../telegram/telegram.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
 import { User } from '../../../entities/user.entity';
-import { TelemetryEventHandler, TelemetryMessage } from '../interfaces/telemetry-event-handler.interface';
+import { TelemetryEventHandler } from '../interfaces/telemetry-event-handler.interface';
+import { TelemetryMessage } from '../models/telemetry-message.model';
 
 @Injectable()
 export class DebugMessageHandlerService implements TelemetryEventHandler {
