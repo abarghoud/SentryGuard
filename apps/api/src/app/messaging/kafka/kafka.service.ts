@@ -45,17 +45,13 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
     while (attempt < this.maxRetries) {
       try {
-        console.log('Connecting to Kafka...');
         await this.consumer.connect();
-        console.log('Kafka connected successfully');
         this.isConnected = true;
         this.logger.log('✅ Kafka connected successfully');
         return;
       } catch (error) {
-        console.log('Kafka connection failed:', error);
         attempt++;
         const delay = Math.min(this.baseDelay * Math.pow(2, attempt), this.maxDelay);
-
 
         this.logger.warn(
           `❌ Kafka connection attempt ${attempt}/${this.maxRetries} failed:`,
@@ -64,9 +60,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
         if (attempt < this.maxRetries) {
           this.logger.log(`⏳ Retrying in ${delay}ms...`);
-          console.log('Retrying in', delay, 'ms...');
           await new Promise(resolve => setTimeout(resolve, delay));
-          console.log('Retried in', delay, 'ms...');
         }
       }
     }

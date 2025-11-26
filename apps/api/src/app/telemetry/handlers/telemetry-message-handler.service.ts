@@ -24,6 +24,7 @@ export class TelemetryMessageHandlerService implements MessageHandler {
       }
 
       const telemetryData: TelemetryMessage = JSON.parse(messageValue);
+      this.logger.log('Extracted telemetry message successfully, dispatching to handlers', telemetryData);
 
       await this.dispatchTelemetryEvents(telemetryData);
 
@@ -40,13 +41,19 @@ export class TelemetryMessageHandlerService implements MessageHandler {
   private async dispatchTelemetryEvents(telemetryMessage: TelemetryMessage): Promise<void> {
     this.logger.log(`Processing telemetry data for VIN: ${telemetryMessage.vin}`);
 
-    const handlerPromises = this.eventHandlers.map(handler =>
-      handler.handle(telemetryMessage).catch(error => {
-        this.logger.error(`Handler ${handler.constructor.name} failed:`, error);
-        throw error;
-      })
+    const results = await Promise.allSettled(
+      this.eventHandlers.map(handler => handler.handle(telemetryMessage))
     );
 
-    await Promise.all(handlerPromises);
+    const failures = results.filter(result => result.status === 'rejected') as PromiseRejectedResult[];
+
+    if (failures.length > 0) {
+      failures.forEach((failure, index) => {
+        const handlerName = this.eventHandlers[index]?.constructor.name || 'Unknown';
+        this.logger.error(`Handler ${handlerName} failed:`, failure.reason);
+      });
+
+      throw new Error(`${failures.length} out of ${this.eventHandlers.length} handlers failed`);
+    }
   }
 }

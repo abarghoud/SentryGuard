@@ -140,7 +140,67 @@ describe('The TelemetryMessageHandlerService class', () => {
 
       const commitMock = jest.fn().mockResolvedValue(undefined);
 
-      await expect(service.handleMessage(message, commitMock)).rejects.toThrow();
+      await expect(service.handleMessage(message, commitMock)).rejects.toThrow('1 out of 2 handlers failed');
+
+      expect(mockEventHandler1.handle).toHaveBeenCalledWith(telemetryMessage);
+      expect(mockEventHandler2.handle).toHaveBeenCalledWith(telemetryMessage);
+      expect(commitMock).not.toHaveBeenCalled();
+    });
+
+    it('should execute all handlers even when some fail with Promise.allSettled', async () => {
+      mockEventHandler1.handle.mockRejectedValue(new Error('Handler 1 failed'));
+      mockEventHandler2.handle.mockResolvedValue(undefined);
+
+      const telemetryMessage = {
+        data: [{ key: 'SentryMode', value: { stringValue: 'Aware' } }],
+        createdAt: '2025-01-21T10:00:00.000Z',
+        vin: 'TEST_VIN_123',
+        isResend: false,
+      };
+
+      const message = {
+        offset: '0',
+        value: Buffer.from(JSON.stringify(telemetryMessage)),
+        key: null,
+        timestamp: '1234567890',
+        attributes: 0,
+        headers: {},
+      };
+
+      const commitMock = jest.fn().mockResolvedValue(undefined);
+
+      await expect(service.handleMessage(message, commitMock)).rejects.toThrow('1 out of 2 handlers failed');
+
+      expect(mockEventHandler1.handle).toHaveBeenCalledWith(telemetryMessage);
+      expect(mockEventHandler2.handle).toHaveBeenCalledWith(telemetryMessage);
+      expect(commitMock).not.toHaveBeenCalled();
+    });
+
+    it('should handle multiple handler failures', async () => {
+      const error1 = new Error('Handler 1 failed');
+      const error2 = new Error('Handler 2 failed');
+      mockEventHandler1.handle.mockRejectedValue(error1);
+      mockEventHandler2.handle.mockRejectedValue(error2);
+
+      const telemetryMessage = {
+        data: [{ key: 'SentryMode', value: { stringValue: 'Aware' } }],
+        createdAt: '2025-01-21T10:00:00.000Z',
+        vin: 'TEST_VIN_123',
+        isResend: false,
+      };
+
+      const message = {
+        offset: '0',
+        value: Buffer.from(JSON.stringify(telemetryMessage)),
+        key: null,
+        timestamp: '1234567890',
+        attributes: 0,
+        headers: {},
+      };
+
+      const commitMock = jest.fn().mockResolvedValue(undefined);
+
+      await expect(service.handleMessage(message, commitMock)).rejects.toThrow('2 out of 2 handlers failed');
 
       expect(mockEventHandler1.handle).toHaveBeenCalledWith(telemetryMessage);
       expect(mockEventHandler2.handle).toHaveBeenCalledWith(telemetryMessage);
