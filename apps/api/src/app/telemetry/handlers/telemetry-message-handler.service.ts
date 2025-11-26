@@ -1,7 +1,9 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { MessageHandler } from '../../messaging/kafka/interfaces/message-handler.interface';
-import { TelemetryEventHandler, TelemetryEventHandlerSymbol, TelemetryMessage } from '../interfaces/telemetry-event-handler.interface';
+import { TelemetryEventHandler, TelemetryEventHandlerSymbol } from '../interfaces/telemetry-event-handler.interface';
 import { KafkaMessage } from 'kafkajs';
+import { TelemetryValidationService } from '../services/telemetry-validation.service';
+import { TelemetryMessage } from '../models/telemetry-message.model';
 
 @Injectable()
 export class TelemetryMessageHandlerService implements MessageHandler {
@@ -9,7 +11,8 @@ export class TelemetryMessageHandlerService implements MessageHandler {
 
   constructor(
     @Inject(TelemetryEventHandlerSymbol)
-    private readonly eventHandlers: TelemetryEventHandler[]
+    private readonly eventHandlers: TelemetryEventHandler[],
+    private readonly validationService: TelemetryValidationService
   ) {}
 
   async handleMessage(
@@ -23,11 +26,18 @@ export class TelemetryMessageHandlerService implements MessageHandler {
         return;
       }
 
-      const telemetryData: TelemetryMessage = JSON.parse(messageValue);
-      this.logger.log('Extracted telemetry message successfully, dispatching to handlers', telemetryData);
+      const rawMessage = JSON.parse(messageValue);
+      const validationResult = await this.validationService.validateMessage(rawMessage);
 
-      await this.dispatchTelemetryEvents(telemetryData);
+      if (!validationResult.isValidMessage) {
+        this.logger.error('Invalid telemetry message structure:', validationResult.errors);
+        throw new Error(`Invalid telemetry message structure: ${validationResult.errors.join(', ')}`);
+      }
 
+      const telemetryMessage = validationResult.telemetryMessage;
+      this.logger.log('Telemetry message structure validated successfully, dispatching to handlers', telemetryMessage);
+
+      await this.dispatchTelemetryEvents(telemetryMessage);
       await commit();
 
       this.logger.log(`Message processed successfully - Offset: ${message.offset}`);

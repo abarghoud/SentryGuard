@@ -7,12 +7,16 @@ import { User } from '../../../entities/user.entity';
 import { TelemetryEventHandler, TelemetryEventHandlerSymbol } from '../interfaces/telemetry-event-handler.interface';
 import { mock } from 'jest-mock-extended';
 import { Repository } from 'typeorm';
+import { TelemetryValidationService } from '../services/telemetry-validation.service';
+import { TelemetryMessage } from '../models/telemetry-message.model';
+import { plainToInstance } from 'class-transformer';
 
 const mockTelegramService = mock<TelegramService>();
 const mockVehicleRepository = mock<Repository<Vehicle>>();
 const mockUserRepository = mock<Repository<User>>();
 const mockEventHandler1 = mock<TelemetryEventHandler>();
 const mockEventHandler2 = mock<TelemetryEventHandler>();
+const mockValidationService = mock<TelemetryValidationService>();
 
 describe('The TelemetryMessageHandlerService class', () => {
   let service: TelemetryMessageHandlerService;
@@ -20,9 +24,14 @@ describe('The TelemetryMessageHandlerService class', () => {
   beforeEach(async () => {
     mockEventHandler1.handle.mockResolvedValue(undefined);
     mockEventHandler2.handle.mockResolvedValue(undefined);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TelemetryMessageHandlerService,
+        {
+          provide: TelemetryValidationService,
+          useValue: mockValidationService,
+        },
         {
           provide: TelegramService,
           useValue: mockTelegramService,
@@ -63,6 +72,12 @@ describe('The TelemetryMessageHandlerService class', () => {
         isResend: false,
       };
 
+      mockValidationService.validateMessage.mockResolvedValueOnce({
+        isValidMessage: true,
+        errors: [],
+        telemetryMessage: plainToInstance(TelemetryMessage, telemetryMessage)
+      });
+
       const message = {
         offset: '0',
         value: Buffer.from(JSON.stringify(telemetryMessage)),
@@ -76,6 +91,7 @@ describe('The TelemetryMessageHandlerService class', () => {
 
       await service.handleMessage(message, commitMock);
 
+      expect(mockValidationService.validateMessage).toHaveBeenCalledWith(JSON.parse(message.value!.toString()));
       expect(mockEventHandler1.handle).toHaveBeenCalledWith(telemetryMessage);
       expect(mockEventHandler2.handle).toHaveBeenCalledWith(telemetryMessage);
       expect(commitMock).toHaveBeenCalledWith();
@@ -120,14 +136,20 @@ describe('The TelemetryMessageHandlerService class', () => {
     });
 
     it('should handle handler errors', async () => {
-      mockEventHandler1.handle.mockRejectedValue(new Error('Handler error'));
-
       const telemetryMessage = {
         data: [{ key: 'SentryMode', value: { stringValue: 'Aware' } }],
         createdAt: '2025-01-21T10:00:00.000Z',
         vin: 'TEST_VIN_123',
         isResend: false,
       };
+
+      mockValidationService.validateMessage.mockResolvedValueOnce({
+        isValidMessage: true,
+        errors: [],
+        telemetryMessage: plainToInstance(TelemetryMessage, telemetryMessage)
+      });
+
+      mockEventHandler1.handle.mockRejectedValue(new Error('Handler error'));
 
       const message = {
         offset: '0',
@@ -148,15 +170,20 @@ describe('The TelemetryMessageHandlerService class', () => {
     });
 
     it('should execute all handlers even when some fail with Promise.allSettled', async () => {
-      mockEventHandler1.handle.mockRejectedValue(new Error('Handler 1 failed'));
-      mockEventHandler2.handle.mockResolvedValue(undefined);
-
       const telemetryMessage = {
         data: [{ key: 'SentryMode', value: { stringValue: 'Aware' } }],
         createdAt: '2025-01-21T10:00:00.000Z',
         vin: 'TEST_VIN_123',
         isResend: false,
       };
+      mockValidationService.validateMessage.mockResolvedValueOnce({
+        isValidMessage: true,
+        errors: [],
+        telemetryMessage: plainToInstance(TelemetryMessage, telemetryMessage)
+      });
+      mockEventHandler1.handle.mockRejectedValue(new Error('Handler 1 failed'));
+
+      mockEventHandler2.handle.mockResolvedValue(undefined);
 
       const message = {
         offset: '0',
@@ -177,17 +204,22 @@ describe('The TelemetryMessageHandlerService class', () => {
     });
 
     it('should handle multiple handler failures', async () => {
-      const error1 = new Error('Handler 1 failed');
-      const error2 = new Error('Handler 2 failed');
-      mockEventHandler1.handle.mockRejectedValue(error1);
-      mockEventHandler2.handle.mockRejectedValue(error2);
-
       const telemetryMessage = {
         data: [{ key: 'SentryMode', value: { stringValue: 'Aware' } }],
         createdAt: '2025-01-21T10:00:00.000Z',
         vin: 'TEST_VIN_123',
         isResend: false,
       };
+      mockValidationService.validateMessage.mockResolvedValueOnce({
+        isValidMessage: true,
+        errors: [],
+        telemetryMessage: plainToInstance(TelemetryMessage, telemetryMessage)
+      });
+      const error1 = new Error('Handler 1 failed');
+      const error2 = new Error('Handler 2 failed');
+      mockEventHandler1.handle.mockRejectedValue(error1);
+
+      mockEventHandler2.handle.mockRejectedValue(error2);
 
       const message = {
         offset: '0',
@@ -207,5 +239,4 @@ describe('The TelemetryMessageHandlerService class', () => {
       expect(commitMock).not.toHaveBeenCalled();
     });
   });
-
-});
+ });

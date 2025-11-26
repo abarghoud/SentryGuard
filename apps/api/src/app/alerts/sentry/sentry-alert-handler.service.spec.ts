@@ -1,10 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { plainToInstance } from 'class-transformer';
 import { SentryAlertHandlerService } from './sentry-alert-handler.service';
 import { TelegramService } from '../../telegram/telegram.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
 import { User } from '../../../entities/user.entity';
-import { TelemetryMessage } from './interfaces/telemetry-event-handler.interface';
+import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 import { mock } from 'jest-mock-extended';
 import { Repository } from 'typeorm';
 
@@ -44,7 +45,51 @@ describe('The SentryAlertHandlerService class', () => {
   });
 
   describe('The handle method', () => {
-    const baseTelemetryMessage: TelemetryMessage = {
+    describe('when message does not contain valid SentryMode', () => {
+      it('should skip message without SentryMode', async () => {
+        const invalidMessage = plainToInstance(TelemetryMessage, {
+          data: [{ key: 'OtherField', value: { stringValue: 'value' } }],
+          createdAt: '2025-01-21T10:00:00.000Z',
+          vin: 'TEST_VIN_123',
+          isResend: false,
+        });
+
+        await service.handle(invalidMessage);
+
+        expect(mockVehicleRepository.findOne).not.toHaveBeenCalled();
+        expect(mockTelegramService.sendSentryAlert).not.toHaveBeenCalled();
+      });
+
+      it('should skip message with invalid SentryMode value', async () => {
+        const invalidMessage = plainToInstance(TelemetryMessage, {
+          data: [{ key: 'SentryMode', value: { stringValue: 'Invalid' } }],
+          createdAt: '2025-01-21T10:00:00.000Z',
+          vin: 'TEST_VIN_123',
+          isResend: false,
+        });
+
+        await service.handle(invalidMessage);
+
+        expect(mockVehicleRepository.findOne).not.toHaveBeenCalled();
+        expect(mockTelegramService.sendSentryAlert).not.toHaveBeenCalled();
+      });
+
+      it('should skip message with null SentryMode value', async () => {
+        const invalidMessage = plainToInstance(TelemetryMessage, {
+          data: [{ key: 'SentryMode', value: { stringValue: null } }],
+          createdAt: '2025-01-21T10:00:00.000Z',
+          vin: 'TEST_VIN_123',
+          isResend: false,
+        });
+
+        await service.handle(invalidMessage);
+
+        expect(mockVehicleRepository.findOne).not.toHaveBeenCalled();
+        expect(mockTelegramService.sendSentryAlert).not.toHaveBeenCalled();
+      });
+    });
+
+    const baseTelemetryMessage = plainToInstance(TelemetryMessage, {
       data: [
         {
           key: 'SentryMode',
@@ -54,7 +99,7 @@ describe('The SentryAlertHandlerService class', () => {
       createdAt: '2025-01-21T10:00:00.000Z',
       vin: 'TEST_VIN_123',
       isResend: false,
-    };
+    });
 
     let handlePromise: Promise<void>;
 
@@ -86,7 +131,7 @@ describe('The SentryAlertHandlerService class', () => {
 
     describe('when SentryMode is not Aware', () => {
       beforeEach(async () => {
-        const telemetryMessage = {
+        const telemetryMessage = plainToInstance(TelemetryMessage, {
           ...baseTelemetryMessage,
           data: [
             {
@@ -94,7 +139,7 @@ describe('The SentryAlertHandlerService class', () => {
               value: { stringValue: 'Off' },
             },
           ],
-        };
+        });
 
         handlePromise = service.handle(telemetryMessage);
       });
@@ -109,15 +154,17 @@ describe('The SentryAlertHandlerService class', () => {
 
     describe('when SentryMode data is missing', () => {
       beforeEach(async () => {
-        const telemetryMessage = {
-          ...baseTelemetryMessage,
+        const telemetryMessage = plainToInstance(TelemetryMessage, {
           data: [
             {
               key: 'OtherData',
               value: { stringValue: 'SomeValue' },
             },
           ],
-        };
+          createdAt: baseTelemetryMessage.createdAt,
+          vin: baseTelemetryMessage.vin,
+          isResend: baseTelemetryMessage.isResend,
+        });
 
         handlePromise = service.handle(telemetryMessage);
       });

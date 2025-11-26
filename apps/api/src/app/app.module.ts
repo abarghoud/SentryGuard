@@ -7,6 +7,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { KafkaService } from './messaging/kafka/kafka.service';
 import { TelemetryMessageHandlerService } from './telemetry/handlers/telemetry-message-handler.service';
+import { TelemetryValidationService } from './telemetry/services/telemetry-validation.service';
 import { SentryAlertHandlerService } from './alerts/sentry/sentry-alert-handler.service';
 import { DebugMessageHandlerService } from './telemetry/handlers/debug-message-handler.service';
 import { TelemetryEventHandlerSymbol } from './telemetry/interfaces/telemetry-event-handler.interface';
@@ -41,6 +42,7 @@ import { User } from '../entities/user.entity';
     AppService,
     KafkaService,
     TelemetryMessageHandlerService,
+    TelemetryValidationService,
     SentryAlertHandlerService,
     DebugMessageHandlerService,
     {

@@ -4,7 +4,7 @@ import { DebugMessageHandlerService } from './debug-message-handler.service';
 import { TelegramService } from '../../telegram/telegram.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
 import { User } from '../../../entities/user.entity';
-import { TelemetryMessage } from './interfaces/telemetry-event-handler.interface';
+import { TelemetryMessage } from '../models/telemetry-message.model';
 import { mock } from 'jest-mock-extended';
 import { Repository } from 'typeorm';
 
