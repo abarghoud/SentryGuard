@@ -3,6 +3,7 @@
  * Serveur API pour la gestion des alertes Tesla via ZMQ
  */
 
+import 'reflect-metadata';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
