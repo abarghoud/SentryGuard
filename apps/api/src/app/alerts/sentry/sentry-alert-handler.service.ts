@@ -30,6 +30,8 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
   }
 
   private async sendSentryAlert(message: TelemetryMessage): Promise<void> {
+    const handlerStartTime = Date.now();
+
     try {
       this.logger.log('Sentry alert detected!');
 
@@ -49,10 +51,33 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
       };
 
       await this.telegramService.sendSentryAlert(vehicle.userId, alertInfo);
+
+      // Mesurer et logger la latence end-to-end pour les alertes Sentry
+      this.logSentryAlertLatency(message, handlerStartTime);
+
       this.logger.log(`Sentry alert sent for VIN: ${message.vin}`);
     } catch (error) {
       this.logger.error('Error sending Sentry alert:', error);
       throw error;
+    }
+  }
+
+  private logSentryAlertLatency(telemetryMessage: TelemetryMessage, handlerStartTime: number): void {
+    if (!telemetryMessage.correlationId) {
+      return; // Pas un message de test de performance
+    }
+
+    const endToEndLatency = telemetryMessage.calculateEndToEndLatency();
+    const handlerProcessingTime = Date.now() - handlerStartTime;
+
+    if (endToEndLatency !== null) {
+      const isDelayed = telemetryMessage.isDelayed(1000);
+
+      if (isDelayed) {
+        this.logger.error(`[SENTRY_LATENCY] CorrelationId: ${telemetryMessage.correlationId} - DELAYED: ${endToEndLatency}ms (Handler: ${handlerProcessingTime}ms) ❌`);
+      } else {
+        this.logger.log(`[SENTRY_LATENCY] CorrelationId: ${telemetryMessage.correlationId} - Total: ${endToEndLatency}ms (Handler: ${handlerProcessingTime}ms) ✅`);
+      }
     }
   }
 }

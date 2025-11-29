@@ -47,6 +47,15 @@ export class TelemetryMessage {
   @IsBoolean()
   isResend!: boolean;
 
+  // Champs pour mesurer la latence end-to-end (optionnels pour compatibilité)
+  @IsOptional()
+  @IsString()
+  correlationId?: string;
+
+  @IsOptional()
+  @IsString()
+  sentAt?: string;
+
   validateContainsSentryMode(): boolean {
     return this.data.some(datum => datum.key === 'SentryMode');
   }
@@ -57,5 +66,24 @@ export class TelemetryMessage {
 
     const stringValue = sentryDatum.value.stringValue;
     return stringValue !== undefined && Object.values(SentryModeState).includes(stringValue as SentryModeState);
+  }
+
+  calculateEndToEndLatency(): number | null {
+    if (!this.sentAt || !this.correlationId) {
+      return null;
+    }
+
+    try {
+      const sentTime = parseInt(this.sentAt);
+      const receivedTime = new Date(this.createdAt).getTime();
+      return receivedTime - sentTime;
+    } catch {
+      return null;
+    }
+  }
+
+  isDelayed(thresholdMs = 1000): boolean {
+    const latency = this.calculateEndToEndLatency();
+    return latency !== null && latency > thresholdMs;
   }
 }

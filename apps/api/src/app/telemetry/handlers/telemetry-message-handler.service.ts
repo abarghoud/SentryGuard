@@ -27,6 +27,18 @@ export class TelemetryMessageHandlerService implements MessageHandler {
       }
 
       const rawMessage = JSON.parse(messageValue);
+      
+      // APPROCHE ULTRA-SIMPLIFIÉE : Utiliser le createdAt existant comme base de corrélation
+      if (!rawMessage.correlationId && rawMessage.createdAt) {
+        const vinHash = rawMessage.vin?.substring(0, 8) || 'unknown';
+        const timeHash = rawMessage.createdAt.replace(/[^0-9]/g, '').substring(0, 10);
+
+        rawMessage.correlationId = `perf-${vinHash}-${timeHash}`;
+        rawMessage.sentAt = rawMessage.createdAt; // Le createdAt original = temps d'envoi
+
+        this.logger.log(`[AUTO_CORRELATION] Generated CorrelationId: ${rawMessage.correlationId} using existing createdAt: ${rawMessage.createdAt}`);
+      }
+
       const validationResult = await this.validationService.validateMessage(rawMessage);
 
       if (!validationResult.isValidMessage) {

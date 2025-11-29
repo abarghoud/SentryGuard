@@ -18,17 +18,28 @@ export class TelegramService {
         userId
       );
       const message = this.formatSentryAlertMessage(alertInfo, userLanguage);
-      const success = await this.telegramBotService.sendMessageToUser(
-        userId,
-        message
-      );
 
-      if (success) {
-        this.logger.log(`📱 Alerte Sentry envoyée à l'utilisateur: ${userId}`);
+      // Simulation de délai pour les tests de performance (VIN de test seulement)
+      const isTestVin = alertInfo.vin === 'TESTVIN123456789' || alertInfo.vin === 'XP7YGCERXSB724742';
+      const simulateDelay = process.env.SIMULATE_TELEGRAM_DELAY_MS;
+
+      let success: boolean;
+      if (isTestVin && simulateDelay) {
+        // Mode simulation pour les tests : délai fixe sans appel API réel
+        const delayMs = parseInt(simulateDelay);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        success = true;
+        this.logger.log(`📱 [SIMULATED] Alerte Sentry envoyée à ${userId} pour VIN ${alertInfo.vin} (delay: ${delayMs}ms)`);
       } else {
-        this.logger.warn(
-          `⚠️ Impossible d'envoyer l'alerte à l'utilisateur: ${userId}`
-        );
+        // Mode normal : appel API réel
+        success = await this.telegramBotService.sendMessageToUser(userId, message);
+        if (success) {
+          this.logger.log(`📱 Alerte Sentry envoyée à l'utilisateur: ${userId}`);
+        } else {
+          this.logger.warn(
+            `⚠️ Impossible d'envoyer l'alerte à l'utilisateur: ${userId}`
+          );
+        }
       }
 
       return success;
@@ -44,21 +55,31 @@ export class TelegramService {
   /**
    * Envoie un message Telegram personnalisé à un utilisateur
    */
-  async sendTelegramMessage(userId: string, message: string) {
+  async sendTelegramMessage(userId: string, message: string, vin?: string) {
     try {
-      const success = await this.telegramBotService.sendMessageToUser(
-        userId,
-        message
-      );
+      // Simulation de délai pour les tests de performance (VIN de test seulement)
+      const isTestVin = vin === 'TESTVIN123456789' || vin === 'XP7YGCERXSB724742';
+      const simulateDelay = process.env.SIMULATE_TELEGRAM_DELAY_MS;
 
-      if (success) {
-        this.logger.log(
-          `📱 Message Telegram envoyé à l'utilisateur: ${userId}`
-        );
+      let success: boolean;
+      if (isTestVin && simulateDelay) {
+        // Mode simulation pour les tests : délai fixe sans appel API réel
+        const delayMs = parseInt(simulateDelay);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        success = true;
+        this.logger.log(`📱 [SIMULATED] Message Telegram envoyé à ${userId} pour VIN ${vin} (delay: ${delayMs}ms)`);
       } else {
-        this.logger.warn(
-          `⚠️ Impossible d'envoyer le message à l'utilisateur: ${userId}`
-        );
+        // Mode normal : appel API réel
+        success = await this.telegramBotService.sendMessageToUser(userId, message);
+        if (success) {
+          this.logger.log(
+            `📱 Message Telegram envoyé à l'utilisateur: ${userId}`
+          );
+        } else {
+          this.logger.warn(
+            `⚠️ Impossible d'envoyer le message à l'utilisateur: ${userId}`
+          );
+        }
       }
 
       return success;
