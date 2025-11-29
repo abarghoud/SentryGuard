@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Consumer, EachMessageHandler, EachMessagePayload } from 'kafkajs';
+import { Consumer, EachBatchHandler, Batch } from 'kafkajs';
 import { KafkaService } from './kafka.service';
 import { kafkaMessageHandler, MessageHandler } from './interfaces/message-handler.interface';
 import { mock } from 'jest-mock-extended';
@@ -91,7 +91,7 @@ describe('The KafkaService class', () => {
   });
 
   describe('The message handling', () => {
-    let eachMessageFunction: EachMessageHandler;
+    let eachBatchFunction: EachBatchHandler;
     let consumerMock: Consumer;
 
     beforeEach(async () => {
@@ -103,11 +103,11 @@ describe('The KafkaService class', () => {
 
       await service.onModuleInit();
 
-      eachMessageFunction = (consumerMock.run as jest.MockedFunction<any>).mock.calls[0][0].eachMessage;
+      eachBatchFunction = (consumerMock.run as jest.MockedFunction<any>).mock.calls[0][0].eachBatch;
     });
 
-    describe('when eachMessage is called with a valid message', () => {
-      let testMessage: EachMessagePayload;
+    describe('when eachBatch is called with a valid message', () => {
+      let testBatch: Batch;
       let consumerMockForTest: Consumer;
 
       beforeEach(() => {
@@ -117,72 +117,119 @@ describe('The KafkaService class', () => {
           writable: true,
         });
 
-        testMessage = {
+        testBatch = {
           topic: 'TeslaLogger_V',
           partition: 0,
-          message: {
+          messages: [{
             offset: '100',
             value: Buffer.from('test message'),
             key: null,
             timestamp: '1234567890',
             attributes: 0,
             headers: {},
-          },
-          heartbeat: jest.fn().mockResolvedValue(undefined),
-          pause: jest.fn().mockReturnValue(jest.fn()),
+          }],
+          highWatermark: '200',
+          isEmpty: jest.fn().mockReturnValue(false),
+          firstOffset: jest.fn().mockReturnValue('100'),
+          lastOffset: jest.fn().mockReturnValue('100'),
+          offsetLag: jest.fn().mockReturnValue('100'),
+          offsetLagLow: jest.fn().mockReturnValue('100'),
         };
       });
 
       it('should delegate to the message handler', async () => {
-        await eachMessageFunction(testMessage);
+        const resolveOffset = jest.fn();
+        const heartbeat = jest.fn().mockResolvedValue(undefined);
+        const commitOffsetsIfNecessary = jest.fn().mockResolvedValue(undefined);
+        const pause = jest.fn().mockReturnValue(jest.fn());
+
+        await eachBatchFunction({
+          batch: testBatch,
+          resolveOffset,
+          heartbeat,
+          commitOffsetsIfNecessary,
+          pause,
+          isRunning: jest.fn().mockReturnValue(true),
+          isStale: jest.fn().mockReturnValue(false),
+          uncommittedOffsets: jest.fn().mockReturnValue({}),
+        });
 
         expect(mockMessageHandler.handleMessage).toHaveBeenCalledWith(
-          testMessage.message,
+          testBatch.messages[0],
           expect.any(Function)
         );
       });
 
       it('should commit the message offset when handler succeeds', async () => {
-        await eachMessageFunction(testMessage);
+        const resolveOffset = jest.fn();
+        const heartbeat = jest.fn().mockResolvedValue(undefined);
+        const commitOffsetsIfNecessary = jest.fn().mockResolvedValue(undefined);
+        const pause = jest.fn().mockReturnValue(jest.fn());
 
-        const commitFn = mockMessageHandler.handleMessage.mock.calls[0][1];
-        await commitFn();
+        await eachBatchFunction({
+          batch: testBatch,
+          resolveOffset,
+          heartbeat,
+          commitOffsetsIfNecessary,
+          pause,
+          isRunning: jest.fn().mockReturnValue(true),
+          isStale: jest.fn().mockReturnValue(false),
+          uncommittedOffsets: jest.fn().mockReturnValue({}),
+        });
 
-        expect(consumerMockForTest.commitOffsets).toHaveBeenCalledWith([{
-          topic: 'TeslaLogger_V',
-          partition: 0,
-          offset: '101'
-        }]);
+        const commitCallback = mockMessageHandler.handleMessage.mock.calls[0][1];
+        await commitCallback();
+
+        expect(resolveOffset).toHaveBeenCalledWith('100');
+        expect(commitOffsetsIfNecessary).toHaveBeenCalled();
       });
     });
 
-    describe('when eachMessage is called and message processing fails', () => {
-      let testMessage: EachMessagePayload;
+    describe('when eachBatch is called and message processing fails', () => {
+      let testBatch: Batch;
 
       beforeEach(() => {
         mockMessageHandler.handleMessage.mockRejectedValue(new Error('Processing failed'));
 
-        testMessage = {
+        testBatch = {
           topic: 'TeslaLogger_V',
           partition: 0,
-          message: {
+          messages: [{
             offset: '100',
             value: Buffer.from('test message'),
             key: null,
             timestamp: '1234567890',
             attributes: 0,
             headers: {},
-          },
-          heartbeat: jest.fn().mockResolvedValue(undefined),
-          pause: jest.fn().mockReturnValue(jest.fn()),
+          }],
+          highWatermark: '200',
+          isEmpty: jest.fn().mockReturnValue(false),
+          firstOffset: jest.fn().mockReturnValue('100'),
+          lastOffset: jest.fn().mockReturnValue('100'),
+          offsetLag: jest.fn().mockReturnValue('100'),
+          offsetLagLow: jest.fn().mockReturnValue('100'),
         };
       });
 
       it('should catch the error and not rethrow it', async () => {
-        await expect(eachMessageFunction(testMessage)).resolves.not.toThrow();
+        const resolveOffset = jest.fn();
+        const heartbeat = jest.fn().mockResolvedValue(undefined);
+        const commitOffsetsIfNecessary = jest.fn().mockResolvedValue(undefined);
+        const pause = jest.fn().mockReturnValue(jest.fn());
+
+        await expect(eachBatchFunction({
+          batch: testBatch,
+          resolveOffset,
+          heartbeat,
+          commitOffsetsIfNecessary,
+          pause,
+          isRunning: jest.fn().mockReturnValue(true),
+          isStale: jest.fn().mockReturnValue(false),
+          uncommittedOffsets: jest.fn().mockReturnValue({}),
+        })).resolves.not.toThrow();
 
         expect(mockMessageHandler.handleMessage).toHaveBeenCalledWith(
-          testMessage.message,
+          testBatch.messages[0],
           expect.any(Function)
         );
       });

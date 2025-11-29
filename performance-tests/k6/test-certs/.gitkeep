@@ -1,3 +1,0 @@
-# Ce fichier permet de versionner le dossier test-certs même s'il est vide
-# Placez vos certificats mTLS ici avant de lancer les tests
-# Voir README.md pour les instructions

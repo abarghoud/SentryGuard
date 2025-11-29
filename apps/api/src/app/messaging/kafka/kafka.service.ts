@@ -6,7 +6,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
+import { Kafka, Consumer } from 'kafkajs';
 import type { MessageHandler } from './interfaces/message-handler.interface';
 import { kafkaMessageHandler } from './interfaces/message-handler.interface';
 
@@ -37,6 +37,9 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
     this.consumer = this.kafka.consumer({
       groupId: this.kafkaGroupId,
+      sessionTimeout: 30000,
+      heartbeatInterval: 3000,
+      rebalanceTimeout: 60000,
     });
   }
 
@@ -103,27 +106,30 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     this.logger.log('🎧 Starting message listening...');
 
     await this.consumer.run({
-      autoCommit: false,
-      eachMessage: async ({ topic, partition, message }: EachMessagePayload) => {
-        if (!this.isConnected) {
-          this.logger.warn('⚠️ Skipping message processing - Kafka disconnected');
-          return;
-        }
+      autoCommit: true,
+      eachBatch: async ({ batch, resolveOffset, heartbeat, commitOffsetsIfNecessary }) => {
 
-        try {
-          await this.messageHandler.handleMessage(
-            message,
-            async () => {
-              await this.consumer.commitOffsets([{
-                topic,
-                partition,
-                offset: (parseInt(message.offset) + 1).toString()
-              }]);
-            }
-          );
-        } catch (error) {
-          this.logger.error(`💥 Error processing message ${message.offset}:`, error);
-        }
+        await Promise.all(batch.messages.map(async (message) => {
+          if (!this.isConnected) {
+            this.logger.warn('⚠️ Skipping message processing - Kafka disconnected');
+            return;
+          }
+
+          try {
+            await this.messageHandler.handleMessage(
+              message,
+              async () => {
+                resolveOffset(message.offset);
+              }
+            );
+
+            await heartbeat();
+          } catch (error) {
+            this.logger.error(`💥 Error processing message ${message.offset}:`, error, message.value?.toString());
+          }
+        }));
+
+        await commitOffsetsIfNecessary();
       },
     });
 

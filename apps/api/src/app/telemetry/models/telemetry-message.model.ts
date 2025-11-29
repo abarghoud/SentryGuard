@@ -47,14 +47,9 @@ export class TelemetryMessage {
   @IsBoolean()
   isResend!: boolean;
 
-  // Champs pour mesurer la latence end-to-end (optionnels pour compatibilité)
   @IsOptional()
   @IsString()
   correlationId?: string;
-
-  @IsOptional()
-  @IsString()
-  sentAt?: string;
 
   validateContainsSentryMode(): boolean {
     return this.data.some(datum => datum.key === 'SentryMode');
@@ -74,14 +69,14 @@ export class TelemetryMessage {
   }
 
   calculateEndToEndLatency(): number | null {
-    if (!this.sentAt || !this.correlationId) {
+    if (!this.createdAt || !this.correlationId) {
       return null;
     }
 
     try {
-      const sentTime = parseInt(this.sentAt);
-      const receivedTime = new Date(this.createdAt).getTime();
-      return receivedTime - sentTime;
+      const eventTime = new Date(this.createdAt).getTime();
+      const currentTime = Date.now();
+      return currentTime - eventTime;
     } catch {
       return null;
     }
@@ -90,5 +85,9 @@ export class TelemetryMessage {
   isDelayed(thresholdMs = 1000): boolean {
     const latency = this.calculateEndToEndLatency();
     return latency !== null && latency > thresholdMs;
+  }
+
+  isProcessingDelayed(processingTimeMs: number, thresholdMs = 1000): boolean {
+    return processingTimeMs > thresholdMs;
   }
 }

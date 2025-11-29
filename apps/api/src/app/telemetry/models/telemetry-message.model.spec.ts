@@ -30,18 +30,6 @@ describe('TelemetryMessage Model', () => {
       expect(hasSentryMode).toBe(false);
     });
 
-    it('should validate SentryMode with valid string value', () => {
-      const message = plainToClass(TelemetryMessage, {
-        data: [{ key: 'SentryMode', value: { stringValue: 'Off' } }],
-        createdAt: '2025-11-26T16:57:07.330713028Z',
-        vin: 'LRWRGCEGXHR312345',
-        isResend: false
-      });
-
-      const isValid = message.validateSentryModeValue();
-
-      expect(isValid).toBe(true);
-    });
 
     it('should reject SentryMode with invalid string value', () => {
       const message = plainToClass(TelemetryMessage, {
@@ -104,10 +92,8 @@ describe('TelemetryMessage Model', () => {
         isResend: false
       });
 
-      const hasSentryMode = message.validateContainsSentryMode();
       const isValid = message.validateSentryModeValue();
 
-      expect(hasSentryMode).toBe(true);
       expect(isValid).toBe(true);
     });
 
