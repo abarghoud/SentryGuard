@@ -5,7 +5,7 @@ import { SentryAlertHandlerService } from './sentry-alert-handler.service';
 import { TelegramService } from '../../telegram/telegram.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
 import { User } from '../../../entities/user.entity';
-import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
+import { TelemetryMessage, SentryModeState } from '../../telemetry/models/telemetry-message.model';
 import { mock } from 'jest-mock-extended';
 import { Repository } from 'typeorm';
 
@@ -62,7 +62,7 @@ describe('The SentryAlertHandlerService class', () => {
 
       it('should skip message with invalid SentryMode value', async () => {
         const invalidMessage = plainToInstance(TelemetryMessage, {
-          data: [{ key: 'SentryMode', value: { stringValue: 'Invalid' } }],
+          data: [{ key: 'SentryMode', value: { sentryModeStateValue: 'InvalidState' } }],
           createdAt: '2025-01-21T10:00:00.000Z',
           vin: 'TEST_VIN_123',
           isResend: false,
@@ -76,7 +76,21 @@ describe('The SentryAlertHandlerService class', () => {
 
       it('should skip message with null SentryMode value', async () => {
         const invalidMessage = plainToInstance(TelemetryMessage, {
-          data: [{ key: 'SentryMode', value: { stringValue: null } }],
+          data: [{ key: 'SentryMode', value: { sentryModeStateValue: null } }],
+          createdAt: '2025-01-21T10:00:00.000Z',
+          vin: 'TEST_VIN_123',
+          isResend: false,
+        });
+
+        await service.handle(invalidMessage);
+
+        expect(mockVehicleRepository.findOne).not.toHaveBeenCalled();
+        expect(mockTelegramService.sendSentryAlert).not.toHaveBeenCalled();
+      });
+
+      it('should skip message with invalid sentryModeStateValue', async () => {
+        const invalidMessage = plainToInstance(TelemetryMessage, {
+          data: [{ key: 'SentryMode', value: { sentryModeStateValue: 'InvalidState' } }],
           createdAt: '2025-01-21T10:00:00.000Z',
           vin: 'TEST_VIN_123',
           isResend: false,
@@ -93,7 +107,7 @@ describe('The SentryAlertHandlerService class', () => {
       data: [
         {
           key: 'SentryMode',
-          value: { stringValue: 'Aware' },
+          value: { sentryModeStateValue: 'SentryModeStateAware' },
         },
       ],
       createdAt: '2025-01-21T10:00:00.000Z',
@@ -136,7 +150,7 @@ describe('The SentryAlertHandlerService class', () => {
           data: [
             {
               key: 'SentryMode',
-              value: { stringValue: 'Off' },
+              value: { sentryModeStateValue: SentryModeState.Off },
             },
           ],
         });
@@ -218,6 +232,44 @@ describe('The SentryAlertHandlerService class', () => {
 
       it('should throw error', async () => {
         await expect(handlePromise).rejects.toThrow('Telegram error');
+      });
+    });
+
+    describe('when SentryMode is provided as sentryModeStateValue and is Aware', () => {
+      beforeEach(async () => {
+        mockVehicleRepository.findOne.mockResolvedValue({
+          userId: 'test-user',
+          display_name: 'Test Vehicle'
+        } as Vehicle);
+        mockTelegramService.sendSentryAlert.mockResolvedValue(true);
+
+        const message = plainToInstance(TelemetryMessage, {
+          data: [
+            {
+              key: 'SentryMode',
+              value: { sentryModeStateValue: 'SentryModeStateAware' },
+            },
+          ],
+          createdAt: '2025-01-21T10:00:00.000Z',
+          vin: 'TEST_VIN_123',
+          isResend: false,
+        });
+
+        handlePromise = service.handle(message);
+      });
+
+      it('should send Sentry alert', async () => {
+        await handlePromise;
+
+        expect(mockVehicleRepository.findOne).toHaveBeenCalledWith({
+          where: { vin: 'TEST_VIN_123' },
+          select: ['userId', 'display_name'],
+        });
+
+        expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith('test-user', {
+          vin: 'TEST_VIN_123',
+          display_name: 'Test Vehicle',
+        });
       });
     });
   });

@@ -27,7 +27,7 @@ export class TelemetryMessageHandlerService implements MessageHandler {
       }
 
       const rawMessage = JSON.parse(messageValue);
-      
+
       // APPROCHE ULTRA-SIMPLIFIÉE : Utiliser le createdAt existant comme base de corrélation
       if (!rawMessage.correlationId && rawMessage.createdAt) {
         const vinHash = rawMessage.vin?.substring(0, 8) || 'unknown';
@@ -42,7 +42,7 @@ export class TelemetryMessageHandlerService implements MessageHandler {
       const validationResult = await this.validationService.validateMessage(rawMessage);
 
       if (!validationResult.isValidMessage) {
-        this.logger.error('Invalid telemetry message structure:', validationResult.errors);
+        this.logger.error('Invalid telemetry message structure:', validationResult.errors, rawMessage);
         throw new Error(`Invalid telemetry message structure: ${validationResult.errors.join(', ')}`);
       }
 

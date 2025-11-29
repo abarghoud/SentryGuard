@@ -42,8 +42,7 @@ export class DebugMessageHandlerService implements TelemetryEventHandler {
         const jsonStr = JSON.stringify(telemetryMessage);
         await this.telegramService.sendTelegramMessage(vehicle.userId, jsonStr, telemetryMessage.vin);
 
-        // Mesurer et logger la latence end-to-end
-        this.logEndToEndLatency(telemetryMessage, startTime);
+        this.logEndToEndLatency(telemetryMessage, jsonStr, startTime);
       }
     } catch (error) {
       this.logger.error('Error handling debug messages:', error);

@@ -22,9 +22,10 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
       return;
     }
 
-    const sentryData = telemetryMessage.data.find((item) => item.key === 'SentryMode');
+    const sentryData = telemetryMessage.data.find(item => item.key === 'SentryMode');
+    const sentryMode = sentryData?.value.sentryModeStateValue;
 
-    if (sentryData && sentryData.value.stringValue === SentryModeState.Aware) {
+    if (sentryMode === SentryModeState.Aware) {
       await this.sendSentryAlert(telemetryMessage);
     }
   }

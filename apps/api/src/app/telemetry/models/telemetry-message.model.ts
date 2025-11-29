@@ -2,12 +2,12 @@ import { IsArray, IsString, IsBoolean, IsOptional, ValidateNested, IsEnum, IsDat
 import { Type } from 'class-transformer';
 
 export enum SentryModeState {
-  Armed = 'Armed',
-  Aware = 'Aware',
-  Idle = 'Idle',
-  Off = 'Off',
-  Panic = 'Panic',
-  Quiet = 'Quiet',
+  Off = 'SentryModeStateOff',
+  Aware = 'SentryModeStateAware',
+  Idle = 'SentryModeStateIdle',
+  Armed = 'SentryModeStateArmed',
+  Panic = 'SentryModeStatePanic',
+  Quiet = 'SentryModeStateQuiet',
   Unknown = 'Unknown',
 }
 
@@ -64,8 +64,13 @@ export class TelemetryMessage {
     const sentryDatum = this.data.find(d => d.key === 'SentryMode');
     if (!sentryDatum) return false;
 
-    const stringValue = sentryDatum.value.stringValue;
-    return stringValue !== undefined && Object.values(SentryModeState).includes(stringValue as SentryModeState);
+    const { sentryModeStateValue } = sentryDatum.value;
+
+    if (sentryModeStateValue !== undefined) {
+      return Object.values(SentryModeState).includes(sentryModeStateValue);
+    }
+
+    return false;
   }
 
   calculateEndToEndLatency(): number | null {
