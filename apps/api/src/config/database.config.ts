@@ -31,6 +31,15 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
             rejectUnauthorized: false,
           }
         : false,
+    extra: {
+      max: parseInt(process.env.DATABASE_POOL_MAX || '50', 10),
+      min: parseInt(process.env.DATABASE_POOL_MIN || '5', 10),
+      acquireTimeoutMillis: parseInt(process.env.DATABASE_ACQUIRE_TIMEOUT || '30000', 10),
+      createTimeoutMillis: parseInt(process.env.DATABASE_CREATE_TIMEOUT || '15000', 10),
+      idleTimeoutMillis: parseInt(process.env.DATABASE_IDLE_TIMEOUT || '300000', 10),
+      reapIntervalMillis: parseInt(process.env.DATABASE_REAP_INTERVAL || '1000', 10),
+      createRetryIntervalMillis: parseInt(process.env.DATABASE_CREATE_RETRY_INTERVAL || '100', 10),
+    },
   };
 };
 
