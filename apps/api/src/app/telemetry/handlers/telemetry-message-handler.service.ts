@@ -28,16 +28,33 @@ export class TelemetryMessageHandlerService implements MessageHandler {
     commit: () => Promise<void>
   ): Promise<void> {
     const startTime = Date.now();
+    const parseStart = Date.now();
     const rawMessage = this.parseMessage(message);
     if (!rawMessage) return;
+    const parseTime = Date.now() - parseStart;
 
     const correlationId = this.enrichMessageWithCorrelationId(rawMessage, message.offset);
+    
+    const validateStart = Date.now();
     const telemetryMessage = await this.validateMessage(rawMessage);
+    const validateTime = Date.now() - validateStart;
     
+    const dispatchStart = Date.now();
     await this.dispatchTelemetryEvents(telemetryMessage);
-    await commit();
+    const dispatchTime = Date.now() - dispatchStart;
     
-    this.logLatencyIfNeeded(telemetryMessage, correlationId, startTime);
+    const commitStart = Date.now();
+    await commit();
+    const commitTime = Date.now() - commitStart;
+    
+    const totalProcessingTime = Date.now() - startTime;
+    this.logLatencyIfNeeded(telemetryMessage, correlationId, startTime, {
+      parseTime,
+      validateTime,
+      dispatchTime,
+      commitTime,
+      totalProcessingTime,
+    });
   }
 
   private parseMessage(message: KafkaMessage): RawTelemetryMessage | null {
@@ -73,18 +90,35 @@ export class TelemetryMessageHandlerService implements MessageHandler {
   private logLatencyIfNeeded(
     message: TelemetryMessage,
     correlationId: string,
-    startTime: number
+    startTime: number,
+    timings: {
+      parseTime: number;
+      validateTime: number;
+      dispatchTime: number;
+      commitTime: number;
+      totalProcessingTime: number;
+    }
   ): void {
     const latency = message.calculateEndToEndLatency();
     if (latency === null) return;
 
-    const processingTime = Date.now() - startTime;
     const kafkaDelay = startTime - new Date(message.createdAt).getTime();
+    const { parseTime, validateTime, dispatchTime, commitTime, totalProcessingTime } = timings;
 
-    if (processingTime > 1000) {
-      this.logger.warn(`[LATENCY][${correlationId}] Slow: ${latency}ms (processing: ${processingTime}ms)`);
+    if (totalProcessingTime > 1000) {
+      this.logger.warn(
+        `[LATENCY][${correlationId}] Slow: ${latency}ms total | ` +
+        `Processing: ${totalProcessingTime}ms (parse:${parseTime}ms validate:${validateTime}ms dispatch:${dispatchTime}ms commit:${commitTime}ms) | ` +
+        `Kafka delay: ${kafkaDelay}ms`
+      );
+    } else if (totalProcessingTime > 500) {
+      this.logger.log(
+        `[LATENCY][${correlationId}] ${latency}ms total | ` +
+        `Processing: ${totalProcessingTime}ms (parse:${parseTime}ms validate:${validateTime}ms dispatch:${dispatchTime}ms commit:${commitTime}ms) | ` +
+        `Kafka: ${kafkaDelay}ms`
+      );
     } else {
-      this.logger.log(`[LATENCY][${correlationId}] ${latency}ms (Kafka: ${kafkaDelay}ms, Processing: ${processingTime}ms)`);
+      this.logger.log(`[LATENCY][${correlationId}] ${latency}ms (Kafka: ${kafkaDelay}ms, Processing: ${totalProcessingTime}ms)`);
     }
   }
 

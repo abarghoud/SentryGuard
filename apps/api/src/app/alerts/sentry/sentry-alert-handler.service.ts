@@ -34,10 +34,16 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
     const handlerStartTime = Date.now();
 
     try {
+      const dbStart = Date.now();
       const vehicle = await this.vehicleRepository.findOne({
         where: { vin: message.vin },
         select: ['userId', 'display_name'],
       });
+      const dbTime = Date.now() - dbStart;
+
+      if (dbTime > 100) {
+        this.logger.warn(`[DB_SLOW][${message.correlationId}] Vehicle lookup: ${dbTime}ms for VIN: ${message.vin}`);
+      }
 
       if (!vehicle) {
         this.logger.warn(`No vehicle found for VIN: ${message.vin}`);
@@ -49,7 +55,14 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
         display_name: vehicle.display_name
       };
 
+      const telegramStart = Date.now();
       await this.telegramService.sendSentryAlert(vehicle.userId, alertInfo);
+      const telegramTime = Date.now() - telegramStart;
+
+      if (telegramTime > 500) {
+        this.logger.warn(`[TELEGRAM_SLOW][${message.correlationId}] Sentry alert: ${telegramTime}ms for user: ${vehicle.userId}`);
+      }
+
       this.logSentryAlertLatency(message, handlerStartTime);
     } catch (error) {
       this.logger.error(`Error in SentryAlert:`, error);

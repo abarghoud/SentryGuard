@@ -108,6 +108,8 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     await this.consumer.run({
       autoCommit: true,
       eachBatch: async ({ batch, resolveOffset, heartbeat, commitOffsetsIfNecessary }) => {
+        const batchStartTime = Date.now();
+        const batchSize = batch.messages.length;
 
         await Promise.all(batch.messages.map(async (message) => {
           if (!this.isConnected) {
@@ -128,6 +130,11 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
             this.logger.error(`💥 Error processing message ${message.offset}:`, error, message.value?.toString());
           }
         }));
+
+        const batchProcessingTime = Date.now() - batchStartTime;
+        if (batchProcessingTime > 1000) {
+          this.logger.warn(`[BATCH][${batch.topic}:${batch.partition}] Slow batch: ${batchSize} messages in ${batchProcessingTime}ms`);
+        }
 
         await commitOffsetsIfNecessary();
       },

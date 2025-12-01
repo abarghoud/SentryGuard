@@ -14,14 +14,28 @@ export class TelegramService {
 
   async sendSentryAlert(userId: string, alertInfo: { vin: string, display_name?: string }) {
     try {
+      const languageStart = Date.now();
       const userLanguage = await this.userLanguageService.getUserLanguage(userId);
+      const languageTime = Date.now() - languageStart;
+
+      if (languageTime > 100) {
+        this.logger.warn(`[DB_SLOW][ALERT] Language lookup: ${languageTime}ms for user: ${userId}`);
+      }
+
       const message = this.formatSentryAlertMessage(alertInfo, userLanguage);
 
       if (this.shouldSimulateMessage(alertInfo.vin)) {
         return await this.simulateMessage(userId, 'alert', alertInfo.vin);
       }
 
+      const botStart = Date.now();
       const success = await this.telegramBotService.sendMessageToUser(userId, message);
+      const botTime = Date.now() - botStart;
+
+      if (botTime > 500) {
+        this.logger.warn(`[TELEGRAM_SLOW][ALERT] Bot send: ${botTime}ms for user: ${userId}`);
+      }
+
       this.logMessageResult(success, userId, 'alert');
       return success;
     } catch (error) {
@@ -36,7 +50,14 @@ export class TelegramService {
         return await this.simulateMessage(userId, 'message', vin);
       }
 
+      const botStart = Date.now();
       const success = await this.telegramBotService.sendMessageToUser(userId, message);
+      const botTime = Date.now() - botStart;
+
+      if (botTime > 200) {
+        this.logger.warn(`[TELEGRAM_SLOW][MESSAGE] Bot send: ${botTime}ms for user: ${userId} VIN: ${vin || 'unknown'}`);
+      }
+
       this.logMessageResult(success, userId, 'message');
       return success;
     } catch (error) {
