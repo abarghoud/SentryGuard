@@ -22,14 +22,12 @@ export class User {
   @Column({ type: 'varchar', length: 500, nullable: true })
   profile_image_url?: string;
 
-  // JWT token for secure session management
   @Column({ type: 'text', nullable: true })
-  jwt_token?: string;
+  jwt_token?: string | null;
 
   @Column({ type: 'timestamp', nullable: true })
-  jwt_expires_at?: Date;
+  jwt_expires_at?: Date | null;
 
-  // Encrypted tokens - we'll encrypt these at the service level
   @Column({ type: 'text' })
   access_token!: string;
 
@@ -38,6 +36,9 @@ export class User {
 
   @Column({ type: 'timestamp' })
   expires_at!: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  token_revoked_at?: Date;
 
   @Column({ type: 'boolean', default: false })
   debug_messages!: boolean;
@@ -51,7 +52,6 @@ export class User {
   @UpdateDateColumn()
   updated_at!: Date;
 
-  // Relations
   @OneToMany('Vehicle', 'user')
   vehicles!: any[];
 

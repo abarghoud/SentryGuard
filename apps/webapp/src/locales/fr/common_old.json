@@ -1,3 +1,8 @@
 {
-  "Battery and location tracking": "Suivi de la batterie et de la localisation"
+  "Are you sure you want to delete the telemetry configuration for this vehicle?": "Êtes-vous sûr de vouloir supprimer la configuration de télémétrie pour ce véhicule ? Cette action est irréversible.",
+  "Battery and location tracking": "Suivi de la batterie et de la localisation",
+  "Delete": "Supprimer",
+  "Delete Configuration": "Supprimer la configuration",
+  "Deleting...": "Suppression en cours...",
+  "SentryGuard depends on donations to operate. Your support keeps us running! ☕": "SentryGuard dépend des dons pour fonctionner. Votre soutien nous permet de continuer ! ☕"
 }

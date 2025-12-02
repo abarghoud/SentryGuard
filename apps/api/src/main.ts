@@ -3,12 +3,17 @@
  * Serveur API pour la gestion des alertes Tesla via ZMQ
  */
 
+import 'reflect-metadata';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
+import { OciLoggerService } from './common/loggers/oci-logger.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  const ociLoggerService = app.get(OciLoggerService);
+  app.useLogger(ociLoggerService);
 
   // Enable CORS for local development and production
   const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';

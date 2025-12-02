@@ -1,3 +1,8 @@
 {
-  "Battery and location tracking": "Battery and location tracking"
+  "Are you sure you want to delete the telemetry configuration for this vehicle?": "Are you sure you want to delete the telemetry configuration for this vehicle? This action cannot be undone.",
+  "Battery and location tracking": "Battery and location tracking",
+  "Delete": "Delete",
+  "Delete Configuration": "Delete Configuration",
+  "Deleting...": "Deleting...",
+  "SentryGuard depends on donations to operate. Your support keeps us running! ☕": "SentryGuard depends on donations to operate. Your support keeps us running! ☕"
 }

@@ -81,10 +81,28 @@ async function apiRequest<T>(
       headers,
     });
 
-    // Handle 401 Unauthorized (token expired or invalid)
+    // Handle 401 Unauthorized (token expired, invalid, or revoked)
     if (response.status === 401) {
+      let errorData: any = {};
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        // Ignore JSON parse errors
+      }
+
       clearToken();
-      // Redirect to login if we're in the browser
+
+      if (errorData?.error === 'TOKEN_REVOKED') {
+        if (typeof window !== 'undefined') {
+          window.location.href = '/revoked';
+        }
+        throw new ApiError(
+          errorData.message || 'Your Tesla authorization has been revoked.',
+          401,
+          errorData
+        );
+      }
+
       if (typeof window !== 'undefined') {
         window.location.href = '/?expired=true';
       }
@@ -297,6 +315,18 @@ export async function checkTelemetryConfig(vin: string): Promise<{
   result: any;
 }> {
   return apiRequest(`/telemetry-config/check/${vin}`);
+}
+
+/**
+ * Delete telemetry configuration for a vehicle (requires JWT)
+ */
+export async function deleteTelemetryConfig(vin: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  return apiRequest(`/telemetry-config/${vin}`, {
+    method: 'DELETE',
+  });
 }
 
 // ============ Telegram API ============
