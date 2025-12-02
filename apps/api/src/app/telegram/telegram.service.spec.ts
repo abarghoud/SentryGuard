@@ -146,32 +146,4 @@ describe('TelegramService', () => {
       expect(result).toBe(false);
     });
   });
-
-  describe('sendTelegramMessage', () => {
-    it('should send custom message successfully', async () => {
-      mockTelegramBotService.sendMessageToUser.mockResolvedValue(true);
-
-      const result = await service.sendTelegramMessage(
-        'user-123',
-        'Custom message'
-      );
-
-      expect(result).toBe(true);
-      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
-        'user-123',
-        'Custom message'
-      );
-    });
-
-    it('should return false when bot service fails', async () => {
-      mockTelegramBotService.sendMessageToUser.mockResolvedValue(false);
-
-      const result = await service.sendTelegramMessage(
-        'user-123',
-        'Custom message'
-      );
-
-      expect(result).toBe(false);
-    });
-  });
 });

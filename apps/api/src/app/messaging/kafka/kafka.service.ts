@@ -20,7 +20,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   private readonly kafkaClientId = process.env.KAFKA_CLIENT_ID || 'sentry-guard-api';
   private readonly kafkaGroupId = process.env.KAFKA_GROUP_ID || 'sentry-guard-consumer-group';
   private readonly kafkaTopic = process.env.KAFKA_TOPIC || 'TeslaLogger_V';
-  private readonly messageLimit = pLimit(10);
+  private readonly messageLimit = pLimit(parseInt(process.env.KAFKA_MESSAGE_CONCURRENCY_LIMIT || '10', 10));
 
   private readonly maxRetries = parseInt(process.env.KAFKA_MAX_RETRIES || '10');
   private readonly baseDelay = parseInt(process.env.KAFKA_RETRY_DELAY || '1000');

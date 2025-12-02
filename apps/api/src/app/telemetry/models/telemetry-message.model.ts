@@ -82,11 +82,6 @@ export class TelemetryMessage {
     }
   }
 
-  isDelayed(thresholdMs = 1000): boolean {
-    const latency = this.calculateEndToEndLatency();
-    return latency !== null && latency > thresholdMs;
-  }
-
   isProcessingDelayed(processingTimeMs: number, thresholdMs = 1000): boolean {
     return processingTimeMs > thresholdMs;
   }

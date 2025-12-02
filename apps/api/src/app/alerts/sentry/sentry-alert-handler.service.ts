@@ -34,15 +34,6 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
     const handlerStartTime = Date.now();
 
     try {
-      // Get pool statistics before query
-      const connection = this.vehicleRepository.manager.connection;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const driver = connection.driver as any;
-      const pool = driver.master || driver.pool;
-      const poolStats = pool 
-        ? `Pool(idle:${pool.idleCount || 0}/${pool.totalCount || 0},waiting:${pool.waitingCount || 0})`
-        : 'Pool(N/A)';
-
       const dbStart = Date.now();
       const vehicle = await this.vehicleRepository.findOne({
         where: { vin: message.vin },
@@ -50,10 +41,10 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
       });
       const dbTime = Date.now() - dbStart;
 
-      this.logger.log(`[DB_TIME][VEHICLE_LOOKUP] ${dbTime}ms | ${poolStats} | VIN: ${message.vin} (correlation: ${message.correlationId})`);
+      this.logger.log(`[DB_TIME][VEHICLE_LOOKUP] Vehicle lookup: ${dbTime}ms for VIN: ${message.vin} (correlation: ${message.correlationId})`);
 
       if (dbTime > 100) {
-        this.logger.warn(`[DB_SLOW][${message.correlationId}] Vehicle lookup: ${dbTime}ms | ${poolStats} | VIN: ${message.vin}`);
+        this.logger.warn(`[DB_SLOW][${message.correlationId}] Vehicle lookup: ${dbTime}ms for VIN: ${message.vin}`);
       }
 
       if (!vehicle) {

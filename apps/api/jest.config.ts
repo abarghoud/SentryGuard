@@ -16,6 +16,9 @@ export default {
   transform: {
     '^.+\\.[tj]s$': ['@swc/jest', swcJestConfig],
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(p-limit|yocto-queue)/)',
+  ],
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: 'test-output/jest/coverage',
 };

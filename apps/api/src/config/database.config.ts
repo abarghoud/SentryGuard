@@ -32,7 +32,7 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
           }
         : false,
     extra: {
-      max: parseInt(process.env.DATABASE_POOL_MAX || '20', 10),
+      max: parseInt(process.env.DATABASE_POOL_MAX || '10', 10),
       connectionTimeoutMillis: parseInt(process.env.DATABASE_CONNECTION_TIMEOUT || '10000', 10),
       idleTimeoutMillis: parseInt(process.env.DATABASE_IDLE_TIMEOUT || '300000', 10),
       allowExitOnIdle: false,
