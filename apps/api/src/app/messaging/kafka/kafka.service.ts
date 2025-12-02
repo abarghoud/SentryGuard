@@ -8,6 +8,7 @@ import {
 import { Interval } from '@nestjs/schedule';
 import { Kafka, Consumer } from 'kafkajs';
 import type { MessageHandler } from './interfaces/message-handler.interface';
+import pLimit from 'p-limit';
 import { kafkaMessageHandler } from './interfaces/message-handler.interface';
 
 @Injectable()
@@ -19,6 +20,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   private readonly kafkaClientId = process.env.KAFKA_CLIENT_ID || 'sentry-guard-api';
   private readonly kafkaGroupId = process.env.KAFKA_GROUP_ID || 'sentry-guard-consumer-group';
   private readonly kafkaTopic = process.env.KAFKA_TOPIC || 'TeslaLogger_V';
+  private readonly messageLimit = pLimit(10);
 
   private readonly maxRetries = parseInt(process.env.KAFKA_MAX_RETRIES || '10');
   private readonly baseDelay = parseInt(process.env.KAFKA_RETRY_DELAY || '1000');
@@ -107,29 +109,32 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
     await this.consumer.run({
       autoCommit: true,
+      
       eachBatch: async ({ batch, resolveOffset, heartbeat, commitOffsetsIfNecessary }) => {
         const batchStartTime = Date.now();
         const batchSize = batch.messages.length;
 
-        await Promise.all(batch.messages.map(async (message) => {
-          if (!this.isConnected) {
-            this.logger.warn('⚠️ Skipping message processing - Kafka disconnected');
-            return;
-          }
+        await Promise.all(batch.messages.map(message =>
+          this.messageLimit(async () => {
+            if (!this.isConnected) {
+              this.logger.warn('⚠️ Skipping message processing - Kafka disconnected');
+              return;
+            }
 
-          try {
-            await this.messageHandler.handleMessage(
-              message,
-              async () => {
-                resolveOffset(message.offset);
-              }
-            );
+            try {
+              await this.messageHandler.handleMessage(
+                message,
+                async () => {
+                  resolveOffset(message.offset);
+                }
+              );
 
-            await heartbeat();
-          } catch (error) {
-            this.logger.error(`💥 Error processing message ${message.offset}:`, error, message.value?.toString());
-          }
-        }));
+              await heartbeat();
+            } catch (error) {
+              this.logger.error(`💥 Error processing message ${message.offset}:`, error, message.value?.toString());
+            }
+          })
+        ));
 
         const batchProcessingTime = Date.now() - batchStartTime;
         if (batchProcessingTime > 1000) {

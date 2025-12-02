@@ -1,8 +1,10 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit, Logger } from '@nestjs/common';
 import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { KafkaService } from './messaging/kafka/kafka.service';
@@ -69,4 +71,27 @@ import { User } from '../entities/user.entity';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements OnModuleInit {
+  private readonly logger = new Logger(AppModule.name);
+
+  constructor(
+    @InjectDataSource() private readonly dataSource: DataSource
+  ) {}
+
+  onModuleInit() {
+    // Log pool configuration at startup
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const driver = this.dataSource.driver as any;
+    const pool = driver.master || driver.pool;
+    
+    if (pool) {
+      const config = getDatabaseConfig();
+      const poolConfig = config.extra || {};
+      
+      this.logger.log(`[DB_POOL_CONFIG] Configured max: ${poolConfig.max || 'default'} | Actual pool max: ${pool.options?.max || pool.max || 'N/A'} | Current total: ${pool.totalCount || 0}`);
+      this.logger.log(`[DB_POOL_CONFIG] Pool options: ${JSON.stringify(pool.options || {})}`);
+    } else {
+      this.logger.warn('[DB_POOL_CONFIG] Could not access pool configuration');
+    }
+  }
+}
