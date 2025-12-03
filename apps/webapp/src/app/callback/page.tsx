@@ -40,12 +40,10 @@ function CallbackContent() {
       }
 
       if (token) {
-        // Save JWT token to localStorage
         setToken(token);
         setStatus('success');
         setMessage(t('Authentication successful! Checking consent status...'));
 
-        // Check consent status and redirect accordingly
         try {
           const consentStatus = await getConsentStatus();
           if (!consentStatus.hasConsent) {
@@ -54,13 +52,12 @@ function CallbackContent() {
               router.push('/consent');
             }, 1500);
           } else {
-            setMessage(t('Authentication successful! Redirecting to dashboard...'));
-            setTimeout(() => {
-              router.push('/dashboard');
-            }, 1500);
+        setMessage(t('Authentication successful! Redirecting to dashboard...'));
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 1500);
           }
         } catch (error) {
-          // If consent check fails, redirect to consent to be safe
           console.warn('Failed to check consent status, redirecting to consent:', error);
           setMessage(t('Authentication successful! Redirecting to consent form...'));
           setTimeout(() => {

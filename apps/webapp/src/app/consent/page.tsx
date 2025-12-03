@@ -1,33 +1,95 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
-import { acceptConsent } from '../../lib/api';
+import { acceptConsent, getConsentText, type ConsentTextResponse } from '../../lib/api';
 
 export default function ConsentPage() {
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingText, setIsLoadingText] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [acceptedAt, setAcceptedAt] = useState<string | null>(null);
+  const [consentText, setConsentText] = useState<ConsentTextResponse | null>(null);
+
+  useEffect(() => {
+    const loadConsentText = async () => {
+      try {
+        const locale = i18n.language || 'en';
+        const text = await getConsentText('v1', locale);
+        setConsentText(text);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load consent text');
+      } finally {
+        setIsLoadingText(false);
+      }
+    };
+
+    loadConsentText();
+  }, [i18n.language]);
+
+  const renderConsentParagraphs = useCallback((text: string) => {
+    const paragraphs = text.split('\n\n');
+    const totalParagraphs = paragraphs.length;
+
+    return paragraphs.map((paragraph, index) => {
+      if (
+        paragraph.startsWith('Version:') ||
+        paragraph.startsWith('Locale:') ||
+        paragraph.startsWith('Partner:') ||
+        paragraph.startsWith('App:') ||
+        paragraph === ''
+      ) {
+        return null;
+      }
+
+      const parts = paragraph.split(/(https?:\/\/[^\s]+)/g);
+      const isLastParagraph = index === totalParagraphs - 2;
+
+      return (
+        <p key={index} className={isLastParagraph ? 'font-semibold' : ''}>
+          {parts.map((part, i) =>
+            part.match(/^https?:\/\//) ? (
+              <a
+                key={i}
+                href={part}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-500 underline"
+              >
+                {part}
+              </a>
+            ) : (
+              part
+            )
+          )}
+        </p>
+      );
+    });
+  }, []);
 
   const handleAccept = async () => {
+    if (!consentText) {
+      setError('Consent text not loaded');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
-      const result = await acceptConsent({
-        version: 'v1',
-        locale: 'fr', // TODO: get from i18n
-        appTitle: 'TeslaGuard',
-        partnerName: 'SentryGuardOrg',
+      await acceptConsent({
+        version: consentText.version,
+        locale: consentText.locale,
+        appTitle: consentText.appTitle,
+        partnerName: consentText.partnerName,
       });
 
       setAcceptedAt(new Date().toLocaleString());
 
-      // Redirect to dashboard after success
       setTimeout(() => {
         router.push('/dashboard');
       }, 2000);
@@ -85,55 +147,32 @@ export default function ConsentPage() {
             </div>
 
             {/* Consent Text */}
-            <div className="prose prose-sm dark:prose-invert max-w-none mb-8 p-6 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <div className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
-                <p>
-                  {t('By signing or accepting this form, you consent to the processing of your Personal Data by SentryGuardOrg ("Partner") in the context of the Partner\'s application titled: TeslaGuard (the "App").')}
-                </p>
-                <p>
-                  {t('Partner is the data controller responsible for the processing of your Personal Data in the context of the App.')}
-                </p>
-                <p>
-                  {t('By signing or accepting this form, you also acknowledge receipt of the Tesla Customer Privacy Notice available at')}{' '}
-                  <a
-                    href="https://www.tesla.com/legal/privacy"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-500 underline"
-                  >
-                    https://www.tesla.com/legal/privacy
-                  </a>{' '}
-                  {t('("Tesla Privacy Notice") and consent to processing of Personal Data by Tesla in accordance with the Tesla Privacy Notice.')}
-                </p>
-                <p>
-                  {t('The App will allow you to benefit from advanced functionalities and will allow Partner to better manage Partner Products. These functionalities may include Tesla product remote commands (e.g., locking/unlocking doors, opening trunk, enable remote start if correct password is provided, open/close roof, honking horn, flashing lights, climate controls, and charge limit), and remote collection of information about product state (such as energy data, charge state, lock state, drive state, climate state, and current location).')}
-                </p>
-                <p>
-                  {t('You understand and agree that to benefit from the App advanced functionalities and Partner\'s fleet management, Partner must process some of your Personal Data, which may include information about Tesla products such as a device number such as a vehicle identification number, speed information, odometer, battery use management information, battery charging history, electrical system functions, software version information, safety related data (including information regarding a vehicle\'s SRS systems, brakes, security, e-brake), data about any issues that could materially impair operation of a Partner Product; data about any safety critical issues and safety critical events; data about software and firmware updates, vehicle and drive state data (including the road segment data and current location) and other data to assist in identifying and analyzing the performance of the Tesla product.')}
-                </p>
-                <p>
-                  {t('Partner will only use this information as described in this document and in particular to (a) provide you with the above functionalities, (b) issue remote product commands or collect information about certain aspects of a product\'s state, (c) advise you on important safety-related information, (d) collect information about a product\'s performance and provide services related to the product, (e) collect information about the use of the product (for example, in order to enable better management the product), and (f) provide services to product users (such as vehicle passengers) where applicable.')}
-                </p>
-                <p>
-                  {t('Partner maintains administrative, technical, and physical safeguards designed to protect Personal Data against accidental, unlawful or unauthorized destruction, loss, alteration, access, disclosure or use. Partner will only retain your Personal Data for as long as necessary to provide you with the App, unless otherwise authorized by you, or required or authorized by applicable law.')}
-                </p>
-                <p>
-                  {t('Subject to applicable law, you may have the right to request access to and receive information about your Personal Data, update and correct inaccuracies in your Personal Data, and have the information deleted, as appropriate. These rights may be limited in some circumstances by local law requirements. You also have the right to withdraw your consent at any time without cost and to access your consent declaration at any time. To exercise your rights or for more information about the App, contact Partner as follows: abarghoud@gmail.com')}
-                </p>
-                <p className="font-semibold">
-                  {t('I consent to the collection, use, and processing of my Personal Data as described above.')}
-                </p>
+            {isLoadingText ? (
+              <div className="mb-8 p-6 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div className="text-center">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <p className="mt-4 text-gray-600 dark:text-gray-400">{t('Loading consent text...')}</p>
+                </div>
               </div>
-            </div>
+            ) : consentText ? (
+              <div className="prose prose-sm dark:prose-invert max-w-none mb-8 p-6 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
+                  {renderConsentParagraphs(consentText.text)}
+                </div>
+              </div>
+            ) : (
+              <div className="mb-8 p-6 bg-red-50 dark:bg-red-900 rounded-lg">
+                <p className="text-red-700 dark:text-red-200">{t('Failed to load consent text')}</p>
+              </div>
+            )}
 
-            {/* Accept Button */}
             <div className="flex flex-col items-center space-y-4">
               <button
                 onClick={handleAccept}
-                disabled={isLoading}
+                disabled={isLoading || isLoadingText || !consentText}
                 className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? t('Processing...') : t('I Accept')}
+                {isLoading ? t('Processing...') : isLoadingText ? t('Loading...') : t('I Accept')}
               </button>
 
               {error && (

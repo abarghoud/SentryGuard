@@ -55,9 +55,6 @@ export class ScopeError extends Error {
   }
 }
 
-/**
- * Make an authenticated API request with JWT token
- */
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -68,7 +65,6 @@ async function apiRequest<T>(
     ...((options.headers as Record<string, string>) || {}),
   };
 
-  // Add JWT token if available
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -81,7 +77,6 @@ async function apiRequest<T>(
       headers,
     });
 
-    // Handle 401 Unauthorized (token expired, invalid, or revoked)
     if (response.status === 401) {
       let errorData: any = {};
       try {
@@ -115,7 +110,6 @@ async function apiRequest<T>(
         const errorData = await response.json();
         errorMessage = errorData.message || errorMessage;
 
-        // Detect scope-related errors
         if (errorData.message?.includes('Missing required permissions')) {
           const missingScopes = errorData.message.match(/Missing required permissions: (.+)/)?.[1]?.split(', ') || [];
           throw new ScopeError(missingScopes);
@@ -423,6 +417,15 @@ export async function updateUserLanguage(
 
 // ============ Consent API ============
 
+export interface ConsentTextResponse {
+  version: string;
+  locale: string;
+  text: string;
+  textHash: string;
+  partnerName: string;
+  appTitle: string;
+}
+
 export interface ConsentStatus {
   hasConsent: boolean;
   latestConsent?: {
@@ -439,7 +442,6 @@ export interface ConsentAcceptRequest {
   locale: string;
   appTitle: string;
   partnerName: string;
-  vehiclesSnapshot?: string[];
 }
 
 export interface ConsentAcceptResponse {
@@ -451,16 +453,18 @@ export interface ConsentAcceptResponse {
   };
 }
 
-/**
- * Get current consent status (requires JWT)
- */
+export async function getConsentText(
+  version = 'v1',
+  locale = 'en'
+): Promise<ConsentTextResponse> {
+  const params = new URLSearchParams({ version, locale });
+  return apiRequest(`/consent/text?${params.toString()}`);
+}
+
 export async function getConsentStatus(): Promise<ConsentStatus> {
   return apiRequest('/consent/current');
 }
 
-/**
- * Accept consent terms (requires JWT)
- */
 export async function acceptConsent(
   consentData: ConsentAcceptRequest
 ): Promise<ConsentAcceptResponse> {
@@ -470,18 +474,8 @@ export async function acceptConsent(
   });
 }
 
-/**
- * Revoke consent (requires JWT)
- */
 export async function revokeConsent(): Promise<{ success: boolean; message: string }> {
   return apiRequest('/consent/revoke', {
     method: 'POST',
   });
-}
-
-/**
- * Get consent history (requires JWT)
- */
-export async function getConsentHistory(): Promise<any[]> {
-  return apiRequest('/consent/history');
 }

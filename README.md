@@ -65,46 +65,6 @@ SentryGuard is a comprehensive security monitoring solution for Tesla vehicles. 
 - 🔒 **Secure by Design** - Encrypted token storage, secure communication
 - 🎨 **Modern UI** - Beautiful, responsive interface with Tailwind CSS
 
-## 🔒 Tesla Fleet API Consent & Compliance
-
-SentryGuard integrates with Tesla's Fleet API to provide advanced vehicle monitoring features. To comply with Tesla's requirements and privacy regulations (GDPR, CCPA), we implement explicit user consent management.
-
-### Consent Flow
-
-1. **First Login**: New users are redirected to `/consent` page after Tesla OAuth authentication
-2. **Explicit Consent**: Users must read and accept detailed terms covering:
-   - Data processing by SentryGuardOrg (Partner)
-   - Tesla Customer Privacy Notice acknowledgment
-   - Remote vehicle commands and telemetry collection
-   - Right to withdraw consent at any time
-3. **Ongoing Compliance**: All Fleet API operations are blocked without valid consent
-4. **Consent Withdrawal**: Users can revoke consent anytime via dashboard, immediately disabling all features
-
-### Consent Data Storage
-
-- **Audit Trail**: All consent actions are logged with timestamps, IP addresses, and user agents
-- **Version Control**: Consent text versions are tracked and hashed for integrity
-- **Export Capability**: Admin endpoint available for consent data export (`GET /consent/export`)
-- **Retention**: Consent records retained as long as user account exists
-
-### Privacy Rights
-
-Users have the right to:
-- **Access**: Request copies of their consent records and processed data
-- **Rectification**: Update personal data or consent details
-- **Erasure**: Delete their account and associated consent records
-- **Withdraw Consent**: Revoke consent at any time without penalty
-- **Data Portability**: Export their data in machine-readable format
-
-**Contact for Privacy Requests**: abarghoud@gmail.com
-
-### Technical Implementation
-
-- **ConsentGuard**: NestJS guard protecting all Fleet API endpoints
-- **Audit Logging**: Comprehensive logging of consent actions
-- **Versioning**: Consent text changes trigger new acceptance requirements
-- **IP/User Agent Tracking**: Consent actions logged with client information
-
 ## 🏗️ Architecture
 
 This is an Nx monorepo containing:

@@ -5,11 +5,13 @@ import { TelemetryConfigService } from './telemetry-config.service';
 import { Vehicle } from '../../entities/vehicle.entity';
 import { User } from '../../entities/user.entity';
 import { AuthModule } from '../auth/auth.module';
+import { ConsentModule } from '../consent/consent.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Vehicle, User]),
     AuthModule,
+    ConsentModule,
   ],
   controllers: [TelemetryConfigController],
   providers: [TelemetryConfigService],

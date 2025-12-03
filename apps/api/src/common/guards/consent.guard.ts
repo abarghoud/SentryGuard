@@ -32,7 +32,6 @@ export class ConsentGuard implements CanActivate {
         );
       }
 
-      // Add consent info to request for potential use in controllers
       request.consentStatus = consentStatus;
 
       return true;

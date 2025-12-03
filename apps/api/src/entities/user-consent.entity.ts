@@ -32,9 +32,6 @@ export class UserConsent {
   @Column({ type: 'varchar', length: 2 })
   locale!: string;
 
-  @Column({ type: 'varchar', length: 45 })
-  ipAddress!: string;
-
   @Column({ type: 'text' })
   userAgent!: string;
 
@@ -43,9 +40,6 @@ export class UserConsent {
 
   @Column({ type: 'varchar', length: 100 })
   partnerName!: string;
-
-  @Column({ type: 'jsonb', nullable: true })
-  vehiclesSnapshot?: string[];
 
   @Column({ type: 'timestamp', nullable: true })
   revokedAt?: Date;
