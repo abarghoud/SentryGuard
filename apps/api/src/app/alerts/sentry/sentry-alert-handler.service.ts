@@ -31,13 +31,21 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
   }
 
   private async sendSentryAlert(message: TelemetryMessage): Promise<void> {
-    try {
-      this.logger.log('Sentry alert detected!');
+    const handlerStartTime = Date.now();
 
+    try {
+      const dbStart = Date.now();
       const vehicle = await this.vehicleRepository.findOne({
         where: { vin: message.vin },
         select: ['userId', 'display_name'],
       });
+      const dbTime = Date.now() - dbStart;
+
+      this.logger.log(`[DB_TIME][VEHICLE_LOOKUP] Vehicle lookup: ${dbTime}ms for VIN: ${message.vin} (correlation: ${message.correlationId})`);
+
+      if (dbTime > 100) {
+        this.logger.warn(`[DB_SLOW][${message.correlationId}] Vehicle lookup: ${dbTime}ms for VIN: ${message.vin}`);
+      }
 
       if (!vehicle) {
         this.logger.warn(`No vehicle found for VIN: ${message.vin}`);
@@ -49,11 +57,37 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
         display_name: vehicle.display_name
       };
 
+      const telegramStart = Date.now();
       await this.telegramService.sendSentryAlert(vehicle.userId, alertInfo);
-      this.logger.log(`Sentry alert sent for VIN: ${message.vin}`);
+      const telegramTime = Date.now() - telegramStart;
+
+      if (telegramTime > 500) {
+        this.logger.warn(`[TELEGRAM_SLOW][${message.correlationId}] Sentry alert: ${telegramTime}ms for user: ${vehicle.userId}`);
+      }
+
+      this.logSentryAlertLatency(message, handlerStartTime);
     } catch (error) {
-      this.logger.error('Error sending Sentry alert:', error);
+      this.logger.error(`Error in SentryAlert:`, error);
       throw error;
+    }
+  }
+
+  private logSentryAlertLatency(telemetryMessage: TelemetryMessage, handlerStartTime: number): void {
+    if (!telemetryMessage.correlationId) {
+      return;
+    }
+
+    const endToEndLatency = telemetryMessage.calculateEndToEndLatency();
+    const handlerProcessingTime = Date.now() - handlerStartTime;
+
+    if (endToEndLatency !== null) {
+      const isProcessingDelayed = telemetryMessage.isProcessingDelayed(handlerProcessingTime, 1000);
+
+      if (isProcessingDelayed) {
+        this.logger.error(`[SENTRY_LATENCY] CorrelationId: ${telemetryMessage.correlationId} - DELAYED: ${endToEndLatency}ms (Handler: ${handlerProcessingTime}ms) ❌`);
+      } else {
+        this.logger.log(`[SENTRY_LATENCY] CorrelationId: ${telemetryMessage.correlationId} - Total: ${endToEndLatency}ms (Handler: ${handlerProcessingTime}ms) ✅`);
+      }
     }
   }
 }

@@ -11,6 +11,7 @@ import {
 
 @Entity('vehicles')
 @Index(['userId', 'vin'], { unique: true })
+@Index(['vin'])
 export class Vehicle {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

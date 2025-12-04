@@ -6,8 +6,9 @@ import {
   Inject,
 } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
+import { Kafka, Consumer } from 'kafkajs';
 import type { MessageHandler } from './interfaces/message-handler.interface';
+import pLimit from 'p-limit';
 import { kafkaMessageHandler } from './interfaces/message-handler.interface';
 
 @Injectable()
@@ -19,6 +20,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   private readonly kafkaClientId = process.env.KAFKA_CLIENT_ID || 'sentry-guard-api';
   private readonly kafkaGroupId = process.env.KAFKA_GROUP_ID || 'sentry-guard-consumer-group';
   private readonly kafkaTopic = process.env.KAFKA_TOPIC || 'TeslaLogger_V';
+  private readonly messageLimit = pLimit(parseInt(process.env.KAFKA_MESSAGE_CONCURRENCY_LIMIT || '10', 10));
 
   private readonly maxRetries = parseInt(process.env.KAFKA_MAX_RETRIES || '10');
   private readonly baseDelay = parseInt(process.env.KAFKA_RETRY_DELAY || '1000');
@@ -37,6 +39,9 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
     this.consumer = this.kafka.consumer({
       groupId: this.kafkaGroupId,
+      sessionTimeout: 30000,
+      heartbeatInterval: 3000,
+      rebalanceTimeout: 60000,
     });
   }
 
@@ -103,27 +108,40 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     this.logger.log('🎧 Starting message listening...');
 
     await this.consumer.run({
-      autoCommit: false,
-      eachMessage: async ({ topic, partition, message }: EachMessagePayload) => {
-        if (!this.isConnected) {
-          this.logger.warn('⚠️ Skipping message processing - Kafka disconnected');
-          return;
+      autoCommit: true,
+      
+      eachBatch: async ({ batch, resolveOffset, heartbeat, commitOffsetsIfNecessary }) => {
+        const batchStartTime = Date.now();
+        const batchSize = batch.messages.length;
+
+        await Promise.all(batch.messages.map(message =>
+          this.messageLimit(async () => {
+            if (!this.isConnected) {
+              this.logger.warn('⚠️ Skipping message processing - Kafka disconnected');
+              return;
+            }
+
+            try {
+              await this.messageHandler.handleMessage(
+                message,
+                async () => {
+                  resolveOffset(message.offset);
+                }
+              );
+
+              await heartbeat();
+            } catch (error) {
+              this.logger.error(`💥 Error processing message ${message.offset}:`, error, message.value?.toString());
+            }
+          })
+        ));
+
+        const batchProcessingTime = Date.now() - batchStartTime;
+        if (batchProcessingTime > 1000) {
+          this.logger.warn(`[BATCH][${batch.topic}:${batch.partition}] Slow batch: ${batchSize} messages in ${batchProcessingTime}ms`);
         }
 
-        try {
-          await this.messageHandler.handleMessage(
-            message,
-            async () => {
-              await this.consumer.commitOffsets([{
-                topic,
-                partition,
-                offset: (parseInt(message.offset) + 1).toString()
-              }]);
-            }
-          );
-        } catch (error) {
-          this.logger.error(`💥 Error processing message ${message.offset}:`, error);
-        }
+        await commitOffsetsIfNecessary();
       },
     });
 

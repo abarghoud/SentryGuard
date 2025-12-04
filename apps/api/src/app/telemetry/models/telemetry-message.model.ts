@@ -47,6 +47,10 @@ export class TelemetryMessage {
   @IsBoolean()
   isResend!: boolean;
 
+  @IsOptional()
+  @IsString()
+  correlationId?: string;
+
   validateContainsSentryMode(): boolean {
     return this.data.some(datum => datum.key === 'SentryMode');
   }
@@ -64,4 +68,21 @@ export class TelemetryMessage {
     return false;
   }
 
+  calculateEndToEndLatency(): number | null {
+    if (!this.createdAt || !this.correlationId) {
+      return null;
+    }
+
+    try {
+      const eventTime = new Date(this.createdAt).getTime();
+      const currentTime = Date.now();
+      return currentTime - eventTime;
+    } catch {
+      return null;
+    }
+  }
+
+  isProcessingDelayed(processingTimeMs: number, thresholdMs = 1000): boolean {
+    return processingTimeMs > thresholdMs;
+  }
 }

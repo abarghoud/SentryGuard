@@ -9,7 +9,6 @@ import { KafkaService } from './messaging/kafka/kafka.service';
 import { TelemetryMessageHandlerService } from './telemetry/handlers/telemetry-message-handler.service';
 import { TelemetryValidationService } from './telemetry/services/telemetry-validation.service';
 import { SentryAlertHandlerService } from './alerts/sentry/sentry-alert-handler.service';
-import { DebugMessageHandlerService } from './telemetry/handlers/debug-message-handler.service';
 import { TelemetryEventHandlerSymbol } from './telemetry/interfaces/telemetry-event-handler.interface';
 import { kafkaMessageHandler } from './messaging/kafka/interfaces/message-handler.interface';
 import { AuthModule } from './auth/auth.module';
@@ -44,7 +43,6 @@ import { User } from '../entities/user.entity';
     TelemetryMessageHandlerService,
     TelemetryValidationService,
     SentryAlertHandlerService,
-    DebugMessageHandlerService,
     {
       provide: kafkaMessageHandler,
       useClass: TelemetryMessageHandlerService,
@@ -53,9 +51,8 @@ import { User } from '../entities/user.entity';
       provide: TelemetryEventHandlerSymbol,
       useFactory: (
         sentryHandler: SentryAlertHandlerService,
-        debugHandler: DebugMessageHandlerService,
-      ) => [sentryHandler, debugHandler],
-      inject: [SentryAlertHandlerService, DebugMessageHandlerService],
+      ) => [sentryHandler],
+      inject: [SentryAlertHandlerService],
     },
     {
       provide: OciLoggingService,

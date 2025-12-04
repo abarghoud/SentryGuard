@@ -10,6 +10,13 @@ import { Repository } from 'typeorm';
 import { TelemetryValidationService } from '../services/telemetry-validation.service';
 import { TelemetryMessage } from '../models/telemetry-message.model';
 import { plainToInstance } from 'class-transformer';
+import { randomBytes } from 'crypto';
+
+jest.mock('crypto', () => ({
+  randomBytes: jest.fn(),
+}));
+
+const mockDateNow = jest.spyOn(Date, 'now');
 
 const mockTelegramService = mock<TelegramService>();
 const mockVehicleRepository = mock<Repository<Vehicle>>();
@@ -22,6 +29,8 @@ describe('The TelemetryMessageHandlerService class', () => {
   let service: TelemetryMessageHandlerService;
 
   beforeEach(async () => {
+    mockDateNow.mockReturnValue(1234567890000);
+    (randomBytes as jest.Mock).mockReturnValue(Buffer.from('abcd', 'hex'));
     mockEventHandler1.handle.mockResolvedValue(undefined);
     mockEventHandler2.handle.mockResolvedValue(undefined);
 
@@ -72,12 +81,6 @@ describe('The TelemetryMessageHandlerService class', () => {
         isResend: false,
       };
 
-      mockValidationService.validateMessage.mockResolvedValueOnce({
-        isValidMessage: true,
-        errors: [],
-        telemetryMessage: plainToInstance(TelemetryMessage, telemetryMessage)
-      });
-
       const message = {
         offset: '0',
         value: Buffer.from(JSON.stringify(telemetryMessage)),
@@ -87,13 +90,31 @@ describe('The TelemetryMessageHandlerService class', () => {
         headers: {},
       };
 
+      mockValidationService.validateMessage.mockResolvedValueOnce({
+        isValidMessage: true,
+        errors: [],
+        telemetryMessage: plainToInstance(TelemetryMessage, {
+          ...telemetryMessage,
+          correlationId: 'offset-0-TEST_VIN-fr5hugk0-abcd',
+        }),
+      });
+
       const commitMock = jest.fn().mockResolvedValue(undefined);
 
       await service.handleMessage(message, commitMock);
 
-      expect(mockValidationService.validateMessage).toHaveBeenCalledWith(JSON.parse(message.value!.toString()));
-      expect(mockEventHandler1.handle).toHaveBeenCalledWith(telemetryMessage);
-      expect(mockEventHandler2.handle).toHaveBeenCalledWith(telemetryMessage);
+      expect(mockEventHandler1.handle).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...telemetryMessage,
+          correlationId: 'offset-0-TEST_VIN-fr5hugk0-abcd',
+        })
+      );
+      expect(mockEventHandler2.handle).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...telemetryMessage,
+          correlationId: 'offset-0-TEST_VIN-fr5hugk0-abcd',
+        })
+      );
       expect(commitMock).toHaveBeenCalledWith();
     });
 
@@ -143,14 +164,6 @@ describe('The TelemetryMessageHandlerService class', () => {
         isResend: false,
       };
 
-      mockValidationService.validateMessage.mockResolvedValueOnce({
-        isValidMessage: true,
-        errors: [],
-        telemetryMessage: plainToInstance(TelemetryMessage, telemetryMessage)
-      });
-
-      mockEventHandler1.handle.mockRejectedValue(new Error('Handler error'));
-
       const message = {
         offset: '0',
         value: Buffer.from(JSON.stringify(telemetryMessage)),
@@ -160,12 +173,33 @@ describe('The TelemetryMessageHandlerService class', () => {
         headers: {},
       };
 
+      mockValidationService.validateMessage.mockResolvedValueOnce({
+        isValidMessage: true,
+        errors: [],
+        telemetryMessage: plainToInstance(TelemetryMessage, {
+          ...telemetryMessage,
+          correlationId: 'offset-0-TEST_VIN-fr5hugk0-abcd',
+        }),
+      });
+
+      mockEventHandler1.handle.mockRejectedValue(new Error('Handler error'));
+
       const commitMock = jest.fn().mockResolvedValue(undefined);
 
       await expect(service.handleMessage(message, commitMock)).rejects.toThrow('1 out of 2 handlers failed');
 
-      expect(mockEventHandler1.handle).toHaveBeenCalledWith(telemetryMessage);
-      expect(mockEventHandler2.handle).toHaveBeenCalledWith(telemetryMessage);
+      expect(mockEventHandler1.handle).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...telemetryMessage,
+          correlationId: 'offset-0-TEST_VIN-fr5hugk0-abcd',
+        })
+      );
+      expect(mockEventHandler2.handle).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...telemetryMessage,
+          correlationId: 'offset-0-TEST_VIN-fr5hugk0-abcd',
+        })
+      );
       expect(commitMock).not.toHaveBeenCalled();
     });
 
@@ -176,14 +210,6 @@ describe('The TelemetryMessageHandlerService class', () => {
         vin: 'TEST_VIN_123',
         isResend: false,
       };
-      mockValidationService.validateMessage.mockResolvedValueOnce({
-        isValidMessage: true,
-        errors: [],
-        telemetryMessage: plainToInstance(TelemetryMessage, telemetryMessage)
-      });
-      mockEventHandler1.handle.mockRejectedValue(new Error('Handler 1 failed'));
-
-      mockEventHandler2.handle.mockResolvedValue(undefined);
 
       const message = {
         offset: '0',
@@ -194,12 +220,33 @@ describe('The TelemetryMessageHandlerService class', () => {
         headers: {},
       };
 
+      mockValidationService.validateMessage.mockResolvedValueOnce({
+        isValidMessage: true,
+        errors: [],
+        telemetryMessage: plainToInstance(TelemetryMessage, {
+          ...telemetryMessage,
+          correlationId: 'offset-0-TEST_VIN-fr5hugk0-abcd',
+        }),
+      });
+      mockEventHandler1.handle.mockRejectedValue(new Error('Handler 1 failed'));
+      mockEventHandler2.handle.mockResolvedValue(undefined);
+
       const commitMock = jest.fn().mockResolvedValue(undefined);
 
       await expect(service.handleMessage(message, commitMock)).rejects.toThrow('1 out of 2 handlers failed');
 
-      expect(mockEventHandler1.handle).toHaveBeenCalledWith(telemetryMessage);
-      expect(mockEventHandler2.handle).toHaveBeenCalledWith(telemetryMessage);
+      expect(mockEventHandler1.handle).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...telemetryMessage,
+          correlationId: 'offset-0-TEST_VIN-fr5hugk0-abcd',
+        })
+      );
+      expect(mockEventHandler2.handle).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...telemetryMessage,
+          correlationId: 'offset-0-TEST_VIN-fr5hugk0-abcd',
+        })
+      );
       expect(commitMock).not.toHaveBeenCalled();
     });
 
@@ -210,16 +257,6 @@ describe('The TelemetryMessageHandlerService class', () => {
         vin: 'TEST_VIN_123',
         isResend: false,
       };
-      mockValidationService.validateMessage.mockResolvedValueOnce({
-        isValidMessage: true,
-        errors: [],
-        telemetryMessage: plainToInstance(TelemetryMessage, telemetryMessage)
-      });
-      const error1 = new Error('Handler 1 failed');
-      const error2 = new Error('Handler 2 failed');
-      mockEventHandler1.handle.mockRejectedValue(error1);
-
-      mockEventHandler2.handle.mockRejectedValue(error2);
 
       const message = {
         offset: '0',
@@ -230,12 +267,35 @@ describe('The TelemetryMessageHandlerService class', () => {
         headers: {},
       };
 
+      mockValidationService.validateMessage.mockResolvedValueOnce({
+        isValidMessage: true,
+        errors: [],
+        telemetryMessage: plainToInstance(TelemetryMessage, {
+          ...telemetryMessage,
+          correlationId: 'offset-0-TEST_VIN-fr5hugk0-abcd',
+        }),
+      });
+      const error1 = new Error('Handler 1 failed');
+      const error2 = new Error('Handler 2 failed');
+      mockEventHandler1.handle.mockRejectedValue(error1);
+      mockEventHandler2.handle.mockRejectedValue(error2);
+
       const commitMock = jest.fn().mockResolvedValue(undefined);
 
       await expect(service.handleMessage(message, commitMock)).rejects.toThrow('2 out of 2 handlers failed');
 
-      expect(mockEventHandler1.handle).toHaveBeenCalledWith(telemetryMessage);
-      expect(mockEventHandler2.handle).toHaveBeenCalledWith(telemetryMessage);
+      expect(mockEventHandler1.handle).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...telemetryMessage,
+          correlationId: 'offset-0-TEST_VIN-fr5hugk0-abcd',
+        })
+      );
+      expect(mockEventHandler2.handle).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...telemetryMessage,
+          correlationId: 'offset-0-TEST_VIN-fr5hugk0-abcd',
+        })
+      );
       expect(commitMock).not.toHaveBeenCalled();
     });
   });

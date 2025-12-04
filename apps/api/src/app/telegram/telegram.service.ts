@@ -14,61 +14,50 @@ export class TelegramService {
 
   async sendSentryAlert(userId: string, alertInfo: { vin: string, display_name?: string }) {
     try {
-      const userLanguage = await this.userLanguageService.getUserLanguage(
-        userId
-      );
-      const message = this.formatSentryAlertMessage(alertInfo, userLanguage);
-      const success = await this.telegramBotService.sendMessageToUser(
-        userId,
-        message
-      );
+      const languageStart = Date.now();
+      const userLanguage = await this.userLanguageService.getUserLanguage(userId);
+      const languageTime = Date.now() - languageStart;
 
-      if (success) {
-        this.logger.log(`📱 Alerte Sentry envoyée à l'utilisateur: ${userId}`);
-      } else {
-        this.logger.warn(
-          `⚠️ Impossible d'envoyer l'alerte à l'utilisateur: ${userId}`
-        );
+      if (languageTime > 100) {
+        this.logger.warn(`[DB_SLOW][ALERT] Language lookup: ${languageTime}ms for user: ${userId}`);
       }
+
+      const message = this.formatSentryAlertMessage(alertInfo, userLanguage);
+
+      if (this.shouldSimulateMessage(alertInfo.vin)) {
+        return await this.simulateMessage(userId, 'alert', alertInfo.vin);
+      }
+
+      const success = await this.telegramBotService.sendMessageToUser(userId, message);
 
       return success;
     } catch (error) {
-      this.logger.error(
-        `❌ Erreur lors de l'envoi de l'alerte Sentry à ${userId}:`,
-        error
-      );
+      this.logError(userId, 'alert', error);
       return false;
     }
   }
 
-  /**
-   * Envoie un message Telegram personnalisé à un utilisateur
-   */
-  async sendTelegramMessage(userId: string, message: string) {
-    try {
-      const success = await this.telegramBotService.sendMessageToUser(
-        userId,
-        message
-      );
+  private shouldSimulateMessage(vin?: string): boolean {
+    const isTestVin = vin === 'VIN-1' || vin === 'VIN-2';
+    const simulateDelay = process.env.SIMULATE_TELEGRAM_DELAY_MS;
 
-      if (success) {
-        this.logger.log(
-          `📱 Message Telegram envoyé à l'utilisateur: ${userId}`
-        );
-      } else {
-        this.logger.warn(
-          `⚠️ Impossible d'envoyer le message à l'utilisateur: ${userId}`
-        );
-      }
+    return isTestVin && !!simulateDelay;
+  }
 
-      return success;
-    } catch (error) {
-      this.logger.error(
-        `❌ Erreur lors de l'envoi du message Telegram à ${userId}:`,
-        error
-      );
-      return false;
-    }
+  private async simulateMessage(userId: string, type: 'alert' | 'message', vin?: string): Promise<boolean> {
+    const delay = type === 'alert' ? 200 : parseInt(process.env.SIMULATE_TELEGRAM_DELAY_MS || '0');
+
+    await new Promise(resolve => setTimeout(resolve, delay));
+
+    this.logger.log(`📱 [SIMULATED] ${type === 'alert' ? 'Sentry alert' : 'Telegram message'} sent to ${userId} for VIN ${vin}`);
+
+    return true;
+  }
+
+  private logError(userId: string, type: 'alert' | 'message', error: unknown): void {
+    const messageType = type === 'alert' ? 'sentry alert' : 'telegram message';
+    
+    this.logger.error(`❌ Failed to send ${messageType} to user: ${userId}:`, error);
   }
 
   private formatSentryAlertMessage(
