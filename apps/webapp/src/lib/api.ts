@@ -55,9 +55,6 @@ export class ScopeError extends Error {
   }
 }
 
-/**
- * Make an authenticated API request with JWT token
- */
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -68,7 +65,6 @@ async function apiRequest<T>(
     ...((options.headers as Record<string, string>) || {}),
   };
 
-  // Add JWT token if available
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -81,7 +77,6 @@ async function apiRequest<T>(
       headers,
     });
 
-    // Handle 401 Unauthorized (token expired, invalid, or revoked)
     if (response.status === 401) {
       let errorData: any = {};
       try {
@@ -115,7 +110,6 @@ async function apiRequest<T>(
         const errorData = await response.json();
         errorMessage = errorData.message || errorMessage;
 
-        // Detect scope-related errors
         if (errorData.message?.includes('Missing required permissions')) {
           const missingScopes = errorData.message.match(/Missing required permissions: (.+)/)?.[1]?.split(', ') || [];
           throw new ScopeError(missingScopes);
@@ -418,5 +412,70 @@ export async function updateUserLanguage(
   return apiRequest('/user/language', {
     method: 'PATCH',
     body: JSON.stringify({ language }),
+  });
+}
+
+// ============ Consent API ============
+
+export interface ConsentTextResponse {
+  version: string;
+  locale: string;
+  text: string;
+  textHash: string;
+  partnerName: string;
+  appTitle: string;
+}
+
+export interface ConsentStatus {
+  hasConsent: boolean;
+  latestConsent?: {
+    id: string;
+    acceptedAt: string;
+    version: string;
+    locale: string;
+  };
+  isRevoked: boolean;
+}
+
+export interface ConsentAcceptRequest {
+  version: string;
+  locale: string;
+  appTitle: string;
+  partnerName: string;
+}
+
+export interface ConsentAcceptResponse {
+  success: boolean;
+  consent: {
+    id: string;
+    acceptedAt: string;
+    version: string;
+  };
+}
+
+export async function getConsentText(
+  version = 'v1',
+  locale = 'en'
+): Promise<ConsentTextResponse> {
+  const params = new URLSearchParams({ version, locale });
+  return apiRequest(`/consent/text?${params.toString()}`);
+}
+
+export async function getConsentStatus(): Promise<ConsentStatus> {
+  return apiRequest('/consent/current');
+}
+
+export async function acceptConsent(
+  consentData: ConsentAcceptRequest
+): Promise<ConsentAcceptResponse> {
+  return apiRequest('/consent/accept', {
+    method: 'POST',
+    body: JSON.stringify(consentData),
+  });
+}
+
+export async function revokeConsent(): Promise<{ success: boolean; message: string }> {
+  return apiRequest('/consent/revoke', {
+    method: 'POST',
   });
 }

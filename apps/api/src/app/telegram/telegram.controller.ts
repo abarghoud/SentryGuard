@@ -18,13 +18,14 @@ import {
 } from '../../entities/telegram-config.entity';
 import { TelegramBotService } from './telegram-bot.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { ConsentGuard } from '../../common/guards/consent.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { User } from '../../entities/user.entity';
 import i18n from '../../i18n';
 import { ThrottleOptions } from '../../config/throttle.config';
 
 @Controller('telegram')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ConsentGuard)
 export class TelegramController {
   private readonly logger = new Logger(TelegramController.name);
   private readonly LINK_EXPIRATION_MINUTES = 15;

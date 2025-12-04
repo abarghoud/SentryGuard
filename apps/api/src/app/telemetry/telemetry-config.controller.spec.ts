@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TelemetryConfigController } from './telemetry-config.controller';
 import { TelemetryConfigService } from './telemetry-config.service';
+import { ConsentService } from '../consent/consent.service';
+import { ConsentGuard } from '../../common/guards/consent.guard';
 
 describe('TelemetryConfigController', () => {
   let controller: TelemetryConfigController;
@@ -19,8 +21,19 @@ describe('TelemetryConfigController', () => {
             checkTelemetryConfig: jest.fn(),
           },
         },
+        {
+          provide: ConsentService,
+          useValue: {
+            getCurrentConsent: jest.fn(),
+          },
+        },
       ],
-    }).compile();
+    })
+      .overrideGuard(ConsentGuard)
+      .useValue({
+        canActivate: jest.fn(() => true),
+      })
+      .compile();
 
     controller = module.get<TelemetryConfigController>(
       TelemetryConfigController

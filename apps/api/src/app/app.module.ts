@@ -12,6 +12,7 @@ import { SentryAlertHandlerService } from './alerts/sentry/sentry-alert-handler.
 import { TelemetryEventHandlerSymbol } from './telemetry/interfaces/telemetry-event-handler.interface';
 import { kafkaMessageHandler } from './messaging/kafka/interfaces/message-handler.interface';
 import { AuthModule } from './auth/auth.module';
+import { ConsentModule } from './consent/consent.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { UserModule } from './user/user.module';
@@ -31,6 +32,7 @@ import { User } from '../entities/user.entity';
     TypeOrmModule.forFeature([Vehicle, User]),
     ScheduleModule.forRoot(),
     AuthModule,
+    ConsentModule,
     TelemetryModule,
     TelegramModule,
     UserModule,

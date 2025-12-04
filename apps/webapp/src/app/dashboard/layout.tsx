@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../lib/useAuth';
+import { useConsent } from '../../lib/useConsent';
 import MissingScopesBanner from '../../components/MissingScopesBanner';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
@@ -15,6 +16,7 @@ export default function DashboardLayout({
 }) {
   const { t } = useTranslation('common');
   const { isAuthenticated, isLoading, logout, profile, scopeError } = useAuth();
+  const { hasConsent, isLoading: consentLoading, revokeConsent } = useConsent();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -28,11 +30,26 @@ export default function DashboardLayout({
     );
   };
 
+  const handleRevokeConsent = async () => {
+    if (window.confirm(t('Are you sure you want to revoke your consent? This will disable all Tesla Fleet API features.'))) {
+      const success = await revokeConsent();
+      if (success) {
+        router.push('/consent');
+      }
+    }
+  };
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push('/');
     }
   }, [isAuthenticated, isLoading, router]);
+
+  useEffect(() => {
+    if (!consentLoading && isAuthenticated && !hasConsent) {
+      router.push('/consent');
+    }
+  }, [isAuthenticated, hasConsent, consentLoading, router]);
 
   if (isLoading) {
     return (
@@ -124,6 +141,13 @@ export default function DashboardLayout({
                 </div>
               )}
               <button
+                onClick={handleRevokeConsent}
+                className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                title={t('Revoke consent for Tesla Fleet API')}
+              >
+                {t('Revoke Consent')}
+              </button>
+              <button
                 onClick={logout}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
               >
@@ -161,6 +185,12 @@ export default function DashboardLayout({
                 </div>
               )}
               <LanguageSwitcher />
+              <button
+                onClick={handleRevokeConsent}
+                className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+              >
+                {t('Revoke Consent')}
+              </button>
               <button
                 onClick={logout}
                 className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"

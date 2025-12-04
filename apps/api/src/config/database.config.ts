@@ -3,6 +3,7 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Vehicle } from '../entities/vehicle.entity';
 import { TelegramConfig } from '../entities/telegram-config.entity';
+import { UserConsent } from '../entities/user-consent.entity';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -19,7 +20,7 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
     username: process.env.DATABASE_USER || 'sentryguard',
     password: process.env.DATABASE_PASSWORD || 'sentryguard',
     database: process.env.DATABASE_NAME || 'sentryguard',
-    entities: [User, Vehicle, TelegramConfig],
+    entities: [User, Vehicle, TelegramConfig, UserConsent],
     // Use synchronize in development, migrations in production
     synchronize: !isProduction,
     migrationsRun: isProduction,
