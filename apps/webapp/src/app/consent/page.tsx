@@ -116,7 +116,7 @@ export default function ConsentPage() {
                 {t('Consent accepted successfully!')}
               </h2>
               <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-                {t('Accepted at: {{date}}', { date: acceptedAt })}
+                {t('Accepted at:')} {acceptedAt}
               </p>
               <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
                 {t('Redirecting to dashboard...')}

@@ -177,9 +177,8 @@ export default function TelegramLinkCard({
             </p>
             {status.linked_at && (
               <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-                {t('Linked on {{date}}', {
-                  date: new Date(status.linked_at).toLocaleString(),
-                })}
+                {t('Linked on')}{' '}
+                {new Date(status.linked_at).toLocaleString()}
               </p>
             )}
           </div>
