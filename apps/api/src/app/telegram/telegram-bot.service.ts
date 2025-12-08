@@ -14,6 +14,14 @@ export class TelegramBotService implements OnModuleInit {
   private readonly logger = new Logger(TelegramBotService.name);
   private bot: Telegraf<Context> | null = null;
   private readonly botToken = process.env.TELEGRAM_BOT_TOKEN;
+  private readonly webhookBaseUrl = process.env.TELEGRAM_WEBHOOK_BASE;
+  private readonly webhookSecretPath =
+    process.env.TELEGRAM_WEBHOOK_SECRET_PATH || 'telegram-webhook';
+  private readonly webhookSecretToken =
+    process.env.TELEGRAM_WEBHOOK_SECRET_TOKEN || undefined;
+  private webhookCallback:
+    | ReturnType<Telegraf<Context>['webhookCallback']>
+    | null = null;
 
   constructor(
     @InjectRepository(TelegramConfig)
@@ -28,6 +36,13 @@ export class TelegramBotService implements OnModuleInit {
     if (!this.botToken) {
       this.logger.warn(
         '⚠️ TELEGRAM_BOT_TOKEN not defined, Telegram bot disabled'
+      );
+      return;
+    }
+
+    if (!this.webhookBaseUrl) {
+      this.logger.warn(
+        '⚠️ TELEGRAM_WEBHOOK_BASE not defined, Telegram bot webhook disabled (no polling fallback to avoid multi-instance conflicts)'
       );
       return;
     }
@@ -70,25 +85,24 @@ export class TelegramBotService implements OnModuleInit {
         await ctx.reply(i18n.t('Available commands', { lng }));
       });
 
-      // Lancer le bot en mode polling (non-bloquant)
-      this.bot
-        .launch()
-        .then(() => {
-          this.logger.log('✅ Telegram bot démarré avec succès');
-        })
-        .catch((error) => {
-          this.logger.error(
-            '❌ Erreur lors du démarrage du bot Telegram:',
-            error
-          );
-        });
+      const webhookPath = this.getWebhookPath();
+      const webhookUrl = `${this.webhookBaseUrl.replace(/\/$/, '')}${webhookPath}`;
+
+      await this.bot.telegram.setWebhook(webhookUrl, {
+        secret_token: this.webhookSecretToken,
+        drop_pending_updates: true,
+      });
+
+      this.webhookCallback = this.bot.webhookCallback(webhookPath);
+      this.logger.log(
+        `✅ Telegram bot configuré en webhook sur ${webhookUrl} (secret path=${this.webhookSecretPath})`
+      );
 
       // Graceful stop
       process.once('SIGINT', () => this.bot?.stop('SIGINT'));
       process.once('SIGTERM', () => this.bot?.stop('SIGTERM'));
     } catch (error) {
-      this.logger.error('❌ Erreur lors de la liaison du token:', error);
-      await ctx.reply(i18n.t('An error occurred'));
+      this.logger.error('❌ Telegram bot initialization error:', error);
     }
   }
 
@@ -190,6 +204,34 @@ export class TelegramBotService implements OnModuleInit {
       );
       return process.env.TELEGRAM_BOT_USERNAME || null;
     }
+  }
+
+  getWebhookSecretPath(): string {
+    return this.webhookSecretPath;
+  }
+
+  getWebhookSecretToken(): string | undefined {
+    return this.webhookSecretToken;
+  }
+
+  getWebhookCallback():
+    | ReturnType<Telegraf<Context>['webhookCallback']>
+    | null {
+    return this.webhookCallback;
+  }
+
+  async handleUpdate(req: any, res: any): Promise<void> {
+    if (!this.webhookCallback) {
+      this.logger.warn('⚠️ Webhook non initialisé');
+      res.status(503).send('Webhook not configured');
+      return;
+    }
+
+    return this.webhookCallback(req, res);
+  }
+
+  private getWebhookPath(): string {
+    return `/telegram/webhook/${this.webhookSecretPath}`;
   }
 
   private async getUserLanguageFromChatId(
