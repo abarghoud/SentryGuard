@@ -49,6 +49,31 @@ export interface TeslaApiResponse<T = unknown> {
   [key: string]: unknown;
 }
 
+export interface SkippedVehicle {
+  vin: string;
+  reason: SkippedVehicleReason;
+}
+
+export type SkippedVehicleReason =
+  | 'missing_key'
+  | 'unsupported_hardware'
+  | 'unsupported_firmware'
+  | 'max_configs'
+  | string;
+
+export type SkippedVehiclesMap = Partial<Record<SkippedVehicleReason, string[]>>;
+
+export interface FleetTelemetryConfigResponse {
+  skipped_vehicles?: SkippedVehiclesMap;
+  [key: string]: unknown;
+}
+
+export interface ConfigureTelemetryResult {
+  success: boolean;
+  skippedVehicle?: SkippedVehicle | null;
+  response?: TeslaApiResponse<FleetTelemetryConfigResponse>;
+}
+
 /**
  * Tesla vehicle data from Tesla API
  * Only includes fields that are actually used in the application

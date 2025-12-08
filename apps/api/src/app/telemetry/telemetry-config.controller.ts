@@ -35,17 +35,6 @@ export class TelemetryConfigController {
   }
 
   @Throttle(ThrottleOptions.critical())
-  @Post('configure-all')
-  async configureAllVehicles(@CurrentUser() user: User) {
-    const userId = user.userId;
-    this.logger.log(
-      `🚗 Configuring telemetry for all vehicles (user: ${userId})`
-    );
-    await this.telemetryConfigService.configureAllVehicles(userId);
-    return { message: 'Telemetry configuration started for all vehicles' };
-  }
-
-  @Throttle(ThrottleOptions.critical())
   @Post('configure/:vin')
   async configureVehicle(@Param('vin') vin: string, @CurrentUser() user: User) {
     const userId = user.userId;
@@ -56,6 +45,17 @@ export class TelemetryConfigController {
       vin,
       userId
     );
+    if (!result) {
+      return { message: `Configuration failed for VIN: ${vin}` };
+    }
+
+    if (result.skippedVehicle) {
+      return {
+        message: `Configuration skipped for VIN: ${vin}`,
+        result,
+      };
+    }
+
     return { message: `Configuration started for VIN: ${vin}`, result };
   }
 

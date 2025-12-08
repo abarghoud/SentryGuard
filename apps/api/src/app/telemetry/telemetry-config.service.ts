@@ -7,6 +7,8 @@ import { AuthService } from '../auth/auth.service';
 import { Vehicle } from '../../entities/vehicle.entity';
 import {
   DeleteTelemetryConfigResponse,
+  ConfigureTelemetryResult,
+  FleetTelemetryConfigResponse,
   TelemetryConfig,
   TelemetryConfigRequest,
   TeslaApiResponse,
@@ -21,8 +23,8 @@ import {
   SUCCESS_MESSAGES,
   TELEMETRY_CONFIG,
   TESLA_API_ENDPOINTS,
-  WARNING_MESSAGES,
 } from './telemetry-config.constants';
+import { SkippedVehicleInfo } from './skipped-telemetry-config-vehicle';
 import {
   extractErrorDetails,
   is404Error,
@@ -80,9 +82,7 @@ export class TelemetryConfigService {
     throw new TokenRevokedException(userId);
   }
 
-  /**
-   * Fetches the vehicle list from Tesla API and syncs them to the database
-   */
+
   async getVehicles(userId: string): Promise<TeslaVehicleWithStatus[]> {
     try {
       const accessToken = await this.getAccessToken(userId);
@@ -202,7 +202,7 @@ export class TelemetryConfigService {
   async configureTelemetry(
     vin: string,
     userId: string
-  ): Promise<TeslaApiResponse | null> {
+  ): Promise<ConfigureTelemetryResult | null> {
     const base64CAKey = process.env.LETS_ENCRYPT_CERTIFICATE;
 
     if (!base64CAKey) {
@@ -241,7 +241,7 @@ export class TelemetryConfigService {
         vins: [vin],
       };
 
-      const response = await this.teslaApi.post<TeslaApiResponse>(
+      const response = await this.teslaApi.post<TeslaApiResponse<FleetTelemetryConfigResponse>>(
         TESLA_API_ENDPOINTS.FLEET_TELEMETRY_CONFIG,
         requestPayload,
         {
@@ -252,11 +252,28 @@ export class TelemetryConfigService {
         }
       );
 
+      const skippedVehicle = new SkippedVehicleInfo(
+        vin,
+        response.data as TeslaApiResponse<FleetTelemetryConfigResponse>
+      ).get();
+
+      if (skippedVehicle) {
+        return {
+          success: false,
+          skippedVehicle,
+          response: response.data as TeslaApiResponse<FleetTelemetryConfigResponse>,
+        };
+      }
+
       this.logger.log(SUCCESS_MESSAGES.TELEMETRY_CONFIGURED(vin));
 
       await this.updateVehicleTelemetryStatus(userId, vin, true);
 
-      return response.data;
+      return {
+        success: true,
+        skippedVehicle: null,
+        response: response.data as TeslaApiResponse<FleetTelemetryConfigResponse>,
+      };
     } catch (error: unknown) {
       this.logger.error(
         ERROR_MESSAGES.ERROR_CONFIGURING_VIN(vin),
@@ -369,35 +386,4 @@ export class TelemetryConfigService {
     }
   }
 
-  /**
-   * Configures telemetry for all available vehicles
-   */
-  async configureAllVehicles(userId: string): Promise<void> {
-    this.logger.log(INFO_MESSAGES.FETCHING_VEHICLES);
-    const vehicles = await this.getVehicles(userId);
-
-    if (vehicles.length === 0) {
-      this.logger.warn(WARNING_MESSAGES.NO_VEHICLES_FOUND);
-      return;
-    }
-
-    this.logger.debug(
-      'Vehicles found:',
-      vehicles.map((v) => v.vin)
-    );
-
-    for (const vehicle of vehicles) {
-      this.logger.log(INFO_MESSAGES.CONFIGURING_VIN(vehicle.vin));
-      const configResult = await this.configureTelemetry(vehicle.vin, userId);
-      this.logger.debug('configResult', configResult);
-
-      const checkResult = await this.checkTelemetryConfig(vehicle.vin, userId);
-      if (checkResult) {
-        this.logger.debug(
-          SUCCESS_MESSAGES.CONFIG_VERIFIED(vehicle.vin),
-          checkResult.config?.fields
-        );
-      }
-    }
-  }
 }

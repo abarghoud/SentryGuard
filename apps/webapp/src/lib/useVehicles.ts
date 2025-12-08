@@ -1,7 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getVehicles, configureTelemetry, deleteTelemetryConfig, hasToken, type Vehicle } from './api';
+import {
+  getVehicles,
+  configureTelemetry,
+  deleteTelemetryConfig,
+  hasToken,
+  type Vehicle,
+} from './api';
 
 export function useVehicles() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -28,17 +34,36 @@ export function useVehicles() {
     }
   };
 
-  const configureTelemetryForVehicle = async (vin: string) => {
+  const configureTelemetryForVehicle = async (
+    vin: string
+  ): Promise<{
+    success: boolean;
+    message?: string;
+    skippedVehicle?: { vin: string; reason: string; details?: string } | null;
+  }> => {
     try {
-      await configureTelemetry(vin);
-      await fetchVehicles();
-      return true;
+      const response = await configureTelemetry(vin);
+      const skippedVehicle = response?.result?.skippedVehicle ?? null;
+      const success = response?.result?.success === true && !skippedVehicle;
+
+      if (success) {
+        await fetchVehicles();
+        return { success: true };
+      }
+
+      const message =
+        response?.message ||
+        (skippedVehicle
+          ? 'Telemetry configuration skipped for this vehicle'
+          : 'Failed to configure telemetry');
+
+      return { success: false, message, skippedVehicle };
     } catch (err) {
       console.error('Failed to configure telemetry:', err);
       setError(
         err instanceof Error ? err.message : 'Failed to configure telemetry'
       );
-      return false;
+      return { success: false, message: err instanceof Error ? err.message : undefined };
     }
   };
 

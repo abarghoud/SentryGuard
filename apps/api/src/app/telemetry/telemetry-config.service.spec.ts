@@ -3,21 +3,11 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { TelemetryConfigService } from './telemetry-config.service';
 import { AuthService } from '../auth/auth.service';
 import { Vehicle } from '../../entities/vehicle.entity';
-import { TeslaVehicleWithStatus } from './telemetry-config.types';
 import axios from 'axios';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-const createMockVehicle = (
-  overrides: Partial<TeslaVehicleWithStatus>
-): TeslaVehicleWithStatus => ({
-  vin: 'VIN123',
-  display_name: 'Tesla Model 3',
-  telemetry_enabled: false,
-  key_paired: false,
-  ...overrides,
-});
 
 const mockAxiosInstance = {
   get: jest.fn(),
@@ -113,16 +103,25 @@ describe('TelemetryConfigService', () => {
         { vin: 'VIN456', telemetry_enabled: false },
       ];
 
-      const telemetryConfigsMap = new Map();
-      telemetryConfigsMap.set('VIN123', { key_paired: true, config: {} });
-      telemetryConfigsMap.set('VIN456', { key_paired: true, config: {} });
+      jest
+        .spyOn(service, 'checkTelemetryConfig')
+        .mockImplementation(async (vin: string) =>
+          vin === 'VIN123'
+            ? {
+                key_paired: true,
+                config: {
+                  hostname: 'h',
+                  ca: 'c',
+                  fields: {},
+                },
+              }
+            : {
+                key_paired: true,
+                config: null,
+              }
+        );
 
-      jest
-        .spyOn(service as any, 'syncVehiclesToDatabase')
-        .mockResolvedValue(telemetryConfigsMap);
-      jest
-        .spyOn(service as any, 'getUserVehiclesFromDB')
-        .mockResolvedValue(mockDbVehicles);
+      mockVehicleRepository.find.mockResolvedValue(mockDbVehicles);
 
       const result = await service.getVehicles(userId);
 
@@ -275,12 +274,16 @@ describe('TelemetryConfigService', () => {
 
       mockAuthService.getAccessTokenForUserId.mockResolvedValue(userToken);
       mockAxiosInstance.post.mockResolvedValueOnce({
-        data: { success: true },
+        data: { response: { ok: true } },
       });
 
       const result = await service.configureTelemetry(vin, userId);
 
-      expect(result).toEqual({ success: true });
+      expect(result).toEqual({
+        success: true,
+        skippedVehicle: null,
+        response: { response: { ok: true } },
+      });
       expect(mockAxiosInstance.post).toHaveBeenCalledWith(
         '/api/1/vehicles/fleet_telemetry_config',
         {
@@ -301,6 +304,40 @@ describe('TelemetryConfigService', () => {
           },
         })
       );
+    });
+
+    it('should return skipped vehicles when Tesla rejects VIN', async () => {
+      const vin = 'VIN123';
+      const userId = 'test-user-id';
+      const userToken = 'user-access-token';
+      const skippedPayload = {
+        response: {
+          skipped_vehicles: {
+            missing_key: [vin],
+            unsupported_hardware: [],
+            unsupported_firmware: [],
+            max_configs: [],
+          },
+        },
+      };
+
+      mockAuthService.getAccessTokenForUserId.mockResolvedValue(userToken);
+      mockAxiosInstance.post.mockResolvedValueOnce({
+        data: skippedPayload,
+      });
+
+      const updateSpy = jest
+        .spyOn(service, 'updateVehicleTelemetryStatus')
+        .mockResolvedValue(undefined);
+
+      const result = await service.configureTelemetry(vin, userId);
+
+      expect(result).toEqual({
+        success: false,
+        skippedVehicle: { vin, reason: 'missing_key' },
+        response: skippedPayload,
+      });
+      expect(updateSpy).not.toHaveBeenCalled();
     });
 
     it('should return null when LETS_ENCRYPT_CERTIFICATE is not set', async () => {
@@ -329,7 +366,7 @@ describe('TelemetryConfigService', () => {
       const userId = 'test-user-id';
 
       mockAxiosInstance.post.mockResolvedValueOnce({
-        data: { success: true },
+        data: { response: { ok: true } },
       });
 
       const updateSpy = jest
@@ -409,62 +446,6 @@ describe('TelemetryConfigService', () => {
     });
   });
 
-  describe('configureAllVehicles', () => {
-    it('should configure telemetry for all vehicles', async () => {
-      const userId = 'test-user-id';
-      const mockVehicles = [
-        createMockVehicle({ vin: 'VIN123', display_name: 'Tesla Model 3' }),
-        createMockVehicle({ vin: 'VIN456', display_name: 'Tesla Model Y' }),
-      ];
-
-      jest.spyOn(service, 'getVehicles').mockResolvedValue(mockVehicles);
-
-      jest
-        .spyOn(service, 'configureTelemetry')
-        .mockResolvedValueOnce({ response: { success: true } })
-        .mockResolvedValueOnce({ response: { success: true } });
-
-      jest
-        .spyOn(service, 'checkTelemetryConfig')
-        .mockResolvedValueOnce({ config: null, fields: {} })
-        .mockResolvedValueOnce({ config: null, fields: {} });
-
-      await service.configureAllVehicles(userId);
-
-      expect(service.configureTelemetry).toHaveBeenCalledTimes(2);
-      expect(service.checkTelemetryConfig).toHaveBeenCalledTimes(2);
-    });
-
-    it('should handle empty vehicles list', async () => {
-      const userId = 'test-user-id';
-
-      jest.spyOn(service, 'getVehicles').mockResolvedValue([]);
-
-      const loggerSpy = jest
-        .spyOn(service['logger'], 'warn')
-        .mockImplementation();
-
-      await service.configureAllVehicles(userId);
-
-      expect(loggerSpy).toHaveBeenCalledWith('⚠️ No vehicles found.');
-      loggerSpy.mockRestore();
-    });
-
-    it('should handle getVehicles error', async () => {
-      const userId = 'test-user-id';
-
-      jest.spyOn(service, 'getVehicles').mockResolvedValue([]);
-
-      const loggerSpy = jest
-        .spyOn(service['logger'], 'warn')
-        .mockImplementation();
-
-      await service.configureAllVehicles(userId);
-
-      expect(loggerSpy).toHaveBeenCalledWith('⚠️ No vehicles found.');
-      loggerSpy.mockRestore();
-    });
-  });
 
   describe('deleteTelemetryConfig', () => {
     it('should delete telemetry config successfully', async () => {
