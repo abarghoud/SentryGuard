@@ -291,17 +291,6 @@ export async function configureTelemetry(vin: string): Promise<{
 }
 
 /**
- * Configure telemetry for all vehicles (requires JWT)
- */
-export async function configureAllVehicles(): Promise<{
-  message: string;
-}> {
-  return apiRequest('/telemetry-config/configure-all', {
-    method: 'POST',
-  });
-}
-
-/**
  * Check telemetry configuration for a vehicle (requires JWT)
  */
 export async function checkTelemetryConfig(vin: string): Promise<{

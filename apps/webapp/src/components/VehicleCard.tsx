@@ -7,7 +7,13 @@ import Spinner from './Spinner';
 
 interface VehicleCardProps {
   vehicle: Vehicle;
-  onToggleTelemetry: (vin: string) => Promise<boolean>;
+  onToggleTelemetry: (
+    vin: string
+  ) => Promise<{
+    success: boolean;
+    message?: string;
+    skippedVehicle?: { vin: string; reason: string; details?: string } | null;
+  }>;
   onDeleteTelemetry: (vin: string) => Promise<boolean>;
 }
 
@@ -19,12 +25,41 @@ export default function VehicleCard({
   const { t } = useTranslation('common');
   const [isConfiguring, setIsConfiguring] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [inlineError, setInlineError] = useState<string | null>(null);
+
+  const formatSkippedReason = (reason: string, details?: string) => {
+    switch (reason) {
+      case 'missing_key':
+        return t('Virtual key not added to the vehicle');
+      case 'unsupported_hardware':
+        return t('Unsupported hardware (pre-2018 Model S/X)');
+      case 'unsupported_firmware':
+        return t('Unsupported firmware version for telemetry');
+      case 'max_configs':
+        return t('Maximum telemetry configurations already present');
+      default:
+        return details
+          ? t('Vehicle skipped for an unknown reason: {{details}}', { details })
+          : t('Vehicle skipped for an unknown reason');
+    }
+  };
 
   const handleToggle = async () => {
     if (vehicle.telemetry_enabled) return; // Already configured
 
     setIsConfiguring(true);
-    await onToggleTelemetry(vehicle.vin);
+    setInlineError(null);
+    const result = await onToggleTelemetry(vehicle.vin);
+    if (!result.success) {
+      const skipped = result.skippedVehicle;
+      if (skipped) {
+        setInlineError(formatSkippedReason(skipped.reason, skipped.details));
+      } else if (result.message) {
+        setInlineError(result.message);
+      } else {
+        setInlineError(t('Failed to configure telemetry'));
+      }
+    }
     setIsConfiguring(false);
   };
 
@@ -156,6 +191,12 @@ export default function VehicleCard({
           </button>
         )}
       </div>
+
+      {inlineError && (
+        <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-100">
+          {inlineError}
+        </div>
+      )}
     </div>
   );
 }

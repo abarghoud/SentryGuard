@@ -3,6 +3,8 @@ import { TelemetryConfigController } from './telemetry-config.controller';
 import { TelemetryConfigService } from './telemetry-config.service';
 import { ConsentService } from '../consent/consent.service';
 import { ConsentGuard } from '../../common/guards/consent.guard';
+import { User } from '../../entities/user.entity';
+import { TeslaVehicleWithStatus, ConfigureTelemetryResult, TelemetryConfig } from './telemetry-config.types';
 
 describe('TelemetryConfigController', () => {
   let controller: TelemetryConfigController;
@@ -16,7 +18,6 @@ describe('TelemetryConfigController', () => {
           provide: TelemetryConfigService,
           useValue: {
             getVehicles: jest.fn(),
-            configureAllVehicles: jest.fn(),
             configureTelemetry: jest.fn(),
             checkTelemetryConfig: jest.fn(),
           },
@@ -47,14 +48,14 @@ describe('TelemetryConfigController', () => {
 
   describe('getVehicles', () => {
     it('should return vehicles list', async () => {
-      const mockVehicles = [
-        { vin: 'VIN123', display_name: 'Tesla Model 3' },
-        { vin: 'VIN456', display_name: 'Tesla Model Y' },
+      const mockVehicles: TeslaVehicleWithStatus[] = [
+        { vin: 'VIN123', display_name: 'Tesla Model 3', telemetry_enabled: false, key_paired: false },
+        { vin: 'VIN456', display_name: 'Tesla Model Y', telemetry_enabled: false, key_paired: false },
       ];
 
       jest.spyOn(service, 'getVehicles').mockResolvedValue(mockVehicles);
 
-      const mockUser = { userId: 'test-user-id' };
+      const mockUser = { userId: 'test-user-id' } as unknown as User;
 
       const result = await controller.getVehicles(mockUser);
 
@@ -67,7 +68,7 @@ describe('TelemetryConfigController', () => {
         .spyOn(service, 'getVehicles')
         .mockRejectedValue(new Error('Service error'));
 
-      const mockUser = { userId: 'test-user-id' };
+      const mockUser = { userId: 'test-user-id' } as unknown as User;
 
       await expect(controller.getVehicles(mockUser)).rejects.toThrow(
         'Service error'
@@ -75,41 +76,19 @@ describe('TelemetryConfigController', () => {
     });
   });
 
-  describe('configureAllVehicles', () => {
-    it('should configure all vehicles and return success message', async () => {
-      jest.spyOn(service, 'configureAllVehicles').mockResolvedValue();
-
-      const mockUser = { userId: 'test-user-id' };
-
-      const result = await controller.configureAllVehicles(mockUser);
-
-      expect(result).toEqual({
-        message: 'Telemetry configuration started for all vehicles',
-      });
-      expect(service.configureAllVehicles).toHaveBeenCalledWith('test-user-id');
-    });
-
-    it('should handle service errors', async () => {
-      jest
-        .spyOn(service, 'configureAllVehicles')
-        .mockRejectedValue(new Error('Service error'));
-
-      const mockUser = { userId: 'test-user-id' };
-
-      await expect(controller.configureAllVehicles(mockUser)).rejects.toThrow(
-        'Service error'
-      );
-    });
-  });
 
   describe('configureVehicle', () => {
     it('should configure specific vehicle and return success message', async () => {
       const vin = 'TEST_VIN_123';
-      const mockResult = { success: true };
+      const mockResult: ConfigureTelemetryResult = {
+        success: true,
+        skippedVehicle: null,
+        response: { response: { skipped_vehicles: { missing_key: [] } } },
+      };
 
       jest.spyOn(service, 'configureTelemetry').mockResolvedValue(mockResult);
 
-      const mockUser = { userId: 'test-user-id' };
+      const mockUser = { userId: 'test-user-id' } as unknown as User;
 
       const result = await controller.configureVehicle(vin, mockUser);
 
@@ -123,13 +102,47 @@ describe('TelemetryConfigController', () => {
       );
     });
 
+    it('should return skipped message when VIN is rejected', async () => {
+      const vin = 'TEST_VIN_123';
+      const mockResult: ConfigureTelemetryResult = {
+        success: false,
+        skippedVehicle: { vin, reason: 'missing_key' },
+        response: { response: { skipped_vehicles: { missing_key: [vin] } } },
+      };
+
+      jest.spyOn(service, 'configureTelemetry').mockResolvedValue(mockResult);
+
+      const mockUser = { userId: 'test-user-id' } as unknown as User;
+
+      const result = await controller.configureVehicle(vin, mockUser);
+
+      expect(result).toEqual({
+        message: `Configuration skipped for VIN: ${vin}`,
+        result: mockResult,
+      });
+    });
+
+    it('should return failed message when service returns null', async () => {
+      const vin = 'TEST_VIN_123';
+
+      jest.spyOn(service, 'configureTelemetry').mockResolvedValue(null);
+
+      const mockUser = { userId: 'test-user-id' } as unknown as User;
+
+      const result = await controller.configureVehicle(vin, mockUser);
+
+      expect(result).toEqual({
+        message: `Configuration failed for VIN: ${vin}`,
+      });
+    });
+
     it('should handle service errors', async () => {
       const vin = 'TEST_VIN_123';
       jest
         .spyOn(service, 'configureTelemetry')
         .mockRejectedValue(new Error('Service error'));
 
-      const mockUser = { userId: 'test-user-id' };
+      const mockUser = { userId: 'test-user-id' } as unknown as User;
 
       await expect(controller.configureVehicle(vin, mockUser)).rejects.toThrow(
         'Service error'
@@ -140,11 +153,17 @@ describe('TelemetryConfigController', () => {
   describe('checkConfiguration', () => {
     it('should check configuration and return result', async () => {
       const vin = 'TEST_VIN_123';
-      const mockResult = { fields: { SentryMode: { interval_seconds: 30 } } };
+      const mockResult: TelemetryConfig = {
+        config: {
+          hostname: 'h',
+          ca: 'c',
+          fields: { SentryMode: { interval_seconds: 30 } },
+        },
+      };
 
       jest.spyOn(service, 'checkTelemetryConfig').mockResolvedValue(mockResult);
 
-      const mockUser = { userId: 'test-user-id' };
+      const mockUser = { userId: 'test-user-id' } as unknown as User;
 
       const result = await controller.checkConfiguration(vin, mockUser);
 
@@ -164,7 +183,7 @@ describe('TelemetryConfigController', () => {
         .spyOn(service, 'checkTelemetryConfig')
         .mockRejectedValue(new Error('Service error'));
 
-      const mockUser = { userId: 'test-user-id' };
+      const mockUser = { userId: 'test-user-id' } as unknown as User;
 
       await expect(
         controller.checkConfiguration(vin, mockUser)
