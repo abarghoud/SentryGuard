@@ -7,23 +7,44 @@ import { UserConsent } from '../entities/user-consent.entity';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+const requireProdEnv = (name: string): string => {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} must be defined in production`);
+  }
+  return value;
+};
+
+const getEnvOrDefault = (name: string, fallback: string): string =>
+  isProduction ? requireProdEnv(name) : process.env[name] || fallback;
+
+const databaseHost = getEnvOrDefault('DATABASE_HOST', 'localhost');
+const databaseUser = getEnvOrDefault('DATABASE_USER', 'sentryguard');
+const databasePassword = getEnvOrDefault('DATABASE_PASSWORD', 'sentryguard');
+const databaseName = getEnvOrDefault('DATABASE_NAME', 'sentryguard');
+const databasePort = parseInt(process.env.DATABASE_PORT || '5432', 10);
+
+const synchronize =
+  process.env.DATABASE_SYNCHRONIZE === 'true' && !isProduction;
+const migrationsRun =
+  isProduction || process.env.DATABASE_RUN_MIGRATIONS === 'true';
+
 /**
  * Get TypeORM configuration for NestJS application
- * - Development: synchronize = true (auto schema updates)
- * - Production: synchronize = false, migrationsRun = true (manual migrations)
+ * - Migrations by default
+ * - Synchronize only when explicitly enabled in non-production
  */
 export const getDatabaseConfig = (): TypeOrmModuleOptions => {
   return {
     type: 'postgres',
-    host: process.env.DATABASE_HOST || 'localhost',
-    port: parseInt(process.env.DATABASE_PORT || '5432', 10),
-    username: process.env.DATABASE_USER || 'sentryguard',
-    password: process.env.DATABASE_PASSWORD || 'sentryguard',
-    database: process.env.DATABASE_NAME || 'sentryguard',
+    host: databaseHost,
+    port: databasePort,
+    username: databaseUser,
+    password: databasePassword,
+    database: databaseName,
     entities: [User, Vehicle, TelegramConfig, UserConsent],
-    // Use synchronize in development, migrations in production
-    synchronize: !isProduction,
-    migrationsRun: isProduction,
+    synchronize,
+    migrationsRun,
     migrations: ['dist/migrations/*.js'],
     logging: process.env.DATABASE_LOGGING === 'true',
     ssl:
@@ -47,11 +68,11 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
  */
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
-  host: process.env.DATABASE_HOST || 'localhost',
-  port: parseInt(process.env.DATABASE_PORT || '5432', 10),
-  username: process.env.DATABASE_USER || 'sentryguard',
-  password: process.env.DATABASE_PASSWORD || 'sentryguard',
-  database: process.env.DATABASE_NAME || 'sentryguard',
+  host: databaseHost,
+  port: databasePort,
+  username: databaseUser,
+  password: databasePassword,
+  database: databaseName,
   entities: ['src/entities/*.entity.ts'],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,

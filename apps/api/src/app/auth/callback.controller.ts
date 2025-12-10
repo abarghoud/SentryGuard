@@ -62,7 +62,7 @@ export class CallbackController {
 
       // Redirect to webapp with JWT token instead of userId
       const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
-      const redirectUrl = `${webappUrl}/callback?token=${encodeURIComponent(jwt)}`;
+      const redirectUrl = `${webappUrl}/callback#token=${encodeURIComponent(jwt)}`;
       res.redirect(redirectUrl);
     } catch (error: unknown) {
       const errorMessage =

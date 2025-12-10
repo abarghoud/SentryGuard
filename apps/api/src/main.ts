@@ -15,15 +15,23 @@ async function bootstrap() {
   const ociLoggerService = app.get(OciLoggerService);
   app.useLogger(ociLoggerService);
 
-  // Enable CORS for local development and production
   const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
-  app.enableCors({
-    origin: [
+  const additionalOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+  const baseOrigins: Array<string> = Array.from(
+    new Set([
       webappUrl,
       'http://localhost:4200',
       'http://localhost:3000',
-      /^https?:\/\/.*\.sentryguard\.org$/  // Allow all sentryguard.org subdomains in production
-    ],
+      ...additionalOrigins,
+    ])
+  );
+  const corsOrigins: Array<string | RegExp> = [...baseOrigins];
+
+  app.enableCors({
+    origin: corsOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'X-User-Id'],

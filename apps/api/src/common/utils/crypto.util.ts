@@ -15,9 +15,15 @@ function getEncryptionKey(): Buffer {
   const key = process.env.ENCRYPTION_KEY;
 
   if (!key) {
-    // In development, use a default key (NOT FOR PRODUCTION)
-    console.warn('⚠️ ENCRYPTION_KEY not set, using default key (NOT FOR PRODUCTION)');
-    return crypto.scryptSync('default-dev-key-change-in-production', 'salt', 32);
+    throw new Error(
+      'ENCRYPTION_KEY must be defined; generate a strong 32+ character value.'
+    );
+  }
+
+  if (key.length < 32) {
+    console.warn(
+      '⚠️ ENCRYPTION_KEY is shorter than 32 characters; use a stronger key.'
+    );
   }
 
   // Derive a 32-byte key from the provided key

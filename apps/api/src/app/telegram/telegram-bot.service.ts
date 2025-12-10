@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Telegraf, Context } from 'telegraf';
+import type { Request, Response } from 'express';
 import i18n from '../../i18n';
 import {
   TelegramConfig,
@@ -16,7 +17,7 @@ export class TelegramBotService implements OnModuleInit {
   private readonly botToken = process.env.TELEGRAM_BOT_TOKEN;
   private readonly webhookBaseUrl = process.env.TELEGRAM_WEBHOOK_BASE;
   private readonly webhookSecretPath =
-    process.env.TELEGRAM_WEBHOOK_SECRET_PATH || 'telegram-webhook';
+    process.env.TELEGRAM_WEBHOOK_SECRET_PATH;
   private readonly webhookSecretToken =
     process.env.TELEGRAM_WEBHOOK_SECRET_TOKEN || undefined;
   private webhookCallback:
@@ -43,6 +44,24 @@ export class TelegramBotService implements OnModuleInit {
     if (!this.webhookBaseUrl) {
       this.logger.warn(
         '⚠️ TELEGRAM_WEBHOOK_BASE not defined, Telegram bot webhook disabled (no polling fallback to avoid multi-instance conflicts)'
+      );
+      return;
+    }
+
+    const sanitizedWebhookPath = this.webhookSecretPath
+      ? this.webhookSecretPath.replace(/^\//, '')
+      : undefined;
+
+    if (!sanitizedWebhookPath || sanitizedWebhookPath.length < 16) {
+      this.logger.error(
+        '❌ TELEGRAM_WEBHOOK_SECRET_PATH must be a non-guessable value (16+ chars)'
+      );
+      return;
+    }
+
+    if (!this.webhookSecretToken || this.webhookSecretToken.length < 24) {
+      this.logger.error(
+        '❌ TELEGRAM_WEBHOOK_SECRET_TOKEN must be defined (24+ chars) to accept webhook updates'
       );
       return;
     }
@@ -85,7 +104,7 @@ export class TelegramBotService implements OnModuleInit {
         await ctx.reply(i18n.t('Available commands', { lng }));
       });
 
-      const webhookPath = this.getWebhookPath();
+      const webhookPath = this.getWebhookPath(sanitizedWebhookPath);
       const webhookUrl = `${this.webhookBaseUrl.replace(/\/$/, '')}${webhookPath}`;
 
       await this.bot.telegram.setWebhook(webhookUrl, {
@@ -95,7 +114,7 @@ export class TelegramBotService implements OnModuleInit {
 
       this.webhookCallback = this.bot.webhookCallback(webhookPath);
       this.logger.log(
-        `✅ Telegram bot configuré en webhook sur ${webhookUrl} (secret path=${this.webhookSecretPath})`
+        `✅ Telegram bot configuré en webhook sur ${webhookUrl} (secret path sécurisé)`
       );
 
       // Graceful stop
@@ -131,7 +150,12 @@ export class TelegramBotService implements OnModuleInit {
         return;
       }
 
-      const chatId = ctx.chat.id.toString();
+      const chatId = ctx.chat?.id?.toString();
+      if (!chatId) {
+        this.logger.warn('⚠️ chatId manquant dans la mise à jour Telegram');
+        await ctx.reply('❌ Unable to process this request.');
+        return;
+      }
       config.chat_id = chatId;
       config.status = TelegramLinkStatus.LINKED;
       config.linked_at = new Date();
@@ -207,7 +231,7 @@ export class TelegramBotService implements OnModuleInit {
   }
 
   getWebhookSecretPath(): string {
-    return this.webhookSecretPath;
+    return (this.webhookSecretPath || '').replace(/^\//, '');
   }
 
   getWebhookSecretToken(): string | undefined {
@@ -220,7 +244,7 @@ export class TelegramBotService implements OnModuleInit {
     return this.webhookCallback;
   }
 
-  async handleUpdate(req: any, res: any): Promise<void> {
+  async handleUpdate(req: Request, res: Response): Promise<void> {
     if (!this.webhookCallback) {
       this.logger.warn('⚠️ Webhook non initialisé');
       res.status(503).send('Webhook not configured');
@@ -230,8 +254,8 @@ export class TelegramBotService implements OnModuleInit {
     return this.webhookCallback(req, res);
   }
 
-  private getWebhookPath(): string {
-    return `/telegram/webhook/${this.webhookSecretPath}`;
+  private getWebhookPath(secretPath: string): string {
+    return `/telegram/webhook/${secretPath}`;
   }
 
   private async getUserLanguageFromChatId(
@@ -249,7 +273,8 @@ export class TelegramBotService implements OnModuleInit {
       return await this.userLanguageService.getUserLanguage(config.userId);
     } catch (error) {
       this.logger.warn(
-        `⚠️ Unable to get user language for chatId ${chatId}, defaulting to 'en'`
+        `⚠️ Unable to get user language for chatId ${chatId}, defaulting to 'en'`,
+        error
       );
       return 'en';
     }
