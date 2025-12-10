@@ -17,7 +17,10 @@ function CallbackContent() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      const token = searchParams.get('token');
+      const hash = typeof window !== 'undefined' ? window.location.hash : '';
+      const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
+      const tokenFromHash = hashParams.get('token');
+      const tokenFromQuery = searchParams.get('token');
       const error = searchParams.get('error');
 
       if (error) {
@@ -39,6 +42,8 @@ function CallbackContent() {
         return;
       }
 
+      const token = tokenFromHash || tokenFromQuery;
+
       if (token) {
         setToken(token);
         setStatus('success');
@@ -52,10 +57,10 @@ function CallbackContent() {
               router.push('/consent');
             }, 1500);
           } else {
-        setMessage(t('Authentication successful! Redirecting to dashboard...'));
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 1500);
+            setMessage(t('Authentication successful! Redirecting to dashboard...'));
+            setTimeout(() => {
+              router.push('/dashboard');
+            }, 1500);
           }
         } catch (error) {
           console.warn('Failed to check consent status, redirecting to consent:', error);

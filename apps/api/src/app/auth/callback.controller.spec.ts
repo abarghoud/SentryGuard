@@ -42,10 +42,12 @@ describe('CallbackController', () => {
     it('should process a valid callback and display success page', async () => {
       const mockUserId = 'test-user-id';
       const mockAccessToken = 'test-access-token';
+      const mockJwt = 'test-jwt';
 
       mockAuthService.exchangeCodeForTokens.mockResolvedValue({
         userId: mockUserId,
         access_token: mockAccessToken,
+        jwt: mockJwt,
       });
 
       await controller.handleTeslaCallback(
@@ -61,7 +63,7 @@ describe('CallbackController', () => {
         'test-state'
       );
       expect(mockResponse.redirect).toHaveBeenCalledWith(
-        expect.stringContaining('/callback?token=')
+        expect.stringContaining(`/callback#token=${encodeURIComponent(mockJwt)}`)
       );
     });
 
