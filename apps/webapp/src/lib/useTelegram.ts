@@ -11,16 +11,61 @@ import {
   type TelegramStatus,
 } from './api';
 
+const TELEGRAM_LINK_STORAGE_KEY = 'telegram_link_info';
+
+const isBrowser = () => typeof window !== 'undefined';
+
+const clearStoredLinkInfo = () => {
+  if (!isBrowser()) return;
+  localStorage.removeItem(TELEGRAM_LINK_STORAGE_KEY);
+};
+
+const readStoredLinkInfo = (): TelegramLinkInfo | null => {
+  if (!isBrowser()) return null;
+
+  const raw = localStorage.getItem(TELEGRAM_LINK_STORAGE_KEY);
+  if (!raw) return null;
+
+  try {
+    const parsed: TelegramLinkInfo = JSON.parse(raw);
+    const expiresAt = parsed.expires_at
+      ? new Date(parsed.expires_at).getTime()
+      : 0;
+
+    if (expiresAt > Date.now()) {
+      return parsed;
+    }
+
+    clearStoredLinkInfo();
+    return null;
+  } catch (err) {
+    console.error('Failed to parse stored Telegram link info:', err);
+    clearStoredLinkInfo();
+    return null;
+  }
+};
+
+const persistLinkInfo = (info: TelegramLinkInfo) => {
+  if (!isBrowser()) return;
+  localStorage.setItem(TELEGRAM_LINK_STORAGE_KEY, JSON.stringify(info));
+};
+
 export function useTelegram() {
   const [status, setStatus] = useState<TelegramStatus | null>(null);
   const [linkInfo, setLinkInfo] = useState<TelegramLinkInfo | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const hydrateLinkInfo = useCallback(() => {
+    const storedLink = readStoredLinkInfo();
+    setLinkInfo(storedLink);
+  }, []);
+
   const fetchStatus = useCallback(async () => {
-    // Don't fetch if no token
     if (!hasToken()) {
       setIsLoading(false);
+      clearStoredLinkInfo();
+      setLinkInfo(null);
       return;
     }
 
@@ -30,6 +75,13 @@ export function useTelegram() {
     try {
       const data = await getTelegramStatus();
       setStatus(data);
+
+      if (data.status === 'pending') {
+        hydrateLinkInfo();
+      } else {
+        clearStoredLinkInfo();
+        setLinkInfo(null);
+      }
     } catch (err) {
       console.error('Failed to fetch Telegram status:', err);
       setError(
@@ -38,15 +90,15 @@ export function useTelegram() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [hydrateLinkInfo]);
 
   const generateLink = async () => {
     setError(null);
 
     try {
       const data = await generateTelegramLink();
+      persistLinkInfo(data);
       setLinkInfo(data);
-      // Refresh status after generating link
       await fetchStatus();
       return data;
     } catch (err) {
@@ -63,6 +115,7 @@ export function useTelegram() {
 
     try {
       await unlinkTelegram();
+      clearStoredLinkInfo();
       setLinkInfo(null);
       await fetchStatus();
       return true;
@@ -91,8 +144,9 @@ export function useTelegram() {
   };
 
   useEffect(() => {
+    hydrateLinkInfo();
     fetchStatus();
-  }, [fetchStatus]);
+  }, [fetchStatus, hydrateLinkInfo]);
 
   return {
     status,
