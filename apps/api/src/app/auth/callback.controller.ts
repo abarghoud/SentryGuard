@@ -3,6 +3,7 @@ import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { ThrottleOptions } from '../../config/throttle.config';
+import { MissingPermissionsException } from '../../common/exceptions/missing-permissions.exception';
 
 @Controller('callback')
 export class CallbackController {
@@ -60,14 +61,14 @@ export class CallbackController {
       this.logger.log(`✅ Authentication successful for user: ${userId}`);
       this.logger.log(`🔐 JWT token generated for secure session`);
 
-      // Redirect to webapp with JWT token instead of userId
       const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
       const redirectUrl = `${webappUrl}/callback#token=${encodeURIComponent(jwt)}`;
       res.redirect(redirectUrl);
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error('❌ Error processing callback:', errorMessage);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (!(error instanceof MissingPermissionsException)) {
+        this.logger.error('❌ Error processing callback:', errorMessage);
+      }
 
       // Redirect to webapp with error
       const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
