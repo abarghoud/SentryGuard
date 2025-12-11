@@ -14,6 +14,7 @@ import { decode } from 'jsonwebtoken';
 import { User } from '../../entities/user.entity';
 import { encrypt, decrypt } from '../../common/utils/crypto.util';
 import { normalizeTeslaLocale } from '../../common/utils/language.util';
+import { MissingPermissionsException } from '../../common/exceptions/missing-permissions.exception';
 
 interface UserProfile {
   email?: string;
@@ -229,14 +230,14 @@ export class AuthService implements OnModuleDestroy {
 
       return { jwt, userId, access_token: tokens.access_token };
     } catch (error: unknown) {
+      if (error instanceof MissingPermissionsException || error instanceof UnauthorizedException) {
+        throw error;
+      }
+
       const errorData = (error as any)?.response?.data;
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
       this.logger.error('❌ Error exchanging code:', errorData || errorMessage);
-
-      if (error instanceof UnauthorizedException && errorMessage.includes('Missing required permissions')) {
-        throw error;
-      }
 
       throw new UnauthorizedException('Tesla authentication failed');
     }
@@ -311,7 +312,7 @@ export class AuthService implements OnModuleDestroy {
 
     if (missingScopes.length > 0) {
       this.logger.warn(`⚠️ Missing required scopes: ${missingScopes.join(', ')}`);
-      throw new UnauthorizedException(`Missing required permissions: ${missingScopes.join(', ')}`);
+      throw new MissingPermissionsException(missingScopes);
     }
 
     this.logger.log(`✅ JWT scopes validated: ${tokenScopes.join(', ')}`);
