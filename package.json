@@ -48,6 +48,7 @@
     "@nestjs/platform-express": "^11.1.6",
     "@nestjs/platform-ws": "^11.1.6",
     "@nestjs/websockets": "^11.1.6",
+    "@rollbar/react": "^1.0.0",
     "@types/google-protobuf": "^3.15.12",
     "axios": "^1.12.2",
     "class-transformer": "^0.5.1",
@@ -62,6 +63,7 @@
     "react-dom": "^19.2.0",
     "react-router-dom": "6.29.0",
     "reflect-metadata": "^0.2.2",
+    "rollbar": "^2.26.5",
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
