@@ -20,6 +20,7 @@ export class TelegramBotService implements OnModuleInit {
     process.env.TELEGRAM_WEBHOOK_SECRET_PATH;
   private readonly webhookSecretToken =
     process.env.TELEGRAM_WEBHOOK_SECRET_TOKEN || undefined;
+  private readonly mode = process.env.TELEGRAM_MODE || 'webhook';
   private webhookCallback:
     | ReturnType<Telegraf<Context>['webhookCallback']>
     | null = null;
@@ -30,9 +31,6 @@ export class TelegramBotService implements OnModuleInit {
     private readonly userLanguageService: UserLanguageService
   ) {}
 
-  /**
-   * Initialise le bot au démarrage du module
-   */
   async onModuleInit() {
     if (!this.botToken) {
       this.logger.warn(
@@ -41,9 +39,88 @@ export class TelegramBotService implements OnModuleInit {
       return;
     }
 
+    try {
+      this.bot = new Telegraf(this.botToken);
+
+      this.setupBotCommands();
+
+      if (this.mode === 'polling') {
+        await this.setupPollingMode();
+      } else {
+        await this.setupWebhookMode();
+      }
+
+      // Graceful stop
+      process.once('SIGINT', () => this.bot?.stop('SIGINT'));
+      process.once('SIGTERM', () => this.bot?.stop('SIGTERM'));
+    } catch (error) {
+      this.logger.error('❌ Telegram bot initialization error:', error);
+    }
+  }
+
+  /**
+   * Configure les commandes du bot
+   */
+  private setupBotCommands() {
+    if (!this.bot) return;
+
+    this.bot.start(async (ctx) => {
+      const args = ctx.message.text.split(' ');
+
+      if (args.length > 1) {
+        const linkToken = args[1];
+        await this.handleLinkToken(ctx, linkToken);
+      } else {
+        const lng = await this.getUserLanguageFromChatId(
+          ctx.chat.id.toString()
+        );
+        await ctx.reply(i18n.t('Welcome to SentryGuard Bot', { lng }));
+      }
+    });
+
+    this.bot.command('status', async (ctx) => {
+      const chatId = ctx.chat.id.toString();
+      const lng = await this.getUserLanguageFromChatId(chatId);
+      const config = await this.telegramConfigRepository.findOne({
+        where: { chat_id: chatId, status: TelegramLinkStatus.LINKED },
+      });
+
+      if (config) {
+        await ctx.reply(i18n.t('Your account is linked and active!', { lng }));
+      } else {
+        await ctx.reply(i18n.t('No account linked', { lng }));
+      }
+    });
+
+    this.bot.help(async (ctx) => {
+      const lng = await this.getUserLanguageFromChatId(
+        ctx.chat.id.toString()
+      );
+      await ctx.reply(i18n.t('Available commands', { lng }));
+    });
+  }
+
+  private async setupPollingMode() {
+    if (!this.bot) return;
+
+    this.logger.log('🔄 Configuring bot in polling mode...');
+
+    try {
+      this.bot.launch();
+
+      this.logger.log('✅ Telegram bot running in polling mode.');
+    } catch (error) {
+      this.logger.error('❌ Error while trying to run polling:', error);
+      throw error;
+    }
+  }
+
+  private async setupWebhookMode() {
+    if (!this.bot) return;
+
     if (!this.webhookBaseUrl) {
       this.logger.warn(
-        '⚠️ TELEGRAM_WEBHOOK_BASE not defined, Telegram bot webhook disabled (no polling fallback to avoid multi-instance conflicts)'
+        '⚠️ TELEGRAM_WEBHOOK_BASE not defined, Telegram bot webhook disabled'
       );
       return;
     }
@@ -67,43 +144,6 @@ export class TelegramBotService implements OnModuleInit {
     }
 
     try {
-      this.bot = new Telegraf(this.botToken);
-
-      this.bot.start(async (ctx) => {
-        const args = ctx.message.text.split(' ');
-
-        if (args.length > 1) {
-          const linkToken = args[1];
-          await this.handleLinkToken(ctx, linkToken);
-        } else {
-          const lng = await this.getUserLanguageFromChatId(
-            ctx.chat.id.toString()
-          );
-          await ctx.reply(i18n.t('Welcome to SentryGuard Bot', { lng }));
-        }
-      });
-
-      this.bot.command('status', async (ctx) => {
-        const chatId = ctx.chat.id.toString();
-        const lng = await this.getUserLanguageFromChatId(chatId);
-        const config = await this.telegramConfigRepository.findOne({
-          where: { chat_id: chatId, status: TelegramLinkStatus.LINKED },
-        });
-
-        if (config) {
-          await ctx.reply(i18n.t('Your account is linked and active!', { lng }));
-        } else {
-          await ctx.reply(i18n.t('No account linked', { lng }));
-        }
-      });
-
-      this.bot.help(async (ctx) => {
-        const lng = await this.getUserLanguageFromChatId(
-          ctx.chat.id.toString()
-        );
-        await ctx.reply(i18n.t('Available commands', { lng }));
-      });
-
       const webhookPath = this.getWebhookPath(sanitizedWebhookPath);
       const webhookUrl = `${this.webhookBaseUrl.replace(/\/$/, '')}${webhookPath}`;
 
@@ -114,14 +154,11 @@ export class TelegramBotService implements OnModuleInit {
 
       this.webhookCallback = this.bot.webhookCallback(webhookPath);
       this.logger.log(
-        `✅ Telegram bot configuré en webhook sur ${webhookUrl} (secret path sécurisé)`
+        `✅ Telegram bot configured with webhook on ${webhookUrl} (secure secret path)`
       );
-
-      // Graceful stop
-      process.once('SIGINT', () => this.bot?.stop('SIGINT'));
-      process.once('SIGTERM', () => this.bot?.stop('SIGTERM'));
     } catch (error) {
-      this.logger.error('❌ Telegram bot initialization error:', error);
+      this.logger.error('❌ Error while trying to configure webhook:', error);
+      throw error;
     }
   }
 
@@ -152,7 +189,7 @@ export class TelegramBotService implements OnModuleInit {
 
       const chatId = ctx.chat?.id?.toString();
       if (!chatId) {
-        this.logger.warn('⚠️ chatId manquant dans la mise à jour Telegram');
+        this.logger.warn('⚠️ chatId missing in Telegram update');
         await ctx.reply('❌ Unable to process this request.');
         return;
       }
@@ -162,38 +199,34 @@ export class TelegramBotService implements OnModuleInit {
       await this.telegramConfigRepository.save(config);
 
       this.logger.log(
-        `✅ Compte lié: userId=${config.userId}, chatId=${chatId}`
+        `✅ Account linked: userId=${config.userId}, chatId=${chatId}`
       );
 
       await ctx.reply(
         i18n.t('Your SentryGuard account has been linked successfully!', { lng })
       );
     } catch (error) {
-      this.logger.error('❌ Erreur lors de la liaison du token:', error);
+      this.logger.error('❌ Error while trying to handle link token:', error);
       await ctx.reply(
-        '❌ Une erreur est survenue. Veuillez réessayer plus tard.'
+        '❌ An error occurred. Please try again later.'
       );
     }
   }
 
-  /**
-   * Envoie un message à un utilisateur spécifique
-   */
   async sendMessageToUser(userId: string, message: string): Promise<boolean> {
     if (!this.bot) {
-      this.logger.warn('⚠️ Bot Telegram non initialisé');
+      this.logger.warn('⚠️ Telegram bot not initialized');
       return false;
     }
 
     try {
-      // Récupérer la configuration de l'utilisateur
       const config = await this.telegramConfigRepository.findOne({
         where: { userId, status: TelegramLinkStatus.LINKED },
       });
 
       if (!config || !config.chat_id) {
         this.logger.warn(
-          `⚠️ Aucun chat_id trouvé pour l'utilisateur: ${userId}`
+          `⚠️ No chat_id found for user: ${userId}`
         );
         return false;
       }
@@ -202,11 +235,11 @@ export class TelegramBotService implements OnModuleInit {
         parse_mode: 'HTML',
       });
 
-      this.logger.log(`📱 Message envoyé à l'utilisateur ${userId}`);
+      this.logger.log(`📱 Message sent to user ${userId}`);
       return true;
     } catch (error) {
       this.logger.error(
-        `❌ Erreur lors de l'envoi du message à ${userId}:`,
+        `❌ Error while trying to send message to ${userId}:`,
         error
       );
       return false;
@@ -223,7 +256,7 @@ export class TelegramBotService implements OnModuleInit {
       return me.username || null;
     } catch (error) {
       this.logger.error(
-        '❌ Erreur lors de la récupération du bot username:',
+        '❌ Error while trying to get bot username:',
         error
       );
       return process.env.TELEGRAM_BOT_USERNAME || null;
@@ -246,7 +279,7 @@ export class TelegramBotService implements OnModuleInit {
 
   async handleUpdate(req: Request, res: Response): Promise<void> {
     if (!this.webhookCallback) {
-      this.logger.warn('⚠️ Webhook non initialisé');
+      this.logger.warn('⚠️ Webhook not initialized');
       res.status(503).send('Webhook not configured');
       return;
     }
