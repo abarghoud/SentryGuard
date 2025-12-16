@@ -21,8 +21,7 @@ export default function LanguageSwitcher() {
   }, []);
 
   const changeLanguage = async (lng: string) => {
-    i18n.changeLanguage(lng);
-    document.documentElement.lang = lng;
+    await i18n.changeLanguage(lng);
 
     if (hasToken()) {
       try {

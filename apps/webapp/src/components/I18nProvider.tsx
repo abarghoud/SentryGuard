@@ -1,7 +1,7 @@
 'use client';
 
 import { createInstance, Resource, i18n as I18n } from 'i18next';
-import { I18nextProvider } from 'react-i18next';
+import { I18nextProvider, initReactI18next } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { getUserLanguage, hasToken } from '../lib/api';
 
@@ -19,6 +19,7 @@ export const i18n: I18n = createInstance({
   fallbackLng: 'en',
   defaultNS: 'common',
   resources,
+  initImmediate: false,
 });
 
 interface I18nProviderProps {
@@ -27,10 +28,24 @@ interface I18nProviderProps {
 
 export default function I18nProvider({ children }: I18nProviderProps) {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [currentLng, setCurrentLng] = useState('en');
 
   useEffect(() => {
-    i18n.init().then(async () => {
+    const initializeI18n = async () => {
+      if (!i18n.isInitialized) {
+        await i18n
+          .use(initReactI18next)
+          .init({
+            lng: 'en',
+            fallbackLng: 'en',
+            defaultNS: 'common',
+            resources,
+            initImmediate: false,
+            react: {
+              useSuspense: false,
+            },
+          });
+      }
+
       let languageToUse = 'en';
 
       if (hasToken()) {
@@ -46,30 +61,25 @@ export default function I18nProvider({ children }: I18nProviderProps) {
         languageToUse = browserLang === 'fr' ? 'fr' : 'en';
       }
 
-      i18n.changeLanguage(languageToUse);
+      await i18n.changeLanguage(languageToUse);
       document.documentElement.lang = languageToUse;
-      setCurrentLng(languageToUse);
       setIsLoaded(true);
-    });
-
-    const handleLanguageChange = (lng: string) => {
-      setCurrentLng(lng);
     };
 
-    i18n.on('languageChanged', handleLanguageChange);
-
-    return () => {
-      i18n.off('languageChanged', handleLanguageChange);
-    };
+    initializeI18n();
   }, []);
 
   if (!isLoaded) {
-    return <>{children}</>; // or a loading spinner
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tesla-600"></div>
+      </div>
+    );
   }
 
   return (
     <I18nextProvider i18n={i18n}>
-      <div key={currentLng}>{children}</div>
+      {children}
     </I18nextProvider>
   );
 }

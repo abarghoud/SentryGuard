@@ -13,6 +13,13 @@ const nextConfig = {
   images: {
     domains: ['img.buymeacoffee.com'],
   },
+  productionBrowserSourceMaps: true,
+  webpack: (config, { dev, isServer }) => {
+    if (!dev && !isServer) {
+      config.optimization.minimize = false;
+    }
+    return config;
+  },
 };
 
 const plugins = [
