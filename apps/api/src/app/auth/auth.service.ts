@@ -10,7 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import axios from 'axios';
 import * as crypto from 'crypto';
 import * as https from 'https';
-import { decode } from 'jsonwebtoken';
+import { decode, TokenExpiredError } from 'jsonwebtoken';
 import { User } from '../../entities/user.entity';
 import { encrypt, decrypt } from '../../common/utils/crypto.util';
 import { normalizeTeslaLocale } from '../../common/utils/language.util';
@@ -344,9 +344,9 @@ export class AuthService implements OnModuleDestroy {
     const encryptedAccessToken = encrypt(tokens.access_token);
     const encryptedRefreshToken = encrypt(tokens.refresh_token);
 
-    const existingUser = await this.userRepository.findOne({
-      where: { email: profile?.email },
-    });
+    const existingUser = profile?.email ? await this.userRepository.findOne({
+      where: { email: profile.email },
+    }) : null;
 
     if (existingUser) {
       return await this.updateExistingUser(existingUser, tokens, profile, encryptedAccessToken, encryptedRefreshToken);
@@ -441,7 +441,6 @@ export class AuthService implements OnModuleDestroy {
         return null;
       }
 
-      // Check if JWT has expired in database
       const now = new Date();
       if (user.jwt_expires_at && now > user.jwt_expires_at) {
         this.logger.warn(`⚠️ JWT expired for user: ${user.userId}`);
@@ -450,7 +449,10 @@ export class AuthService implements OnModuleDestroy {
 
       return user;
     } catch (error) {
-      this.logger.error(`❌ Failed to validate JWT token:`, error);
+      if (!(error instanceof TokenExpiredError)) {
+        this.logger.error(`❌ Failed to validate JWT token:`, error);
+      }
+      
       return null;
     }
   }

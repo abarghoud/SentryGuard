@@ -654,6 +654,63 @@ describe('AuthService', () => {
       expect(result).toBe('existing-user-id');
       expect(mockUserRepository.save).toHaveBeenCalledWith(existingUser);
     });
+
+    it('should NOT search for existing user when profile is undefined (SECURITY TEST)', async () => {
+      // ⚠️ CRITICAL SECURITY VULNERABILITY ⚠️
+      // https://typeorm.io/docs/data-source/null-and-undefined-handling/
+      // This test demonstrates the DANGEROUS behavior of TypeORM:
+      // - When profile?.email is undefined, the condition where: { email: undefined } is ignored
+      // - This equates to where: {} (no condition), which returns the FIRST user found
+      // - An attacker could steal the account of the first user in the database!
+      //
+      // BEFORE the fix (DANGEROUS):
+      // mockUserRepository.findOne.mockResolvedValue(firstUserInDb); // FOUND BY ACCIDENT!
+      //
+      // AFTER the fix (SECURE):
+      // mockUserRepository.findOne.mockResolvedValue(null); // NO SEARCH PERFORMED
+
+      const profile = undefined; // Tesla profile not retrieved (API error case)
+
+      // With the old DANGEROUS implementation:
+      // mockUserRepository.findOne would find the first user in DB by accident!
+
+      // With the new SECURE implementation:
+      // The method doesn't even perform a search when profile?.email is undefined
+      mockUserRepository.findOne.mockResolvedValue(null); // NO SEARCH
+      mockUserRepository.create.mockReturnValue({} as User);
+      mockUserRepository.save.mockResolvedValue({ userId: 'new-user-id' } as User);
+
+      const result = await (service as any).createOrUpdateUser(mockTokens, profile);
+
+      // Verify that we do NOT search for existing users
+      expect(mockUserRepository.findOne).not.toHaveBeenCalled();
+
+      // Verify that we create a new user
+      expect(result).toBe('746573742d757365722d6964');
+      expect(mockUserRepository.create).toHaveBeenCalled();
+    });
+
+    it('should NOT search for existing user when profile.email is undefined (SECURITY TEST)', async () => {
+      // Same test but with profile = { email: undefined } explicitly
+      const profile = { email: undefined }; // Email explicitly undefined
+
+      // With the old DANGEROUS implementation:
+      // mockUserRepository.findOne would find the first user in DB by accident!
+
+      // With the new SECURE implementation:
+      mockUserRepository.findOne.mockResolvedValue(null); // NO SEARCH
+      mockUserRepository.create.mockReturnValue({} as User);
+      mockUserRepository.save.mockResolvedValue({ userId: 'new-user-id' } as User);
+
+      const result = await (service as any).createOrUpdateUser(mockTokens, profile);
+
+      // Verify that we do NOT search for existing users
+      expect(mockUserRepository.findOne).not.toHaveBeenCalled();
+
+      // Verify that we create a new user
+      expect(result).toBe('746573742d757365722d6964');
+      expect(mockUserRepository.create).toHaveBeenCalled();
+    });
   });
 
   describe('updateExistingUser', () => {
