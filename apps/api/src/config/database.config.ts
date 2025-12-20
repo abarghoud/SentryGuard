@@ -38,6 +38,10 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
   return {
     type: 'postgres',
     host: databaseHost,
+    invalidWhereValuesBehavior: {
+      null: 'throw',
+      undefined: 'throw',
+    },
     port: databasePort,
     username: databaseUser,
     password: databasePassword,
@@ -69,6 +73,10 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
   host: databaseHost,
+  invalidWhereValuesBehavior: {
+    null: 'sql-null',
+    undefined: 'throw',
+  },
   port: databasePort,
   username: databaseUser,
   password: databasePassword,
