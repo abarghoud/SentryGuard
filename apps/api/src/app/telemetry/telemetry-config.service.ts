@@ -258,6 +258,7 @@ export class TelemetryConfigService {
       ).get();
 
       if (skippedVehicle) {
+        this.logger.warn(`⚠️ Vehicle ${vin} was skipped by Tesla API: ${skippedVehicle.reason}`);
         return {
           success: false,
           skippedVehicle,
