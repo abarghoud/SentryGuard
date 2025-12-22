@@ -1,7 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import i18n from '../../i18n';
 import { TelegramBotService } from './telegram-bot.service';
-import { UserLanguageService } from '../user/user-language.service';
+
+type TelegramKeyboard = {
+  inline_keyboard?: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
+  keyboard?: Array<Array<{ text: string }>>;
+  one_time_keyboard?: boolean;
+  resize_keyboard?: boolean;
+};
 
 @Injectable()
 export class TelegramService {
@@ -9,18 +15,16 @@ export class TelegramService {
 
   constructor(
     private readonly telegramBotService: TelegramBotService,
-    private readonly userLanguageService: UserLanguageService
   ) {}
 
-  async sendSentryAlert(userId: string, alertInfo: { vin: string, display_name?: string }) {
+  async sendSentryAlert(
+    userId: string,
+    alertInfo: { vin: string, display_name?: string },
+    userLanguage: 'en' | 'fr',
+    keyboard?: TelegramKeyboard,
+  ) {
     try {
-      const languageStart = Date.now();
-      const userLanguage = await this.userLanguageService.getUserLanguage(userId);
-      const languageTime = Date.now() - languageStart;
-
-      if (languageTime > 100) {
-        this.logger.warn(`[DB_SLOW][ALERT] Language lookup: ${languageTime}ms for user: ${userId}`);
-      }
+      this.logger.debug(`[OPTIMIZATION] Using provided language: ${userLanguage} for user: ${userId}`);
 
       const message = this.formatSentryAlertMessage(alertInfo, userLanguage);
 
@@ -28,7 +32,9 @@ export class TelegramService {
         return await this.simulateMessage(userId, 'alert', alertInfo.vin);
       }
 
-      const success = await this.telegramBotService.sendMessageToUser(userId, message);
+      const options = keyboard ? { keyboard } : undefined;
+
+      const success = await this.telegramBotService.sendMessageToUser(userId, message, options);
 
       return success;
     } catch (error) {

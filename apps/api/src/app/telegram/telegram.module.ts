@@ -4,6 +4,7 @@ import { TelegramService } from './telegram.service';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramController } from './telegram.controller';
 import { TelegramWebhookController } from './telegram-webhook.controller';
+import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
 import { TelegramConfig } from '../../entities/telegram-config.entity';
 import { User } from '../../entities/user.entity';
 import { AuthModule } from '../auth/auth.module';
@@ -18,7 +19,7 @@ import { UserModule } from '../user/user.module';
     UserModule,
   ],
   controllers: [TelegramController, TelegramWebhookController],
-  providers: [TelegramService, TelegramBotService],
-  exports: [TelegramService, TelegramBotService],
+  providers: [TelegramService, TelegramBotService, TelegramKeyboardBuilderService],
+  exports: [TelegramService, TelegramBotService, TelegramKeyboardBuilderService],
 })
 export class TelegramModule {}

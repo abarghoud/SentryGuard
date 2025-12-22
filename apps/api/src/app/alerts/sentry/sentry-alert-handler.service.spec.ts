@@ -3,6 +3,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
 import { SentryAlertHandlerService } from './sentry-alert-handler.service';
 import { TelegramService } from '../../telegram/telegram.service';
+import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
+import { UserLanguageService } from '../../user/user-language.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
 import { User } from '../../../entities/user.entity';
 import { TelemetryMessage, SentryModeState } from '../../telemetry/models/telemetry-message.model';
@@ -10,6 +12,8 @@ import { mock } from 'jest-mock-extended';
 import { Repository } from 'typeorm';
 
 const mockTelegramService = mock<TelegramService>();
+const mockKeyboardBuilder = mock<TelegramKeyboardBuilderService>();
+const mockUserLanguageService = mock<UserLanguageService>();
 const mockVehicleRepository = mock<Repository<Vehicle>>();
 const mockUserRepository = mock<Repository<User>>();
 
@@ -22,17 +26,25 @@ describe('The SentryAlertHandlerService class', () => {
         SentryAlertHandlerService,
         {
           provide: TelegramService,
-          useValue: mockTelegramService,
+          useValue: mockTelegramService
+        },
+        {
+          provide: TelegramKeyboardBuilderService,
+          useValue: mockKeyboardBuilder
+        },
+        {
+          provide: UserLanguageService,
+          useValue: mockUserLanguageService
         },
         {
           provide: getRepositoryToken(Vehicle),
-          useValue: mockVehicleRepository,
+          useValue: mockVehicleRepository
         },
         {
           provide: getRepositoryToken(User),
-          useValue: mockUserRepository,
-        },
-      ],
+          useValue: mockUserRepository
+        }
+      ]
     }).compile();
 
     service = module.get<SentryAlertHandlerService>(SentryAlertHandlerService);
@@ -51,7 +63,7 @@ describe('The SentryAlertHandlerService class', () => {
           data: [{ key: 'OtherField', value: { stringValue: 'value' } }],
           createdAt: '2025-01-21T10:00:00.000Z',
           vin: 'TEST_VIN_123',
-          isResend: false,
+          isResend: false
         });
 
         await service.handle(invalidMessage);
@@ -65,7 +77,7 @@ describe('The SentryAlertHandlerService class', () => {
           data: [{ key: 'SentryMode', value: { sentryModeStateValue: 'InvalidState' } }],
           createdAt: '2025-01-21T10:00:00.000Z',
           vin: 'TEST_VIN_123',
-          isResend: false,
+          isResend: false
         });
 
         await service.handle(invalidMessage);
@@ -79,7 +91,7 @@ describe('The SentryAlertHandlerService class', () => {
           data: [{ key: 'SentryMode', value: { sentryModeStateValue: null } }],
           createdAt: '2025-01-21T10:00:00.000Z',
           vin: 'TEST_VIN_123',
-          isResend: false,
+          isResend: false
         });
 
         await service.handle(invalidMessage);
@@ -93,7 +105,7 @@ describe('The SentryAlertHandlerService class', () => {
           data: [{ key: 'SentryMode', value: { sentryModeStateValue: 'InvalidState' } }],
           createdAt: '2025-01-21T10:00:00.000Z',
           vin: 'TEST_VIN_123',
-          isResend: false,
+          isResend: false
         });
 
         await service.handle(invalidMessage);
@@ -107,12 +119,12 @@ describe('The SentryAlertHandlerService class', () => {
       data: [
         {
           key: 'SentryMode',
-          value: { sentryModeStateValue: 'SentryModeStateAware' },
-        },
+          value: { sentryModeStateValue: 'SentryModeStateAware' }
+        }
       ],
       createdAt: '2025-01-21T10:00:00.000Z',
       vin: 'TEST_VIN_123',
-      isResend: false,
+      isResend: false
     });
 
     let handlePromise: Promise<void>;
@@ -123,6 +135,10 @@ describe('The SentryAlertHandlerService class', () => {
           userId: 'test-user',
           display_name: 'Test Vehicle'
         } as Vehicle);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+        mockKeyboardBuilder.buildSentryAlertKeyboard.mockReturnValue({
+          inline_keyboard: [[{ text: 'Test Button', url: 'http://test.com' }]]
+        });
         mockTelegramService.sendSentryAlert.mockResolvedValue(true);
 
         handlePromise = service.handle(baseTelemetryMessage);
@@ -133,12 +149,19 @@ describe('The SentryAlertHandlerService class', () => {
 
         expect(mockVehicleRepository.findOne).toHaveBeenCalledWith({
           where: { vin: 'TEST_VIN_123' },
-          select: ['userId', 'display_name'],
+          select: ['userId', 'display_name']
         });
 
+        expect(mockUserLanguageService.getUserLanguage).toHaveBeenCalledWith('test-user');
+        expect(mockKeyboardBuilder.buildSentryAlertKeyboard).toHaveBeenCalledWith({
+          vin: 'TEST_VIN_123',
+          display_name: 'Test Vehicle'
+        }, 'test-user', 'en');
         expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith('test-user', {
           vin: 'TEST_VIN_123',
-          display_name: 'Test Vehicle',
+          display_name: 'Test Vehicle'
+        }, 'en', {
+          inline_keyboard: [[{ text: 'Test Button', url: 'http://test.com' }]]
         });
       });
     });
@@ -150,9 +173,9 @@ describe('The SentryAlertHandlerService class', () => {
           data: [
             {
               key: 'SentryMode',
-              value: { sentryModeStateValue: SentryModeState.Off },
-            },
-          ],
+              value: { sentryModeStateValue: SentryModeState.Off }
+            }
+          ]
         });
 
         handlePromise = service.handle(telemetryMessage);
@@ -172,12 +195,12 @@ describe('The SentryAlertHandlerService class', () => {
           data: [
             {
               key: 'OtherData',
-              value: { stringValue: 'SomeValue' },
-            },
+              value: { stringValue: 'SomeValue' }
+            }
           ],
           createdAt: baseTelemetryMessage.createdAt,
           vin: baseTelemetryMessage.vin,
-          isResend: baseTelemetryMessage.isResend,
+          isResend: baseTelemetryMessage.isResend
         });
 
         handlePromise = service.handle(telemetryMessage);
@@ -241,18 +264,22 @@ describe('The SentryAlertHandlerService class', () => {
           userId: 'test-user',
           display_name: 'Test Vehicle'
         } as Vehicle);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+        mockKeyboardBuilder.buildSentryAlertKeyboard.mockReturnValue({
+          inline_keyboard: [[{ text: 'Test Button', url: 'http://test.com' }]]
+        });
         mockTelegramService.sendSentryAlert.mockResolvedValue(true);
 
         const message = plainToInstance(TelemetryMessage, {
           data: [
             {
               key: 'SentryMode',
-              value: { sentryModeStateValue: 'SentryModeStateAware' },
-            },
+              value: { sentryModeStateValue: 'SentryModeStateAware' }
+            }
           ],
           createdAt: '2025-01-21T10:00:00.000Z',
           vin: 'TEST_VIN_123',
-          isResend: false,
+          isResend: false
         });
 
         handlePromise = service.handle(message);
@@ -263,12 +290,19 @@ describe('The SentryAlertHandlerService class', () => {
 
         expect(mockVehicleRepository.findOne).toHaveBeenCalledWith({
           where: { vin: 'TEST_VIN_123' },
-          select: ['userId', 'display_name'],
+          select: ['userId', 'display_name']
         });
 
+        expect(mockUserLanguageService.getUserLanguage).toHaveBeenCalledWith('test-user');
+        expect(mockKeyboardBuilder.buildSentryAlertKeyboard).toHaveBeenCalledWith({
+          vin: 'TEST_VIN_123',
+          display_name: 'Test Vehicle'
+        }, 'test-user', 'en');
         expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith('test-user', {
           vin: 'TEST_VIN_123',
-          display_name: 'Test Vehicle',
+          display_name: 'Test Vehicle'
+        }, 'en', {
+          inline_keyboard: [[{ text: 'Test Button', url: 'http://test.com' }]]
         });
       });
     });

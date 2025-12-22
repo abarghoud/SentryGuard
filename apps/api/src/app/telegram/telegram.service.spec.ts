@@ -77,26 +77,28 @@ describe('TelegramService', () => {
       mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
       mockTelegramBotService.sendMessageToUser.mockResolvedValue(true);
 
-      await service.sendSentryAlert('user-123', alertInfo);
+      await service.sendSentryAlert('user-123', alertInfo, 'en', undefined);
 
-      expect(userLanguageService.getUserLanguage).toHaveBeenCalledWith(
-        'user-123'
+      expect(userLanguageService.getUserLanguage).not.toHaveBeenCalled();
+      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
+        'user-123',
+        expect.stringContaining('TESLA SENTRY ALERT'),
+        undefined
       );
       expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
         'user-123',
-        expect.stringContaining('TESLA SENTRY ALERT')
+        expect.stringContaining('Vehicle'),
+        undefined
       );
       expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
         'user-123',
-        expect.stringContaining('Vehicle')
-      );
-      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
-        'user-123',
-        expect.stringContaining('TEST123456')
+        expect.stringContaining('TEST123456'),
+        undefined
       );
       expect(telegramBotService.sendMessageToUser).not.toHaveBeenCalledWith(
         'user-123',
-        expect.stringContaining('(TEST123456)')
+        expect.stringContaining('(TEST123456)'),
+        undefined
       );
     });
 
@@ -109,27 +111,41 @@ describe('TelegramService', () => {
       mockUserLanguageService.getUserLanguage.mockResolvedValue('fr');
       mockTelegramBotService.sendMessageToUser.mockResolvedValue(true);
 
-      await service.sendSentryAlert('user-123', alertInfo);
+      await service.sendSentryAlert('user-123', alertInfo, 'fr', undefined);
 
-      expect(userLanguageService.getUserLanguage).toHaveBeenCalledWith(
-        'user-123'
+      expect(userLanguageService.getUserLanguage).not.toHaveBeenCalled();
+      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
+        'user-123',
+        expect.stringContaining('ALERTE SENTRY TESLA'),
+        undefined
       );
       expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
         'user-123',
-        expect.stringContaining('ALERTE SENTRY TESLA')
+        expect.stringContaining('Véhicule'),
+        undefined
       );
       expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
         'user-123',
-        expect.stringContaining('Véhicule')
-      );
-      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
-        'user-123',
-        expect.stringContaining('Mon Tesla')
+        expect.stringContaining('Mon Tesla'),
+        undefined
       );
       expect(telegramBotService.sendMessageToUser).not.toHaveBeenCalledWith(
         'user-123',
-        expect.stringContaining('TEST123456')
+        expect.stringContaining('TEST123456'),
+        undefined
       );
+    });
+
+    it('should use provided language without DB call', async () => {
+      const alertInfo = {
+        vin: 'TEST123456',
+      };
+
+      mockTelegramBotService.sendMessageToUser.mockResolvedValue(true);
+
+      await service.sendSentryAlert('user-123', alertInfo, 'fr', undefined);
+
+      expect(userLanguageService.getUserLanguage).not.toHaveBeenCalled();
     });
 
     it('should handle errors gracefully', async () => {
@@ -137,11 +153,11 @@ describe('TelegramService', () => {
         vin: 'TEST123456',
       };
 
-      mockUserLanguageService.getUserLanguage.mockRejectedValue(
-        new Error('Database error')
+      mockTelegramBotService.sendMessageToUser.mockRejectedValue(
+        new Error('Telegram error')
       );
 
-      const result = await service.sendSentryAlert('user-123', alertInfo);
+      const result = await service.sendSentryAlert('user-123', alertInfo, 'en', undefined);
 
       expect(result).toBe(false);
     });

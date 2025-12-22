@@ -16,6 +16,7 @@ import { ConsentModule } from './consent/consent.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { UserModule } from './user/user.module';
+import { RedirectModule } from './redirect/redirect.module';
 import { CloudflareThrottlerGuard } from '../common/guards/cloudflare-throttler.guard';
 import { TokenRevokedExceptionFilter } from '../common/filters/token-revoked-exception.filter';
 import { getDatabaseConfig } from '../config/database.config';
@@ -36,6 +37,7 @@ import { User } from '../entities/user.entity';
     TelemetryModule,
     TelegramModule,
     UserModule,
+    RedirectModule,
     ThrottlerModule.forRoot([getThrottleConfig()]),
   ],
   controllers: [AppController],
