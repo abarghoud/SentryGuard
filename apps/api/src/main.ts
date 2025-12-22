@@ -1,8 +1,3 @@
-/**
- * SentryGuard API Server
- * Serveur API pour la gestion des alertes Tesla via ZMQ
- */
-
 import 'reflect-metadata';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
@@ -43,6 +38,19 @@ async function bootstrap() {
   app.getHttpAdapter().getInstance().set('trust proxy', true);
 
   const port = process.env.PORT || 3001;
+
+  process.on('SIGTERM', async () => {
+    Logger.log('📴 SIGTERM received, shutting down gracefully...');
+    await app.close();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    Logger.log('📴 SIGINT received, shutting down gracefully...');
+    await app.close();
+    process.exit(0);
+  });
+
   await app.listen(port);
   Logger.log(
     `🚀 Application is running on: http://localhost:${port}/`
@@ -50,4 +58,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-
