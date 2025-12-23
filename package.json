@@ -37,7 +37,10 @@
     "test": "nx test",
     "lint": "nx lint",
     "serve": "nx serve",
-    "dev": "nx dev"
+    "dev": "nx dev",
+    "kafka:start": "./scripts/start-kafka.sh",
+    "kafka:send": "./scripts/send-interactive.sh",
+    "kafka:stop": "./scripts/stop-kafka.sh"
   },
   "private": true,
   "dependencies": {

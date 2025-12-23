@@ -1,0 +1,101 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: tesla-guard-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo 'ruok' | nc localhost 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: tesla-guard-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_DELETE_TOPIC_ENABLE: 'true'
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  message-producer:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: tesla-guard-producer
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://message-producer:29093
+    command: >
+      bash -c "
+        echo '🚀 Tesla Fleet API message producer started'
+        while true; do
+          # Generate a realistic Tesla VIN
+          VIN_PREFIXES=('5YJ3E1EA' '5YJ3E1EB' '5YJ3E1EC' '5YJ3E1FA' '5YJ3E1FB')
+          VIN_PREFIX=$${VIN_PREFIXES[$$(shuf -i 0-4 -n 1)]}
+          VIN_SUFFIX=$$(shuf -i 100000-999999 -n 1)
+          VIN=$${VIN_PREFIX}$${VIN_SUFFIX}
+
+          # Determine if this is a sentry alert (30% chance)
+          IS_SENTRY_ALERT=$$(shuf -i 0-9 -n 1)
+          if [ \"$${IS_SENTRY_ALERT}\" -lt 3 ]; then
+            # Sentry alert - SentryModeStateAware
+            SENTRY_STATE='SentryModeStateAware'
+            EVENT_DESC='🚨 Sentry alert detected'
+          else
+            # Normal state - SentryModeStateArmed or SentryModeStateOff
+            STATES=('SentryModeStateArmed' 'SentryModeStateOff' 'SentryModeStateIdle')
+            SENTRY_STATE=$${STATES[$$(shuf -i 0-2 -n 1)]}
+            EVENT_DESC='📊 Sentry state updated'
+          fi
+
+          # Create message in Tesla Fleet API format
+          MESSAGE='{
+            \"vin\": \"'$VIN'\",
+            \"createdAt\": \"'$$(date -u +%Y-%m-%dT%H:%M:%SZ)'\",
+            \"isResend\": false,
+            \"data\": [
+              {
+                \"key\": \"SentryMode\",
+                \"value\": {
+                  \"sentryModeStateValue\": \"'$SENTRY_STATE'\"
+                }
+              }
+            ]
+          }'
+
+          echo \"📤 $${EVENT_DESC} - VIN: $$VIN - State: $$SENTRY_STATE\"
+
+          # Send the message
+          echo \"$$MESSAGE\" | kafka-console-producer \\
+            --bootstrap-server kafka:9092 \\
+            --topic TeslaLogger_V \\
+            --property \"key.separator=:\" \\
+            --property \"parse.key=true\"
+
+          # Wait 20-40 seconds (random)
+          sleep $$(shuf -i 20-40 -n 1)
+        done
+      "

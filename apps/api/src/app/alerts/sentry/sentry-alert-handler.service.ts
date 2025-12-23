@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TelegramService } from '../../telegram/telegram.service';
+import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
+import { UserLanguageService } from '../../user/user-language.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
 import { TelemetryEventHandler } from '../../telemetry/interfaces/telemetry-event-handler.interface';
 import { SentryModeState, TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
@@ -12,6 +14,8 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
 
   constructor(
     private readonly telegramService: TelegramService,
+    private readonly keyboardBuilder: TelegramKeyboardBuilderService,
+    private readonly userLanguageService: UserLanguageService,
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>
   ) {}
@@ -57,8 +61,11 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
         display_name: vehicle.display_name
       };
 
+      const userLanguage = await this.userLanguageService.getUserLanguage(vehicle.userId);
+      const keyboard = this.keyboardBuilder.buildSentryAlertKeyboard(alertInfo, vehicle.userId, userLanguage);
+
       const telegramStart = Date.now();
-      await this.telegramService.sendSentryAlert(vehicle.userId, alertInfo);
+      await this.telegramService.sendSentryAlert(vehicle.userId, alertInfo, userLanguage, keyboard);
       const telegramTime = Date.now() - telegramStart;
 
       if (telegramTime > 500) {

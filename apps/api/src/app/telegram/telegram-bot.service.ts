@@ -50,7 +50,6 @@ export class TelegramBotService implements OnModuleInit {
         await this.setupWebhookMode();
       }
 
-      // Graceful stop
       process.once('SIGINT', () => this.bot?.stop('SIGINT'));
       process.once('SIGTERM', () => this.bot?.stop('SIGTERM'));
     } catch (error) {
@@ -213,7 +212,19 @@ export class TelegramBotService implements OnModuleInit {
     }
   }
 
-  async sendMessageToUser(userId: string, message: string): Promise<boolean> {
+  async sendMessageToUser(
+    userId: string,
+    message: string,
+    options?: {
+      keyboard?: {
+        inline_keyboard?: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
+        keyboard?: Array<Array<{ text: string }>>;
+        one_time_keyboard?: boolean;
+        resize_keyboard?: boolean;
+      };
+      parse_mode?: 'HTML' | 'Markdown' | 'MarkdownV2';
+    }
+  ): Promise<boolean> {
     if (!this.bot) {
       this.logger.warn('⚠️ Telegram bot not initialized');
       return false;
@@ -231,17 +242,32 @@ export class TelegramBotService implements OnModuleInit {
         return false;
       }
 
-      await this.bot.telegram.sendMessage(config.chat_id, message, {
-        parse_mode: 'HTML',
-      });
+      const telegramOptions: Record<string, unknown> = {
+        parse_mode: options?.parse_mode || 'HTML',
+      };
 
-      this.logger.log(`📱 Message sent to user ${userId}`);
+      if (options?.keyboard?.inline_keyboard) {
+        telegramOptions.reply_markup = {
+          inline_keyboard: options.keyboard.inline_keyboard,
+        };
+      } else if (options?.keyboard?.keyboard) {
+        telegramOptions.reply_markup = {
+          keyboard: options.keyboard.keyboard,
+          one_time_keyboard: options.keyboard.one_time_keyboard,
+          resize_keyboard: options.keyboard.resize_keyboard,
+        };
+      }
+
+      await this.bot.telegram.sendMessage(config.chat_id, message, telegramOptions);
+
+      this.logger.log(`📱 Message sent to user ${userId} (chat_id: ${config.chat_id})`);
       return true;
     } catch (error) {
       this.logger.error(
         `❌ Error while trying to send message to ${userId}:`,
         error
       );
+
       return false;
     }
   }
