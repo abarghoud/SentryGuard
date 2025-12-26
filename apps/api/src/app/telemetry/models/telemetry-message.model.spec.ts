@@ -122,6 +122,97 @@ describe('TelemetryMessage Model', () => {
 
       expect(isValid).toBe(false);
     });
+
+    it('should validate SentryMode with valid stringValue', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{ key: 'SentryMode', value: { stringValue: 'Armed' } }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: 'LRWRGCEGXHR312345',
+        isResend: false
+      });
+
+      const isValid = message.validateSentryModeValue();
+
+      expect(isValid).toBe(true);
+    });
+
+    it('should validate SentryMode with valid stringValue "Aware"', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{ key: 'SentryMode', value: { stringValue: 'Aware' } }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: 'LRWRGCEGXHR312345',
+        isResend: false
+      });
+
+      const isValid = message.validateSentryModeValue();
+
+      expect(isValid).toBe(true);
+    });
+
+    it('should reject SentryMode with invalid stringValue', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{ key: 'SentryMode', value: { stringValue: 'InvalidState' } }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: 'LRWRGCEGXHR312345',
+        isResend: false
+      });
+
+      const isValid = message.validateSentryModeValue();
+
+      expect(isValid).toBe(false);
+    });
+
+    it('should return correct SentryModeState from sentryModeStateValue', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{ key: 'SentryMode', value: { sentryModeStateValue: SentryModeState.Aware } }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: 'LRWRGCEGXHR312345',
+        isResend: false
+      });
+
+      const sentryMode = message.getSentryModeState();
+
+      expect(sentryMode).toBe(SentryModeState.Aware);
+    });
+
+    it('should return correct SentryModeState from stringValue', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{ key: 'SentryMode', value: { stringValue: 'Armed' } }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: 'LRWRGCEGXHR312345',
+        isResend: false
+      });
+
+      const sentryMode = message.getSentryModeState();
+
+      expect(sentryMode).toBe(SentryModeState.Armed);
+    });
+
+    it('should return null when getSentryModeState is called on message without SentryMode', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{ key: 'OtherField', value: { stringValue: 'value' } }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: 'LRWRGCEGXHR312345',
+        isResend: false
+      });
+
+      const sentryMode = message.getSentryModeState();
+
+      expect(sentryMode).toBe(null);
+    });
+
+    it('should return null when getSentryModeState is called with invalid stringValue', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{ key: 'SentryMode', value: { stringValue: 'InvalidState' } }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: 'LRWRGCEGXHR312345',
+        isResend: false
+      });
+
+      const sentryMode = message.getSentryModeState();
+
+      expect(sentryMode).toBe(null);
+    });
   });
 
 });

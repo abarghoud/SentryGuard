@@ -26,8 +26,7 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
       return;
     }
 
-    const sentryData = telemetryMessage.data.find(item => item.key === 'SentryMode');
-    const sentryMode = sentryData?.value.sentryModeStateValue;
+    const sentryMode = telemetryMessage.getSentryModeState();
 
     if (sentryMode === SentryModeState.Aware) {
       await this.sendSentryAlert(telemetryMessage);
