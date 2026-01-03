@@ -31,6 +31,17 @@ export class TelegramBotService implements OnModuleInit {
     private readonly userLanguageService: UserLanguageService
   ) {}
 
+  private async safeReply(ctx: Context, message: string): Promise<void> {
+    try {
+      await ctx.reply(message);
+    } catch (error) {
+      this.logger.warn(
+        '⚠️ Could not send message to user (possibly blocked the bot):',
+        error
+      );
+    }
+  }
+
   async onModuleInit() {
     if (!this.botToken) {
       this.logger.warn(
@@ -175,21 +186,21 @@ export class TelegramBotService implements OnModuleInit {
         : 'en';
 
       if (!config) {
-        await ctx.reply(i18n.t('Invalid or expired token', { lng }));
+        await this.safeReply(ctx, i18n.t('Invalid or expired token', { lng }));
         return;
       }
 
       if (config.expires_at && new Date() > config.expires_at) {
         config.status = TelegramLinkStatus.EXPIRED;
         await this.telegramConfigRepository.save(config);
-        await ctx.reply(i18n.t('This token has expired', { lng }));
+        await this.safeReply(ctx, i18n.t('This token has expired', { lng }));
         return;
       }
 
       const chatId = ctx.chat?.id?.toString();
       if (!chatId) {
         this.logger.warn('⚠️ chatId missing in Telegram update');
-        await ctx.reply('❌ Unable to process this request.');
+        await this.safeReply(ctx, '❌ Unable to process this request.');
         return;
       }
       config.chat_id = chatId;
@@ -201,14 +212,13 @@ export class TelegramBotService implements OnModuleInit {
         `✅ Account linked: userId=${config.userId}, chatId=${chatId}`
       );
 
-      await ctx.reply(
+      await this.safeReply(
+        ctx,
         i18n.t('Your SentryGuard account has been linked successfully!', { lng })
       );
     } catch (error) {
       this.logger.error('❌ Error while trying to handle link token:', error);
-      await ctx.reply(
-        '❌ An error occurred. Please try again later.'
-      );
+      await this.safeReply(ctx, '❌ An error occurred. Please try again later.');
     }
   }
 
@@ -230,46 +240,37 @@ export class TelegramBotService implements OnModuleInit {
       return false;
     }
 
-    try {
-      const config = await this.telegramConfigRepository.findOne({
-        where: { userId, status: TelegramLinkStatus.LINKED },
-      });
+    const config = await this.telegramConfigRepository.findOne({
+      where: { userId, status: TelegramLinkStatus.LINKED },
+    });
 
-      if (!config || !config.chat_id) {
-        this.logger.warn(
-          `⚠️ No chat_id found for user: ${userId}`
-        );
-        return false;
-      }
-
-      const telegramOptions: Record<string, unknown> = {
-        parse_mode: options?.parse_mode || 'HTML',
-      };
-
-      if (options?.keyboard?.inline_keyboard) {
-        telegramOptions.reply_markup = {
-          inline_keyboard: options.keyboard.inline_keyboard,
-        };
-      } else if (options?.keyboard?.keyboard) {
-        telegramOptions.reply_markup = {
-          keyboard: options.keyboard.keyboard,
-          one_time_keyboard: options.keyboard.one_time_keyboard,
-          resize_keyboard: options.keyboard.resize_keyboard,
-        };
-      }
-
-      await this.bot.telegram.sendMessage(config.chat_id, message, telegramOptions);
-
-      this.logger.log(`📱 Message sent to user ${userId} (chat_id: ${config.chat_id})`);
-      return true;
-    } catch (error) {
-      this.logger.error(
-        `❌ Error while trying to send message to ${userId}:`,
-        error
+    if (!config || !config.chat_id) {
+      this.logger.warn(
+        `⚠️ No chat_id found for user: ${userId}`
       );
-
       return false;
     }
+
+    const telegramOptions: Record<string, unknown> = {
+      parse_mode: options?.parse_mode || 'HTML',
+    };
+
+    if (options?.keyboard?.inline_keyboard) {
+      telegramOptions.reply_markup = {
+        inline_keyboard: options.keyboard.inline_keyboard,
+      };
+    } else if (options?.keyboard?.keyboard) {
+      telegramOptions.reply_markup = {
+        keyboard: options.keyboard.keyboard,
+        one_time_keyboard: options.keyboard.one_time_keyboard,
+        resize_keyboard: options.keyboard.resize_keyboard,
+      };
+    }
+
+    await this.bot.telegram.sendMessage(config.chat_id, message, telegramOptions);
+
+    this.logger.log(`📱 Message sent to user ${userId} (chat_id: ${config.chat_id})`);
+    return true;
   }
 
   async getBotUsername(): Promise<string | null> {

@@ -111,12 +111,17 @@ describe('AuthController', () => {
         email: 'test@example.com',
       };
 
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2025-06-15'));
+
       const result = await controller.getAuthStatus(mockUser);
 
       expect(result.authenticated).toBe(true);
       expect(result.expires_at).toEqual(mockUser.expires_at);
       expect(result.has_profile).toBe(true);
       expect(result.message).toBe('Valid JWT token');
+
+      jest.useRealTimers();
     });
 
     it('should return unauthenticated for a user without a token', async () => {
@@ -138,7 +143,7 @@ describe('AuthController', () => {
     it('should detect an expired token', async () => {
       const mockTokenInfo = {
         exists: true,
-        expires_at: new Date('2020-01-01'), // Past date
+        expires_at: new Date('2020-01-01'),
         created_at: new Date('2020-01-01'),
       };
 
@@ -146,13 +151,18 @@ describe('AuthController', () => {
 
       const mockUser = {
         userId: 'test-user-id',
-        jwt_expires_at: new Date('2025-01-01'), // Past date
+        jwt_expires_at: new Date('2025-01-01'),
       };
+
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2026-01-01'));
 
       const result = await controller.getAuthStatus(mockUser);
 
       expect(result.authenticated).toBe(false);
       expect(result.message).toBe('JWT token expired, please re-authenticate');
+
+      jest.useRealTimers();
     });
   });
 

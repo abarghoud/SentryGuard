@@ -1,6 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import i18n from '../../i18n';
 import { TelegramBotService } from './telegram-bot.service';
+import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
+import type { ITelegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 
 type TelegramKeyboard = {
   inline_keyboard?: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
@@ -15,6 +17,7 @@ export class TelegramService {
 
   constructor(
     private readonly telegramBotService: TelegramBotService,
+    @Inject(telegramFailureHandler) private readonly failureHandler: ITelegramFailureHandler,
   ) {}
 
   async sendSentryAlert(
@@ -38,8 +41,16 @@ export class TelegramService {
 
       return success;
     } catch (error) {
+      if (this.failureHandler.canHandle(error as Error)) {
+        await this.failureHandler.handleFailure(error as Error, userId);
+        this.logger.log(`[TELEGRAM_FAILURE_HANDLED] Error handled for user ${userId}`);
+
+        return false;
+      }
+
       this.logError(userId, 'alert', error);
-      return false;
+      
+      throw error;
     }
   }
 
@@ -60,9 +71,10 @@ export class TelegramService {
     return true;
   }
 
+
   private logError(userId: string, type: 'alert' | 'message', error: unknown): void {
     const messageType = type === 'alert' ? 'sentry alert' : 'telegram message';
-    
+
     this.logger.error(`❌ Failed to send ${messageType} to user: ${userId}:`, error);
   }
 

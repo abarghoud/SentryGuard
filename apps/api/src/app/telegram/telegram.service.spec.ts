@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { mock, MockProxy } from 'jest-mock-extended';
 import { TelegramService } from './telegram.service';
 import { TelegramBotService } from './telegram-bot.service';
 import { UserLanguageService } from '../user/user-language.service';
+import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
+import type { ITelegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 
 jest.mock('../../i18n', () => ({
   __esModule: true,
@@ -32,15 +35,15 @@ describe('TelegramService', () => {
   let telegramBotService: TelegramBotService;
   let userLanguageService: UserLanguageService;
 
-  const mockTelegramBotService = {
-    sendMessageToUser: jest.fn(),
-  };
-
-  const mockUserLanguageService = {
-    getUserLanguage: jest.fn(),
-  };
+  const mockTelegramBotService: MockProxy<TelegramBotService> = mock<TelegramBotService>();
+  const mockUserLanguageService: MockProxy<UserLanguageService> = mock<UserLanguageService>();
+  const mockTelegramFailureHandler: MockProxy<ITelegramFailureHandler> = mock<ITelegramFailureHandler>();
 
   beforeEach(async () => {
+    mockTelegramFailureHandler.canHandle.mockImplementation((error: Error) => {
+      return error.message.toLowerCase().includes('bot was blocked by the user');
+    });
+    mockTelegramFailureHandler.handleFailure.mockResolvedValue(undefined);
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TelegramService,
@@ -51,6 +54,10 @@ describe('TelegramService', () => {
         {
           provide: UserLanguageService,
           useValue: mockUserLanguageService,
+        },
+        {
+          provide: telegramFailureHandler,
+          useValue: mockTelegramFailureHandler,
         },
       ],
     }).compile();
@@ -154,12 +161,48 @@ describe('TelegramService', () => {
       };
 
       mockTelegramBotService.sendMessageToUser.mockRejectedValue(
-        new Error('Telegram error')
+        new Error('Forbidden: bot was blocked by the user')
       );
 
       const result = await service.sendSentryAlert('user-123', alertInfo, 'en', undefined);
 
       expect(result).toBe(false);
+    });
+
+    describe('When failure handler can handle the error', () => {
+      it('should call handleFailure and return false', async () => {
+        const alertInfo = {
+          vin: 'TEST123456',
+        };
+        const testError = new Error('Forbidden: bot was blocked by the user');
+
+        mockTelegramBotService.sendMessageToUser.mockRejectedValue(testError);
+        mockTelegramFailureHandler.canHandle.mockReturnValue(true);
+        mockTelegramFailureHandler.handleFailure.mockResolvedValue(undefined);
+
+        const result = await service.sendSentryAlert('user-123', alertInfo, 'en', undefined);
+
+        expect(mockTelegramFailureHandler.canHandle).toHaveBeenCalledWith(testError);
+        expect(mockTelegramFailureHandler.handleFailure).toHaveBeenCalledWith(testError, 'user-123');
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('When failure handler cannot handle the error', () => {
+      it('should rethrow the error', async () => {
+        const alertInfo = {
+          vin: 'TEST123456',
+        };
+        const testError = new Error('Network error');
+
+        mockTelegramBotService.sendMessageToUser.mockRejectedValue(testError);
+        mockTelegramFailureHandler.canHandle.mockReturnValue(false);
+
+        await expect(service.sendSentryAlert('user-123', alertInfo, 'en', undefined)).rejects.toThrow(testError);
+
+        expect(mockTelegramFailureHandler.canHandle).toHaveBeenCalledWith(testError);
+        expect(mockTelegramFailureHandler.handleFailure).not.toHaveBeenCalled();
+      });
     });
   });
 });
