@@ -1,0 +1,11 @@
+# Ignorer les fichiers non nécessaires pour le build
+README.md
+.git
+.gitignore
+*.md
+test.sh
+
+# Fichiers de test
+test-*.pem
+*.key
+*.crt
