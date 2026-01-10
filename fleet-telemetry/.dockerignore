@@ -1,0 +1,29 @@
+# Scripts de développement
+build.sh
+test.sh
+
+# Code source Go (non utilisé dans l'image finale)
+*.go
+go.mod
+go.sum
+
+# Documentation
+README.md
+
+# Fichiers temporaires
+*.tmp
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile*
+docker-compose*.yml
