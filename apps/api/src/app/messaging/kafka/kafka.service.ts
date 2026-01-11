@@ -6,10 +6,11 @@ import {
   Inject,
 } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import { Kafka, Consumer } from 'kafkajs';
+import { Kafka, Consumer, KafkaMessage, Batch } from 'kafkajs';
 import type { MessageHandler } from './interfaces/message-handler.interface';
 import pLimit from 'p-limit';
 import { kafkaMessageHandler } from './interfaces/message-handler.interface';
+import { RetryManager } from './retry-manager.service';
 
 @Injectable()
 export class KafkaService implements OnModuleInit, OnModuleDestroy {
@@ -28,7 +29,8 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   private isConnected = false;
 
   constructor(
-    @Inject(kafkaMessageHandler) private readonly messageHandler: MessageHandler
+    @Inject(kafkaMessageHandler) private readonly messageHandler: MessageHandler,
+    private readonly retryManager: RetryManager
   ) {
     this.kafka = new Kafka({
       clientId: this.kafkaClientId,
@@ -86,14 +88,10 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       );
       this.isConnected = false;
 
-      try {
-        await this.reconnect();
-      } catch (reconnectError) {
-        this.logger.error(
-          '💀 Reconnection failed:',
-           (reconnectError instanceof Error ? reconnectError.message : String(reconnectError))
-        );
-      }
+      await this.safeExecute(
+        () => this.reconnect(),
+        '💀 Reconnection failed'
+      );
     }
   }
 
@@ -109,7 +107,6 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
     await this.consumer.run({
       autoCommit: true,
-      
       eachBatch: async ({ batch, resolveOffset, heartbeat, commitOffsetsIfNecessary }) => {
         const batchStartTime = Date.now();
         const batchSize = batch.messages.length;
@@ -117,7 +114,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
         await Promise.all(batch.messages.map(message =>
           this.messageLimit(async () => {
             if (!this.isConnected) {
-              this.logger.warn('⚠️ Skipping message processing - Kafka disconnected');
+              this.logger.warn('Skipping message processing - Kafka disconnected');
               return;
             }
 
@@ -131,21 +128,21 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
               await heartbeat();
             } catch (error) {
-              this.logger.error(`💥 Error processing message ${message.offset}:`, error, message.value?.toString());
+              await this.handleMessageFailure(error, message, batch, resolveOffset, heartbeat);
             }
           })
         ));
 
         const batchProcessingTime = Date.now() - batchStartTime;
         if (batchProcessingTime > 1000) {
-          this.logger.warn(`[BATCH][${batch.topic}:${batch.partition}] Slow batch: ${batchSize} messages in ${batchProcessingTime}ms`);
+          this.logger.warn(`Slow batch: ${batchSize} messages in ${batchProcessingTime}ms`);
         }
 
         await commitOffsetsIfNecessary();
       },
     });
 
-    this.logger.log('🎉 Kafka consumer started successfully');
+    this.logger.log('Kafka consumer started successfully');
   }
 
   private async subscribe(): Promise<void> {
@@ -153,7 +150,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       topic: this.kafkaTopic,
       fromBeginning: false,
     });
-    this.logger.log('📡 Resubscribed to Kafka topic');
+    this.logger.log('Resubscribed to Kafka topic');
   }
 
   async onModuleInit() {
@@ -161,12 +158,13 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy() {
+    this.retryManager.stop();
     await this.stopListening();
   }
 
   private async startListening(): Promise<void> {
     try {
-      this.logger.log(`🔌 Connecting to Kafka brokers: ${this.kafkaBrokers}`);
+      this.logger.log(`Connecting to Kafka brokers: ${this.kafkaBrokers}`);
       this.logger.log(`Client ID: ${this.kafkaClientId}`);
       this.logger.log(`Group ID: ${this.kafkaGroupId}`);
       this.logger.log(`Topic: ${this.kafkaTopic}`);
@@ -175,20 +173,82 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       await this.subscribe();
       await this.startConsumer();
     } catch (error) {
-      this.logger.error('💀 Failed to start Kafka consumer:', error);
+      this.logger.error('Failed to start Kafka consumer:', error);
       throw error;
     }
   }
 
   private async stopListening() {
-    try {
-      if (this.consumer) {
-        this.logger.log('Closing Kafka connection...');
-        await this.consumer.disconnect();
-        this.logger.log('Kafka connection closed');
-      }
-    } catch (error) {
-      this.logger.error('Error closing Kafka connection:', error);
+    if (this.consumer) {
+      this.logger.log('Closing Kafka connection...');
+      await this.safeExecute(
+        () => this.consumer.disconnect(),
+        'Error closing Kafka connection'
+      );
+      this.logger.log('Kafka connection closed');
     }
+  }
+
+  private async handleMessageFailure(
+    error: unknown,
+    message: KafkaMessage,
+    batch: Batch,
+    resolveOffset: (offset: string) => void,
+    heartbeat: () => Promise<void>
+  ): Promise<void> {
+    const safeError = this.ensureError(error);
+    const correlationId = `kafka-${batch.topic}-${batch.partition}-${message.offset}-${Date.now()}`;
+
+    await this.safeExecute(
+      () => this.retryManager.addToRetry(
+        async () => {
+          await this.messageHandler.handleMessage(
+            message,
+            async () => {
+              resolveOffset(message.offset);
+            }
+          );
+        },
+        safeError,
+        correlationId
+      ),
+      `[KAFKA_RETRY_SETUP_FAILED][${correlationId}] Failed to setup retry`
+    );
+
+    await this.safeExecute(
+      () => resolveOffset(message.offset),
+      `[KAFKA_OFFSET_COMMIT_FAILED][${correlationId}] Failed to commit offset`
+    );
+
+    await this.safeExecute(
+      () => heartbeat(),
+      `[KAFKA_HEARTBEAT_FAILED][${correlationId}] Failed to send heartbeat`
+    );
+  }
+
+  private async safeExecute<T>(
+    operation: () => T | Promise<T>,
+    errorMessage: string
+  ): Promise<void> {
+    try {
+      await operation();
+    } catch (error) {
+      this.logger.error(
+        `${errorMessage}:`,
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  }
+
+  private ensureError(error: unknown): Error {
+    if (error instanceof Error) {
+      return error;
+    }
+
+    if (typeof error === 'string') {
+      return new Error(error);
+    }
+
+    return new Error(`Unknown error: ${String(error)}`);
   }
 }
