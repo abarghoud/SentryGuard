@@ -123,7 +123,7 @@ export class TelemetryMessageHandlerService implements MessageHandler {
   }
 
   private async dispatchTelemetryEvents(telemetryMessage: TelemetryMessage): Promise<void> {
-    this.logger.log(`Processing telemetry data for VIN: ${telemetryMessage.vin}`);
+    this.logger.log(`Processing telemetry data for VIN: ${telemetryMessage.vin}`, telemetryMessage);
 
     const results = await Promise.allSettled(
       this.eventHandlers.map(handler => handler.handle(telemetryMessage))
