@@ -68,7 +68,7 @@ describe('The SentryAlertHandlerService class', () => {
 
         await service.handle(invalidMessage);
 
-        expect(mockVehicleRepository.findOne).not.toHaveBeenCalled();
+        expect(mockVehicleRepository.find).not.toHaveBeenCalled();
         expect(mockTelegramService.sendSentryAlert).not.toHaveBeenCalled();
       });
 
@@ -82,7 +82,7 @@ describe('The SentryAlertHandlerService class', () => {
 
         await service.handle(invalidMessage);
 
-        expect(mockVehicleRepository.findOne).not.toHaveBeenCalled();
+        expect(mockVehicleRepository.find).not.toHaveBeenCalled();
         expect(mockTelegramService.sendSentryAlert).not.toHaveBeenCalled();
       });
 
@@ -96,7 +96,7 @@ describe('The SentryAlertHandlerService class', () => {
 
         await service.handle(invalidMessage);
 
-        expect(mockVehicleRepository.findOne).not.toHaveBeenCalled();
+        expect(mockVehicleRepository.find).not.toHaveBeenCalled();
         expect(mockTelegramService.sendSentryAlert).not.toHaveBeenCalled();
       });
 
@@ -110,7 +110,7 @@ describe('The SentryAlertHandlerService class', () => {
 
         await service.handle(invalidMessage);
 
-        expect(mockVehicleRepository.findOne).not.toHaveBeenCalled();
+        expect(mockVehicleRepository.find).not.toHaveBeenCalled();
         expect(mockTelegramService.sendSentryAlert).not.toHaveBeenCalled();
       });
     });
@@ -131,10 +131,12 @@ describe('The SentryAlertHandlerService class', () => {
 
     describe('when SentryMode is Aware and vehicle exists', () => {
       beforeEach(async () => {
-        mockVehicleRepository.findOne.mockResolvedValue({
-          userId: 'test-user',
-          display_name: 'Test Vehicle'
-        } as Vehicle);
+        mockVehicleRepository.find.mockResolvedValue([
+          {
+            userId: 'test-user',
+            display_name: 'Test Vehicle'
+          } as Vehicle
+        ]);
         mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
         mockKeyboardBuilder.buildSentryAlertKeyboard.mockReturnValue({
           inline_keyboard: [[{ text: 'Test Button', url: 'http://test.com' }]]
@@ -147,7 +149,7 @@ describe('The SentryAlertHandlerService class', () => {
       it('should send Sentry alert', async () => {
         await handlePromise;
 
-        expect(mockVehicleRepository.findOne).toHaveBeenCalledWith({
+        expect(mockVehicleRepository.find).toHaveBeenCalledWith({
           where: { vin: 'TEST_VIN_123' },
           select: ['userId', 'display_name']
         });
@@ -163,6 +165,94 @@ describe('The SentryAlertHandlerService class', () => {
         }, 'en', {
           inline_keyboard: [[{ text: 'Test Button', url: 'http://test.com' }]]
         });
+      });
+    });
+
+    describe('when SentryMode is Aware and multiple users have the same VIN', () => {
+      beforeEach(async () => {
+        mockVehicleRepository.find.mockResolvedValue([
+          {
+            userId: 'test-user-1',
+            display_name: 'Test Vehicle'
+          } as Vehicle,
+          {
+            userId: 'test-user-2',
+            display_name: 'Test Vehicle'
+          } as Vehicle,
+          {
+            userId: 'test-user-3',
+            display_name: 'Test Vehicle'
+          } as Vehicle
+        ]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+        mockKeyboardBuilder.buildSentryAlertKeyboard.mockReturnValue({
+          inline_keyboard: [[{ text: 'Test Button', url: 'http://test.com' }]]
+        });
+        mockTelegramService.sendSentryAlert.mockResolvedValue(true);
+
+        handlePromise = service.handle(baseTelemetryMessage);
+      });
+
+      it('should send Sentry alert to all users', async () => {
+        await handlePromise;
+
+        expect(mockVehicleRepository.find).toHaveBeenCalledWith({
+          where: { vin: 'TEST_VIN_123' },
+          select: ['userId', 'display_name']
+        });
+
+        expect(mockUserLanguageService.getUserLanguage).toHaveBeenCalledTimes(3);
+        expect(mockUserLanguageService.getUserLanguage).toHaveBeenCalledWith('test-user-1');
+        expect(mockUserLanguageService.getUserLanguage).toHaveBeenCalledWith('test-user-2');
+        expect(mockUserLanguageService.getUserLanguage).toHaveBeenCalledWith('test-user-3');
+
+        expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledTimes(3);
+        expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith('test-user-1', {
+          vin: 'TEST_VIN_123',
+          display_name: 'Test Vehicle'
+        }, 'en', expect.any(Object));
+        expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith('test-user-2', {
+          vin: 'TEST_VIN_123',
+          display_name: 'Test Vehicle'
+        }, 'en', expect.any(Object));
+        expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith('test-user-3', {
+          vin: 'TEST_VIN_123',
+          display_name: 'Test Vehicle'
+        }, 'en', expect.any(Object));
+      });
+    });
+
+    describe('when SentryMode is Aware and multiple users have the same VIN with duplicate userIds (should never happen, but just in case)', () => {
+      beforeEach(async () => {
+        mockVehicleRepository.find.mockResolvedValue([
+          {
+            userId: 'test-user-1',
+            display_name: 'Test Vehicle'
+          } as Vehicle,
+          {
+            userId: 'test-user-1',
+            display_name: 'Test Vehicle'
+          } as Vehicle,
+          {
+            userId: 'test-user-2',
+            display_name: 'Test Vehicle'
+          } as Vehicle
+        ]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+        mockKeyboardBuilder.buildSentryAlertKeyboard.mockReturnValue({
+          inline_keyboard: [[{ text: 'Test Button', url: 'http://test.com' }]]
+        });
+        mockTelegramService.sendSentryAlert.mockResolvedValue(true);
+
+        handlePromise = service.handle(baseTelemetryMessage);
+      });
+
+      it('should deduplicate userIds and send alert only once per user', async () => {
+        await handlePromise;
+
+        expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledTimes(2);
+        expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith('test-user-1', expect.any(Object), 'en', expect.any(Object));
+        expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith('test-user-2', expect.any(Object), 'en', expect.any(Object));
       });
     });
 
@@ -184,7 +274,7 @@ describe('The SentryAlertHandlerService class', () => {
       it('should not send alert', async () => {
         await handlePromise;
 
-        expect(mockVehicleRepository.findOne).not.toHaveBeenCalled();
+        expect(mockVehicleRepository.find).not.toHaveBeenCalled();
         expect(mockTelegramService.sendSentryAlert).not.toHaveBeenCalled();
       });
     });
@@ -209,14 +299,14 @@ describe('The SentryAlertHandlerService class', () => {
       it('should not send alert', async () => {
         await handlePromise;
 
-        expect(mockVehicleRepository.findOne).not.toHaveBeenCalled();
+        expect(mockVehicleRepository.find).not.toHaveBeenCalled();
         expect(mockTelegramService.sendSentryAlert).not.toHaveBeenCalled();
       });
     });
 
     describe('when vehicle is not found', () => {
       beforeEach(async () => {
-        mockVehicleRepository.findOne.mockResolvedValue(null);
+        mockVehicleRepository.find.mockResolvedValue([]);
 
         handlePromise = service.handle(baseTelemetryMessage);
       });
@@ -230,7 +320,7 @@ describe('The SentryAlertHandlerService class', () => {
 
     describe('when repository query fails', () => {
       beforeEach(async () => {
-        mockVehicleRepository.findOne.mockRejectedValue(new Error('Database error'));
+        mockVehicleRepository.find.mockRejectedValue(new Error('Database error'));
 
         handlePromise = service.handle(baseTelemetryMessage);
       });
@@ -242,28 +332,46 @@ describe('The SentryAlertHandlerService class', () => {
       });
     });
 
-    describe('when Telegram service fails', () => {
+    describe('when Telegram service fails for one user', () => {
       beforeEach(async () => {
-        mockVehicleRepository.findOne.mockResolvedValue({
-          userId: 'test-user',
-          display_name: 'Test Vehicle'
-        } as Vehicle);
-        mockTelegramService.sendSentryAlert.mockRejectedValue(new Error('Telegram error'));
+        mockVehicleRepository.find.mockResolvedValue([
+          {
+            userId: 'test-user-1',
+            display_name: 'Test Vehicle'
+          } as Vehicle,
+          {
+            userId: 'test-user-2',
+            display_name: 'Test Vehicle'
+          } as Vehicle
+        ]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+        mockKeyboardBuilder.buildSentryAlertKeyboard.mockReturnValue({
+          inline_keyboard: [[{ text: 'Test Button', url: 'http://test.com' }]]
+        });
+        mockTelegramService.sendSentryAlert
+          .mockRejectedValueOnce(new Error('Telegram error'))
+          .mockResolvedValueOnce(true);
 
         handlePromise = service.handle(baseTelemetryMessage);
       });
 
-      it('should throw error', async () => {
-        await expect(handlePromise).rejects.toThrow('Telegram error');
+      it('should continue notifying other users even if one fails', async () => {
+        await handlePromise;
+
+        expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledTimes(2);
+        expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith('test-user-1', expect.any(Object), 'en', expect.any(Object));
+        expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith('test-user-2', expect.any(Object), 'en', expect.any(Object));
       });
     });
 
     describe('when SentryMode is provided as sentryModeStateValue and is Aware', () => {
       beforeEach(async () => {
-        mockVehicleRepository.findOne.mockResolvedValue({
-          userId: 'test-user',
-          display_name: 'Test Vehicle'
-        } as Vehicle);
+        mockVehicleRepository.find.mockResolvedValue([
+          {
+            userId: 'test-user',
+            display_name: 'Test Vehicle'
+          } as Vehicle
+        ]);
         mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
         mockKeyboardBuilder.buildSentryAlertKeyboard.mockReturnValue({
           inline_keyboard: [[{ text: 'Test Button', url: 'http://test.com' }]]
@@ -288,7 +396,7 @@ describe('The SentryAlertHandlerService class', () => {
       it('should send Sentry alert', async () => {
         await handlePromise;
 
-        expect(mockVehicleRepository.findOne).toHaveBeenCalledWith({
+        expect(mockVehicleRepository.find).toHaveBeenCalledWith({
           where: { vin: 'TEST_VIN_123' },
           select: ['userId', 'display_name']
         });
