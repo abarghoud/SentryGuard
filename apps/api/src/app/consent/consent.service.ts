@@ -3,11 +3,15 @@ import {
   Logger,
   BadRequestException,
   NotFoundException,
+  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { UserConsent } from '../../entities/user-consent.entity';
 import { User } from '../../entities/user.entity';
+import { Vehicle } from '../../entities/vehicle.entity';
+import type { ConsentRevokedHandler } from './interfaces/consent-revoked-handler.interface';
+import { ConsentRevokedHandlerSymbol } from './interfaces/consent-revoked-handler.interface';
 import * as crypto from 'crypto';
 import i18n from '../../i18n';
 
@@ -43,6 +47,10 @@ export class ConsentService {
     private readonly consentRepository: Repository<UserConsent>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Vehicle)
+    private readonly vehicleRepository: Repository<Vehicle>,
+    @Inject(ConsentRevokedHandlerSymbol)
+    private readonly consentRevokedHandler: ConsentRevokedHandler,
   ) {}
 
   async acceptConsent(userId: string, consentData: ConsentData): Promise<UserConsent> {
@@ -132,7 +140,7 @@ export class ConsentService {
   }
 
   async revokeConsent(userId: string): Promise<void> {
-    this.logger.log(`User ${userId} revoking consent`);
+    this.logger.log(`User ${userId} revoking consent and deleting account`);
 
     const latestConsent = await this.consentRepository.findOne({
       where: { userId, revokedAt: IsNull() },
@@ -143,9 +151,31 @@ export class ConsentService {
       throw new BadRequestException('No active consent found to revoke');
     }
 
-    await this.consentRepository.update(
-      { id: latestConsent.id },
-      { revokedAt: new Date() }
+    const vehicles = await this.vehicleRepository.find({
+      where: { userId },
+    });
+
+    const vehicleVins = vehicles.map((vehicle) => vehicle.vin);
+
+    this.logger.log(
+      `Found ${vehicles.length} vehicle(s) for user ${userId}. Emitting consent revoked event...`,
+    );
+
+    await this.consentRevokedHandler.handleConsentRevoked({
+      userId,
+      vehicleVins,
+    });
+
+    this.logger.log(`🗑️  Deleting user account ${userId}...`);
+    const deleteResult = await this.userRepository.delete({ userId });
+
+    if (deleteResult.affected === 0) {
+      this.logger.warn(`User ${userId} not found`);
+      return;
+    }
+
+    this.logger.log(
+      `✅ User account ${userId} deleted (consents and vehicles cascade-deleted)`,
     );
   }
 

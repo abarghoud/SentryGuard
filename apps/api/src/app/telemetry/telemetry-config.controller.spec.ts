@@ -1,10 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TelemetryConfigController } from './telemetry-config.controller';
 import { TelemetryConfigService } from './telemetry-config.service';
-import { ConsentService } from '../consent/consent.service';
 import { ConsentGuard } from '../../common/guards/consent.guard';
 import { User } from '../../entities/user.entity';
-import { TeslaVehicleWithStatus, ConfigureTelemetryResult, TelemetryConfig } from './telemetry-config.types';
+import {
+  TeslaVehicleWithStatus,
+  ConfigureTelemetryResult,
+  TelemetryConfig,
+} from './telemetry-config.types';
 
 describe('TelemetryConfigController', () => {
   let controller: TelemetryConfigController;
@@ -20,12 +23,6 @@ describe('TelemetryConfigController', () => {
             getVehicles: jest.fn(),
             configureTelemetry: jest.fn(),
             checkTelemetryConfig: jest.fn(),
-          },
-        },
-        {
-          provide: ConsentService,
-          useValue: {
-            getCurrentConsent: jest.fn(),
           },
         },
       ],

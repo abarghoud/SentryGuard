@@ -16,7 +16,7 @@ export default function DashboardLayout({
 }) {
   const { t } = useTranslation('common');
   const { isAuthenticated, isLoading, logout, profile, scopeError } = useAuth();
-  const { hasConsent, isLoading: consentLoading, revokeConsent } = useConsent();
+  const { hasConsent, isLoading: consentLoading } = useConsent();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -28,15 +28,6 @@ export default function DashboardLayout({
         currentPath
       )}`
     );
-  };
-
-  const handleRevokeConsent = async () => {
-    if (window.confirm(t('Are you sure you want to revoke your consent? This will disable all Tesla Fleet API features.'))) {
-      const success = await revokeConsent();
-      if (success) {
-        router.push('/consent');
-      }
-    }
   };
 
   useEffect(() => {
@@ -83,6 +74,11 @@ export default function DashboardLayout({
       name: t('FAQ'),
       href: '/dashboard/faq',
       icon: 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+    },
+    {
+      name: t('Settings'),
+      href: '/dashboard/settings',
+      icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z',
     },
   ];
 
@@ -144,13 +140,6 @@ export default function DashboardLayout({
                 </div>
               )}
               <button
-                onClick={handleRevokeConsent}
-                className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-                title={t('Revoke consent for Tesla Fleet API')}
-              >
-                {t('Revoke Consent')}
-              </button>
-              <button
                 onClick={logout}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
               >
@@ -188,12 +177,6 @@ export default function DashboardLayout({
                 </div>
               )}
               <LanguageSwitcher />
-              <button
-                onClick={handleRevokeConsent}
-                className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-              >
-                {t('Revoke Consent')}
-              </button>
               <button
                 onClick={logout}
                 className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"

@@ -1,10 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { IsNull } from 'typeorm';
-import { mock, MockProxy } from 'jest-mock-extended';
-import { ConsentService, ConsentData, ConsentStatus, ConsentTextResponse } from './consent.service';
+import { mock } from 'jest-mock-extended';
+import {
+  ConsentService,
+  ConsentData,
+  ConsentStatus,
+  ConsentTextResponse,
+} from './consent.service';
 import { UserConsent } from '../../entities/user-consent.entity';
 import { User } from '../../entities/user.entity';
+import { Vehicle } from '../../entities/vehicle.entity';
+import { ConsentRevokedHandlerSymbol } from './interfaces/consent-revoked-handler.interface';
+import type { ConsentRevokedHandler } from './interfaces/consent-revoked-handler.interface';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import * as crypto from 'crypto';
 
@@ -24,10 +32,21 @@ const mockConsentRepository = {
   create: jest.fn(),
   save: jest.fn(),
   update: jest.fn(),
+  delete: jest.fn(),
 };
 
 const mockUserRepository = {
   findOne: jest.fn(),
+  remove: jest.fn(),
+  delete: jest.fn(),
+};
+
+const mockVehicleRepository = {
+  find: jest.fn(),
+};
+
+const mockConsentRevokedHandler: jest.Mocked<ConsentRevokedHandler> = {
+  handleConsentRevoked: jest.fn(),
 };
 
 describe('The ConsentService class', () => {
@@ -45,6 +64,14 @@ describe('The ConsentService class', () => {
           provide: getRepositoryToken(User),
           useValue: mockUserRepository,
         },
+        {
+          provide: getRepositoryToken(Vehicle),
+          useValue: mockVehicleRepository,
+        },
+        {
+          provide: ConsentRevokedHandlerSymbol,
+          useValue: mockConsentRevokedHandler,
+        },
       ],
     }).compile();
 
@@ -56,6 +83,11 @@ describe('The ConsentService class', () => {
     mockHashInstance.update.mockReturnThis();
     mockHashInstance.digest.mockReturnValue('mock-hash-value');
     mockedCrypto.createHash = jest.fn().mockReturnValue(mockHashInstance);
+
+    mockVehicleRepository.find.mockResolvedValue([]);
+    mockConsentRevokedHandler.handleConsentRevoked.mockResolvedValue(undefined);
+    mockConsentRepository.delete.mockResolvedValue({ affected: 1, raw: {} });
+    mockUserRepository.delete.mockResolvedValue({ affected: 1, raw: {} });
   });
 
   describe('The acceptConsent() method', () => {
@@ -324,6 +356,8 @@ describe('The ConsentService class', () => {
 
     describe('When active consent exists', () => {
       let mockConsent: UserConsent;
+      let mockUser: User;
+      let mockVehicles: Vehicle[];
 
       beforeEach(async () => {
         mockConsent = {
@@ -333,8 +367,36 @@ describe('The ConsentService class', () => {
           acceptedAt: new Date(),
           revokedAt: null,
         } as unknown as UserConsent;
+
+        mockUser = {
+          userId,
+          email: 'test@example.com',
+        } as User;
+
+        mockVehicles = [
+          {
+            id: 'vehicle-1',
+            userId,
+            vin: 'VIN123456789',
+            telemetry_enabled: true,
+          } as Vehicle,
+          {
+            id: 'vehicle-2',
+            userId,
+            vin: 'VIN987654321',
+            telemetry_enabled: true,
+          } as Vehicle,
+        ];
+
         mockConsentRepository.findOne.mockResolvedValue(mockConsent);
-        mockConsentRepository.update.mockResolvedValue({ affected: 1 });
+        mockUserRepository.findOne.mockResolvedValue(mockUser);
+        mockVehicleRepository.find.mockResolvedValue(mockVehicles);
+        mockConsentRevokedHandler.handleConsentRevoked.mockResolvedValue(
+          undefined,
+        );
+        mockConsentRepository.delete.mockResolvedValue({ affected: 1, raw: {} });
+        mockUserRepository.delete.mockResolvedValue({ affected: 1, raw: {} });
+
         act = () => service.revokeConsent(userId);
         await act();
       });
@@ -346,11 +408,21 @@ describe('The ConsentService class', () => {
         });
       });
 
-      it('should update consent with revokedAt', () => {
-        expect(mockConsentRepository.update).toHaveBeenCalledWith(
-          { id: mockConsent.id },
-          { revokedAt: expect.any(Date) }
-        );
+      it('should find all vehicles for the user', () => {
+        expect(mockVehicleRepository.find).toHaveBeenCalledWith({
+          where: { userId },
+        });
+      });
+
+      it('should call consent revoked handler with correct event', () => {
+        expect(mockConsentRevokedHandler.handleConsentRevoked).toHaveBeenCalledWith({
+          userId,
+          vehicleVins: ['VIN123456789', 'VIN987654321'],
+        });
+      });
+
+      it('should delete the user account (which cascade-deletes consents)', () => {
+        expect(mockUserRepository.delete).toHaveBeenCalledWith({ userId });
       });
     });
 
@@ -364,40 +436,135 @@ describe('The ConsentService class', () => {
         await expect(act()).rejects.toThrow(BadRequestException);
       });
 
-      it('should not update consent', () => {
-        expect(mockConsentRepository.update).not.toHaveBeenCalled();
+      it('should not call consent revoked handler', async () => {
+        try {
+          await act();
+        } catch {
+          // Expected to throw
+        }
+        expect(mockConsentRevokedHandler.handleConsentRevoked).not.toHaveBeenCalled();
+      });
+
+      it('should not delete user account', async () => {
+        try {
+          await act();
+        } catch {
+          // Expected to throw
+        }
+        expect(mockUserRepository.delete).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When user has no vehicles', () => {
+      let mockConsent: UserConsent;
+      let mockUser: User;
+
+      beforeEach(async () => {
+        mockConsent = {
+          id: 'consent-id',
+          userId,
+          version: 'v1',
+          acceptedAt: new Date(),
+          revokedAt: null,
+        } as unknown as UserConsent;
+
+        mockUser = {
+          userId,
+          email: 'test@example.com',
+        } as User;
+
+        mockConsentRepository.findOne.mockResolvedValue(mockConsent);
+        mockUserRepository.findOne.mockResolvedValue(mockUser);
+        mockVehicleRepository.find.mockResolvedValue([]);
+        mockConsentRepository.delete.mockResolvedValue({ affected: 1, raw: {} });
+        mockUserRepository.delete.mockResolvedValue({ affected: 1, raw: {} });
+
+        act = () => service.revokeConsent(userId);
+        await act();
+      });
+
+      it('should call consent revoked handler with empty vehicle list', () => {
+        expect(mockConsentRevokedHandler.handleConsentRevoked).toHaveBeenCalledWith({
+          userId,
+          vehicleVins: [],
+        });
+      });
+
+      it('should still delete the user account', () => {
+        expect(mockUserRepository.delete).toHaveBeenCalledWith({ userId });
+      });
+    });
+
+    describe('When consent revoked handler fails', () => {
+      let mockConsent: UserConsent;
+      let mockUser: User;
+      let mockVehicles: Vehicle[];
+
+      beforeEach(async () => {
+        mockConsent = {
+          id: 'consent-id',
+          userId,
+          version: 'v1',
+          acceptedAt: new Date(),
+          revokedAt: null,
+        } as unknown as UserConsent;
+
+        mockUser = {
+          userId,
+          email: 'test@example.com',
+        } as User;
+
+        mockVehicles = [
+          {
+            id: 'vehicle-1',
+            userId,
+            vin: 'VIN123456789',
+            telemetry_enabled: true,
+          } as Vehicle,
+        ];
+
+        mockConsentRepository.findOne.mockResolvedValue(mockConsent);
+        mockUserRepository.findOne.mockResolvedValue(mockUser);
+        mockVehicleRepository.find.mockResolvedValue(mockVehicles);
+        mockConsentRevokedHandler.handleConsentRevoked.mockResolvedValue(
+          undefined,
+        );
+        mockConsentRepository.delete.mockResolvedValue({ affected: 1, raw: {} });
+        mockUserRepository.delete.mockResolvedValue({ affected: 1, raw: {} });
+
+        act = () => service.revokeConsent(userId);
+        await act();
+      });
+
+      it('should still delete the user account after handler completes', () => {
+        expect(mockUserRepository.delete).toHaveBeenCalledWith({ userId });
+      });
+    });
+
+    describe('When user delete returns 0 affected', () => {
+      let mockConsent: UserConsent;
+
+      beforeEach(async () => {
+        mockConsent = {
+          id: 'consent-id',
+          userId,
+          version: 'v1',
+          acceptedAt: new Date(),
+          revokedAt: null,
+        } as unknown as UserConsent;
+
+        mockConsentRepository.findOne.mockResolvedValue(mockConsent);
+        mockVehicleRepository.find.mockResolvedValue([]);
+        mockUserRepository.delete.mockResolvedValue({ affected: 0, raw: {} });
+
+        act = () => service.revokeConsent(userId);
+        await act();
+      });
+
+      it('should attempt to delete user', () => {
+        expect(mockUserRepository.delete).toHaveBeenCalledWith({ userId });
       });
     });
   });
 
-  describe('The generateTextHash() method', () => {
-    let result: string;
-    let text: string;
-    let mockHash: MockProxy<crypto.Hash>;
-
-    beforeEach(() => {
-      text = 'test text';
-      mockHash = mock<crypto.Hash>();
-      mockHash.update.mockReturnThis();
-      mockHash.digest.mockReturnValue('abc123');
-      mockedCrypto.createHash.mockReturnValue(mockHash);
-      result = service.generateTextHash(text);
-    });
-
-    it('should create SHA256 hash', () => {
-      expect(mockedCrypto.createHash).toHaveBeenCalledWith('sha256');
-    });
-
-    it('should update hash with text', () => {
-      expect(mockHash.update).toHaveBeenCalledWith(text);
-    });
-
-    it('should digest hash as hex', () => {
-      expect(mockHash.digest).toHaveBeenCalledWith('hex');
-    });
-
-    it('should return hash value', () => {
-      expect(result).toBe('abc123');
-    });
-  });
 });

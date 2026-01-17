@@ -30,15 +30,16 @@
     "src/**/*.jsx",
     "src/**/*.ts",
     "src/**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/test-setup.d.ts"
   ],
   "exclude": [
     "out-tsc",
     "dist",
     "node_modules",
     "jest.config.ts",
-    "src/**/*.spec.ts",
-    "src/**/*.test.ts",
     ".next"
   ]
 }

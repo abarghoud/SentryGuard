@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { TelemetryConfigService } from './telemetry-config.service';
 import { AuthService } from '../auth/auth.service';
+import { TeslaPartnerAuthService } from '../auth/tesla-partner-auth.service';
 import { Vehicle } from '../../entities/vehicle.entity';
 import axios from 'axios';
 
@@ -19,8 +20,12 @@ mockedAxios.create = jest.fn().mockReturnValue(mockAxiosInstance);
 
 const mockAuthService = {
   getAccessTokenForUserId: jest.fn(),
-  getAccessToken: jest.fn(), // For backward compatibility
+  getAccessToken: jest.fn(),
   invalidateUserTokens: jest.fn(),
+};
+
+const mockPartnerAuthService = {
+  getPartnerToken: jest.fn(),
 };
 
 const mockVehicleRepository = {
@@ -45,6 +50,10 @@ describe('TelemetryConfigService', () => {
         {
           provide: AuthService,
           useValue: mockAuthService,
+        },
+        {
+          provide: TeslaPartnerAuthService,
+          useValue: mockPartnerAuthService,
         },
         {
           provide: getRepositoryToken(Vehicle),
@@ -731,6 +740,109 @@ describe('TelemetryConfigService', () => {
 
         loggerWarnSpy.mockRestore();
         loggerErrorSpy.mockRestore();
+      });
+    });
+  });
+
+  describe('The deleteTelemetryConfigWithPartnerToken() method', () => {
+    const fakeVin = 'TEST123456789';
+    const fakePartnerToken = 'partner-token-123';
+
+    describe('When deletion succeeds', () => {
+      let result: { success: boolean; message: string };
+
+      beforeEach(async () => {
+        mockPartnerAuthService.getPartnerToken.mockResolvedValue(fakePartnerToken);
+        mockAxiosInstance.delete.mockResolvedValue({ status: 200 });
+
+        result = await service.deleteTelemetryConfigWithPartnerToken(fakeVin);
+      });
+
+      it('should get partner token', () => {
+        expect(mockPartnerAuthService.getPartnerToken).toHaveBeenCalled();
+      });
+
+      it('should call Tesla API with correct parameters', () => {
+        expect(mockAxiosInstance.delete).toHaveBeenCalledWith(
+          `/api/1/vehicles/${fakeVin}/fleet_telemetry_config`,
+          {
+            headers: { Authorization: `Bearer ${fakePartnerToken}` },
+          }
+        );
+      });
+
+      it('should return success response', () => {
+        expect(result).toStrictEqual({
+          success: true,
+          message: 'Telemetry configuration deleted successfully',
+        });
+      });
+    });
+
+    describe('When config does not exist', () => {
+      let result: { success: boolean; message: string };
+
+      beforeEach(async () => {
+        const notFoundError = {
+          isAxiosError: true,
+          response: {
+            status: 404,
+            data: { error: 'not_found' },
+          },
+        };
+
+        mockPartnerAuthService.getPartnerToken.mockResolvedValue(fakePartnerToken);
+        mockAxiosInstance.delete.mockRejectedValue(notFoundError);
+
+        result = await service.deleteTelemetryConfigWithPartnerToken(fakeVin);
+      });
+
+      it('should return success response with message', () => {
+        expect(result).toStrictEqual({
+          success: true,
+          message: 'No telemetry configuration found (already deleted)',
+        });
+      });
+    });
+
+    describe('When deletion fails with non-404 error', () => {
+      let result: { success: boolean; message: string };
+      const expectedError = new Error('Network error');
+
+      beforeEach(async () => {
+        mockPartnerAuthService.getPartnerToken.mockResolvedValue(fakePartnerToken);
+        mockAxiosInstance.delete.mockRejectedValue(expectedError);
+
+        result = await service.deleteTelemetryConfigWithPartnerToken(fakeVin);
+      });
+
+      it('should return failure response', () => {
+        expect(result).toStrictEqual({
+          success: false,
+          message: 'Error deleting telemetry configuration',
+        });
+      });
+    });
+
+    describe('When partner token retrieval fails', () => {
+      const expectedError = new Error('Failed to get partner token');
+      let result: { success: boolean; message: string };
+
+      beforeEach(async () => {
+        mockPartnerAuthService.getPartnerToken.mockRejectedValue(expectedError);
+
+        result = await service.deleteTelemetryConfigWithPartnerToken(fakeVin);
+      });
+
+      it('should return failure response', () => {
+        expect(result).toStrictEqual({
+          success: false,
+          message: 'Error deleting telemetry configuration',
+        });
+      });
+
+      it('should not call Tesla API', () => {
+        expect(mockAxiosInstance.delete).not.toHaveBeenCalled();
       });
     });
   });

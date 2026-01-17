@@ -158,7 +158,7 @@
   "Redirecting to dashboard...": "Redirection vers le tableau de bord...",
   "By clicking \"I Accept\", you agree to the terms above and consent to the processing of your personal data.": "En cliquant sur \"J'accepte\", vous acceptez les conditions ci-dessus et consentez au traitement de vos données personnelles.",
   "Revoke Consent": "Révoquer le consentement",
-  "Are you sure you want to revoke your consent? This will disable all Tesla Fleet API features.": "Êtes-vous sûr de vouloir révoquer votre consentement ? Cela désactivera toutes les fonctionnalités de l'API Flotte Tesla.",
+  "Are you sure you want to revoke your consent? This will permanently delete your account and all associated data, including telemetry configurations.": "Êtes-vous sûr de vouloir révoquer votre consentement ? Cela supprimera définitivement votre compte et toutes les données associées, y compris les configurations de télémétrie.",
   "Loading consent text...": "Chargement du texte de consentement...",
   "Failed to load consent text": "Échec du chargement du texte de consentement",
   "Frequently Asked Questions": "Questions Fréquemment Posées",
@@ -244,5 +244,15 @@
   "Why doesn't Sentry Mode trigger when I test it myself?": "Pourquoi le mode Sentinelle ne se déclenche-t-il pas quand je le teste moi-même ?",
   "Sentry Mode testing explanation": "Lorsque vous testez le mode Sentinelle vous-même avec votre téléphone à proximité, Tesla détecte votre clé digitale et ne déclenche pas le mode Sentinelle car elle reconnaît un utilisateur autorisé. Le mode Sentinelle ne s'active que lorsque le véhicule détecte une activité potentiellement non autorisée. Pour tester correctement, utilisez soit le téléphone de quelqu'un d'autre pour déclencher une détection de mouvement/caméra, soit testez à distance sans que votre téléphone soit présent.",
   "Why is SentryGuard faster than Tesla notifications?": "Pourquoi SentryGuard est-il plus rapide que les notifications Tesla ?",
-  "SentryGuard speed advantage explanation": "SentryGuard fournit des notifications instantanées dès que Tesla détecte un événement et commence l'enregistrement, vous donnant une prise de conscience immédiate des incidents de sécurité potentiels. En revanche, l'application Tesla elle-même n'affiche la vidéo enregistrée qu'après la fin de l'enregistrement, et même les notifications directes de Tesla arrivent plusieurs secondes plus tard. Cet avantage de rapidité peut être crucial pour réagir rapidement aux menaces de sécurité."
+  "SentryGuard speed advantage explanation": "SentryGuard fournit des notifications instantanées dès que Tesla détecte un événement et commence l'enregistrement, vous donnant une prise de conscience immédiate des incidents de sécurité potentiels. En revanche, l'application Tesla elle-même n'affiche la vidéo enregistrée qu'après la fin de l'enregistrement, et même les notifications directes de Tesla arrivent plusieurs secondes plus tard. Cet avantage de rapidité peut être crucial pour réagir rapidement aux menaces de sécurité.",
+  "Settings": "Paramètres",
+  "Manage your account settings and preferences": "Gérer les paramètres et préférences de votre compte",
+  "Account Information": "Informations du compte",
+  "Name": "Nom",
+  "Email": "Email",
+  "Danger Zone": "Zone de danger",
+  "Delete Account": "Supprimer mon compte",
+  "Delete account description": "La suppression de votre compte est permanente et irréversible. Toutes vos données, y compris les configurations de télémétrie, les alertes Telegram et les informations du véhicule seront définitivement supprimées.",
+  "Delete account confirmation": "Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est permanente et supprimera toutes vos données, y compris les configurations de télémétrie et les alertes Telegram. Cette action ne peut pas être annulée.",
+  "Back to Dashboard": "Retour au tableau de bord"
 }

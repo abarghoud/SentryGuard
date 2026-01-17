@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import axios from 'axios';
 import * as https from 'https';
 import { AuthService } from '../auth/auth.service';
+import { TeslaPartnerAuthService } from '../auth/tesla-partner-auth.service';
 import { Vehicle } from '../../entities/vehicle.entity';
 import {
   DeleteTelemetryConfigResponse,
@@ -48,6 +49,7 @@ export class TelemetryConfigService {
 
   constructor(
     private readonly authService: AuthService,
+    private readonly partnerAuthService: TeslaPartnerAuthService,
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>
   ) {}
@@ -374,6 +376,47 @@ export class TelemetryConfigService {
       }
 
       await this.handleTokenRevocation(userId, error);
+
+      this.logger.error(
+        ERROR_MESSAGES.ERROR_DELETING_CONFIG(vin),
+        extractErrorDetails(error)
+      );
+
+      return {
+        success: false,
+        message: GENERIC_ERROR_MESSAGES.ERROR_DELETING_TELEMETRY,
+      };
+    }
+  }
+
+  async deleteTelemetryConfigWithPartnerToken(
+    vin: string
+  ): Promise<DeleteTelemetryConfigResponse> {
+    try {
+      const partnerToken = await this.partnerAuthService.getPartnerToken();
+
+      await this.teslaApi.delete(
+        TESLA_API_ENDPOINTS.VEHICLE_TELEMETRY_CONFIG(vin),
+        {
+          headers: { Authorization: `Bearer ${partnerToken}` },
+        }
+      );
+
+      this.logger.log(SUCCESS_MESSAGES.CONFIG_DELETED(vin));
+
+      return {
+        success: true,
+        message: SUCCESS_MESSAGES.CONFIG_DELETED_SUCCESSFULLY,
+      };
+    } catch (error: unknown) {
+      if (is404Error(error)) {
+        this.logger.log(INFO_MESSAGES.NO_CONFIG_FOUND(vin));
+
+        return {
+          success: true,
+          message: INFO_MESSAGES.NO_CONFIG_FOUND_ALREADY_DELETED,
+        };
+      }
 
       this.logger.error(
         ERROR_MESSAGES.ERROR_DELETING_CONFIG(vin),
