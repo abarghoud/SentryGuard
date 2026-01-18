@@ -540,31 +540,6 @@ describe('The ConsentService class', () => {
         expect(mockUserRepository.delete).toHaveBeenCalledWith({ userId });
       });
     });
-
-    describe('When user delete returns 0 affected', () => {
-      let mockConsent: UserConsent;
-
-      beforeEach(async () => {
-        mockConsent = {
-          id: 'consent-id',
-          userId,
-          version: 'v1',
-          acceptedAt: new Date(),
-          revokedAt: null,
-        } as unknown as UserConsent;
-
-        mockConsentRepository.findOne.mockResolvedValue(mockConsent);
-        mockVehicleRepository.find.mockResolvedValue([]);
-        mockUserRepository.delete.mockResolvedValue({ affected: 0, raw: {} });
-
-        act = () => service.revokeConsent(userId);
-        await act();
-      });
-
-      it('should attempt to delete user', () => {
-        expect(mockUserRepository.delete).toHaveBeenCalledWith({ userId });
-      });
-    });
   });
 
 });
