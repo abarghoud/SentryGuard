@@ -4,6 +4,7 @@ import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { ThrottleOptions } from '../../config/throttle.config';
 import { MissingPermissionsException } from '../../common/exceptions/missing-permissions.exception';
+import { UserNotApprovedException } from '../../common/exceptions/user-not-approved.exception';
 
 @Controller('callback')
 export class CallbackController {
@@ -66,11 +67,19 @@ export class CallbackController {
       res.redirect(redirectUrl);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      if (error instanceof UserNotApprovedException) {
+        this.logger.log(`User added to waitlist: ${error.email}`);
+        const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
+        const redirectUrl = `${webappUrl}/waitlist?email=${encodeURIComponent(error.email)}`;
+        res.redirect(redirectUrl);
+        return;
+      }
+
       if (!(error instanceof MissingPermissionsException)) {
         this.logger.error('❌ Error processing callback:', errorMessage);
       }
 
-      // Redirect to webapp with error
       const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
       const redirectUrl = `${webappUrl}/callback?error=${encodeURIComponent(errorMessage)}`;
       res.redirect(redirectUrl);

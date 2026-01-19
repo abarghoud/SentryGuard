@@ -254,5 +254,11 @@
   "Delete Account": "Supprimer mon compte",
   "Delete account description": "La suppression de votre compte est permanente et irréversible. Toutes vos données, y compris les configurations de télémétrie, les alertes Telegram et les informations du véhicule seront définitivement supprimées.",
   "Delete account confirmation": "Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est permanente et supprimera toutes vos données, y compris les configurations de télémétrie et les alertes Telegram. Cette action ne peut pas être annulée.",
-  "Back to Dashboard": "Retour au tableau de bord"
+  "Back to Dashboard": "Retour au tableau de bord",
+  "You're on the Waitlist!": "Vous êtes sur la liste d'attente !",
+  "Thank you for your interest in SentryGuard": "Merci pour votre intérêt pour SentryGuard",
+  "We have received your registration for": "Nous avons reçu votre inscription pour",
+  "Your account is pending approval. We'll send you an email once your account has been approved and you can start using SentryGuard.": "Votre compte est en attente d'approbation. Nous vous enverrons un email une fois votre compte approuvé et vous pourrez commencer à utiliser SentryGuard.",
+  "Approval is typically processed within 24-48 hours.": "L'approbation est généralement traitée sous 24-48 heures.",
+  "Back to home": "Retour à l'accueil"
 }

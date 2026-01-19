@@ -8,6 +8,7 @@ import { AuthService } from './auth.service';
 import { TeslaPartnerAuthService } from './tesla-partner-auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { User } from '../../entities/user.entity';
+import { WaitlistModule } from '../waitlist/waitlist.module';
 
 const jwtSecret = process.env.JWT_SECRET;
 const jwtExpiresIn = (process.env.JWT_EXPIRATION || '30d') as JwtSignOptions['expiresIn'];
@@ -28,6 +29,7 @@ if (!jwtSecret) {
         expiresIn: jwtExpiresIn,
       },
     }),
+    WaitlistModule,
   ],
   controllers: [AuthController, CallbackController],
   providers: [AuthService, TeslaPartnerAuthService, JwtStrategy],
