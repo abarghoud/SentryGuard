@@ -5,6 +5,7 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { CallbackController } from './callback.controller';
 import { AuthService } from './auth.service';
+import { TeslaPartnerAuthService } from './tesla-partner-auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { User } from '../../entities/user.entity';
 
@@ -29,7 +30,7 @@ if (!jwtSecret) {
     }),
   ],
   controllers: [AuthController, CallbackController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtStrategy, PassportModule], // Export for use in other modules
+  providers: [AuthService, TeslaPartnerAuthService, JwtStrategy],
+  exports: [AuthService, TeslaPartnerAuthService, JwtStrategy, PassportModule],
 })
 export class AuthModule {}

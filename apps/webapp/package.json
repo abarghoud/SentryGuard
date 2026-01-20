@@ -18,6 +18,16 @@
   },
   "nx": {
     "targets": {
+      "test": {
+        "executor": "@nx/jest:jest",
+        "outputs": [
+          "{workspaceRoot}/coverage/{projectRoot}"
+        ],
+        "options": {
+          "jestConfig": "apps/webapp/jest.config.ts",
+          "passWithNoTests": true
+        }
+      },
       "extract-i18n": {
         "command": "cd apps/webapp && npx i18next-parser --config i18next-parser.config.js"
       }

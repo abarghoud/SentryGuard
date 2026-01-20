@@ -16,7 +16,7 @@ export class UserConsent {
   @Column('varchar', { length: 64 })
   userId!: string;
 
-  @ManyToOne('User', 'consents')
+  @ManyToOne('User', 'consents', { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   user!: any;
 

@@ -158,7 +158,7 @@
   "Redirecting to dashboard...": "Redirecting to dashboard...",
   "By clicking \"I Accept\", you agree to the terms above and consent to the processing of your personal data.": "By clicking \"I Accept\", you agree to the terms above and consent to the processing of your personal data.",
   "Revoke Consent": "Revoke Consent",
-  "Are you sure you want to revoke your consent? This will disable all Tesla Fleet API features.": "Are you sure you want to revoke your consent? This will disable all Tesla Fleet API features.",
+  "Are you sure you want to revoke your consent? This will permanently delete your account and all associated data, including telemetry configurations.": "Are you sure you want to revoke your consent? This will permanently delete your account and all associated data, including telemetry configurations.",
   "Loading consent text...": "Loading consent text...",
   "Failed to load consent text": "Failed to load consent text",
   "Frequently Asked Questions": "Frequently Asked Questions",
@@ -244,5 +244,15 @@
   "Why doesn't Sentry Mode trigger when I test it myself?": "Why doesn't Sentry Mode trigger when I test it myself?",
   "Sentry Mode testing explanation": "When testing Sentry Mode yourself with your phone nearby, Tesla detects your digital key and doesn't trigger Sentry Mode because it recognizes an authorized user. Sentry Mode only activates when the vehicle senses potential unauthorized activity. To properly test, either use someone else's phone to trigger motion/camera detection, or test from further away without your phone present.",
   "Why is SentryGuard faster than Tesla notifications?": "Why is SentryGuard faster than Tesla notifications?",
-  "SentryGuard speed advantage explanation": "SentryGuard provides instant notifications as soon as Tesla detects an event and begins recording, giving you immediate awareness of potential security incidents. In contrast, Tesla's own app only shows recorded video after the recording is complete, and even Tesla's direct notifications arrive several seconds later. This speed advantage can be crucial for responding quickly to security threats."
+  "SentryGuard speed advantage explanation": "SentryGuard provides instant notifications as soon as Tesla detects an event and begins recording, giving you immediate awareness of potential security incidents. In contrast, Tesla's own app only shows recorded video after the recording is complete, and even Tesla's direct notifications arrive several seconds later. This speed advantage can be crucial for responding quickly to security threats.",
+  "Settings": "Settings",
+  "Manage your account settings and preferences": "Manage your account settings and preferences",
+  "Account Information": "Account Information",
+  "Name": "Name",
+  "Email": "Email",
+  "Danger Zone": "Danger Zone",
+  "Delete Account": "Delete Account",
+  "Delete account description": "Deleting your account is permanent and irreversible. All your data, including telemetry configurations, Telegram alerts, and vehicle information will be permanently deleted.",
+  "Delete account confirmation": "Are you sure you want to delete your account? This action is permanent and will delete all your data, including telemetry configurations and Telegram alerts. This action cannot be undone.",
+  "Back to Dashboard": "Back to Dashboard"
 }
