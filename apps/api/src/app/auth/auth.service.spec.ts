@@ -4,6 +4,9 @@ import { AuthService } from './auth.service';
 import { UnauthorizedException } from '@nestjs/common';
 import { User } from '../../entities/user.entity';
 import { JwtService } from '@nestjs/jwt';
+import { WaitlistService } from '../waitlist/services/waitlist.service';
+import { Waitlist } from '../../entities/waitlist.entity';
+import { mock, MockProxy } from 'jest-mock-extended';
 import axios from 'axios';
 import { decode } from 'jsonwebtoken';
 
@@ -58,8 +61,13 @@ const mockJwtService = {
 
 describe('AuthService', () => {
   let service: AuthService;
+  let mockWaitlistService: MockProxy<WaitlistService>;
 
   beforeEach(async () => {
+    mockWaitlistService = mock<WaitlistService>();
+    mockWaitlistService.isApproved.mockResolvedValue(true);
+    mockWaitlistService.addToWaitlist.mockResolvedValue(undefined);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
@@ -70,6 +78,10 @@ describe('AuthService', () => {
         {
           provide: JwtService,
           useValue: mockJwtService,
+        },
+        {
+          provide: WaitlistService,
+          useValue: mockWaitlistService,
         },
       ],
     }).compile();
@@ -84,6 +96,10 @@ describe('AuthService', () => {
     // Reset repository mocks
     mockUserRepository.findOne.mockResolvedValue(null);
     mockUserRepository.save.mockImplementation((user) => Promise.resolve(user));
+
+    // Reset WaitlistService mock
+    mockWaitlistService.isApproved.mockResolvedValue(true);
+    mockWaitlistService.addToWaitlist.mockResolvedValue(undefined);
 
     // Set up environment variables for tests
     process.env.TESLA_CLIENT_ID = 'test-client-id';
@@ -254,6 +270,179 @@ describe('AuthService', () => {
         service.exchangeCodeForTokens('test-code', state)
       ).rejects.toThrow('Missing required permissions: vehicle_device_data, offline_access, user_data');
     });
+
+    it('should throw UnauthorizedException when JWT decode returns null', async () => {
+      const { state } = service.generateLoginUrl();
+      const mockTokenResponse = {
+        data: {
+          access_token: 'test-access-token',
+          refresh_token: 'test-refresh-token',
+          expires_in: 3600,
+        },
+      };
+
+      mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
+      mockedDecode.mockReturnValueOnce(null);
+
+      await expect(
+        service.exchangeCodeForTokens('test-code', state)
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should update existing user when user already exists', async () => {
+      const { state } = service.generateLoginUrl();
+      const mockTokenResponse = {
+        data: {
+          access_token: 'test-access-token',
+          refresh_token: 'test-refresh-token',
+          expires_in: 3600,
+        },
+      };
+
+      const mockProfileResponse = {
+        data: {
+          response: {
+            email: 'existing@tesla.com',
+            full_name: 'Existing User',
+          },
+        },
+      };
+
+      const existingUser = {
+        userId: 'existing-user-id',
+        email: 'existing@tesla.com',
+        full_name: 'Old Name',
+      } as User;
+
+      mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
+      mockedDecode.mockReturnValueOnce({
+        scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
+      } as any);
+      mockAxiosInstance.get.mockResolvedValueOnce(mockProfileResponse);
+      mockUserRepository.findOne.mockResolvedValueOnce(existingUser);
+      mockUserRepository.save.mockResolvedValueOnce({
+        ...existingUser,
+        full_name: 'Existing User',
+      } as User);
+      mockJwtService.signAsync.mockResolvedValueOnce('new-jwt-token');
+
+      const result = await service.exchangeCodeForTokens('test-code', state);
+
+      expect(result.userId).toBe('existing-user-id');
+      expect(mockUserRepository.save).toHaveBeenCalled();
+      const savedUser = mockUserRepository.save.mock.calls[0][0];
+      expect(savedUser.full_name).toBe('Existing User');
+    });
+
+    it('should not search for existing user when profile is undefined', async () => {
+      const { state } = service.generateLoginUrl();
+      const mockTokenResponse = {
+        data: {
+          access_token: 'test-access-token',
+          refresh_token: 'test-refresh-token',
+          expires_in: 3600,
+        },
+      };
+
+      mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
+      mockedDecode.mockReturnValueOnce({
+        scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
+      } as any);
+      mockAxiosInstance.get.mockRejectedValueOnce(new Error('Profile API Error'));
+      mockUserRepository.create.mockReturnValueOnce({} as User);
+      mockUserRepository.save.mockResolvedValueOnce({
+        userId: '746573742d757365722d6964',
+      } as User);
+      mockJwtService.signAsync.mockResolvedValueOnce('new-jwt-token');
+
+      const result = await service.exchangeCodeForTokens('test-code', state);
+
+      expect(result.userId).toBeDefined();
+      expect(mockUserRepository.findOne).not.toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ email: expect.anything() }) })
+      );
+      expect(mockWaitlistService.isApproved).not.toHaveBeenCalled();
+    });
+
+    it('should use userLocale from pendingState when creating new user', async () => {
+      const { state } = service.generateLoginUrl('fr');
+      const mockTokenResponse = {
+        data: {
+          access_token: 'test-access-token',
+          refresh_token: 'test-refresh-token',
+          expires_in: 3600,
+        },
+      };
+
+      const mockProfileResponse = {
+        data: {
+          response: {
+            email: 'newuser@tesla.com',
+            full_name: 'New User',
+          },
+        },
+      };
+
+      mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
+      mockedDecode.mockReturnValueOnce({
+        scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
+      } as any);
+      mockAxiosInstance.get.mockResolvedValueOnce(mockProfileResponse);
+      mockUserRepository.findOne.mockResolvedValueOnce(null);
+      mockUserRepository.create.mockImplementation((userData) => userData as User);
+      mockUserRepository.save.mockResolvedValueOnce({
+        userId: '746573742d757365722d6964',
+        preferred_language: 'fr',
+      } as User);
+      mockJwtService.signAsync.mockResolvedValueOnce('new-jwt-token');
+
+      const result = await service.exchangeCodeForTokens('test-code', state);
+
+      expect(result.userId).toBeDefined();
+      expect(mockUserRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          preferred_language: 'fr',
+        })
+      );
+    });
+
+    it('should pass userLocale to waitlist service when user is not approved', async () => {
+      const { state } = service.generateLoginUrl('fr');
+      const mockTokenResponse = {
+        data: {
+          access_token: 'test-access-token',
+          refresh_token: 'test-refresh-token',
+          expires_in: 3600,
+        },
+      };
+
+      const mockProfileResponse = {
+        data: {
+          response: {
+            email: 'waitlisted@tesla.com',
+            full_name: 'Waitlisted User',
+          },
+        },
+      };
+
+      mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
+      mockedDecode.mockReturnValueOnce({
+        scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
+      } as any);
+      mockAxiosInstance.get.mockResolvedValueOnce(mockProfileResponse);
+      mockUserRepository.findOne.mockResolvedValueOnce(null);
+      mockWaitlistService.isApproved.mockResolvedValueOnce(false);
+
+      await expect(
+        service.exchangeCodeForTokens('test-code', state)
+      ).rejects.toThrow('Your account is pending approval');
+
+      expect(mockWaitlistService.addToWaitlist).toHaveBeenCalledWith(
+        'waitlisted@tesla.com',
+        'Waitlisted User',
+        'fr'
+      );
+    });
   });
 
   describe('getAccessToken', () => {
@@ -384,13 +573,13 @@ describe('AuthService', () => {
         state
       );
 
-      expect(await service.hasValidToken({ userId } as any)).toBe(true);
+      const userWithToken = { userId } as unknown as User;
+      expect(await service.hasValidToken(userWithToken)).toBe(true);
     });
 
     it('should return false for a user without a token', async () => {
-      expect(
-        await service.hasValidToken({ userId: 'unknown-user-id' } as any)
-      ).toBe(false);
+      const userWithoutToken = { userId: 'unknown-user-id' } as unknown as User;
+      expect(await service.hasValidToken(userWithoutToken)).toBe(false);
     });
   });
 
@@ -556,240 +745,6 @@ describe('AuthService', () => {
       stats = await service.getStats();
       expect(stats.activeUsers).toBe(1);
       expect(stats.pendingStates).toBe(0); // State deleted after validation
-    });
-  });
-
-  describe('validateJwtScopes', () => {
-    it('should validate JWT with all required scopes', () => {
-      const validToken = 'valid.jwt.token';
-      mockedDecode.mockReturnValueOnce({
-        scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
-      } as any);
-
-      expect(() => {
-        (service as any).validateJwtScopes(validToken);
-      }).not.toThrow();
-    });
-
-    it('should throw error for missing scopes', () => {
-      const invalidToken = 'invalid.jwt.token';
-      mockedDecode.mockReturnValueOnce({
-        scp: ['openid', 'vehicle_device_data'], // Missing offline_access and user_data
-      } as any);
-
-      expect(() => {
-        (service as any).validateJwtScopes(invalidToken);
-      }).toThrow(UnauthorizedException);
-    });
-
-    it('should throw error for missing scp property', () => {
-      const invalidToken = 'invalid.jwt.token';
-      mockedDecode.mockReturnValueOnce({} as any); // No scp property
-
-      expect(() => {
-        (service as any).validateJwtScopes(invalidToken);
-      }).toThrow(UnauthorizedException);
-    });
-
-    it('should throw error for null decoded token', () => {
-      const invalidToken = 'invalid.jwt.token';
-      mockedDecode.mockReturnValueOnce(null);
-
-      expect(() => {
-        (service as any).validateJwtScopes(invalidToken);
-      }).toThrow(UnauthorizedException);
-    });
-  });
-
-  describe('fetchUserProfileSafely', () => {
-    it('should return user profile when successful', async () => {
-      const accessToken = 'test-access-token';
-      const expectedProfile = { email: 'test@tesla.com', full_name: 'Test User' };
-
-      mockAxiosInstance.get.mockResolvedValueOnce({
-        data: { response: expectedProfile },
-      });
-
-      const result = await (service as any).fetchUserProfileSafely(accessToken);
-      expect(result).toEqual(expectedProfile);
-    });
-
-    it('should return undefined when profile fetch fails', async () => {
-      const accessToken = 'test-access-token';
-
-      mockAxiosInstance.get.mockRejectedValueOnce(new Error('API Error'));
-
-      const result = await (service as any).fetchUserProfileSafely(accessToken);
-      expect(result).toBeUndefined();
-    });
-  });
-
-  describe('createOrUpdateUser', () => {
-    const mockTokens = {
-      access_token: 'test-access-token',
-      refresh_token: 'test-refresh-token',
-      expiresAt: new Date(),
-    };
-
-    it('should create new user when no existing user found', async () => {
-      const profile = { email: 'new@test.com', full_name: 'New User' };
-
-      mockUserRepository.findOne.mockResolvedValue(null);
-      mockUserRepository.create.mockReturnValue({} as User);
-      mockUserRepository.save.mockResolvedValue({ userId: 'test-user-id' } as User);
-
-      const result = await (service as any).createOrUpdateUser(mockTokens, profile);
-      expect(result).toBe('746573742d757365722d6964');
-      expect(mockUserRepository.create).toHaveBeenCalled();
-    });
-
-    it('should update existing user when found', async () => {
-      const profile = { email: 'existing@test.com', full_name: 'Existing User' };
-      const existingUser = { userId: 'existing-user-id', email: 'existing@test.com' } as User;
-
-      mockUserRepository.findOne.mockResolvedValue(existingUser);
-      mockUserRepository.save.mockResolvedValue(existingUser);
-
-      const result = await (service as any).createOrUpdateUser(mockTokens, profile);
-      expect(result).toBe('existing-user-id');
-      expect(mockUserRepository.save).toHaveBeenCalledWith(existingUser);
-    });
-
-    it('should NOT search for existing user when profile is undefined (SECURITY TEST)', async () => {
-      // ⚠️ CRITICAL SECURITY VULNERABILITY ⚠️
-      // https://typeorm.io/docs/data-source/null-and-undefined-handling/
-      // This test demonstrates the DANGEROUS behavior of TypeORM:
-      // - When profile?.email is undefined, the condition where: { email: undefined } is ignored
-      // - This equates to where: {} (no condition), which returns the FIRST user found
-      // - An attacker could steal the account of the first user in the database!
-      //
-      // BEFORE the fix (DANGEROUS):
-      // mockUserRepository.findOne.mockResolvedValue(firstUserInDb); // FOUND BY ACCIDENT!
-      //
-      // AFTER the fix (SECURE):
-      // mockUserRepository.findOne.mockResolvedValue(null); // NO SEARCH PERFORMED
-
-      const profile = undefined; // Tesla profile not retrieved (API error case)
-
-      // With the old DANGEROUS implementation:
-      // mockUserRepository.findOne would find the first user in DB by accident!
-
-      // With the new SECURE implementation:
-      // The method doesn't even perform a search when profile?.email is undefined
-      mockUserRepository.findOne.mockResolvedValue(null); // NO SEARCH
-      mockUserRepository.create.mockReturnValue({} as User);
-      mockUserRepository.save.mockResolvedValue({ userId: 'new-user-id' } as User);
-
-      const result = await (service as any).createOrUpdateUser(mockTokens, profile);
-
-      // Verify that we do NOT search for existing users
-      expect(mockUserRepository.findOne).not.toHaveBeenCalled();
-
-      // Verify that we create a new user
-      expect(result).toBe('746573742d757365722d6964');
-      expect(mockUserRepository.create).toHaveBeenCalled();
-    });
-
-    it('should NOT search for existing user when profile.email is undefined (SECURITY TEST)', async () => {
-      // Same test but with profile = { email: undefined } explicitly
-      const profile = { email: undefined }; // Email explicitly undefined
-
-      // With the old DANGEROUS implementation:
-      // mockUserRepository.findOne would find the first user in DB by accident!
-
-      // With the new SECURE implementation:
-      mockUserRepository.findOne.mockResolvedValue(null); // NO SEARCH
-      mockUserRepository.create.mockReturnValue({} as User);
-      mockUserRepository.save.mockResolvedValue({ userId: 'new-user-id' } as User);
-
-      const result = await (service as any).createOrUpdateUser(mockTokens, profile);
-
-      // Verify that we do NOT search for existing users
-      expect(mockUserRepository.findOne).not.toHaveBeenCalled();
-
-      // Verify that we create a new user
-      expect(result).toBe('746573742d757365722d6964');
-      expect(mockUserRepository.create).toHaveBeenCalled();
-    });
-  });
-
-  describe('updateExistingUser', () => {
-    it('should update existing user with new token data and profile', async () => {
-      const existingUser = {
-        userId: 'test-user-id',
-        email: 'test@test.com',
-      } as User;
-
-      const tokens = {
-        expiresAt: new Date(),
-      };
-
-      const profile = {
-        full_name: 'Updated Name',
-        profile_image_url: 'https://example.com/image.jpg',
-      };
-
-      mockJwtService.signAsync.mockResolvedValue('new-jwt-token');
-
-      const result = await (service as any).updateExistingUser(
-        existingUser,
-        tokens,
-        profile,
-        'encrypted-access',
-        'encrypted-refresh'
-      );
-
-      expect(result).toBe('test-user-id');
-      expect(existingUser.access_token).toBe('encrypted-access');
-      expect(existingUser.refresh_token).toBe('encrypted-refresh');
-      expect(existingUser.expires_at).toBe(tokens.expiresAt);
-      expect(existingUser.full_name).toBe(profile.full_name);
-      expect(existingUser.profile_image_url).toBe(profile.profile_image_url);
-      expect(mockJwtService.signAsync).toHaveBeenCalled();
-    });
-  });
-
-  describe('createNewUser', () => {
-    it('should create and save a new user', async () => {
-      const tokens = {
-        expiresAt: new Date(),
-      };
-
-      const profile = {
-        email: 'new@test.com',
-        full_name: 'New User',
-        profile_image_url: 'https://example.com/image.jpg',
-      };
-
-      const newUser = {
-        userId: '746573742d757365722d6964',
-        email: profile.email,
-        full_name: profile.full_name,
-        profile_image_url: profile.profile_image_url,
-        access_token: 'encrypted-access',
-        refresh_token: 'encrypted-refresh',
-        expires_at: tokens.expiresAt,
-        jwt_token: 'jwt-token',
-        jwt_expires_at: tokens.expiresAt,
-        preferred_language: 'en',
-        token_revoked_at: undefined,
-      };
-
-      mockJwtService.signAsync.mockResolvedValue('jwt-token');
-      mockUserRepository.create.mockReturnValue(newUser as User);
-      mockUserRepository.save.mockResolvedValue(newUser as User);
-
-      const result = await (service as any).createNewUser(
-        tokens,
-        profile,
-        'encrypted-access',
-        'encrypted-refresh',
-        'en'
-      );
-
-      expect(result).toBe('746573742d757365722d6964');
-      expect(mockUserRepository.create).toHaveBeenCalledWith(newUser);
-      expect(mockUserRepository.save).toHaveBeenCalledWith(newUser);
     });
   });
 

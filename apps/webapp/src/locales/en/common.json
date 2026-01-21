@@ -254,5 +254,11 @@
   "Delete Account": "Delete Account",
   "Delete account description": "Deleting your account is permanent and irreversible. All your data, including telemetry configurations, Telegram alerts, and vehicle information will be permanently deleted.",
   "Delete account confirmation": "Are you sure you want to delete your account? This action is permanent and will delete all your data, including telemetry configurations and Telegram alerts. This action cannot be undone.",
-  "Back to Dashboard": "Back to Dashboard"
+  "Back to Dashboard": "Back to Dashboard",
+  "You're on the Waitlist!": "You're on the Waitlist!",
+  "Thank you for your interest in SentryGuard": "Thank you for your interest in SentryGuard",
+  "We have received your registration for": "We have received your registration for",
+  "Your account is pending approval. We'll send you an email once your account has been approved and you can start using SentryGuard.": "Your account is pending approval. We'll send you an email once your account has been approved and you can start using SentryGuard.",
+  "Approval is typically processed within 24-48 hours.": "Approval is typically processed within 24-48 hours.",
+  "Back to home": "Back to home"
 }

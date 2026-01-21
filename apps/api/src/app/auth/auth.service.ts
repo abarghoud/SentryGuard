@@ -15,6 +15,8 @@ import { User } from '../../entities/user.entity';
 import { encrypt, decrypt } from '../../common/utils/crypto.util';
 import { normalizeTeslaLocale } from '../../common/utils/language.util';
 import { MissingPermissionsException } from '../../common/exceptions/missing-permissions.exception';
+import { UserNotApprovedException } from '../../common/exceptions/user-not-approved.exception';
+import { WaitlistService } from '../waitlist/services/waitlist.service';
 
 interface UserProfile {
   email?: string;
@@ -51,7 +53,8 @@ export class AuthService implements OnModuleDestroy {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly waitlistService: WaitlistService
   ) {
     // Clean expired states every minute
     this.cleanupInterval = setInterval(
@@ -140,14 +143,14 @@ export class AuthService implements OnModuleDestroy {
   }
 
   /**
-   * Validates OAuth state
+   * Validates OAuth state and returns the pending state data
    */
-  private validateState(state: string): boolean {
+  private validateState(state: string): PendingState | null {
     const pendingState = this.pendingStates.get(state);
 
     if (!pendingState) {
       this.logger.warn(`⚠️ Invalid or expired state: ${state}`);
-      return false;
+      return null;
     }
 
     const now = new Date();
@@ -156,12 +159,12 @@ export class AuthService implements OnModuleDestroy {
     if (elapsed > this.STATE_TIMEOUT_MS) {
       this.logger.warn(`⚠️ Expired state: ${state}`);
       this.pendingStates.delete(state);
-      return false;
+      return null;
     }
 
     // Delete state after validation
     this.pendingStates.delete(state);
-    return true;
+    return pendingState;
   }
 
   /**
@@ -211,12 +214,13 @@ export class AuthService implements OnModuleDestroy {
     code: string,
     state: string
   ): Promise<{ jwt: string; userId: string; access_token: string }> {
-    if (!this.validateState(state)) {
+    const pendingState = this.validateState(state);
+
+    if (!pendingState) {
       throw new UnauthorizedException('Invalid or expired state');
     }
 
-    const pendingState = this.pendingStates.get(state);
-    const userLocale = pendingState?.userLocale || 'en';
+    const userLocale = pendingState.userLocale || 'en';
 
     try {
       const tokens = await this.exchangeCodeForTeslaTokens(code);
@@ -230,7 +234,11 @@ export class AuthService implements OnModuleDestroy {
 
       return { jwt, userId, access_token: tokens.access_token };
     } catch (error: unknown) {
-      if (error instanceof MissingPermissionsException || error instanceof UnauthorizedException) {
+      if (
+        error instanceof MissingPermissionsException ||
+        error instanceof UnauthorizedException ||
+        error instanceof UserNotApprovedException
+      ) {
         throw error;
       }
 
@@ -349,9 +357,31 @@ export class AuthService implements OnModuleDestroy {
     }) : null;
 
     if (existingUser) {
-      return await this.updateExistingUser(existingUser, tokens, profile, encryptedAccessToken, encryptedRefreshToken);
-    } else {
-      return await this.createNewUser(tokens, profile, encryptedAccessToken, encryptedRefreshToken, userLocale);
+      return this.updateExistingUser(existingUser, tokens, profile, encryptedAccessToken, encryptedRefreshToken);
+    }
+
+    await this.verifyWaitlistApproval(profile, userLocale);
+
+    return this.createNewUser(tokens, profile, encryptedAccessToken, encryptedRefreshToken, userLocale);
+  }
+
+  private async verifyWaitlistApproval(
+    profile: UserProfile | undefined,
+    userLocale: 'en' | 'fr'
+  ): Promise<void> {
+    if (!profile?.email) {
+      return;
+    }
+
+    const isApproved = await this.waitlistService.isApproved(profile.email);
+
+    if (!isApproved) {
+      await this.waitlistService.addToWaitlist(
+        profile.email,
+        profile.full_name,
+        userLocale
+      );
+      throw new UserNotApprovedException(profile.email);
     }
   }
 

@@ -4,6 +4,7 @@ import { User } from '../entities/user.entity';
 import { Vehicle } from '../entities/vehicle.entity';
 import { TelegramConfig } from '../entities/telegram-config.entity';
 import { UserConsent } from '../entities/user-consent.entity';
+import { Waitlist } from '../entities/waitlist.entity';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -46,7 +47,7 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
     username: databaseUser,
     password: databasePassword,
     database: databaseName,
-    entities: [User, Vehicle, TelegramConfig, UserConsent],
+    entities: [User, Vehicle, TelegramConfig, UserConsent, Waitlist],
     synchronize,
     migrationsRun,
     migrations: ['dist/migrations/*.js'],
