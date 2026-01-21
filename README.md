@@ -30,16 +30,11 @@
 
 ---
 
-## 🚀 Join the Beta
+## 🚀 Join the Waitlist
 
-> **Want to try SentryGuard?** We're currently in beta and looking for Tesla owners to test the platform!
+> **Want to try SentryGuard?** Visit [sentryguard.org](https://sentryguard.org) and log in with your Tesla account to join our waitlist!
 >
-> **Sign up for beta access here**:
->
-> - [French](https://tally.so/r/LZ1WDv)
-> - [English](https://tally.so/r/EkzNoX)
->
-> Help us improve SentryGuard by being an early adopter. Your feedback will shape the future of the platform!
+> We'll notify you as soon as access becomes available.
 
 ---
 
