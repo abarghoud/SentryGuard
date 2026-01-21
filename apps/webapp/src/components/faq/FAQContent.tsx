@@ -205,6 +205,47 @@ export default function FAQContent() {
       ]
     },
     {
+      title: t('Beta & Waitlist'),
+      items: [
+        {
+          question: t('Why is there a waitlist?'),
+          answer: t('Why is there a waitlist answer')
+        },
+        {
+          question: t('How long does waitlist approval take?'),
+          answer: t('How long does waitlist approval take answer')
+        },
+        {
+          question: t('What happens after I\'m approved?'),
+          answer: t('What happens after I\'m approved answer')
+        },
+        {
+          question: t('I signed up but didn\'t receive an approval email'),
+          answer: t('I signed up but didn\'t receive an approval email answer')
+        },
+        {
+          question: t('Can I check my waitlist status?'),
+          answer: t('Can I check my waitlist status answer')
+        },
+        {
+          question: t('Can I use SentryGuard while on the waitlist?'),
+          answer: t('Can I use SentryGuard while on the waitlist answer')
+        },
+        {
+          question: t('What if I try to log in before being approved?'),
+          answer: t('What if I try to log in before being approved answer')
+        },
+        {
+          question: t('When is the official launch?'),
+          answer: t('When is the official launch answer')
+        },
+        {
+          question: t('Should I wait for the launch or join the beta waitlist?'),
+          answer: t('Should I wait for the launch or join the beta waitlist answer')
+        }
+      ]
+    },
+    {
       title: t('Support & Donations'),
       items: [
         {

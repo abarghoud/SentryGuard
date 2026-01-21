@@ -54,9 +54,15 @@ function WaitlistContent() {
                 "Your account is pending approval. We'll send you an email once your account has been approved and you can start using SentryGuard."
               )}
             </p>
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+              <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                {t('SentryGuard is currently in beta with limited capacity')}
+              </p>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                {t('Current wait time is typically several weeks')}
+              </p>
               <p className="text-sm text-blue-700 dark:text-blue-300">
-                {t('Approval is typically processed within 24-48 hours.')}
+                {t('Official launch coming soon with faster approvals')}
               </p>
             </div>
           </div>
