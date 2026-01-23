@@ -46,6 +46,12 @@ export class User {
   @Column({ type: 'varchar', length: 2, default: 'en' })
   preferred_language!: string;
 
+  @Column({ type: 'boolean', default: false })
+  onboarding_completed!: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  onboarding_skipped!: boolean;
+
   @CreateDateColumn()
   created_at!: Date;
 

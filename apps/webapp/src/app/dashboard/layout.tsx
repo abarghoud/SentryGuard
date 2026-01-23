@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../lib/useAuth';
 import { useConsent } from '../../lib/useConsent';
+import { useOnboarding } from '../../lib/useOnboarding';
 import MissingScopesBanner from '../../components/MissingScopesBanner';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
@@ -17,6 +18,7 @@ export default function DashboardLayout({
   const { t } = useTranslation('common');
   const { isAuthenticated, isLoading, logout, profile, scopeError } = useAuth();
   const { hasConsent, isLoading: consentLoading } = useConsent();
+  const { isComplete: isOnboardingComplete, isLoading: onboardingLoading } = useOnboarding();
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -50,6 +52,12 @@ export default function DashboardLayout({
       router.push('/consent');
     }
   }, [isAuthenticated, hasConsent, consentLoading, router]);
+
+  useEffect(() => {
+    if (!onboardingLoading && isAuthenticated && hasConsent && !isOnboardingComplete) {
+      router.push('/onboarding');
+    }
+  }, [isAuthenticated, hasConsent, isOnboardingComplete, onboardingLoading, router]);
 
   if (isLoading) {
     return (
