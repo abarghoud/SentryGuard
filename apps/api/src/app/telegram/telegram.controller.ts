@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
 import {
   TelegramConfig,
@@ -50,24 +50,20 @@ export class TelegramController {
       `📱 Generating Telegram link for user: ${userId} (${user.email})`
     );
 
-    // Vérifier s'il existe déjà une configuration
     const existingConfig = await this.telegramConfigRepository.findOne({
       where: { userId },
     });
 
-    // Générer un token unique
     const linkToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + this.LINK_EXPIRATION_MINUTES);
 
     if (existingConfig) {
-      // Mettre à jour le token existant
       existingConfig.link_token = linkToken;
       existingConfig.status = TelegramLinkStatus.PENDING;
       existingConfig.expires_at = expiresAt;
       await this.telegramConfigRepository.save(existingConfig);
     } else {
-      // Créer une nouvelle configuration
       const config = this.telegramConfigRepository.create({
         userId,
         link_token: linkToken,
@@ -77,7 +73,6 @@ export class TelegramController {
       await this.telegramConfigRepository.save(config);
     }
 
-    // Récupérer le username du bot
     const botUsername = await this.telegramBotService.getBotUsername();
 
     if (!botUsername) {
@@ -121,7 +116,6 @@ export class TelegramController {
       };
     }
 
-    // Vérifier si le lien a expiré
     if (
       config.status === TelegramLinkStatus.PENDING &&
       config.expires_at &&
@@ -202,28 +196,6 @@ export class TelegramController {
       message: success
         ? 'Message sent successfully'
         : 'Failed to send message. Verify that the account is linked.',
-    };
-  }
-
-  /**
-   * Clean up expired tokens (maintenance task)
-   * POST /telegram/cleanup-expired
-   */
-  @Throttle(ThrottleOptions.critical())
-  @Post('cleanup-expired')
-  async cleanupExpiredTokens() {
-    this.logger.log('🧹 Cleaning up expired tokens');
-
-    const now = new Date();
-    const result = await this.telegramConfigRepository.delete({
-      status: TelegramLinkStatus.PENDING,
-      expires_at: LessThan(now),
-    });
-
-    return {
-      success: true,
-      deleted: result.affected || 0,
-      message: `${result.affected || 0} expired token(s) deleted`,
     };
   }
 }
