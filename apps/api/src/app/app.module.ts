@@ -17,6 +17,7 @@ import { TelemetryModule } from './telemetry/telemetry.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { UserModule } from './user/user.module';
 import { RedirectModule } from './redirect/redirect.module';
+import { TeslaPublicKeyModule } from './tesla-public-key/tesla-public-key.module';
 import { CloudflareThrottlerGuard } from '../common/guards/cloudflare-throttler.guard';
 import { TokenRevokedExceptionFilter } from '../common/filters/token-revoked-exception.filter';
 import { getDatabaseConfig } from '../config/database.config';
@@ -39,6 +40,7 @@ import { RetryManager } from './messaging/kafka/retry-manager.service';
     TelegramModule,
     UserModule,
     RedirectModule,
+    TeslaPublicKeyModule,
     ThrottlerModule.forRoot([getThrottleConfig()]),
   ],
   controllers: [AppController],
