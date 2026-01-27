@@ -50,7 +50,7 @@ export default function RootLayout({
           />
           <Script
             id="crisp-widget"
-            strategy="beforeInteractive"
+            strategy="afterInteractive"
           >
             {`
               window.$crisp = [];

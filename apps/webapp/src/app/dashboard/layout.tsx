@@ -20,6 +20,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   const handleFixScopes = () => {
     const missingScopes = scopeError?.missingScopes.join(',') || '';
@@ -40,18 +41,22 @@ export default function DashboardLayout({
   };
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/');
-    }
-  }, [isAuthenticated, isLoading, router]);
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
-    if (!consentLoading && isAuthenticated && !hasConsent) {
+    if (isMounted && !isLoading && !isAuthenticated) {
+      router.push('/');
+    }
+  }, [isMounted, isAuthenticated, isLoading, router]);
+
+  useEffect(() => {
+    if (isMounted && !consentLoading && isAuthenticated && !hasConsent) {
       router.push('/consent');
     }
-  }, [isAuthenticated, hasConsent, consentLoading, router]);
+  }, [isMounted, isAuthenticated, hasConsent, consentLoading, router]);
 
-  if (isLoading) {
+  if (!isMounted || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>

@@ -2,7 +2,7 @@
 
 import { createInstance, Resource, i18n as I18n } from 'i18next';
 import { I18nextProvider, initReactI18next } from 'react-i18next';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { getUserLanguage, hasToken } from '../lib/api';
 
 const resources: Resource = {
@@ -26,26 +26,22 @@ interface I18nProviderProps {
   children: React.ReactNode;
 }
 
+if (!i18n.isInitialized) {
+  i18n.use(initReactI18next).init({
+    lng: 'en',
+    fallbackLng: 'en',
+    defaultNS: 'common',
+    resources,
+    initImmediate: false,
+    react: {
+      useSuspense: false,
+    },
+  });
+}
+
 export default function I18nProvider({ children }: I18nProviderProps) {
-  const [isLoaded, setIsLoaded] = useState(false);
-
   useEffect(() => {
-    const initializeI18n = async () => {
-      if (!i18n.isInitialized) {
-        await i18n
-          .use(initReactI18next)
-          .init({
-            lng: 'en',
-            fallbackLng: 'en',
-            defaultNS: 'common',
-            resources,
-            initImmediate: false,
-            react: {
-              useSuspense: false,
-            },
-          });
-      }
-
+    const updateLanguage = async () => {
       let languageToUse = 'en';
 
       if (hasToken()) {
@@ -61,21 +57,22 @@ export default function I18nProvider({ children }: I18nProviderProps) {
         languageToUse = browserLang === 'fr' ? 'fr' : 'en';
       }
 
-      await i18n.changeLanguage(languageToUse);
-      document.documentElement.lang = languageToUse;
-      setIsLoaded(true);
+      if (i18n.language !== languageToUse) {
+        await i18n.changeLanguage(languageToUse);
+        document.documentElement.lang = languageToUse;
+      }
     };
 
-    initializeI18n();
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      requestIdleCallback(() => {
+        updateLanguage();
+      });
+    } else {
+      setTimeout(() => {
+        updateLanguage();
+      }, 100);
+    }
   }, []);
-
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tesla-600"></div>
-      </div>
-    );
-  }
 
   return (
     <I18nextProvider i18n={i18n}>

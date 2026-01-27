@@ -68,7 +68,7 @@ export function Footer() {
   return (
     <footer className="container mx-auto px-6 py-8 border-t border-gray-300">
       <div className="text-center text-gray-700 text-sm">
-        <p>
+        <p suppressHydrationWarning>
           {t('© {{year}} SentryGuard. All rights reserved.', {
             year: new Date().getFullYear(),
           })}
