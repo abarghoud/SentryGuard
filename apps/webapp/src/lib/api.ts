@@ -371,19 +371,6 @@ export async function sendTestMessage(message?: string): Promise<{
   });
 }
 
-/**
- * Cleanup expired Telegram tokens (requires JWT)
- */
-export async function cleanupExpiredTelegramTokens(): Promise<{
-  success: boolean;
-  deleted: number;
-  message: string;
-}> {
-  return apiRequest('/telegram/cleanup-expired', {
-    method: 'POST',
-  });
-}
-
 export interface UpdateLanguageResponse {
   success: boolean;
   language: string;
@@ -465,6 +452,26 @@ export async function acceptConsent(
 
 export async function revokeConsent(): Promise<{ success: boolean; message: string }> {
   return apiRequest('/consent/revoke', {
+    method: 'POST',
+  });
+}
+
+export interface OnboardingStatus {
+  isComplete: boolean;
+}
+
+export async function getOnboardingStatus(): Promise<OnboardingStatus> {
+  return apiRequest('/onboarding/status');
+}
+
+export async function completeOnboarding(): Promise<{ success: boolean }> {
+  return apiRequest('/onboarding/complete', {
+    method: 'POST',
+  });
+}
+
+export async function skipOnboarding(): Promise<{ success: boolean }> {
+  return apiRequest('/onboarding/skip', {
     method: 'POST',
   });
 }

@@ -12,11 +12,12 @@ export class EmailContentBuilderService {
     fullName: string | undefined,
     language: string
   ): EmailContent {
-    const displayName = fullName || i18n.t('user', { lng: language });
+    const bodyKey = fullName ? 'welcomeEmailBody' : 'welcomeEmailBodyNoName';
+    const interpolation = fullName ? { name: fullName } : {};
 
     return {
       subject: i18n.t('welcomeEmailSubject', { lng: language }),
-      body: i18n.t('welcomeEmailBody', { lng: language, name: displayName }),
+      body: i18n.t(bodyKey, { lng: language, ...interpolation }),
     };
   }
 }

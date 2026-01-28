@@ -53,36 +53,30 @@ describe('The EmailContentBuilderService class', () => {
 
     describe('When fullName is not provided', () => {
       const language = 'fr';
-      const expectedUserLabel = 'utilisateur';
       const expectedSubject = 'Bienvenue sur SentryGuard !';
-      const expectedBody = '<html>Bienvenue utilisateur</html>';
+      const expectedBody = '<html>Bienvenue</html>';
 
       let result: { subject: string; body: string };
 
       beforeEach(() => {
         mockedI18n.t.mockImplementation((key: string, options?: any) => {
-          if (key === 'user') return expectedUserLabel;
           if (key === 'welcomeEmailSubject') return expectedSubject;
-          if (key === 'welcomeEmailBody') return expectedBody;
+          if (key === 'welcomeEmailBodyNoName') return expectedBody;
           return '';
         });
 
         result = service.buildWelcomeEmail(undefined, language);
       });
 
-      it('should use fallback user label', () => {
-        expect(mockedI18n.t).toHaveBeenCalledWith('user', { lng: language });
+      it('should call i18n with welcomeEmailBodyNoName key', () => {
+        expect(mockedI18n.t).toHaveBeenCalledWith('welcomeEmailBodyNoName', { lng: language });
       });
 
-      it('should return email content with body using fallback name', () => {
-        expect(mockedI18n.t).toHaveBeenCalledWith('welcomeEmailBody', {
-          lng: language,
-          name: expectedUserLabel,
-        });
-      });
-
-      it('should return correct email content', () => {
+      it('should return email content with subject', () => {
         expect(result.subject).toBe(expectedSubject);
+      });
+
+      it('should return email content with body', () => {
         expect(result.body).toBe(expectedBody);
       });
     });
