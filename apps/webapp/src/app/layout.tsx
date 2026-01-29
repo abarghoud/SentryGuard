@@ -25,6 +25,9 @@ export const metadata: Metadata = {
       'Monitor and protect your Tesla vehicle with real-time alerts and telemetry',
     type: 'website',
   },
+  other: {
+    google: 'notranslate'
+  }
 };
 
 export default function RootLayout({
@@ -34,7 +37,7 @@ export default function RootLayout({
 }) {
   return (
     <RollbarProvider config={clientConfig}>
-      <html lang="en" suppressHydrationWarning>
+      <html lang="en" suppressHydrationWarning translate="no">
         <head>
           <script
             src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js"
