@@ -334,5 +334,11 @@
   "Activating...": "Activating...",
   "Activate Telemetry": "Activate Telemetry",
   "✅ Telemetry enabled! Your setup is complete.": "✅ Telemetry enabled! Your setup is complete.",
-  "You will now receive instant Telegram alerts when suspicious activity is detected.": "You will now receive instant Telegram alerts when suspicious activity is detected."
+  "You will now receive instant Telegram alerts when suspicious activity is detected.": "You will now receive instant Telegram alerts when suspicious activity is detected.",
+  "What is the purpose of pairing a virtual key with SentryGuard?": "What is the purpose of pairing a virtual key with SentryGuard?",
+  "Virtual key purpose explanation": "The virtual key paired with your vehicle is SentryGuard's secure identifier. It allows your Tesla to verify that telemetry configuration messages genuinely come from SentryGuard. This provides an additional security layer beyond the authentication token generated when you first connect with Tesla. Your vehicle verifies both that you (the owner) have granted permissions to SentryGuard and that it's genuinely SentryGuard using those permissions, not a compromised or stolen access.",
+  "Does SentryGuard work without internet connection?": "Does SentryGuard work without internet connection?",
+  "Internet connection requirement explanation": "No, internet access is required for SentryGuard to function. When a Sentry Mode event occurs, your Tesla needs internet connectivity (via WiFi or cellular) to send the event data to our servers, which then forward the alert to you via Telegram. If your vehicle is in a location without internet access (such as an underground parking garage or a country where Tesla connectivity isn't available), alerts cannot be sent until the vehicle reconnects to the internet.",
+  "Why does the app crash when I use browser translation?": "Why does the app crash when I use browser translation?",
+  "Browser translation issue explanation": "Using your browser's automatic translation feature (such as Chrome's \"Translate this page\" or similar features in other browsers) can cause the application to crash or behave unexpectedly. SentryGuard already supports multiple languages natively. Instead of using browser translation, please use the language selector in the application's navigation bar to switch between English and French. This ensures a stable experience without any technical issues."
 }

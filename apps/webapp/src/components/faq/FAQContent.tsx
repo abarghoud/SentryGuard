@@ -133,6 +133,10 @@ export default function FAQContent() {
         {
           question: t('What if I can\'t enable telemetry for my vehicle?'),
           answer: t('Cannot enable telemetry help')
+        },
+        {
+          question: t('What is the purpose of pairing a virtual key with SentryGuard?'),
+          answer: t('Virtual key purpose explanation')
         }
       ]
     },
@@ -201,6 +205,14 @@ export default function FAQContent() {
         {
           question: t('Can I use SentryGuard with multiple vehicles?'),
           answer: t('Multiple vehicles support')
+        },
+        {
+          question: t('Does SentryGuard work without internet connection?'),
+          answer: t('Internet connection requirement explanation')
+        },
+        {
+          question: t('Why does the app crash when I use browser translation?'),
+          answer: t('Browser translation issue explanation')
         }
       ]
     },
