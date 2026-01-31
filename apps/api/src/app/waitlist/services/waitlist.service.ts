@@ -37,14 +37,36 @@ export class WaitlistService {
     return entry?.status === WaitlistStatus.Approved;
   }
 
-  public async getApprovedUsersWithoutWelcomeEmail(): Promise<Waitlist[]> {
-    return this.waitlistRepository.find({
-      where: {
-        approvedAt: Not(IsNull()),
-        status: WaitlistStatus.Approved,
-        welcomeEmailSentAt: IsNull(),
-      },
+  public async claimUsersForEmailScheduling(): Promise<Waitlist[]> {
+    return this.waitlistRepository.manager.transaction(async (manager) => {
+      const users = await manager.find(Waitlist, {
+        where: {
+          approvedAt: Not(IsNull()),
+          status: WaitlistStatus.Approved,
+          emailQueuedAt: IsNull(),
+          welcomeEmailSentAt: IsNull(),
+        },
+        lock: { mode: 'pessimistic_write', onLocked: 'skip_locked' },
+        take: 100,
+      });
+
+      if (users.length === 0) {
+        return [];
+      }
+
+      await manager.update(
+        Waitlist,
+        users.map((u) => u.id),
+        { emailQueuedAt: new Date() }
+      );
+
+      return users;
     });
+  }
+
+  public async resetEmailQueuedAt(id: string): Promise<void> {
+    await this.waitlistRepository.update(id, { emailQueuedAt: null });
+    this.logger.log(`Reset emailQueuedAt for waitlist entry: ${id}`);
   }
 
   public async sendWelcomeEmailAndMarkSent(entry: Waitlist): Promise<void> {

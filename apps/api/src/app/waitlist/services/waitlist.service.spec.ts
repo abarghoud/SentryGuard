@@ -204,10 +204,11 @@ describe('The WaitlistService class', () => {
     });
   });
 
-  describe('The getApprovedUsersWithoutWelcomeEmail() method', () => {
-    describe('When there are approved users without welcome email', () => {
+  describe('The claimUsersForEmailScheduling() method', () => {
+    describe('When there are approved users to claim', () => {
       let result: Waitlist[];
       let mockEntries: Waitlist[];
+      let mockManager: any;
 
       beforeEach(async () => {
         mockEntries = [
@@ -216,6 +217,7 @@ describe('The WaitlistService class', () => {
             email: 'user1@example.com',
             status: WaitlistStatus.Approved,
             approvedAt: new Date(),
+            emailQueuedAt: undefined,
             welcomeEmailSentAt: undefined,
           } as Waitlist,
           {
@@ -223,39 +225,90 @@ describe('The WaitlistService class', () => {
             email: 'user2@example.com',
             status: WaitlistStatus.Approved,
             approvedAt: new Date(),
+            emailQueuedAt: undefined,
             welcomeEmailSentAt: undefined,
           } as Waitlist,
         ];
 
-        mockWaitlistRepository.find.mockResolvedValue(mockEntries);
+        mockManager = {
+          find: jest.fn().mockResolvedValue(mockEntries),
+          update: jest.fn().mockResolvedValue({ affected: 2 }),
+        };
 
-        result = await service.getApprovedUsersWithoutWelcomeEmail();
+        mockWaitlistRepository.manager = {
+          transaction: jest.fn().mockImplementation(async (callback) => {
+            return callback(mockManager);
+          }),
+        } as any;
+
+        result = await service.claimUsersForEmailScheduling();
       });
 
-      it('should return the approved entries', () => {
+      it('should return the claimed entries', () => {
         expect(result).toEqual(mockEntries);
       });
 
-      it('should query with correct filters', () => {
-        expect(mockWaitlistRepository.find).toHaveBeenCalledWith({
-          where: expect.objectContaining({
-            status: WaitlistStatus.Approved,
-          }),
-        });
+      it('should query with SKIP LOCKED', () => {
+        expect(mockManager.find).toHaveBeenCalledWith(
+          Waitlist,
+          expect.objectContaining({
+            lock: { mode: 'pessimistic_write', onLocked: 'skip_locked' },
+          })
+        );
+      });
+
+      it('should update emailQueuedAt for claimed users', () => {
+        expect(mockManager.update).toHaveBeenCalledWith(
+          Waitlist,
+          ['entry-1', 'entry-2'],
+          expect.objectContaining({
+            emailQueuedAt: expect.any(Date),
+          })
+        );
       });
     });
 
-    describe('When there are no approved users without welcome email', () => {
+    describe('When there are no approved users to claim', () => {
       let result: Waitlist[];
+      let mockManager: any;
 
       beforeEach(async () => {
-        mockWaitlistRepository.find.mockResolvedValue([]);
+        mockManager = {
+          find: jest.fn().mockResolvedValue([]),
+          update: jest.fn(),
+        };
 
-        result = await service.getApprovedUsersWithoutWelcomeEmail();
+        mockWaitlistRepository.manager = {
+          transaction: jest.fn().mockImplementation(async (callback) => {
+            return callback(mockManager);
+          }),
+        } as any;
+
+        result = await service.claimUsersForEmailScheduling();
       });
 
       it('should return an empty array', () => {
         expect(result).toEqual([]);
+      });
+
+      it('should not update any entries', () => {
+        expect(mockManager.update).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('The resetEmailQueuedAt() method', () => {
+    const entryId = 'entry-123';
+
+    beforeEach(async () => {
+      mockWaitlistRepository.update.mockResolvedValue({ affected: 1 });
+
+      await service.resetEmailQueuedAt(entryId);
+    });
+
+    it('should update emailQueuedAt to null', () => {
+      expect(mockWaitlistRepository.update).toHaveBeenCalledWith(entryId, {
+        emailQueuedAt: null,
       });
     });
   });
