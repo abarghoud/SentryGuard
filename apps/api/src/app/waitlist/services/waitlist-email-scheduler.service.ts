@@ -10,7 +10,7 @@ export class WaitlistEmailSchedulerService {
 
   constructor(private readonly waitlistService: WaitlistService) {}
 
-  @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron(WAITLIST_EMAIL_CRON_EXPRESSION)
   public async processApprovedUsers(): Promise<void> {
     this.logger.log('Starting approved users email processing...');
 
