@@ -14,7 +14,7 @@ export enum WaitlistStatus {
 }
 
 @Entity('waitlist')
-@Index(['status', 'welcomeEmailSentAt'])
+@Index(['status', 'emailQueuedAt', 'welcomeEmailSentAt'])
 export class Waitlist {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -38,6 +38,9 @@ export class Waitlist {
 
   @Column({ type: 'timestamp', nullable: true })
   welcomeEmailSentAt?: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  emailQueuedAt?: Date;
 
   @Column({ type: 'varchar', length: 2, default: 'en' })
   preferredLanguage!: string;

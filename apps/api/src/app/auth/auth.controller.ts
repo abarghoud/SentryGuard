@@ -169,14 +169,4 @@ export class AuthController {
       message: 'Successfully logged out',
     };
   }
-
-  /**
-   * Authentication service statistics
-   * GET /auth/stats
-   */
-  @Throttle(ThrottleOptions.authenticatedRead())
-  @Get('stats')
-  async getStats() {
-    return await this.authService.getStats();
-  }
 }

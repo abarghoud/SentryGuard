@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { EntityManager, UpdateResult } from 'typeorm';
 import { WaitlistService } from './waitlist.service';
 import { Waitlist, WaitlistStatus } from '../../../entities/waitlist.entity';
 import {
@@ -9,12 +10,23 @@ import {
 import { EmailContentBuilderService } from './email-content-builder.service';
 import { mock, MockProxy } from 'jest-mock-extended';
 
+const mockRepositoryManager = mock<EntityManager>();
+
+mockRepositoryManager.transaction.mockImplementation(async (callback) => {
+  if (typeof callback == 'function') {
+    return callback(mockRepositoryManager);
+  }
+
+  return undefined;
+});
+
 const mockWaitlistRepository = {
   findOne: jest.fn(),
-  find: jest.fn(),
   create: jest.fn(),
   save: jest.fn(),
   update: jest.fn(),
+  find: jest.fn(),
+  manager: mockRepositoryManager,
 };
 
 describe('The WaitlistService class', () => {
@@ -204,59 +216,97 @@ describe('The WaitlistService class', () => {
     });
   });
 
-  describe('The getApprovedUsersWithoutWelcomeEmail() method', () => {
-    describe('When there are approved users without welcome email', () => {
+  describe('The claimUsersForEmailScheduling() method', () => {
+    describe('When there are approved users to claim', () => {
       let result: Waitlist[];
-      let mockEntries: Waitlist[];
+      const mockEntries = [
+        {
+          id: 'entry-1',
+          email: 'user1@example.com',
+          status: WaitlistStatus.Approved,
+          approvedAt: new Date(),
+          emailQueuedAt: undefined,
+          welcomeEmailSentAt: undefined,
+        } as Waitlist,
+        {
+          id: 'entry-2',
+          email: 'user2@example.com',
+          status: WaitlistStatus.Approved,
+          approvedAt: new Date(),
+          emailQueuedAt: undefined,
+          welcomeEmailSentAt: undefined,
+        } as Waitlist,
+      ];
 
       beforeEach(async () => {
-        mockEntries = [
-          {
-            id: 'entry-1',
-            email: 'user1@example.com',
-            status: WaitlistStatus.Approved,
-            approvedAt: new Date(),
-            welcomeEmailSentAt: undefined,
-          } as Waitlist,
-          {
-            id: 'entry-2',
-            email: 'user2@example.com',
-            status: WaitlistStatus.Approved,
-            approvedAt: new Date(),
-            welcomeEmailSentAt: undefined,
-          } as Waitlist,
-        ];
+        mockRepositoryManager.find.mockResolvedValue(mockEntries);
+        mockRepositoryManager.update.mockResolvedValue({ affected: 2 } as UpdateResult);
 
-        mockWaitlistRepository.find.mockResolvedValue(mockEntries);
-
-        result = await service.getApprovedUsersWithoutWelcomeEmail();
+        result = await service.claimUsersForEmailScheduling();
       });
 
-      it('should return the approved entries', () => {
+      it('should return the claimed entries', () => {
         expect(result).toEqual(mockEntries);
       });
 
-      it('should query with correct filters', () => {
-        expect(mockWaitlistRepository.find).toHaveBeenCalledWith({
-          where: expect.objectContaining({
-            status: WaitlistStatus.Approved,
-          }),
-        });
+      it('should query with SKIP LOCKED', () => {
+        expect(mockRepositoryManager.find).toHaveBeenCalledWith(
+          Waitlist,
+          expect.objectContaining({
+            lock: { mode: 'pessimistic_write', onLocked: 'skip_locked' },
+          })
+        );
+      });
+
+      it('should update emailQueuedAt for claimed users', () => {
+        expect(mockRepositoryManager.update).toHaveBeenCalledWith(
+          Waitlist,
+          ['entry-1', 'entry-2'],
+          expect.objectContaining({
+            emailQueuedAt: expect.any(Date),
+          })
+        );
       });
     });
 
-    describe('When there are no approved users without welcome email', () => {
+    describe('When there are no approved users to claim', () => {
       let result: Waitlist[];
 
       beforeEach(async () => {
-        mockWaitlistRepository.find.mockResolvedValue([]);
+        mockRepositoryManager.find.mockResolvedValue([]);
 
-        result = await service.getApprovedUsersWithoutWelcomeEmail();
+        result = await service.claimUsersForEmailScheduling();
       });
 
       it('should return an empty array', () => {
         expect(result).toEqual([]);
       });
+
+      it('should not update any entries', () => {
+        expect(mockRepositoryManager.update).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('The resetEmailQueuedAt() method', () => {
+    const entryId = 'entry-123';
+
+    beforeEach(async () => {
+      mockWaitlistRepository.update.mockResolvedValue({ affected: 1 } as UpdateResult);
+
+      await service.resetEmailQueuedAt(entryId);
+    });
+
+    it('should update emailQueuedAt to null', () => {
+      expect(mockWaitlistRepository.update).toHaveBeenCalledWith(
+        entryId,
+        expect.objectContaining({
+          emailQueuedAt: expect.any(Function),
+        })
+      );
+
+      const callArgs = mockWaitlistRepository.update.mock.calls[0][1];
+      expect((callArgs.emailQueuedAt as CallableFunction)?.()).toBe('NULL');
     });
   });
 
@@ -276,7 +326,7 @@ describe('The WaitlistService class', () => {
           body: '<h1>Welcome, Test User!</h1>',
         });
         mockEmailService.sendEmail.mockResolvedValue(undefined);
-        mockWaitlistRepository.update.mockResolvedValue({ affected: 1 });
+        mockWaitlistRepository.update.mockResolvedValue({ affected: 1 } as UpdateResult);
 
         await service.sendWelcomeEmailAndMarkSent(mockEntry);
       });

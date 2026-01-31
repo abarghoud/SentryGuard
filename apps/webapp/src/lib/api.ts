@@ -242,17 +242,6 @@ export async function logout(): Promise<void> {
   }
 }
 
-/**
- * Get auth service statistics
- */
-export async function getAuthStats(): Promise<{
-  activeUsers: number;
-  pendingStates: number;
-  activeJwtTokens: number;
-}> {
-  return apiRequest('/auth/stats');
-}
-
 // ============ Vehicles API ============
 
 export interface Vehicle {

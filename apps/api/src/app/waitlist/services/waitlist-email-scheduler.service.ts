@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { WaitlistService } from './waitlist.service';
 import type { Waitlist } from '../../../entities/waitlist.entity';
 import { WAITLIST_EMAIL_CRON_EXPRESSION } from '../../../config/waitlist-cron.config';
@@ -10,12 +10,11 @@ export class WaitlistEmailSchedulerService {
 
   constructor(private readonly waitlistService: WaitlistService) {}
 
-  @Cron(WAITLIST_EMAIL_CRON_EXPRESSION)
+  @Cron(CronExpression.EVERY_10_SECONDS)
   public async processApprovedUsers(): Promise<void> {
     this.logger.log('Starting approved users email processing...');
 
-    const approvedUsers =
-      await this.waitlistService.getApprovedUsersWithoutWelcomeEmail();
+    const approvedUsers = await this.waitlistService.claimUsersForEmailScheduling();
 
     if (approvedUsers.length === 0) {
       this.logger.log('No newly approved users to process');
@@ -23,7 +22,7 @@ export class WaitlistEmailSchedulerService {
     }
 
     this.logger.log(
-      `Found ${approvedUsers.length} approved users without welcome email`
+      `Claimed ${approvedUsers.length} approved users for email sending`
     );
 
     await this.sendWelcomeEmails(approvedUsers);
@@ -34,7 +33,7 @@ export class WaitlistEmailSchedulerService {
     let successCount = 0;
 
     for (const user of users) {
-      const isSuccess = await this.sendWelcomeEmailSafely(user);
+      const isSuccess = await this.sendEmailSafely(user);
       if (isSuccess) {
         successCount++;
       } else {
@@ -47,9 +46,11 @@ export class WaitlistEmailSchedulerService {
     );
   }
 
-  private async sendWelcomeEmailSafely(user: Waitlist): Promise<boolean> {
+  private async sendEmailSafely(user: Waitlist): Promise<boolean> {
     try {
       await this.waitlistService.sendWelcomeEmailAndMarkSent(user);
+
+      this.logger.log(`Welcome email sent successfully to ${user.email}`);
       return true;
     } catch (error) {
       const errorMessage =
@@ -57,6 +58,8 @@ export class WaitlistEmailSchedulerService {
       this.logger.error(
         `Failed to send welcome email to ${user.email}: ${errorMessage}`
       );
+
+      await this.waitlistService.resetEmailQueuedAt(user.id);
       return false;
     }
   }

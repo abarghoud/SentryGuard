@@ -4,8 +4,9 @@ import { WaitlistService } from './waitlist.service';
 import { Waitlist, WaitlistStatus } from '../../../entities/waitlist.entity';
 
 const mockWaitlistService = {
-  getApprovedUsersWithoutWelcomeEmail: jest.fn(),
+  claimUsersForEmailScheduling: jest.fn(),
   sendWelcomeEmailAndMarkSent: jest.fn(),
+  resetEmailQueuedAt: jest.fn(),
 };
 
 describe('The WaitlistEmailSchedulerService class', () => {
@@ -32,16 +33,14 @@ describe('The WaitlistEmailSchedulerService class', () => {
   describe('The processApprovedUsers() method', () => {
     describe('When there are no approved users', () => {
       beforeEach(async () => {
-        mockWaitlistService.getApprovedUsersWithoutWelcomeEmail.mockResolvedValue(
-          []
-        );
+        mockWaitlistService.claimUsersForEmailScheduling.mockResolvedValue([]);
 
         await service.processApprovedUsers();
       });
 
-      it('should fetch approved users without welcome email', () => {
+      it('should claim users for email scheduling', () => {
         expect(
-          mockWaitlistService.getApprovedUsersWithoutWelcomeEmail
+          mockWaitlistService.claimUsersForEmailScheduling
         ).toHaveBeenCalled();
       });
 
@@ -73,7 +72,7 @@ describe('The WaitlistEmailSchedulerService class', () => {
           } as Waitlist,
         ];
 
-        mockWaitlistService.getApprovedUsersWithoutWelcomeEmail.mockResolvedValue(
+        mockWaitlistService.claimUsersForEmailScheduling.mockResolvedValue(
           mockUsers
         );
         mockWaitlistService.sendWelcomeEmailAndMarkSent.mockResolvedValue(
@@ -83,55 +82,68 @@ describe('The WaitlistEmailSchedulerService class', () => {
         await service.processApprovedUsers();
       });
 
-      it('should send welcome email to each user', () => {
+      it('should send email for each user', () => {
         expect(
           mockWaitlistService.sendWelcomeEmailAndMarkSent
         ).toHaveBeenCalledTimes(2);
       });
 
-      it('should send email to first user', () => {
+      it('should send email for first user', () => {
         expect(
           mockWaitlistService.sendWelcomeEmailAndMarkSent
         ).toHaveBeenCalledWith(mockUsers[0]);
       });
 
-      it('should send email to second user', () => {
+      it('should send email for second user', () => {
         expect(
           mockWaitlistService.sendWelcomeEmailAndMarkSent
         ).toHaveBeenCalledWith(mockUsers[1]);
+      });
+
+      it('should not reset emailQueuedAt for any user', () => {
+        expect(mockWaitlistService.resetEmailQueuedAt).not.toHaveBeenCalled();
       });
     });
 
     describe('When email sending fails for one user', () => {
       let mockUsers: Waitlist[];
+      const expectedError = 'Email service unavailable';
 
       beforeEach(async () => {
         mockUsers = [
           {
             id: 'user-1',
             email: 'user1@example.com',
+            fullName: 'User One',
+            preferredLanguage: 'en',
             status: WaitlistStatus.Approved,
           } as Waitlist,
           {
             id: 'user-2',
             email: 'user2@example.com',
+            fullName: 'User Two',
+            preferredLanguage: 'fr',
             status: WaitlistStatus.Approved,
           } as Waitlist,
           {
             id: 'user-3',
             email: 'user3@example.com',
+            fullName: 'User Three',
+            preferredLanguage: 'de',
             status: WaitlistStatus.Approved,
           } as Waitlist,
         ];
 
-        mockWaitlistService.getApprovedUsersWithoutWelcomeEmail.mockResolvedValue(
+        mockWaitlistService.claimUsersForEmailScheduling.mockResolvedValue(
           mockUsers
         );
 
         mockWaitlistService.sendWelcomeEmailAndMarkSent
           .mockResolvedValueOnce(undefined)
-          .mockRejectedValueOnce(new Error('Email failed'))
+          .mockRejectedValueOnce(new Error(expectedError))
           .mockResolvedValueOnce(undefined);
+
+        mockWaitlistService.resetEmailQueuedAt.mockResolvedValue(undefined);
 
         await service.processApprovedUsers();
       });
@@ -142,22 +154,34 @@ describe('The WaitlistEmailSchedulerService class', () => {
         ).toHaveBeenCalledTimes(3);
       });
 
-      it('should process first user', () => {
+      it('should send email for first user', () => {
         expect(
           mockWaitlistService.sendWelcomeEmailAndMarkSent
-        ).toHaveBeenCalledWith(mockUsers[0]);
+        ).toHaveBeenNthCalledWith(1, mockUsers[0]);
       });
 
-      it('should process second user despite failure', () => {
+      it('should attempt to send email for second user despite failure', () => {
         expect(
           mockWaitlistService.sendWelcomeEmailAndMarkSent
-        ).toHaveBeenCalledWith(mockUsers[1]);
+        ).toHaveBeenNthCalledWith(2, mockUsers[1]);
       });
 
-      it('should process third user after second fails', () => {
+      it('should send email for third user after second fails', () => {
         expect(
           mockWaitlistService.sendWelcomeEmailAndMarkSent
-        ).toHaveBeenCalledWith(mockUsers[2]);
+        ).toHaveBeenNthCalledWith(3, mockUsers[2]);
+      });
+
+      it('should reset emailQueuedAt for failed user', () => {
+        expect(mockWaitlistService.resetEmailQueuedAt).toHaveBeenCalledWith(
+          'user-2'
+        );
+      });
+
+      it('should not reset emailQueuedAt for successful users', () => {
+        expect(mockWaitlistService.resetEmailQueuedAt).toHaveBeenCalledTimes(
+          1
+        );
       });
     });
   });
