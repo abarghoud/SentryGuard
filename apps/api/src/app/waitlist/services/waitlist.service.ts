@@ -47,7 +47,7 @@ export class WaitlistService {
           welcomeEmailSentAt: IsNull(),
         },
         lock: { mode: 'pessimistic_write', onLocked: 'skip_locked' },
-        take: 100,
+        take: 20,
       });
 
       if (users.length === 0) {
@@ -56,7 +56,7 @@ export class WaitlistService {
 
       await manager.update(
         Waitlist,
-        users.map((u) => u.id),
+        users.map((user) => user.id),
         { emailQueuedAt: new Date() }
       );
 
@@ -65,7 +65,7 @@ export class WaitlistService {
   }
 
   public async resetEmailQueuedAt(id: string): Promise<void> {
-    await this.waitlistRepository.update(id, { emailQueuedAt: null });
+    await this.waitlistRepository.update(id, { emailQueuedAt: () => 'NULL' });
     this.logger.log(`Reset emailQueuedAt for waitlist entry: ${id}`);
   }
 

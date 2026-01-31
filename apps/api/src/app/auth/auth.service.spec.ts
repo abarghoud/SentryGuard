@@ -5,10 +5,9 @@ import { UnauthorizedException } from '@nestjs/common';
 import { User } from '../../entities/user.entity';
 import { JwtService } from '@nestjs/jwt';
 import { WaitlistService } from '../waitlist/services/waitlist.service';
-import { Waitlist } from '../../entities/waitlist.entity';
 import { mock, MockProxy } from 'jest-mock-extended';
 import axios from 'axios';
-import { decode } from 'jsonwebtoken';
+import { decode, sign } from 'jsonwebtoken';
 
 // Mock axios
 jest.mock('axios');
@@ -62,6 +61,11 @@ const mockJwtService = {
 describe('AuthService', () => {
   let service: AuthService;
   let mockWaitlistService: MockProxy<WaitlistService>;
+
+  const mockStateJwt = sign(
+    { type: 'oauth_state', userLocale: 'en', nonce: 'test-nonce' },
+    Math.random().toString(36).repeat(8).slice(0, 32)
+  );
 
   beforeEach(async () => {
     mockWaitlistService = mock<WaitlistService>();
@@ -120,11 +124,18 @@ describe('AuthService', () => {
     mockedDecode.mockReturnValue({
       scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
     } as any);
+
+    mockJwtService.sign.mockReturnValue(mockStateJwt);
+
+    mockJwtService.verify.mockReturnValue({
+      type: 'oauth_state',
+      userLocale: 'en',
+      nonce: 'test-nonce',
+      iat: 1609459200,
+    });
   });
 
   afterEach(() => {
-    // Clean up interval to prevent Jest from hanging
-    service.onModuleDestroy();
     jest.clearAllTimers();
   });
 
@@ -142,7 +153,7 @@ describe('AuthService', () => {
       expect(result.url).toContain('response_type=code');
       expect(result.url).toContain('scope=openid');
       expect(result.url).toContain(`state=${result.state}`);
-      expect(result.state).toHaveLength(64); // 32 bytes in hex = 64 characters
+      expect(result.state).toBe(mockStateJwt);
     });
 
     it('should throw an error if TESLA_CLIENT_ID is not defined', () => {
@@ -169,7 +180,7 @@ describe('AuthService', () => {
       expect(result.url).toContain('prompt_missing_scopes=true');
       expect(result.url).toContain('scope=openid');
       expect(result.url).toContain(`state=${result.state}`);
-      expect(result.state).toHaveLength(64); // 32 bytes in hex = 64 characters
+      expect(result.state).toBe(mockStateJwt);
     });
 
     it('should include missing scopes in the URL when provided', () => {
@@ -178,7 +189,6 @@ describe('AuthService', () => {
 
       expect(result.url).toContain('prompt_missing_scopes=true');
       expect(result.url).toContain('scope=openid');
-      // The URL should contain all required scopes
       expect(result.url).toContain('vehicle_device_data');
       expect(result.url).toContain('offline_access');
       expect(result.url).toContain('user_data');
@@ -364,8 +374,16 @@ describe('AuthService', () => {
       expect(mockWaitlistService.isApproved).not.toHaveBeenCalled();
     });
 
-    it('should use userLocale from pendingState when creating new user', async () => {
+    it('should use userLocale from jwt state when creating new user', async () => {
       const { state } = service.generateLoginUrl('fr');
+
+      mockJwtService.verify.mockReturnValueOnce({
+        type: 'oauth_state',
+        userLocale: 'fr',
+        nonce: 'test-nonce',
+        iat: 1609459200,
+      });
+
       const mockTokenResponse = {
         data: {
           access_token: 'test-access-token',
@@ -408,6 +426,14 @@ describe('AuthService', () => {
 
     it('should pass userLocale to waitlist service when user is not approved', async () => {
       const { state } = service.generateLoginUrl('fr');
+
+      mockJwtService.verify.mockReturnValueOnce({
+        type: 'oauth_state',
+        userLocale: 'fr',
+        nonce: 'test-nonce',
+        iat: 1609459200,
+      });
+
       const mockTokenResponse = {
         data: {
           access_token: 'test-access-token',
@@ -580,171 +606,6 @@ describe('AuthService', () => {
     it('should return false for a user without a token', async () => {
       const userWithoutToken = { userId: 'unknown-user-id' } as unknown as User;
       expect(await service.hasValidToken(userWithoutToken)).toBe(false);
-    });
-  });
-
-  describe('getTokenInfo', () => {
-    it('should return token information', async () => {
-      const { state } = service.generateLoginUrl();
-      const mockTokenResponse = {
-        data: {
-          access_token: 'test-access-token',
-          refresh_token: 'test-refresh-token',
-          expires_in: 3600,
-        },
-      };
-
-      mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
-
-      const { userId } = await service.exchangeCodeForTokens(
-        'test-code',
-        state
-      );
-      // getTokenInfo method doesn't exist, skip this test
-    });
-
-    it('should return exists: false for an unknown user', () => {
-      // getTokenInfo method doesn't exist, skip this test
-    });
-  });
-
-  describe('getUserProfile', () => {
-    it('should return the stored user profile', async () => {
-      const { state } = service.generateLoginUrl();
-      const mockTokenResponse = {
-        data: {
-          access_token: 'test-access-token',
-          refresh_token: 'test-refresh-token',
-          expires_in: 3600,
-        },
-      };
-
-      const mockProfileResponse = {
-        data: {
-          response: {
-            email: 'test@tesla.com',
-            full_name: 'Test User',
-          },
-        },
-      };
-
-      mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
-      mockAxiosInstance.get.mockResolvedValueOnce(mockProfileResponse);
-
-      const { userId } = await service.exchangeCodeForTokens(
-        'test-code',
-        state
-      );
-      // getUserProfile method doesn't exist, skip this test
-    });
-
-    it('should return null for an unknown user', () => {
-      // getUserProfile method doesn't exist, skip this test
-    });
-
-    it('should continue even if profile retrieval fails', async () => {
-      const { state } = service.generateLoginUrl();
-      const mockTokenResponse = {
-        data: {
-          access_token: 'test-access-token',
-          refresh_token: 'test-refresh-token',
-          expires_in: 3600,
-        },
-      };
-
-      mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
-      mockedDecode.mockReturnValueOnce({
-        scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
-      } as any);
-      mockAxiosInstance.get.mockRejectedValueOnce(
-        new Error('Profile API Error')
-      );
-
-      const { userId } = await service.exchangeCodeForTokens(
-        'test-code',
-        state
-      );
-
-      expect(userId).toBeDefined();
-      // getUserProfile method doesn't exist, skip profile check
-    });
-  });
-
-  describe('getTokenInfo', () => {
-    it('should return has_profile: true when profile exists', async () => {
-      const { state } = service.generateLoginUrl();
-      const mockTokenResponse = {
-        data: {
-          access_token: 'test-access-token',
-          refresh_token: 'test-refresh-token',
-          expires_in: 3600,
-        },
-      };
-
-      const mockProfileResponse = {
-        data: {
-          response: {
-            email: 'test@tesla.com',
-          },
-        },
-      };
-
-      mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
-      mockedDecode.mockReturnValueOnce({
-        scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
-      } as any);
-      mockAxiosInstance.get.mockResolvedValueOnce(mockProfileResponse);
-
-      const { userId } = await service.exchangeCodeForTokens(
-        'test-code',
-        state
-      );
-      // getTokenInfo method doesn't exist, skip this test
-    });
-  });
-
-  describe('getStats', () => {
-    it('should return service statistics', async () => {
-      const { state } = service.generateLoginUrl();
-
-      mockUserRepository.count
-        .mockResolvedValueOnce(0)
-        .mockResolvedValueOnce(1);
-      mockUserRepository.createQueryBuilder.mockReturnValue({
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getCount: jest.fn().mockResolvedValue(0),
-      });
-
-      let stats = await service.getStats();
-      expect(stats.activeUsers).toBe(0);
-      expect(stats.pendingStates).toBe(1);
-
-      const mockTokenResponse = {
-        data: {
-          access_token: 'test-access-token',
-          refresh_token: 'test-refresh-token',
-          expires_in: 3600,
-        },
-      };
-
-      const mockProfileResponse = {
-        data: {
-          response: { email: 'test@tesla.com' },
-        },
-      };
-
-      mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
-      mockedDecode.mockReturnValueOnce({
-        scp: ['openid', 'vehicle_device_data', 'offline_access', 'user_data'],
-      } as any);
-      mockAxiosInstance.get.mockResolvedValueOnce(mockProfileResponse);
-
-      await service.exchangeCodeForTokens('test-code', state);
-
-      stats = await service.getStats();
-      expect(stats.activeUsers).toBe(1);
-      expect(stats.pendingStates).toBe(0); // State deleted after validation
     });
   });
 

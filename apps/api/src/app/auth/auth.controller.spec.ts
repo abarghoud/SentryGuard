@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { User } from '../../entities/user.entity';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -109,7 +110,7 @@ describe('AuthController', () => {
         expires_at: new Date('2025-12-31'),
         created_at: new Date('2025-01-01'),
         email: 'test@example.com',
-      };
+      } as User;
 
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2025-06-15'));
@@ -132,7 +133,7 @@ describe('AuthController', () => {
       const mockUser = {
         userId: 'test-user-id',
         jwt_expires_at: null,
-      };
+      } as User;
 
       const result = await controller.getAuthStatus(mockUser);
 
@@ -152,7 +153,7 @@ describe('AuthController', () => {
       const mockUser = {
         userId: 'test-user-id',
         jwt_expires_at: new Date('2025-01-01'),
-      };
+      } as User;
 
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2026-01-01'));
@@ -178,7 +179,7 @@ describe('AuthController', () => {
       const mockUser = {
         userId: 'test-user-id',
         email: 'test@example.com',
-      };
+      } as User;
 
       const result = await controller.getProfile(mockUser);
 
@@ -190,29 +191,13 @@ describe('AuthController', () => {
     it('should handle profile with missing email', async () => {
       const mockUser = {
         userId: 'test-user-id',
-      };
+      } as User;
 
       const result = await controller.getProfile(mockUser);
 
       expect(result.success).toBe(true);
       expect(result.profile.userId).toBe('test-user-id');
       expect(result.profile.email).toBeUndefined();
-    });
-  });
-
-  describe('getStats', () => {
-    it('should return service statistics', async () => {
-      const mockStats = {
-        activeUsers: 5,
-        pendingStates: 2,
-      };
-
-      mockAuthService.getStats.mockReturnValue(mockStats);
-
-      const result = await controller.getStats();
-
-      expect(result).toEqual(mockStats);
-      expect(authService.getStats).toHaveBeenCalled();
     });
   });
 });

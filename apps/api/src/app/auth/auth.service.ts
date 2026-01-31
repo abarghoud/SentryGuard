@@ -2,7 +2,6 @@ import {
   Injectable,
   Logger,
   UnauthorizedException,
-  OnModuleDestroy,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -25,18 +24,15 @@ interface UserProfile {
   [key: string]: any;
 }
 
-interface PendingState {
-  state: string;
-  created_at: Date;
-  userLocale?: 'en' | 'fr';
+interface StatePayload {
+  type: 'oauth_state';
+  userLocale: 'en' | 'fr';
+  nonce: string;
 }
 
 @Injectable()
-export class AuthService implements OnModuleDestroy {
+export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  private readonly pendingStates = new Map<string, PendingState>();
-  private readonly STATE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
-  private cleanupInterval: NodeJS.Timeout;
 
   // Axios instance for Tesla API (same configuration as TelemetryConfigService)
   // SECURITY NOTE: rejectUnauthorized: false is acceptable here because tesla-vehicle-command
@@ -55,28 +51,12 @@ export class AuthService implements OnModuleDestroy {
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
     private readonly waitlistService: WaitlistService
-  ) {
-    // Clean expired states every minute
-    this.cleanupInterval = setInterval(
-      () => this.cleanupExpiredStates(),
-      60 * 1000
-    );
-  }
-
-  /**
-   * Cleanup when the module is destroyed
-   */
-  onModuleDestroy() {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-    }
-  }
+  ) {}
 
   /**
    * Generates a Tesla OAuth login URL
    */
   generateLoginUrl(userLocale: 'en' | 'fr' = 'en'): { url: string; state: string } {
-    const state = crypto.randomBytes(32).toString('hex');
     const clientId = process.env.TESLA_CLIENT_ID;
     const redirectUri =
       process.env.TESLA_REDIRECT_URI || 'https://sentryguard.org/callback/auth';
@@ -85,12 +65,7 @@ export class AuthService implements OnModuleDestroy {
       throw new Error('TESLA_CLIENT_ID not defined');
     }
 
-    // Store state temporarily with user locale
-    this.pendingStates.set(state, {
-      state,
-      created_at: new Date(),
-      userLocale,
-    });
+    const state = this.createSignedState(userLocale);
 
     const params = new URLSearchParams({
       client_id: clientId,
@@ -105,12 +80,11 @@ export class AuthService implements OnModuleDestroy {
 
     const url = `https://auth.tesla.com/oauth2/v3/authorize?${params.toString()}`;
 
-    this.logger.log(`🔐 Login URL generated with state: ${state} and locale: ${userLocale}`);
+    this.logger.log(`🔐 Login URL generated with locale: ${userLocale}`);
     return { url, state };
   }
 
   generateScopeChangeUrl(userLocale: 'en' | 'fr' = 'en', missingScopes?: string[]): { url: string; state: string } {
-    const state = crypto.randomBytes(32).toString('hex');
     const clientId = process.env.TESLA_CLIENT_ID;
     const redirectUri =
       process.env.TESLA_REDIRECT_URI || 'https://sentryguard.org/callback/auth';
@@ -119,11 +93,7 @@ export class AuthService implements OnModuleDestroy {
       throw new Error('TESLA_CLIENT_ID not defined');
     }
 
-    this.pendingStates.set(state, {
-      state,
-      created_at: new Date(),
-      userLocale,
-    });
+    const state = this.createSignedState(userLocale);
 
     const params = new URLSearchParams({
       client_id: clientId,
@@ -138,33 +108,41 @@ export class AuthService implements OnModuleDestroy {
 
     const url = `https://auth.tesla.com/oauth2/v3/authorize?${params.toString()}`;
 
-    this.logger.log(`🔄 Scope change URL generated with state: ${state} and locale: ${userLocale}${missingScopes ? ` (missing: ${missingScopes.join(', ')})` : ''}`);
+    this.logger.log(`🔄 Scope change URL generated with locale: ${userLocale}${missingScopes ? ` (missing: ${missingScopes.join(', ')})` : ''}`);
     return { url, state };
   }
 
-  /**
-   * Validates OAuth state and returns the pending state data
-   */
-  private validateState(state: string): PendingState | null {
-    const pendingState = this.pendingStates.get(state);
+  private createSignedState(userLocale: 'en' | 'fr'): string {
+    const payload: StatePayload = {
+      type: 'oauth_state',
+      userLocale,
+      nonce: crypto.randomBytes(16).toString('hex'),
+    };
 
-    if (!pendingState) {
-      this.logger.warn(`⚠️ Invalid or expired state: ${state}`);
+    const secret = process.env.JWT_OAUTH_STATE_SECRET;
+
+    return this.jwtService.sign(payload, {
+      expiresIn: '5m',
+      secret,
+    });
+  }
+
+  private validateOAuthState(state: string): { userLocale: 'en' | 'fr' } | null {
+    try {
+      const secret = process.env.JWT_OAUTH_STATE_SECRET;
+
+      const decoded = this.jwtService.verify<StatePayload>(state, { secret });
+
+      if (decoded.type !== 'oauth_state') {
+        this.logger.warn('⚠️ Invalid state token type', decoded);
+        return null;
+      }
+
+      return { userLocale: decoded.userLocale };
+    } catch (error) {
+      this.logger.warn('⚠️ Invalid or expired state JWT', error);
       return null;
     }
-
-    const now = new Date();
-    const elapsed = now.getTime() - pendingState.created_at.getTime();
-
-    if (elapsed > this.STATE_TIMEOUT_MS) {
-      this.logger.warn(`⚠️ Expired state: ${state}`);
-      this.pendingStates.delete(state);
-      return null;
-    }
-
-    // Delete state after validation
-    this.pendingStates.delete(state);
-    return pendingState;
   }
 
   /**
@@ -214,7 +192,7 @@ export class AuthService implements OnModuleDestroy {
     code: string,
     state: string
   ): Promise<{ jwt: string; userId: string; access_token: string }> {
-    const pendingState = this.validateState(state);
+    const pendingState = this.validateOAuthState(state);
 
     if (!pendingState) {
       throw new UnauthorizedException('Invalid or expired state');
@@ -561,25 +539,6 @@ export class AuthService implements OnModuleDestroy {
     }
   }
 
-  /**
-   * Cleans expired states
-   */
-  private cleanupExpiredStates(): void {
-    const now = new Date();
-    let cleaned = 0;
-
-    for (const [state, data] of this.pendingStates.entries()) {
-      const elapsed = now.getTime() - data.created_at.getTime();
-      if (elapsed > this.STATE_TIMEOUT_MS) {
-        this.pendingStates.delete(state);
-        cleaned++;
-      }
-    }
-
-    if (cleaned > 0) {
-      this.logger.debug(`🧹 ${cleaned} expired state(s) cleaned`);
-    }
-  }
 
   /**
    * Revokes a user's JWT token
@@ -617,30 +576,5 @@ export class AuthService implements OnModuleDestroy {
     this.logger.warn(
       `🔒 All tokens invalidated for user ${userId} due to Tesla token revocation`
     );
-  }
-
-  /**
-   * Service statistics
-   */
-  async getStats(): Promise<{
-    activeUsers: number;
-    pendingStates: number;
-    activeJwtTokens: number;
-  }> {
-    const activeUsers = await this.userRepository.count();
-
-    // Count active JWT tokens (non-null and not expired)
-    const now = new Date();
-    const activeJwtTokens = await this.userRepository
-      .createQueryBuilder('user')
-      .where('user.jwt_token IS NOT NULL')
-      .andWhere('user.jwt_expires_at > :now', { now })
-      .getCount();
-
-    return {
-      activeUsers,
-      pendingStates: this.pendingStates.size,
-      activeJwtTokens,
-    };
   }
 }

@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { EntityManager, UpdateResult } from 'typeorm';
 import { WaitlistService } from './waitlist.service';
 import { Waitlist, WaitlistStatus } from '../../../entities/waitlist.entity';
 import {
@@ -9,12 +10,23 @@ import {
 import { EmailContentBuilderService } from './email-content-builder.service';
 import { mock, MockProxy } from 'jest-mock-extended';
 
+const mockRepositoryManager = mock<EntityManager>();
+
+mockRepositoryManager.transaction.mockImplementation(async (callback) => {
+  if (typeof callback == 'function') {
+    return callback(mockRepositoryManager);
+  }
+
+  return undefined;
+});
+
 const mockWaitlistRepository = {
   findOne: jest.fn(),
-  find: jest.fn(),
   create: jest.fn(),
   save: jest.fn(),
   update: jest.fn(),
+  find: jest.fn(),
+  manager: mockRepositoryManager,
 };
 
 describe('The WaitlistService class', () => {
@@ -207,39 +219,28 @@ describe('The WaitlistService class', () => {
   describe('The claimUsersForEmailScheduling() method', () => {
     describe('When there are approved users to claim', () => {
       let result: Waitlist[];
-      let mockEntries: Waitlist[];
-      let mockManager: any;
+      const mockEntries = [
+        {
+          id: 'entry-1',
+          email: 'user1@example.com',
+          status: WaitlistStatus.Approved,
+          approvedAt: new Date(),
+          emailQueuedAt: undefined,
+          welcomeEmailSentAt: undefined,
+        } as Waitlist,
+        {
+          id: 'entry-2',
+          email: 'user2@example.com',
+          status: WaitlistStatus.Approved,
+          approvedAt: new Date(),
+          emailQueuedAt: undefined,
+          welcomeEmailSentAt: undefined,
+        } as Waitlist,
+      ];
 
       beforeEach(async () => {
-        mockEntries = [
-          {
-            id: 'entry-1',
-            email: 'user1@example.com',
-            status: WaitlistStatus.Approved,
-            approvedAt: new Date(),
-            emailQueuedAt: undefined,
-            welcomeEmailSentAt: undefined,
-          } as Waitlist,
-          {
-            id: 'entry-2',
-            email: 'user2@example.com',
-            status: WaitlistStatus.Approved,
-            approvedAt: new Date(),
-            emailQueuedAt: undefined,
-            welcomeEmailSentAt: undefined,
-          } as Waitlist,
-        ];
-
-        mockManager = {
-          find: jest.fn().mockResolvedValue(mockEntries),
-          update: jest.fn().mockResolvedValue({ affected: 2 }),
-        };
-
-        mockWaitlistRepository.manager = {
-          transaction: jest.fn().mockImplementation(async (callback) => {
-            return callback(mockManager);
-          }),
-        } as any;
+        mockRepositoryManager.find.mockResolvedValue(mockEntries);
+        mockRepositoryManager.update.mockResolvedValue({ affected: 2 } as UpdateResult);
 
         result = await service.claimUsersForEmailScheduling();
       });
@@ -249,7 +250,7 @@ describe('The WaitlistService class', () => {
       });
 
       it('should query with SKIP LOCKED', () => {
-        expect(mockManager.find).toHaveBeenCalledWith(
+        expect(mockRepositoryManager.find).toHaveBeenCalledWith(
           Waitlist,
           expect.objectContaining({
             lock: { mode: 'pessimistic_write', onLocked: 'skip_locked' },
@@ -258,7 +259,7 @@ describe('The WaitlistService class', () => {
       });
 
       it('should update emailQueuedAt for claimed users', () => {
-        expect(mockManager.update).toHaveBeenCalledWith(
+        expect(mockRepositoryManager.update).toHaveBeenCalledWith(
           Waitlist,
           ['entry-1', 'entry-2'],
           expect.objectContaining({
@@ -270,19 +271,9 @@ describe('The WaitlistService class', () => {
 
     describe('When there are no approved users to claim', () => {
       let result: Waitlist[];
-      let mockManager: any;
 
       beforeEach(async () => {
-        mockManager = {
-          find: jest.fn().mockResolvedValue([]),
-          update: jest.fn(),
-        };
-
-        mockWaitlistRepository.manager = {
-          transaction: jest.fn().mockImplementation(async (callback) => {
-            return callback(mockManager);
-          }),
-        } as any;
+        mockRepositoryManager.find.mockResolvedValue([]);
 
         result = await service.claimUsersForEmailScheduling();
       });
@@ -292,7 +283,7 @@ describe('The WaitlistService class', () => {
       });
 
       it('should not update any entries', () => {
-        expect(mockManager.update).not.toHaveBeenCalled();
+        expect(mockRepositoryManager.update).not.toHaveBeenCalled();
       });
     });
   });
@@ -301,15 +292,21 @@ describe('The WaitlistService class', () => {
     const entryId = 'entry-123';
 
     beforeEach(async () => {
-      mockWaitlistRepository.update.mockResolvedValue({ affected: 1 });
+      mockWaitlistRepository.update.mockResolvedValue({ affected: 1 } as UpdateResult);
 
       await service.resetEmailQueuedAt(entryId);
     });
 
     it('should update emailQueuedAt to null', () => {
-      expect(mockWaitlistRepository.update).toHaveBeenCalledWith(entryId, {
-        emailQueuedAt: null,
-      });
+      expect(mockWaitlistRepository.update).toHaveBeenCalledWith(
+        entryId,
+        expect.objectContaining({
+          emailQueuedAt: expect.any(Function),
+        })
+      );
+
+      const callArgs = mockWaitlistRepository.update.mock.calls[0][1];
+      expect((callArgs.emailQueuedAt as CallableFunction)?.()).toBe('NULL');
     });
   });
 
@@ -329,7 +326,7 @@ describe('The WaitlistService class', () => {
           body: '<h1>Welcome, Test User!</h1>',
         });
         mockEmailService.sendEmail.mockResolvedValue(undefined);
-        mockWaitlistRepository.update.mockResolvedValue({ affected: 1 });
+        mockWaitlistRepository.update.mockResolvedValue({ affected: 1 } as UpdateResult);
 
         await service.sendWelcomeEmailAndMarkSent(mockEntry);
       });

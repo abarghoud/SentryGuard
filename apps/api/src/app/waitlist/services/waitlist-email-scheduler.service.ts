@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { WaitlistService } from './waitlist.service';
 import type { Waitlist } from '../../../entities/waitlist.entity';
 import { WAITLIST_EMAIL_CRON_EXPRESSION } from '../../../config/waitlist-cron.config';
@@ -10,7 +10,7 @@ export class WaitlistEmailSchedulerService {
 
   constructor(private readonly waitlistService: WaitlistService) {}
 
-  @Cron(WAITLIST_EMAIL_CRON_EXPRESSION)
+  @Cron(CronExpression.EVERY_10_SECONDS)
   public async processApprovedUsers(): Promise<void> {
     this.logger.log('Starting approved users email processing...');
 
