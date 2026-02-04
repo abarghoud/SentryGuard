@@ -17,7 +17,7 @@ If you discover a security vulnerability in SentryGuard, please report it respon
 
 ### How to Report
 
-1. **Email**: Send details to [abarghoud@gmail.com] with:
+1. **Email**: Send details to [hello@sentryguard.org] with:
    - A description of the vulnerability
    - Steps to reproduce the issue
    - Potential impact and severity assessment
@@ -135,7 +135,7 @@ Currently, we do not have a bug bounty program, but we greatly appreciate respon
 
 ## Contact
 
-For security concerns, please contact: [abarghoud@gmail.com]
+For security concerns, please contact: [hello@sentryguard.org]
 
 For general questions, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
