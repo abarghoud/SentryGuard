@@ -4,7 +4,7 @@
   "private": true,
   "dependencies": {
     "i18next": "^25.6.0",
-    "next": "15.1.7",
+    "next": "16.1.5",
     "next-i18next": "^15.4.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
