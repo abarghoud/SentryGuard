@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+const { readFileSync } = require('fs');
 
 const swcJestConfig = JSON.parse(
   readFileSync(`${__dirname}/.spec.swcrc`, 'utf-8')
@@ -6,7 +6,7 @@ const swcJestConfig = JSON.parse(
 
 swcJestConfig.swcrc = false;
 
-export default {
+module.exports = {
   displayName: 'webapp',
   preset: '../../jest.preset.js',
   testEnvironment: 'jsdom',
@@ -17,6 +17,8 @@ export default {
   coverageDirectory: 'test-output/jest/coverage',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   moduleNameMapper: {
+    '^react$': '<rootDir>/../../node_modules/react',
+    '^react-dom$': '<rootDir>/../../node_modules/react-dom',
     '^@/(.*)$': '<rootDir>/src/$1',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
