@@ -11,7 +11,12 @@ const nextConfig = {
   // See: https://nx.dev/recipes/next/next-config-setup
   nx: {},
   images: {
-    domains: ['img.buymeacoffee.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'img.buymeacoffee.com',
+      },
+    ],
   },
   productionBrowserSourceMaps: true,
   webpack: (config, { dev, isServer }) => {
@@ -27,4 +32,8 @@ const plugins = [
   withNx,
 ];
 
-module.exports = composePlugins(...plugins)(nextConfig);
+// Next.js 16 removed eslint config support, but Nx still adds it. Remove it here.
+const composedConfig = composePlugins(...plugins)(nextConfig);
+delete composedConfig.eslint;
+
+module.exports = composedConfig;
