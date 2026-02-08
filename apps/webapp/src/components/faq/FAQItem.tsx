@@ -1,8 +1,8 @@
 import React from 'react';
 
-export interface FAQItem {
+export interface TranslatedFaqItem {
   question: string;
-  answer: string | (() => React.ReactNode);
+  answer: React.ReactNode;
 }
 
 export function FAQItemComponent({
@@ -10,13 +10,11 @@ export function FAQItemComponent({
   itemId,
   isOpen,
   onToggle,
-  renderAnswer
 }: {
-  item: FAQItem;
+  item: TranslatedFaqItem;
   itemId: string;
   isOpen: boolean;
   onToggle: (id: string) => void;
-  renderAnswer: (item: FAQItem) => React.ReactNode;
 }) {
   return (
     <div className="transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-700/50">
@@ -51,7 +49,7 @@ export function FAQItemComponent({
       >
         <div className="px-6 pb-5 pt-0">
           <p className="leading-relaxed text-sm text-gray-600 dark:text-gray-300">
-            {renderAnswer(item)}
+            {item.answer}
           </p>
         </div>
       </div>

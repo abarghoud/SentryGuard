@@ -1,73 +1,75 @@
-'use client';
-
-import { Suspense, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useTranslation } from 'react-i18next';
-import { useAuth } from '../lib/useAuth';
+import type { Metadata } from 'next';
+import { getLocale, getTranslation } from '../lib/server-i18n';
+import PublicLayout from '../components/PublicLayout';
+import AuthRedirect from '../components/AuthRedirect';
 import TeslaLoginButton from '../components/TeslaLoginButton';
-import Layout from '../components/Layout';
 
-function ExpiredBanner() {
-  const { t } = useTranslation('common');
-  const searchParams = useSearchParams();
-  const expired = searchParams.get('expired');
+export const metadata: Metadata = {
+  title: 'SentryGuard - Protect Your Tesla',
+  description:
+    "Real-time monitoring and instant Telegram alerts for your Tesla vehicle's Sentry Mode. Battery-efficient, secure, and open-source.",
+  keywords: [
+    'Tesla',
+    'Sentry Mode',
+    'Security',
+    'Vehicle Monitoring',
+    'Telegram Alerts',
+    'Tesla Protection',
+    'Tesla Sentry Mode Alerts',
+  ],
+  openGraph: {
+    title: 'SentryGuard - Protect Your Tesla',
+    description:
+      "Real-time monitoring and instant Telegram alerts for your Tesla vehicle's Sentry Mode.",
+    type: 'website',
+  },
+};
 
-  if (!expired) return null;
-
-  return (
-    <div className="max-w-4xl mx-auto mb-6 bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
-      <p className="text-blue-800 font-medium">
-        {t('Your session has expired. Please log in again.')}
-      </p>
-    </div>
-  );
-}
-
-export default function HomePage() {
-  const { t } = useTranslation('common');
-  const { isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      router.push('/dashboard');
-    }
-  }, [isLoading, isAuthenticated, router]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
-          <p className="mt-4 text-gray-600">{t('Loading...')}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isAuthenticated) {
-    return null;
-  }
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ expired?: string }>;
+}) {
+  const [locale, params] = await Promise.all([getLocale(), searchParams]);
+  const t = getTranslation(locale);
+  const isExpired = params.expired === 'true';
 
   return (
-    <Layout
+    <PublicLayout
+      locale={locale}
       navigationItems={[
         {
           label: 'FAQ',
           href: '/faq',
           icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           ),
-          primary: true
-        }
+          primary: true,
+        },
       ]}
     >
+      <AuthRedirect />
+
       <div className="container mx-auto px-6 py-20">
-        <Suspense fallback={null}>
-          <ExpiredBanner />
-        </Suspense>
+        {isExpired ? (
+          <div className="max-w-4xl mx-auto mb-6 bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+            <p className="text-blue-800 font-medium">
+              {t('Your session has expired. Please log in again.')}
+            </p>
+          </div>
+        ) : null}
 
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-red-500 via-red-600 to-red-700 text-transparent bg-clip-text p-1">
@@ -80,7 +82,7 @@ export default function HomePage() {
           </p>
           <p className="text-lg text-gray-600 mb-12 max-w-2xl mx-auto">
             {t(
-              "Telemetry monitors Sentry Mode and sends alerts without draining battery"
+              'Telemetry monitors Sentry Mode and sends alerts without draining battery'
             )}
           </p>
 
@@ -92,7 +94,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Features Grid */}
       <div className="container mx-auto px-6 py-12">
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           <div className="bg-white rounded-xl p-6 border border-gray-300 hover:border-red-600 transition-colors duration-300">
@@ -111,7 +112,9 @@ export default function HomePage() {
                 />
               </svg>
             </div>
-            <h3 className="text-xl font-semibold mb-2">{t('Instant Alerts')}</h3>
+            <h3 className="text-xl font-semibold mb-2">
+              {t('Instant Alerts')}
+            </h3>
             <p className="text-gray-600">
               {t(
                 "Receive real-time Telegram notifications when your vehicle's Sentry Mode is triggered."
@@ -173,7 +176,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Funding Section */}
       <div className="container mx-auto px-6 py-12">
         <div className="max-w-3xl mx-auto text-center">
           <h3 className="text-2xl font-semibold mb-4 text-gray-600">
@@ -191,6 +193,6 @@ export default function HomePage() {
           </p>
         </div>
       </div>
-    </Layout>
+    </PublicLayout>
   );
 }
