@@ -7,6 +7,7 @@ import { Provider as RollbarProvider } from '@rollbar/react';
 import I18nProvider from '../components/I18nProvider';
 import BuyMeACoffeeWidget from '../components/BuyMeACoffeeWidget';
 import { clientConfig } from '@/logger/rollbar.config';
+import { getLocale } from '../lib/server-i18n';
 
 export const metadata: Metadata = {
   title: 'SentryGuard - Protect Your Tesla',
@@ -26,35 +27,25 @@ export const metadata: Metadata = {
     type: 'website',
   },
   other: {
-    google: 'notranslate'
-  }
+    google: 'notranslate',
+  },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
+
   return (
     <RollbarProvider config={clientConfig}>
-      <html lang="en" suppressHydrationWarning translate="no">
-        <head>
-          <script
-            src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js"
-            data-name="BMC-Widget"
-            data-cfasync="false"
-            data-id="sentryguardorg"
-            data-description="Support me on Buy me a coffee!"
-            data-message="SentryGuard depends on donations to operate. Your support keeps us running! ☕"
-            data-color="#b91c1c"
-            data-position="Right"
-            data-x_margin="18"
-            data-y_margin="18"
-          />
-          <Script
-            id="crisp-widget"
-            strategy="beforeInteractive"
-          >
+      <html lang={locale} translate="no">
+        <head />
+        <body suppressHydrationWarning>
+          <I18nProvider initialLocale={locale}>{children}</I18nProvider>
+          <BuyMeACoffeeWidget />
+          <Script id="crisp-widget" strategy="afterInteractive">
             {`
               window.$crisp = [];
               window.CRISP_WEBSITE_ID = "04ce8de3-dcd5-454b-bd56-66643019ccc0";
@@ -67,10 +58,6 @@ export default function RootLayout({
               })();
             `}
           </Script>
-        </head>
-        <body>
-          <I18nProvider>{children}</I18nProvider>
-          <BuyMeACoffeeWidget />
         </body>
       </html>
     </RollbarProvider>

@@ -1,11 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { i18n } from './I18nProvider';
 import { updateUserLanguage, hasToken } from '../lib/api';
 
+function setLocaleCookie(lang: string) {
+  document.cookie = `locale=${lang};path=/;max-age=${365 * 24 * 60 * 60};SameSite=Lax`;
+}
+
 export default function LanguageSwitcher() {
-  const [currentLang, setCurrentLang] = useState('en');
+  const [currentLang, setCurrentLang] = useState(i18n.language || 'en');
+  const router = useRouter();
 
   useEffect(() => {
     setCurrentLang(i18n.language);
@@ -21,7 +27,10 @@ export default function LanguageSwitcher() {
   }, []);
 
   const changeLanguage = async (lng: string) => {
+    setCurrentLang(lng);
     await i18n.changeLanguage(lng);
+    document.documentElement.lang = lng;
+    setLocaleCookie(lng);
 
     if (hasToken()) {
       try {
@@ -30,6 +39,8 @@ export default function LanguageSwitcher() {
         console.warn('Failed to update language on server:', error);
       }
     }
+
+    router.refresh();
   };
 
   return (

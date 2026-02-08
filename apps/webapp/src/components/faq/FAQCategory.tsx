@@ -1,9 +1,9 @@
 import React from 'react';
-import { FAQItemComponent, FAQItem } from './FAQItem';
+import { FAQItemComponent, TranslatedFaqItem } from './FAQItem';
 
-interface FAQCategory {
+interface TranslatedFaqCategory {
   title: string;
-  items: FAQItem[];
+  items: TranslatedFaqItem[];
 }
 
 export function FAQCategoryComponent({
@@ -11,13 +11,11 @@ export function FAQCategoryComponent({
   categoryIndex,
   openItems,
   onToggleItem,
-  renderAnswer
 }: {
-  category: FAQCategory;
+  category: TranslatedFaqCategory;
   categoryIndex: number;
   openItems: Set<string>;
   onToggleItem: (id: string) => void;
-  renderAnswer: (item: FAQItem) => React.ReactNode;
 }) {
   return (
     <div className="rounded-2xl shadow-sm border overflow-hidden bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -38,7 +36,6 @@ export function FAQCategoryComponent({
               itemId={itemId}
               isOpen={isOpen}
               onToggle={onToggleItem}
-              renderAnswer={renderAnswer}
             />
           );
         })}
