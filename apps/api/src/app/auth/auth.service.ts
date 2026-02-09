@@ -16,6 +16,11 @@ import { normalizeTeslaLocale } from '../../common/utils/language.util';
 import { MissingPermissionsException } from '../../common/exceptions/missing-permissions.exception';
 import { UserNotApprovedException } from '../../common/exceptions/user-not-approved.exception';
 import { WaitlistService } from '../waitlist/services/waitlist.service';
+import {
+  TeslaTokenRefreshService,
+  RefreshResult,
+  REFRESH_TOKEN_LIFETIME_DAYS,
+} from './services/tesla-token-refresh.service';
 
 interface UserProfile {
   email?: string;
@@ -50,7 +55,8 @@ export class AuthService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
-    private readonly waitlistService: WaitlistService
+    private readonly waitlistService: WaitlistService,
+    private readonly teslaTokenRefreshService: TeslaTokenRefreshService
   ) {}
 
   /**
@@ -386,6 +392,12 @@ export class AuthService {
     user.jwt_expires_at = tokens.expiresAt;
     user.token_revoked_at = undefined;
 
+    const now = new Date();
+    user.refresh_token_updated_at = now;
+    const refreshTokenExpiresAt = new Date(now);
+    refreshTokenExpiresAt.setDate(refreshTokenExpiresAt.getDate() + REFRESH_TOKEN_LIFETIME_DAYS);
+    user.refresh_token_expires_at = refreshTokenExpiresAt;
+
     await this.userRepository.save(user);
 
     this.logger.log(`✅ User updated in database: ${userId}`);
@@ -410,6 +422,10 @@ export class AuthService {
       profile?.email || ''
     );
 
+    const now = new Date();
+    const refreshTokenExpiresAt = new Date(now);
+    refreshTokenExpiresAt.setDate(refreshTokenExpiresAt.getDate() + REFRESH_TOKEN_LIFETIME_DAYS);
+
     const newUser = this.userRepository.create({
       userId,
       email: profile?.email,
@@ -422,6 +438,8 @@ export class AuthService {
       jwt_expires_at: tokens.expiresAt,
       preferred_language: userLocale,
       token_revoked_at: undefined,
+      refresh_token_updated_at: now,
+      refresh_token_expires_at: refreshTokenExpiresAt,
     });
 
     await this.userRepository.save(newUser);
@@ -465,9 +483,6 @@ export class AuthService {
     }
   }
 
-  /**
-   * Gets the access token for a user by user ID
-   */
   private async getAccessTokenByUserId(userId: string): Promise<string | null> {
     const user = await this.userRepository.findOne({ where: { userId } });
 
@@ -480,15 +495,36 @@ export class AuthService {
     const now = new Date();
     if (now > user.expires_at) {
       this.logger.warn(`⚠️ Tesla token expired for user: ${userId}`);
-      // TODO: Implement token refresh logic here
-      return null;
+
+      const refreshResult =
+        await this.teslaTokenRefreshService.refreshTokenForUser(userId);
+
+      if (
+        refreshResult !== RefreshResult.Success &&
+        refreshResult !== RefreshResult.AlreadyRefreshed
+      ) {
+        return null;
+      }
+
+      const refreshedUser = await this.userRepository.findOne({
+        where: { userId },
+      });
+
+      if (!refreshedUser) {
+        return null;
+      }
+
+      return this.decryptAccessTokenSafely(refreshedUser);
     }
 
-    // Decrypt token
+    return this.decryptAccessTokenSafely(user);
+  }
+
+  private decryptAccessTokenSafely(user: User): string | null {
     try {
       return decrypt(user.access_token);
     } catch (error) {
-      this.logger.error(`❌ Failed to decrypt token for user: ${userId}`);
+      this.logger.error(`❌ Failed to decrypt token for user: ${user.userId}`);
       return null;
     }
   }

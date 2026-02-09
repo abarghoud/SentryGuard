@@ -1,20 +1,37 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { WaitlistService } from './waitlist.service';
+import { DistributedLockService } from '../../../common/services/distributed-lock.service';
 import type { Waitlist } from '../../../entities/waitlist.entity';
 import { WAITLIST_EMAIL_CRON_EXPRESSION } from '../../../config/waitlist-cron.config';
+import { SchedulerLockKey } from '../../../config/scheduler-lock-key.config';
 
 @Injectable()
 export class WaitlistEmailSchedulerService {
   private readonly logger = new Logger(WaitlistEmailSchedulerService.name);
 
-  constructor(private readonly waitlistService: WaitlistService) {}
+  constructor(
+    private readonly waitlistService: WaitlistService,
+    private readonly distributedLockService: DistributedLockService
+  ) {}
 
   @Cron(WAITLIST_EMAIL_CRON_EXPRESSION)
   public async processApprovedUsers(): Promise<void> {
+    const wasExecuted = await this.distributedLockService.withLock(
+      SchedulerLockKey.WaitlistEmail,
+      () => this.executeEmailCycle()
+    );
+
+    if (!wasExecuted) {
+      this.logger.warn('Previous email cycle still running, skipping');
+    }
+  }
+
+  private async executeEmailCycle(): Promise<void> {
     this.logger.log('Starting approved users email processing...');
 
-    const approvedUsers = await this.waitlistService.claimUsersForEmailScheduling();
+    const approvedUsers =
+      await this.waitlistService.findApprovedUsersForEmailSending();
 
     if (approvedUsers.length === 0) {
       this.logger.log('No newly approved users to process');
@@ -22,7 +39,7 @@ export class WaitlistEmailSchedulerService {
     }
 
     this.logger.log(
-      `Claimed ${approvedUsers.length} approved users for email sending`
+      `Found ${approvedUsers.length} approved users for email sending`
     );
 
     await this.sendWelcomeEmails(approvedUsers);
@@ -59,7 +76,6 @@ export class WaitlistEmailSchedulerService {
         `Failed to send welcome email to ${user.email}: ${errorMessage}`
       );
 
-      await this.waitlistService.resetEmailQueuedAt(user.id);
       return false;
     }
   }

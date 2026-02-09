@@ -40,7 +40,6 @@
     "out-tsc",
     "dist",
     "node_modules",
-    "jest.config.ts",
     ".next"
   ]
 }

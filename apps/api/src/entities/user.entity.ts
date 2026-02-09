@@ -40,6 +40,12 @@ export class User {
   @Column({ type: 'timestamp', nullable: true })
   token_revoked_at?: Date;
 
+  @Column({ type: 'timestamp', nullable: true })
+  refresh_token_expires_at?: Date | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  refresh_token_updated_at?: Date | null;
+
   @Column({ type: 'boolean', default: false })
   debug_messages!: boolean;
 
