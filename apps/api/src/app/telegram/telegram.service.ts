@@ -1,8 +1,11 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger, Inject, OnModuleDestroy } from '@nestjs/common';
+import { TelegramError } from 'telegraf';
 import i18n from '../../i18n';
 import { TelegramBotService } from './telegram-bot.service';
 import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import type { ITelegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
+import { telegramRetryManager } from './telegram-retry-manager.token';
+import { RetryManager } from '../shared/retry-manager.service';
 
 type TelegramKeyboard = {
   inline_keyboard?: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
@@ -12,12 +15,13 @@ type TelegramKeyboard = {
 };
 
 @Injectable()
-export class TelegramService {
+export class TelegramService implements OnModuleDestroy {
   private readonly logger = new Logger(TelegramService.name);
 
   constructor(
     private readonly telegramBotService: TelegramBotService,
     @Inject(telegramFailureHandler) private readonly failureHandler: ITelegramFailureHandler,
+    @Inject(telegramRetryManager) private readonly retryManager: RetryManager,
   ) {}
 
   async sendSentryAlert(
@@ -26,17 +30,17 @@ export class TelegramService {
     userLanguage: 'en' | 'fr',
     keyboard?: TelegramKeyboard,
   ) {
+    this.logger.debug(`[OPTIMIZATION] Using provided language: ${userLanguage} for user: ${userId}`);
+
+    const message = this.formatSentryAlertMessage(alertInfo, userLanguage);
+
+    if (this.shouldSimulateMessage(alertInfo.vin)) {
+      return await this.simulateMessage(userId, 'alert', alertInfo.vin);
+    }
+
+    const options = keyboard ? { keyboard } : undefined;
+
     try {
-      this.logger.debug(`[OPTIMIZATION] Using provided language: ${userLanguage} for user: ${userId}`);
-
-      const message = this.formatSentryAlertMessage(alertInfo, userLanguage);
-
-      if (this.shouldSimulateMessage(alertInfo.vin)) {
-        return await this.simulateMessage(userId, 'alert', alertInfo.vin);
-      }
-
-      const options = keyboard ? { keyboard } : undefined;
-
       const success = await this.telegramBotService.sendMessageToUser(userId, message, options);
 
       return success;
@@ -48,10 +52,41 @@ export class TelegramService {
         return false;
       }
 
+      if (this.isRetryableTelegramError(error)) {
+        const correlationId = `telegram-alert-${userId}-${Date.now()}`;
+        this.retryManager.addToRetry(
+          async () => {
+            await this.telegramBotService.sendMessageToUser(userId, message, options);
+          },
+          error as Error,
+          correlationId
+        );
+
+        return false;
+      }
+
       this.logError(userId, 'alert', error);
-      
+
       throw error;
     }
+  }
+
+  onModuleDestroy() {
+    this.retryManager.stop();
+  }
+
+  private isRetryableTelegramError(error: unknown): boolean {
+    if (error instanceof TelegramError) {
+      const retryableStatusCodes = [429, 500, 502, 503, 504, 529];
+      return retryableStatusCodes.includes(error.code);
+    }
+
+    if (error instanceof Error) {
+      const networkErrors = ['ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'ECONNABORTED', 'ENOTFOUND'];
+      return networkErrors.some(code => error.message.includes(code));
+    }
+
+    return false;
   }
 
   private shouldSimulateMessage(vin?: string): boolean {

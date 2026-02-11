@@ -10,7 +10,7 @@ import { Kafka, Consumer, KafkaMessage, Batch } from 'kafkajs';
 import type { MessageHandler } from './interfaces/message-handler.interface';
 import pLimit from 'p-limit';
 import { kafkaMessageHandler } from './interfaces/message-handler.interface';
-import { RetryManager } from './retry-manager.service';
+import { RetryManager } from '../../shared/retry-manager.service';
 
 @Injectable()
 export class KafkaService implements OnModuleInit, OnModuleDestroy {
