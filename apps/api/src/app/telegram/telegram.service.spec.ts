@@ -1,10 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { mock, MockProxy } from 'jest-mock-extended';
+import { TelegramError } from 'telegraf';
 import { TelegramService } from './telegram.service';
 import { TelegramBotService } from './telegram-bot.service';
 import { UserLanguageService } from '../user/user-language.service';
 import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import type { ITelegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
+import { telegramRetryManager } from './telegram-retry-manager.token';
+import { RetryManager } from '../shared/retry-manager.service';
 
 jest.mock('../../i18n', () => ({
   __esModule: true,
@@ -38,6 +41,7 @@ describe('TelegramService', () => {
   const mockTelegramBotService: MockProxy<TelegramBotService> = mock<TelegramBotService>();
   const mockUserLanguageService: MockProxy<UserLanguageService> = mock<UserLanguageService>();
   const mockTelegramFailureHandler: MockProxy<ITelegramFailureHandler> = mock<ITelegramFailureHandler>();
+  const mockRetryManager: MockProxy<RetryManager> = mock<RetryManager>();
 
   beforeEach(async () => {
     mockTelegramFailureHandler.canHandle.mockImplementation((error: Error) => {
@@ -58,6 +62,10 @@ describe('TelegramService', () => {
         {
           provide: telegramFailureHandler,
           useValue: mockTelegramFailureHandler,
+        },
+        {
+          provide: telegramRetryManager,
+          useValue: mockRetryManager,
         },
       ],
     }).compile();
@@ -193,7 +201,7 @@ describe('TelegramService', () => {
         const alertInfo = {
           vin: 'TEST123456',
         };
-        const testError = new Error('Network error');
+        const testError = new Error('Unknown error');
 
         mockTelegramBotService.sendMessageToUser.mockRejectedValue(testError);
         mockTelegramFailureHandler.canHandle.mockReturnValue(false);
@@ -202,7 +210,94 @@ describe('TelegramService', () => {
 
         expect(mockTelegramFailureHandler.canHandle).toHaveBeenCalledWith(testError);
         expect(mockTelegramFailureHandler.handleFailure).not.toHaveBeenCalled();
+        expect(mockRetryManager.addToRetry).not.toHaveBeenCalled();
       });
+    });
+
+    describe('When error is a retryable TelegramError', () => {
+      const alertInfo = { vin: 'TEST123456' };
+
+      it('should schedule retry for 429 Too Many Requests and return false', async () => {
+        const telegramError = new TelegramError({ error_code: 429, description: 'Too Many Requests' });
+
+        mockTelegramBotService.sendMessageToUser.mockRejectedValue(telegramError);
+        mockTelegramFailureHandler.canHandle.mockReturnValue(false);
+
+        const result = await service.sendSentryAlert('user-123', alertInfo, 'en', undefined);
+
+        expect(result).toBe(false);
+        expect(mockRetryManager.addToRetry).toHaveBeenCalledWith(
+          expect.any(Function),
+          telegramError,
+          expect.stringMatching(/^telegram-alert-user-123-\d+$/)
+        );
+      });
+
+      it('should schedule retry for 502 Bad Gateway and return false', async () => {
+        const telegramError = new TelegramError({ error_code: 502, description: 'Bad Gateway' });
+
+        mockTelegramBotService.sendMessageToUser.mockRejectedValue(telegramError);
+        mockTelegramFailureHandler.canHandle.mockReturnValue(false);
+
+        const result = await service.sendSentryAlert('user-123', alertInfo, 'en', undefined);
+
+        expect(result).toBe(false);
+        expect(mockRetryManager.addToRetry).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe('When error is a non-retryable TelegramError', () => {
+      it('should throw the error', async () => {
+        const alertInfo = { vin: 'TEST123456' };
+        const telegramError = new TelegramError({ error_code: 400, description: 'Bad Request' });
+
+        mockTelegramBotService.sendMessageToUser.mockRejectedValue(telegramError);
+        mockTelegramFailureHandler.canHandle.mockReturnValue(false);
+
+        await expect(service.sendSentryAlert('user-123', alertInfo, 'en', undefined)).rejects.toThrow(telegramError);
+
+        expect(mockRetryManager.addToRetry).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When error is a retryable network error', () => {
+      it('should schedule retry for ETIMEDOUT and return false', async () => {
+        const alertInfo = { vin: 'TEST123456' };
+        const networkError = new Error('connect ETIMEDOUT 149.154.167.220:443');
+
+        mockTelegramBotService.sendMessageToUser.mockRejectedValue(networkError);
+        mockTelegramFailureHandler.canHandle.mockReturnValue(false);
+
+        const result = await service.sendSentryAlert('user-123', alertInfo, 'en', undefined);
+
+        expect(result).toBe(false);
+        expect(mockRetryManager.addToRetry).toHaveBeenCalledWith(
+          expect.any(Function),
+          networkError,
+          expect.stringMatching(/^telegram-alert-user-123-\d+$/)
+        );
+      });
+
+      it('should schedule retry for ECONNRESET and return false', async () => {
+        const alertInfo = { vin: 'TEST123456' };
+        const networkError = new Error('read ECONNRESET');
+
+        mockTelegramBotService.sendMessageToUser.mockRejectedValue(networkError);
+        mockTelegramFailureHandler.canHandle.mockReturnValue(false);
+
+        const result = await service.sendSentryAlert('user-123', alertInfo, 'en', undefined);
+
+        expect(result).toBe(false);
+        expect(mockRetryManager.addToRetry).toHaveBeenCalledTimes(1);
+      });
+    });
+  });
+
+  describe('The onModuleDestroy() method', () => {
+    it('should stop the retry manager', () => {
+      service.onModuleDestroy();
+
+      expect(mockRetryManager.stop).toHaveBeenCalledTimes(1);
     });
   });
 });

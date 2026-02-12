@@ -28,7 +28,7 @@ import { OciLoggingService } from '../common/services/oci-logging.service';
 import { OciLoggerService } from '../common/loggers/oci-logger.service';
 import { Vehicle } from '../entities/vehicle.entity';
 import { User } from '../entities/user.entity';
-import { RetryManager } from './messaging/kafka/retry-manager.service';
+import { RetryManager } from './shared/retry-manager.service';
 
 @Module({
   imports: [

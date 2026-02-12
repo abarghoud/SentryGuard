@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Consumer, EachBatchHandler, Batch } from 'kafkajs';
 import { KafkaService } from './kafka.service';
 import { kafkaMessageHandler, MessageHandler } from './interfaces/message-handler.interface';
-import { RetryManager } from './retry-manager.service';
+import { RetryManager } from '../../shared/retry-manager.service';
 import { mock } from 'jest-mock-extended';
 
 jest.mock('kafkajs', () => ({
