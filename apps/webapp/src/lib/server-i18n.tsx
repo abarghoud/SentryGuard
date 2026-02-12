@@ -3,6 +3,7 @@ import { ReactNode } from 'react';
 
 import en from '../locales/en/common.json';
 import fr from '../locales/fr/common.json';
+import { DEFAULT_LOCALE } from './i18n-config';
 
 const translations: Record<string, Record<string, string>> = { en, fr };
 
@@ -21,11 +22,11 @@ export async function getLocale(): Promise<string> {
     return 'fr';
   }
 
-  return 'en';
+  return DEFAULT_LOCALE;
 }
 
 export function getTranslation(locale: string) {
-  const dict = translations[locale] || translations['en'];
+  const dict = translations[locale] || translations[DEFAULT_LOCALE];
 
   return (key: string, params?: Record<string, string | number>): string => {
     let value = dict[key] || key;

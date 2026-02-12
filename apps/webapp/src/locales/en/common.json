@@ -340,5 +340,11 @@
   "Does SentryGuard work without internet connection?": "Does SentryGuard work without internet connection?",
   "Internet connection requirement explanation": "No, internet access is required for SentryGuard to function. When a Sentry Mode event occurs, your Tesla needs internet connectivity (via WiFi or cellular) to send the event data to our servers, which then forward the alert to you via Telegram. If your vehicle is in a location without internet access (such as an underground parking garage or a country where Tesla connectivity isn't available), alerts cannot be sent until the vehicle reconnects to the internet.",
   "Why does the app crash when I use browser translation?": "Why does the app crash when I use browser translation?",
-  "Browser translation issue explanation": "Using your browser's automatic translation feature (such as Chrome's \"Translate this page\" or similar features in other browsers) can cause the application to crash or behave unexpectedly. SentryGuard already supports multiple languages natively. Instead of using browser translation, please use the language selector in the application's navigation bar to switch between English and French. This ensures a stable experience without any technical issues."
+  "Browser translation issue explanation": "Using your browser's automatic translation feature (such as Chrome's \"Translate this page\" or similar features in other browsers) can cause the application to crash or behave unexpectedly. SentryGuard already supports multiple languages natively. Instead of using browser translation, please use the language selector in the application's navigation bar to switch between English and French. This ensures a stable experience without any technical issues.",
+  "meta.home.title": "SentryGuard - Protect Your Tesla",
+  "meta.home.description": "Real-time monitoring and instant Telegram alerts for your Tesla vehicle's Sentry Mode. Battery-efficient, secure, and open-source.",
+  "meta.home.ogDescription": "Real-time monitoring and instant Telegram alerts for your Tesla vehicle's Sentry Mode.",
+  "meta.faq.title": "FAQ - SentryGuard",
+  "meta.faq.description": "Frequently asked questions about SentryGuard. Learn how to protect your Tesla with real-time Sentry Mode monitoring and Telegram alerts.",
+  "meta.faq.ogDescription": "Frequently asked questions about SentryGuard Tesla monitoring."
 }

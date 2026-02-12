@@ -18,13 +18,7 @@ const nextConfig = {
       },
     ],
   },
-  productionBrowserSourceMaps: true,
-  webpack: (config, { dev, isServer }) => {
-    if (!dev && !isServer) {
-      config.optimization.minimize = false;
-    }
-    return config;
-  },
+  productionBrowserSourceMaps: false,
 };
 
 const plugins = [

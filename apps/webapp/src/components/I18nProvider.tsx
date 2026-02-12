@@ -1,33 +1,50 @@
 'use client';
 
-import { createInstance, Resource, i18n as I18n } from 'i18next';
+import { createInstance, i18n as I18n } from 'i18next';
 import { I18nextProvider, initReactI18next } from 'react-i18next';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getUserLanguage, hasToken } from '../lib/api';
+import { DEFAULT_LOCALE, setLocaleCookie } from '../lib/i18n-config';
 
-const resources: Resource = {
-  en: {
-    common: require('../locales/en/common.json'),
-  },
-  fr: {
-    common: require('../locales/fr/common.json'),
-  },
+const localeLoaders: Record<string, () => Promise<Record<string, string>>> = {
+  en: () => import('../locales/en/common.json').then((m) => m.default),
+  fr: () => import('../locales/fr/common.json').then((m) => m.default),
 };
 
 export const i18n: I18n = createInstance();
-i18n.use(initReactI18next).init({
-  lng: 'en',
-  fallbackLng: 'en',
-  defaultNS: 'common',
-  resources,
-  initImmediate: false,
-  react: {
-    useSuspense: false,
-  },
-});
 
-function setLocaleCookie(lang: string) {
-  document.cookie = `locale=${lang};path=/;max-age=${365 * 24 * 60 * 60};SameSite=Lax`;
+async function loadTranslations(locale: string): Promise<Record<string, string>> {
+  const loader = localeLoaders[locale] || localeLoaders[DEFAULT_LOCALE];
+  return loader();
+}
+
+let initPromise: Promise<void> | null = null;
+
+function initializeI18n(locale: string): Promise<void> {
+  if (initPromise) {
+    return initPromise;
+  }
+
+  initPromise = loadTranslations(locale).then(async (translations) => {
+    await i18n.use(initReactI18next).init({
+      lng: locale,
+      fallbackLng: DEFAULT_LOCALE,
+      defaultNS: 'common',
+      resources: { [locale]: { common: translations } },
+      react: { useSuspense: false },
+    });
+  });
+
+  return initPromise;
+}
+
+export async function addLocaleIfNeeded(locale: string): Promise<void> {
+  if (i18n.hasResourceBundle(locale, 'common')) {
+    return;
+  }
+
+  const translations = await loadTranslations(locale);
+  i18n.addResourceBundle(locale, 'common', translations);
 }
 
 interface I18nProviderProps {
@@ -37,19 +54,31 @@ interface I18nProviderProps {
 
 export default function I18nProvider({
   children,
-  initialLocale = 'en',
+  initialLocale = DEFAULT_LOCALE,
 }: I18nProviderProps) {
   const lastSyncedLocale = useRef<string | null>(null);
-
-  if (lastSyncedLocale.current !== initialLocale) {
-    if (i18n.language !== initialLocale) {
-      i18n.changeLanguage(initialLocale);
-    }
-    lastSyncedLocale.current = initialLocale;
-  }
+  const [isReady, setIsReady] = useState(i18n.isInitialized);
 
   useEffect(() => {
-    const syncAuthenticatedLanguage = async () => {
+    if (!i18n.isInitialized) {
+      initializeI18n(initialLocale).then(() => setIsReady(true));
+    }
+  }, [initialLocale]);
+
+  useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+
+    const syncLocale = async () => {
+      if (lastSyncedLocale.current !== initialLocale) {
+        await addLocaleIfNeeded(initialLocale);
+        if (i18n.language !== initialLocale) {
+          await i18n.changeLanguage(initialLocale);
+        }
+        lastSyncedLocale.current = initialLocale;
+      }
+
       if (!hasToken()) {
         return;
       }
@@ -58,6 +87,7 @@ export default function I18nProvider({
         const response = await getUserLanguage();
 
         if (response.language !== i18n.language) {
+          await addLocaleIfNeeded(response.language);
           await i18n.changeLanguage(response.language);
           document.documentElement.lang = response.language;
           setLocaleCookie(response.language);
@@ -67,8 +97,12 @@ export default function I18nProvider({
       }
     };
 
-    syncAuthenticatedLanguage();
-  }, [initialLocale]);
+    syncLocale();
+  }, [initialLocale, isReady]);
+
+  if (!isReady) {
+    return null;
+  }
 
   return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>;
 }

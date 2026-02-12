@@ -1,17 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { i18n } from './I18nProvider';
+import { useRouter, usePathname } from 'next/navigation';
+import { i18n, addLocaleIfNeeded } from './I18nProvider';
 import { updateUserLanguage, hasToken } from '../lib/api';
-
-function setLocaleCookie(lang: string) {
-  document.cookie = `locale=${lang};path=/;max-age=${365 * 24 * 60 * 60};SameSite=Lax`;
-}
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, setLocaleCookie } from '../lib/i18n-config';
 
 export default function LanguageSwitcher() {
-  const [currentLang, setCurrentLang] = useState(i18n.language || 'en');
+  const [currentLang, setCurrentLang] = useState(i18n.language || DEFAULT_LOCALE);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     setCurrentLang(i18n.language);
@@ -28,6 +26,7 @@ export default function LanguageSwitcher() {
 
   const changeLanguage = async (lng: string) => {
     setCurrentLang(lng);
+    await addLocaleIfNeeded(lng);
     await i18n.changeLanguage(lng);
     document.documentElement.lang = lng;
     setLocaleCookie(lng);
@@ -40,7 +39,17 @@ export default function LanguageSwitcher() {
       }
     }
 
-    router.refresh();
+    const currentLocale = SUPPORTED_LOCALES.find(
+      (locale) =>
+        pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)
+    );
+
+    if (currentLocale) {
+      const newPath = pathname.replace(`/${currentLocale}`, `/${lng}`);
+      router.push(newPath);
+    } else {
+      router.refresh();
+    }
   };
 
   return (
