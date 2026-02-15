@@ -3,6 +3,7 @@ import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { KafkaService } from './messaging/kafka/kafka.service';
@@ -23,15 +24,14 @@ import { CloudflareThrottlerGuard } from '../common/guards/cloudflare-throttler.
 import { TokenRevokedExceptionFilter } from '../common/filters/token-revoked-exception.filter';
 import { getDatabaseConfig } from '../config/database.config';
 import { getThrottleConfig } from '../config/throttle.config';
-import { getOciLoggingConfig } from '../config/oci-logging.config';
-import { OciLoggingService } from '../common/services/oci-logging.service';
-import { OciLoggerService } from '../common/loggers/oci-logger.service';
+import { getPinoConfig } from '../config/pino.config';
 import { Vehicle } from '../entities/vehicle.entity';
 import { User } from '../entities/user.entity';
 import { RetryManager } from './shared/retry-manager.service';
 
 @Module({
   imports: [
+    LoggerModule.forRoot(getPinoConfig()),
     TypeOrmModule.forRoot(getDatabaseConfig()),
     TypeOrmModule.forFeature([Vehicle, User]),
     ScheduleModule.forRoot(),
@@ -71,11 +71,6 @@ import { RetryManager } from './shared/retry-manager.service';
       ) => [sentryHandler],
       inject: [SentryAlertHandlerService],
     },
-    {
-      provide: OciLoggingService,
-      useFactory: () => new OciLoggingService(getOciLoggingConfig()),
-    },
-    OciLoggerService,
     {
       provide: APP_GUARD,
       useClass: CloudflareThrottlerGuard,

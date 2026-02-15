@@ -2,13 +2,12 @@ import 'reflect-metadata';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
-import { OciLoggerService } from './common/loggers/oci-logger.service';
+import { Logger as PinoLogger } from 'nestjs-pino';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
-  const ociLoggerService = app.get(OciLoggerService);
-  app.useLogger(ociLoggerService);
+  app.useLogger(app.get(PinoLogger));
 
   const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
   const additionalOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')

@@ -82,33 +82,26 @@ export class OciLoggingService implements OnModuleInit {
     }
   }
 
-  async sendLog(message: unknown): Promise<void> {
-    if (!this.isInitialized || !this.loggingClient) {
+  async sendLogBatch(entries: Array<{ data: string; id: string; time: Date }>): Promise<void> {
+    if (!this.isInitialized || !this.loggingClient || entries.length === 0) {
       return;
     }
 
     try {
-      const putLogsRequest = {
+      await this.loggingClient.putLogs({
         logId: this.config.logId,
         putLogsDetails: {
           logEntryBatches: [{
-            entries: [{
-              data: typeof message === 'string' ? message : JSON.stringify(message),
-              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              time: new Date(),
-            }],
+            entries,
             source: 'tesla-guard-api',
             type: 'STRUCTURED',
             defaultlogentrytime: new Date(),
           }],
           specversion: '1.0',
         },
-      };
-
-      await this.loggingClient.putLogs(putLogsRequest);
-
+      });
     } catch (error) {
-      console.error(`[OciLoggingService] Failed to send log to OCI: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`[OciLoggingService] Failed to send logs to OCI: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

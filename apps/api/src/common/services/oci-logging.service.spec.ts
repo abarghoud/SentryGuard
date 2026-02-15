@@ -253,10 +253,15 @@ describe('The OciLoggingService class', () => {
     });
   });
 
-  describe('The sendLog() method', () => {
+  describe('The sendLogBatch() method', () => {
     describe('When service is not initialized', () => {
-      it('should not send any log', async () => {
-        await service.sendLog('test message');
+      it('should not send logs', async () => {
+        const entries = [
+          { data: 'log 1', id: '1', time: new Date() },
+          { data: 'log 2', id: '2', time: new Date() },
+        ];
+
+        await service.sendLogBatch(entries);
 
         expect(mockLoggingClient.putLogs).not.toHaveBeenCalled();
       });
@@ -269,72 +274,42 @@ describe('The OciLoggingService class', () => {
         jest.clearAllMocks();
       });
 
-      describe('When message is a string', () => {
-        it('should send the log with string data', async () => {
-          await service.sendLog('test log message');
+      it('should send batch of log entries', async () => {
+        const entries = [
+          { data: 'log 1', id: '1', time: new Date() },
+          { data: 'log 2', id: '2', time: new Date() },
+          { data: 'log 3', id: '3', time: new Date() },
+        ];
 
-          expect(mockLoggingClient.putLogs).toHaveBeenCalledWith({
-            logId: 'test-log-id',
-            putLogsDetails: {
-              logEntryBatches: [
-                {
-                  entries: [
-                    {
-                      data: 'test log message',
-                      id: expect.any(String),
-                      time: expect.any(Date),
-                    },
-                  ],
-                  source: 'tesla-guard-api',
-                  type: 'STRUCTURED',
-                  defaultlogentrytime: expect.any(Date),
-                },
-              ],
-              specversion: '1.0',
-            },
-          });
+        await service.sendLogBatch(entries);
+
+        expect(mockLoggingClient.putLogs).toHaveBeenCalledTimes(1);
+        expect(mockLoggingClient.putLogs).toHaveBeenCalledWith({
+          logId: 'test-log-id',
+          putLogsDetails: {
+            logEntryBatches: [{
+              entries,
+              source: 'tesla-guard-api',
+              type: 'STRUCTURED',
+              defaultlogentrytime: expect.any(Date),
+            }],
+            specversion: '1.0',
+          },
         });
       });
 
-      describe('When message is an object', () => {
-        it('should send the log with stringified data', async () => {
-          const message = { level: 'error', message: 'Something went wrong' };
+      it('should not send empty batch', async () => {
+        await service.sendLogBatch([]);
 
-          await service.sendLog(message);
-
-          expect(mockLoggingClient.putLogs).toHaveBeenCalledWith({
-            logId: 'test-log-id',
-            putLogsDetails: {
-              logEntryBatches: [
-                {
-                  entries: [
-                    {
-                      data: JSON.stringify(message),
-                      id: expect.any(String),
-                      time: expect.any(Date),
-                    },
-                  ],
-                  source: 'tesla-guard-api',
-                  type: 'STRUCTURED',
-                  defaultlogentrytime: expect.any(Date),
-                },
-              ],
-              specversion: '1.0',
-            },
-          });
-        });
+        expect(mockLoggingClient.putLogs).not.toHaveBeenCalled();
       });
 
-      describe('When sending log fails', () => {
-        beforeEach(() => {
-          mockLoggingClient.putLogs.mockRejectedValue(
-            new Error('Network error'),
-          );
-        });
+      it('should handle errors silently', async () => {
+        mockLoggingClient.putLogs.mockRejectedValue(new Error('Network error'));
 
-        it('should handle the error silently', async () => {
-          await expect(service.sendLog('test message')).resolves.not.toThrow();
-        });
+        const entries = [{ data: 'log', id: '1', time: new Date() }];
+
+        await expect(service.sendLogBatch(entries)).resolves.not.toThrow();
       });
     });
   });
