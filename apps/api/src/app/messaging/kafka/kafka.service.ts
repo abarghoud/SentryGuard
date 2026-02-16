@@ -11,6 +11,7 @@ import type { MessageHandler } from './interfaces/message-handler.interface';
 import pLimit from 'p-limit';
 import { kafkaMessageHandler } from './interfaces/message-handler.interface';
 import { RetryManager } from '../../shared/retry-manager.service';
+import { KafkaConfigFactory } from './kafka-config.factory';
 
 @Injectable()
 export class KafkaService implements OnModuleInit, OnModuleDestroy {
@@ -32,12 +33,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     @Inject(kafkaMessageHandler) private readonly messageHandler: MessageHandler,
     private readonly retryManager: RetryManager
   ) {
-    this.kafka = new Kafka({
-      clientId: this.kafkaClientId,
-      brokers: this.kafkaBrokers.split(',').map(broker => broker.trim()),
-      connectionTimeout: 5000,
-      requestTimeout: 10000,
-    });
+    this.kafka = new Kafka(KafkaConfigFactory.createKafkaConfig());
 
     this.consumer = this.kafka.consumer({
       groupId: this.kafkaGroupId,
