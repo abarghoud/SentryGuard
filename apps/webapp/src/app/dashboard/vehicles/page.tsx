@@ -18,7 +18,7 @@ export default function VehiclesPage() {
   const isKeyPaired = vehicles.length > 0 ? vehicles[0].key_paired : null;
 
   const handlePairVirtualKey = () => {
-    window.open('https://www.tesla.com/_ak/ws.sentryguard.org', '_blank');
+    window.open(process.env.NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL, '_blank');
   };
 
   if (isLoading) {
