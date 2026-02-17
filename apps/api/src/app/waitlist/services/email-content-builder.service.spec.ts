@@ -27,6 +27,7 @@ describe('The EmailContentBuilderService class', () => {
           if (key === 'welcomeEmailBody') return expectedBody;
           return '';
         });
+        process.env.DISCORD_INVITE_URL = '';
 
         result = service.buildWelcomeEmail(fullName, language);
       });
@@ -47,6 +48,7 @@ describe('The EmailContentBuilderService class', () => {
         expect(mockedI18n.t).toHaveBeenCalledWith('welcomeEmailBody', {
           lng: language,
           name: fullName,
+          discordUrl: '',
         });
       });
     });
@@ -64,12 +66,16 @@ describe('The EmailContentBuilderService class', () => {
           if (key === 'welcomeEmailBodyNoName') return expectedBody;
           return '';
         });
+        process.env.DISCORD_INVITE_URL = '';
 
         result = service.buildWelcomeEmail(undefined, language);
       });
 
       it('should call i18n with welcomeEmailBodyNoName key', () => {
-        expect(mockedI18n.t).toHaveBeenCalledWith('welcomeEmailBodyNoName', { lng: language });
+        expect(mockedI18n.t).toHaveBeenCalledWith('welcomeEmailBodyNoName', {
+          lng: language,
+          discordUrl: '',
+        });
       });
 
       it('should return email content with subject', () => {

@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { DiscordLink } from '../../components/DiscordLink';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 function WaitlistContent() {
@@ -66,6 +67,17 @@ function WaitlistContent() {
               </p>
             </div>
           </div>
+
+          {process.env.NEXT_PUBLIC_DISCORD_URL ? (
+            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                {t('Join our Discord community while you wait')}
+              </p>
+              <DiscordLink className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors duration-200 text-sm font-medium">
+                {t('Join Discord')}
+              </DiscordLink>
+            </div>
+          ) : null}
 
           <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
             <Link
