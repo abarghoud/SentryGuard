@@ -8,6 +8,7 @@ import { useAuth } from '../../lib/useAuth';
 import { useConsent } from '../../lib/useConsent';
 import { useOnboarding } from '../../lib/useOnboarding';
 import MissingScopesBanner from '../../components/MissingScopesBanner';
+import { DiscordLink } from '../../components/DiscordLink';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 export default function DashboardLayout({
@@ -149,6 +150,9 @@ export default function DashboardLayout({
             </div>
             <div className="hidden sm:flex items-center gap-4">
               <LanguageSwitcher />
+              <DiscordLink className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-md transition-colors duration-200 text-sm font-medium">
+                Discord
+              </DiscordLink>
               {profile ? (
                 <div className="hidden sm:block text-sm text-gray-700 dark:text-gray-300">
                   {profile.full_name || profile.email || 'User'}
@@ -233,6 +237,9 @@ export default function DashboardLayout({
                 </div>
               ) : null}
               <LanguageSwitcher />
+              <DiscordLink className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-md transition-colors duration-200 text-sm font-medium">
+                Discord
+              </DiscordLink>
               <button
                 onClick={logout}
                 className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"

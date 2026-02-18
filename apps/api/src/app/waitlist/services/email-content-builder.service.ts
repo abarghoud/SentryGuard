@@ -13,7 +13,11 @@ export class EmailContentBuilderService {
     language: string
   ): EmailContent {
     const bodyKey = fullName ? 'welcomeEmailBody' : 'welcomeEmailBodyNoName';
-    const interpolation = fullName ? { name: fullName } : {};
+    const nameInterpolation = fullName ? { name: fullName } : {};
+    const interpolation = {
+      ...nameInterpolation,
+      discordUrl: process.env.DISCORD_INVITE_URL ?? '',
+    };
 
     return {
       subject: i18n.t('welcomeEmailSubject', { lng: language }),
