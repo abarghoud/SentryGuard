@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import OnboardingStepLayout from './OnboardingStepLayout';
 
-const TESLA_APP_URL = 'https://www.tesla.com/_ak/ws.sentryguard.org';
+const TESLA_APP_URL = process.env.NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL;
 
 interface VirtualKeySetupStepProps {
   onContinue?: () => void;
