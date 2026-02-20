@@ -4,6 +4,7 @@ import { TelemetryEventHandler, TelemetryEventHandlerSymbol } from '../interface
 import { KafkaMessage } from 'kafkajs';
 import { TelemetryValidationService } from '../services/telemetry-validation.service';
 import { TelemetryMessage } from '../models/telemetry-message.model';
+import { KafkaLogContextService } from '../../../common/services/kafka-log-context.service';
 import { randomBytes } from 'crypto';
 
 interface RawTelemetryMessage {
@@ -20,7 +21,8 @@ export class TelemetryMessageHandlerService implements MessageHandler {
   constructor(
     @Inject(TelemetryEventHandlerSymbol)
     private readonly eventHandlers: TelemetryEventHandler[],
-    private readonly validationService: TelemetryValidationService
+    private readonly validationService: TelemetryValidationService,
+    private readonly kafkaLogContextService: KafkaLogContextService
   ) {}
 
   async handleMessage(
@@ -34,19 +36,34 @@ export class TelemetryMessageHandlerService implements MessageHandler {
     const parseTime = Date.now() - parseStart;
 
     const correlationId = this.enrichMessageWithCorrelationId(rawMessage, message.offset);
-    
+    const vin = rawMessage.vin || 'unknown';
+
+    await this.kafkaLogContextService.runWithContext(
+      { vin, correlationId },
+      () => this.processValidatedMessage(rawMessage, commit, startTime, parseTime)
+    );
+  }
+
+  private async processValidatedMessage(
+    rawMessage: RawTelemetryMessage,
+    commit: () => Promise<void>,
+    startTime: number,
+    parseTime: number
+  ): Promise<void> {
+    const correlationId = rawMessage.correlationId!;
+
     const validateStart = Date.now();
     const telemetryMessage = await this.validateMessage(rawMessage);
     const validateTime = Date.now() - validateStart;
-    
+
     const dispatchStart = Date.now();
     await this.dispatchTelemetryEvents(telemetryMessage);
     const dispatchTime = Date.now() - dispatchStart;
-    
+
     const commitStart = Date.now();
     await commit();
     const commitTime = Date.now() - commitStart;
-    
+
     const totalProcessingTime = Date.now() - startTime;
     this.logLatencyIfNeeded(telemetryMessage, correlationId, startTime, {
       parseTime,

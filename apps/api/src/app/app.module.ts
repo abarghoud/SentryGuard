@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD, APP_FILTER } from '@nestjs/core';
+import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -21,7 +21,9 @@ import { RedirectModule } from './redirect/redirect.module';
 import { TeslaPublicKeyModule } from './tesla-public-key/tesla-public-key.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { CloudflareThrottlerGuard } from '../common/guards/cloudflare-throttler.guard';
+import { LogContextInterceptor } from '../common/interceptors/log-context.interceptor';
 import { TokenRevokedExceptionFilter } from '../common/filters/token-revoked-exception.filter';
+import { KafkaLogContextService } from '../common/services/kafka-log-context.service';
 import { getDatabaseConfig } from '../config/database.config';
 import { getThrottleConfig } from '../config/throttle.config';
 import { getPinoConfig } from '../config/pino.config';
@@ -70,6 +72,11 @@ import { RetryManager } from './shared/retry-manager.service';
         sentryHandler: SentryAlertHandlerService,
       ) => [sentryHandler],
       inject: [SentryAlertHandlerService],
+    },
+    KafkaLogContextService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LogContextInterceptor,
     },
     {
       provide: APP_GUARD,

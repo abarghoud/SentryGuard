@@ -8,6 +8,7 @@ import { UserLanguageService } from '../../user/user-language.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
 import { User } from '../../../entities/user.entity';
 import { TelemetryMessage, SentryModeState } from '../../telemetry/models/telemetry-message.model';
+import { KafkaLogContextService } from '../../../common/services/kafka-log-context.service';
 import { mock } from 'jest-mock-extended';
 import { Repository } from 'typeorm';
 
@@ -16,6 +17,7 @@ const mockKeyboardBuilder = mock<TelegramKeyboardBuilderService>();
 const mockUserLanguageService = mock<UserLanguageService>();
 const mockVehicleRepository = mock<Repository<Vehicle>>();
 const mockUserRepository = mock<Repository<User>>();
+const mockKafkaLogContextService = mock<KafkaLogContextService>();
 
 describe('The SentryAlertHandlerService class', () => {
   let service: SentryAlertHandlerService;
@@ -35,6 +37,10 @@ describe('The SentryAlertHandlerService class', () => {
         {
           provide: UserLanguageService,
           useValue: mockUserLanguageService
+        },
+        {
+          provide: KafkaLogContextService,
+          useValue: mockKafkaLogContextService
         },
         {
           provide: getRepositoryToken(Vehicle),
