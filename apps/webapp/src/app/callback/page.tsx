@@ -10,7 +10,7 @@ function CallbackContent() {
   const { t } = useTranslation('common');
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
+  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'cancelled'>(
     'loading'
   );
   const [message, setMessage] = useState(t('Processing authentication...'));
@@ -24,7 +24,12 @@ function CallbackContent() {
       const error = searchParams.get('error');
 
       if (error) {
-        // Check if it's a scope-related error
+        if (error === 'login_cancelled') {
+          setStatus('cancelled');
+          setMessage(t('You cancelled the Tesla login. You can try again whenever you\'re ready.'));
+          return;
+        }
+
         if (error.includes('Missing required permissions')) {
           const missingScopes =
             error
@@ -129,10 +134,29 @@ function CallbackContent() {
             </div>
           )}
 
+          {status === 'cancelled' && (
+            <div className="mb-4">
+              <svg
+                className="w-16 h-16 text-gray-400 mx-auto"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                />
+              </svg>
+            </div>
+          )}
+
           <h1 className="text-2xl font-bold mb-2 text-gray-900">
             {status === 'loading' && t('Authenticating...')}
             {status === 'success' && t('Success!')}
             {status === 'error' && t('Authentication Failed')}
+            {status === 'cancelled' && t('Login Cancelled')}
           </h1>
 
           <p className="text-gray-600">{message}</p>
@@ -144,6 +168,23 @@ function CallbackContent() {
             >
               {t('Return to Home')}
             </a>
+          )}
+
+          {status === 'cancelled' && (
+            <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+              <a
+                href="/"
+                className="inline-block bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+              >
+                {t('Try Again')}
+              </a>
+              <a
+                href="/"
+                className="inline-block bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-6 rounded-lg border border-gray-300 transition-colors duration-200"
+              >
+                {t('Back to home')}
+              </a>
+            </div>
           )}
         </div>
       </div>

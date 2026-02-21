@@ -23,31 +23,28 @@ export class CallbackController {
     @Query('state') state: string,
     @Query('locale') locale: string,
     @Query('issuer') issuer: string,
+    @Query('error') error: string,
+    @Query('error_description') errorDescription: string,
     @Res() res: Response
   ): Promise<void> {
     this.logger.log('🔄 Receiving Tesla OAuth callback');
     this.logger.log(`📝 Locale: ${locale}, Issuer: ${issuer}`);
 
+    if (error) {
+      this.logger.log(`ℹ️ Tesla OAuth returned an error: ${error} - ${errorDescription}`);
+      const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
+      const params = new URLSearchParams({ error });
+      if (errorDescription) {
+        params.set('error_description', errorDescription);
+      }
+      res.redirect(`${webappUrl}/callback?${params.toString()}`);
+      return;
+    }
+
     if (!code || !state) {
       this.logger.error('❌ Missing code or state in callback');
-      res.status(400).send(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="UTF-8">
-            <title>Authentication Error</title>
-            <style>
-              body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
-              .error { color: #d32f2f; }
-              h1 { color: #333; }
-            </style>
-          </head>
-          <body>
-            <h1 class="error">❌ Authentication error</h1>
-            <p>Missing parameters in OAuth callback.</p>
-          </body>
-        </html>
-      `);
+      const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
+      res.redirect(`${webappUrl}/callback?error=missing_parameters`);
       return;
     }
 
