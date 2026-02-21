@@ -163,7 +163,7 @@ export const faqCategories: FaqCategoryData[] = [
     ],
   },
   {
-    titleKey: 'Beta & Waitlist',
+    titleKey: 'Waitlist',
     items: [
       {
         questionKey: 'Why is there a waitlist?',
@@ -198,16 +198,6 @@ export const faqCategories: FaqCategoryData[] = [
           'What if I try to log in before being approved?',
         answerKey:
           'What if I try to log in before being approved answer',
-      },
-      {
-        questionKey: 'When is the official launch?',
-        answerKey: 'When is the official launch answer',
-      },
-      {
-        questionKey:
-          'Should I wait for the launch or join the beta waitlist?',
-        answerKey:
-          'Should I wait for the launch or join the beta waitlist answer',
       },
     ],
   },

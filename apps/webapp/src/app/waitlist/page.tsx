@@ -56,16 +56,13 @@ function WaitlistContent() {
               )}
             </p>
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
-              <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
-                {t('SentryGuard is currently in beta with limited capacity')}
-              </p>
-              <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
-                {t('Current wait time is typically several weeks')}
-              </p>
               <p className="text-sm text-blue-700 dark:text-blue-300">
-                {t('Official launch coming soon with faster approvals')}
+                {t('Approval is typically processed within 24-48 hours.')}
               </p>
             </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {t('No email within 72 hours? Check your spam or promotions folder.')}
+            </p>
           </div>
 
           {process.env.NEXT_PUBLIC_DISCORD_URL ? (
