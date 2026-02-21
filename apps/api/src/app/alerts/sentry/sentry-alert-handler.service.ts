@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { TelegramService } from '../../telegram/telegram.service';
 import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { UserLanguageService } from '../../user/user-language.service';
+import { KafkaLogContextService } from '../../../common/services/kafka-log-context.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
 import { TelemetryEventHandler } from '../../telemetry/interfaces/telemetry-event-handler.interface';
 import { SentryModeState, TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
@@ -18,6 +19,7 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
     private readonly telegramService: TelegramService,
     private readonly keyboardBuilder: TelegramKeyboardBuilderService,
     private readonly userLanguageService: UserLanguageService,
+    private readonly kafkaLogContextService: KafkaLogContextService,
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>
   ) {}
@@ -48,6 +50,7 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
       }
 
       const userIds = this.extractUniqueUserIds(vehicles);
+      this.kafkaLogContextService.assignUserId(userIds.join(','));
       const alertInfo = this.buildAlertInfo(message.vin, vehicles[0].display_name);
 
       this.logMultiUserNotification(message.vin, userIds.length);

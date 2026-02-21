@@ -9,6 +9,7 @@ import { mock } from 'jest-mock-extended';
 import { Repository } from 'typeorm';
 import { TelemetryValidationService } from '../services/telemetry-validation.service';
 import { TelemetryMessage } from '../models/telemetry-message.model';
+import { KafkaLogContextService } from '../../../common/services/kafka-log-context.service';
 import { plainToInstance } from 'class-transformer';
 import { randomBytes } from 'crypto';
 
@@ -24,6 +25,10 @@ const mockUserRepository = mock<Repository<User>>();
 const mockEventHandler1 = mock<TelemetryEventHandler>();
 const mockEventHandler2 = mock<TelemetryEventHandler>();
 const mockValidationService = mock<TelemetryValidationService>();
+const mockKafkaLogContextService = mock<KafkaLogContextService>();
+mockKafkaLogContextService.runWithContext.mockImplementation(
+  (_context, callback) => callback()
+);
 
 describe('The TelemetryMessageHandlerService class', () => {
   let service: TelemetryMessageHandlerService;
@@ -57,12 +62,19 @@ describe('The TelemetryMessageHandlerService class', () => {
           provide: TelemetryEventHandlerSymbol,
           useValue: [mockEventHandler1, mockEventHandler2],
         },
+        {
+          provide: KafkaLogContextService,
+          useValue: mockKafkaLogContextService,
+        },
       ],
     }).compile();
 
     service = module.get<TelemetryMessageHandlerService>(TelemetryMessageHandlerService);
 
     jest.clearAllMocks();
+    mockKafkaLogContextService.runWithContext.mockImplementation(
+      (_context, callback) => callback()
+    );
   });
 
   it('should be defined', () => {

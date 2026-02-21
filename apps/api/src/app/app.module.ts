@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD, APP_FILTER } from '@nestjs/core';
+import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { KafkaService } from './messaging/kafka/kafka.service';
@@ -20,18 +21,19 @@ import { RedirectModule } from './redirect/redirect.module';
 import { TeslaPublicKeyModule } from './tesla-public-key/tesla-public-key.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { CloudflareThrottlerGuard } from '../common/guards/cloudflare-throttler.guard';
+import { LogContextInterceptor } from '../common/interceptors/log-context.interceptor';
 import { TokenRevokedExceptionFilter } from '../common/filters/token-revoked-exception.filter';
+import { KafkaLogContextService } from '../common/services/kafka-log-context.service';
 import { getDatabaseConfig } from '../config/database.config';
 import { getThrottleConfig } from '../config/throttle.config';
-import { getOciLoggingConfig } from '../config/oci-logging.config';
-import { OciLoggingService } from '../common/services/oci-logging.service';
-import { OciLoggerService } from '../common/loggers/oci-logger.service';
+import { getPinoConfig } from '../config/pino.config';
 import { Vehicle } from '../entities/vehicle.entity';
 import { User } from '../entities/user.entity';
 import { RetryManager } from './shared/retry-manager.service';
 
 @Module({
   imports: [
+    LoggerModule.forRoot(getPinoConfig()),
     TypeOrmModule.forRoot(getDatabaseConfig()),
     TypeOrmModule.forFeature([Vehicle, User]),
     ScheduleModule.forRoot(),
@@ -71,11 +73,11 @@ import { RetryManager } from './shared/retry-manager.service';
       ) => [sentryHandler],
       inject: [SentryAlertHandlerService],
     },
+    KafkaLogContextService,
     {
-      provide: OciLoggingService,
-      useFactory: () => new OciLoggingService(getOciLoggingConfig()),
+      provide: APP_INTERCEPTOR,
+      useClass: LogContextInterceptor,
     },
-    OciLoggerService,
     {
       provide: APP_GUARD,
       useClass: CloudflareThrottlerGuard,
