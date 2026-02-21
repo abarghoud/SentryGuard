@@ -69,7 +69,7 @@ export function getPinoConfig(): Params {
     },
     autoLogging: {
       ignore: (req: IncomingMessage) => {
-        return req.url === '/health' || req.url === '/metrics';
+        return req.url === '/test';
       },
     },
   };
