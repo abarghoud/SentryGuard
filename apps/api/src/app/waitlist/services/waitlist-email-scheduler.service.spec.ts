@@ -1,12 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { WaitlistEmailSchedulerService } from './waitlist-email-scheduler.service';
 import { WaitlistService } from './waitlist.service';
+import { DistributedLockService } from '../../../common/services/distributed-lock.service';
 import { Waitlist, WaitlistStatus } from '../../../entities/waitlist.entity';
+import { SchedulerLockKey } from '../../../config/scheduler-lock-key.config';
 
 const mockWaitlistService = {
-  claimUsersForEmailScheduling: jest.fn(),
+  findApprovedUsersForEmailSending: jest.fn(),
   sendWelcomeEmailAndMarkSent: jest.fn(),
-  resetEmailQueuedAt: jest.fn(),
+};
+
+const mockDistributedLockService = {
+  withLock: jest.fn(),
 };
 
 describe('The WaitlistEmailSchedulerService class', () => {
@@ -20,6 +25,10 @@ describe('The WaitlistEmailSchedulerService class', () => {
           provide: WaitlistService,
           useValue: mockWaitlistService,
         },
+        {
+          provide: DistributedLockService,
+          useValue: mockDistributedLockService,
+        },
       ],
     }).compile();
 
@@ -28,19 +37,26 @@ describe('The WaitlistEmailSchedulerService class', () => {
     );
 
     jest.clearAllMocks();
+
+    mockDistributedLockService.withLock.mockImplementation(
+      async (_key: number, task: () => Promise<void>) => {
+        await task();
+        return true;
+      }
+    );
   });
 
   describe('The processApprovedUsers() method', () => {
     describe('When there are no approved users', () => {
       beforeEach(async () => {
-        mockWaitlistService.claimUsersForEmailScheduling.mockResolvedValue([]);
+        mockWaitlistService.findApprovedUsersForEmailSending.mockResolvedValue([]);
 
         await service.processApprovedUsers();
       });
 
-      it('should claim users for email scheduling', () => {
+      it('should find approved users for email sending', () => {
         expect(
-          mockWaitlistService.claimUsersForEmailScheduling
+          mockWaitlistService.findApprovedUsersForEmailSending
         ).toHaveBeenCalled();
       });
 
@@ -72,7 +88,7 @@ describe('The WaitlistEmailSchedulerService class', () => {
           } as Waitlist,
         ];
 
-        mockWaitlistService.claimUsersForEmailScheduling.mockResolvedValue(
+        mockWaitlistService.findApprovedUsersForEmailSending.mockResolvedValue(
           mockUsers
         );
         mockWaitlistService.sendWelcomeEmailAndMarkSent.mockResolvedValue(
@@ -100,9 +116,6 @@ describe('The WaitlistEmailSchedulerService class', () => {
         ).toHaveBeenCalledWith(mockUsers[1]);
       });
 
-      it('should not reset emailQueuedAt for any user', () => {
-        expect(mockWaitlistService.resetEmailQueuedAt).not.toHaveBeenCalled();
-      });
     });
 
     describe('When email sending fails for one user', () => {
@@ -134,7 +147,7 @@ describe('The WaitlistEmailSchedulerService class', () => {
           } as Waitlist,
         ];
 
-        mockWaitlistService.claimUsersForEmailScheduling.mockResolvedValue(
+        mockWaitlistService.findApprovedUsersForEmailSending.mockResolvedValue(
           mockUsers
         );
 
@@ -142,8 +155,6 @@ describe('The WaitlistEmailSchedulerService class', () => {
           .mockResolvedValueOnce(undefined)
           .mockRejectedValueOnce(new Error(expectedError))
           .mockResolvedValueOnce(undefined);
-
-        mockWaitlistService.resetEmailQueuedAt.mockResolvedValue(undefined);
 
         await service.processApprovedUsers();
       });
@@ -172,15 +183,39 @@ describe('The WaitlistEmailSchedulerService class', () => {
         ).toHaveBeenNthCalledWith(3, mockUsers[2]);
       });
 
-      it('should reset emailQueuedAt for failed user', () => {
-        expect(mockWaitlistService.resetEmailQueuedAt).toHaveBeenCalledWith(
-          'user-2'
-        );
+    });
+
+    describe('When the distributed lock is already held', () => {
+      beforeEach(async () => {
+        mockDistributedLockService.withLock.mockResolvedValue(false);
+
+        await service.processApprovedUsers();
       });
 
-      it('should not reset emailQueuedAt for successful users', () => {
-        expect(mockWaitlistService.resetEmailQueuedAt).toHaveBeenCalledTimes(
-          1
+      it('should not find approved users for email sending', () => {
+        expect(
+          mockWaitlistService.findApprovedUsersForEmailSending
+        ).not.toHaveBeenCalled();
+      });
+
+      it('should not send any emails', () => {
+        expect(
+          mockWaitlistService.sendWelcomeEmailAndMarkSent
+        ).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When the distributed lock is available', () => {
+      beforeEach(async () => {
+        mockWaitlistService.findApprovedUsersForEmailSending.mockResolvedValue([]);
+
+        await service.processApprovedUsers();
+      });
+
+      it('should acquire the lock before executing', () => {
+        expect(mockDistributedLockService.withLock).toHaveBeenCalledWith(
+          SchedulerLockKey.WaitlistEmail,
+          expect.any(Function)
         );
       });
     });

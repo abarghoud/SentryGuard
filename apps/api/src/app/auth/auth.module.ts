@@ -6,6 +6,9 @@ import { AuthController } from './auth.controller';
 import { CallbackController } from './callback.controller';
 import { AuthService } from './auth.service';
 import { TeslaPartnerAuthService } from './tesla-partner-auth.service';
+import { TeslaTokenRefreshService } from './services/tesla-token-refresh.service';
+import { TeslaTokenRefreshSchedulerService } from './services/tesla-token-refresh-scheduler.service';
+import { DistributedLockService } from '../../common/services/distributed-lock.service';
 import { JwtStrategy } from './jwt.strategy';
 import { User } from '../../entities/user.entity';
 import { WaitlistModule } from '../waitlist/waitlist.module';
@@ -32,7 +35,7 @@ if (!jwtSecret) {
     WaitlistModule,
   ],
   controllers: [AuthController, CallbackController],
-  providers: [AuthService, TeslaPartnerAuthService, JwtStrategy],
-  exports: [AuthService, TeslaPartnerAuthService, JwtStrategy, PassportModule],
+  providers: [AuthService, TeslaPartnerAuthService, TeslaTokenRefreshService, TeslaTokenRefreshSchedulerService, DistributedLockService, JwtStrategy],
+  exports: [AuthService, TeslaPartnerAuthService, TeslaTokenRefreshService, JwtStrategy, PassportModule],
 })
 export class AuthModule {}

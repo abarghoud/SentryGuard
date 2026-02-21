@@ -5,6 +5,10 @@ import { UnauthorizedException } from '@nestjs/common';
 import { User } from '../../entities/user.entity';
 import { JwtService } from '@nestjs/jwt';
 import { WaitlistService } from '../waitlist/services/waitlist.service';
+import {
+  TeslaTokenRefreshService,
+  RefreshResult,
+} from './services/tesla-token-refresh.service';
 import { mock, MockProxy } from 'jest-mock-extended';
 import axios from 'axios';
 import { decode, sign } from 'jsonwebtoken';
@@ -58,6 +62,8 @@ const mockJwtService = {
   verify: jest.fn(),
 };
 
+const mockTeslaTokenRefreshService = mock<TeslaTokenRefreshService>();
+
 describe('AuthService', () => {
   let service: AuthService;
   let mockWaitlistService: MockProxy<WaitlistService>;
@@ -87,6 +93,10 @@ describe('AuthService', () => {
           provide: WaitlistService,
           useValue: mockWaitlistService,
         },
+        {
+          provide: TeslaTokenRefreshService,
+          useValue: mockTeslaTokenRefreshService,
+        },
       ],
     }).compile();
 
@@ -104,6 +114,11 @@ describe('AuthService', () => {
     // Reset WaitlistService mock
     mockWaitlistService.isApproved.mockResolvedValue(true);
     mockWaitlistService.addToWaitlist.mockResolvedValue(undefined);
+
+    // Reset TeslaTokenRefreshService mock
+    mockTeslaTokenRefreshService.refreshTokenForUser.mockResolvedValue(
+      RefreshResult.Success
+    );
 
     // Set up environment variables for tests
     process.env.TESLA_CLIENT_ID = 'test-client-id';
@@ -530,13 +545,13 @@ describe('AuthService', () => {
       expect(token).toBeNull();
     });
 
-    it('should return null and delete the expired token', async () => {
+    it('should return null when token is expired and refresh fails', async () => {
       const { state } = service.generateLoginUrl();
       const mockTokenResponse = {
         data: {
           access_token: 'test-access-token',
           refresh_token: 'test-refresh-token',
-          expires_in: -1, // Token déjà expiré
+          expires_in: -1,
         },
       };
 
@@ -550,11 +565,45 @@ describe('AuthService', () => {
         state
       );
 
-      // Wait a bit for the token to expire
+      mockTeslaTokenRefreshService.refreshTokenForUser.mockResolvedValue(
+        RefreshResult.AuthenticationExpired
+      );
+
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       const token = await service.getAccessTokenForUserId(userId);
       expect(token).toBeNull();
+    });
+
+    it('should refresh and return token when access token is expired and refresh succeeds', async () => {
+      const expiredUser = {
+        userId: 'expired-user-id',
+        access_token: 'encrypted-expired-token',
+        expires_at: new Date(Date.now() - 3600000),
+      } as User;
+
+      const refreshedUser = {
+        userId: 'expired-user-id',
+        access_token: 'encrypted-new-token',
+        expires_at: new Date(Date.now() + 3600000),
+      } as User;
+
+      mockUserRepository.findOne
+        .mockResolvedValueOnce(expiredUser)
+        .mockResolvedValueOnce(refreshedUser);
+
+      mockTeslaTokenRefreshService.refreshTokenForUser.mockResolvedValue(
+        RefreshResult.Success
+      );
+
+      mockedDecrypt.mockReturnValue('decrypted-new-access-token');
+
+      const token = await service.getAccessTokenForUserId('expired-user-id');
+
+      expect(token).toBe('decrypted-new-access-token');
+      expect(
+        mockTeslaTokenRefreshService.refreshTokenForUser
+      ).toHaveBeenCalledWith('expired-user-id');
     });
   });
 

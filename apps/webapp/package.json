@@ -24,7 +24,7 @@
           "{workspaceRoot}/coverage/{projectRoot}"
         ],
         "options": {
-          "jestConfig": "apps/webapp/jest.config.ts",
+          "jestConfig": "apps/webapp/jest.config.js",
           "passWithNoTests": true
         }
       },

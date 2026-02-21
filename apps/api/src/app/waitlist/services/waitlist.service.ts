@@ -4,6 +4,7 @@ import { Repository, IsNull, Not } from 'typeorm';
 import { Waitlist, WaitlistStatus } from '../../../entities/waitlist.entity';
 import type { EmailServiceRequirements } from '../interfaces/email-service.requirements';
 import { emailServiceRequirementsSymbol } from '../interfaces/email-service.requirements';
+import { waitlistEmailBatchSizeToken } from '../../../config/waitlist-cron.config';
 import { EmailContentBuilderService } from './email-content-builder.service';
 
 @Injectable()
@@ -15,7 +16,9 @@ export class WaitlistService {
     private readonly waitlistRepository: Repository<Waitlist>,
     @Inject(emailServiceRequirementsSymbol)
     private readonly emailService: EmailServiceRequirements,
-    private readonly emailContentBuilder: EmailContentBuilderService
+    private readonly emailContentBuilder: EmailContentBuilderService,
+    @Inject(waitlistEmailBatchSizeToken)
+    private readonly emailBatchSize: number
   ) {}
 
   public async addToWaitlist(
@@ -37,36 +40,15 @@ export class WaitlistService {
     return entry?.status === WaitlistStatus.Approved;
   }
 
-  public async claimUsersForEmailScheduling(): Promise<Waitlist[]> {
-    return this.waitlistRepository.manager.transaction(async (manager) => {
-      const users = await manager.find(Waitlist, {
-        where: {
-          approvedAt: Not(IsNull()),
-          status: WaitlistStatus.Approved,
-          emailQueuedAt: IsNull(),
-          welcomeEmailSentAt: IsNull(),
-        },
-        lock: { mode: 'pessimistic_write', onLocked: 'skip_locked' },
-        take: 20,
-      });
-
-      if (users.length === 0) {
-        return [];
-      }
-
-      await manager.update(
-        Waitlist,
-        users.map((user) => user.id),
-        { emailQueuedAt: new Date() }
-      );
-
-      return users;
+  public async findApprovedUsersForEmailSending(): Promise<Waitlist[]> {
+    return this.waitlistRepository.find({
+      where: {
+        status: WaitlistStatus.Approved,
+        approvedAt: Not(IsNull()),
+        welcomeEmailSentAt: IsNull(),
+      },
+      take: this.emailBatchSize,
     });
-  }
-
-  public async resetEmailQueuedAt(id: string): Promise<void> {
-    await this.waitlistRepository.update(id, { emailQueuedAt: () => 'NULL' });
-    this.logger.log(`Reset emailQueuedAt for waitlist entry: ${id}`);
   }
 
   public async sendWelcomeEmailAndMarkSent(entry: Waitlist): Promise<void> {
