@@ -7,79 +7,98 @@ interface BufferedLogEntry {
   time: Date;
 }
 
-interface TransportOptions {
+interface OciTransportStreamOptions {
   ociConfig: OciLoggingConfig;
   maxBatchSize: number;
   flushIntervalMs: number;
 }
 
-export function createOciTransportStream(options: TransportOptions): Writable {
-  const ociService = new OciLoggingService(options.ociConfig);
+export class OciTransportStream extends Writable {
+  private readonly ociService: OciLoggingService;
+  private readonly maxBatchSize: number;
+  private readonly flushIntervalMs: number;
+  private buffer: BufferedLogEntry[] = [];
+  private isInitialized = false;
+  private flushTimer: ReturnType<typeof setInterval> | null = null;
 
-  let buffer: BufferedLogEntry[] = [];
-  let isInitialized = false;
-  let flushTimer: ReturnType<typeof setInterval> | null = null;
+  public constructor(options: OciTransportStreamOptions) {
+    super({ objectMode: true });
 
-  const flush = async () => {
-    if (buffer.length === 0 || !isInitialized) return;
+    this.ociService = new OciLoggingService(options.ociConfig);
+    this.maxBatchSize = options.maxBatchSize;
+    this.flushIntervalMs = options.flushIntervalMs;
 
-    const entries = [...buffer];
-    buffer = [];
+    this.initialize();
+  }
 
-    await ociService.sendLogBatch(entries);
-  };
+  public override _write(
+    chunk: unknown,
+    _encoding: string,
+    callback: (error?: Error | null) => void,
+  ): void {
+    if (!this.isInitialized) {
+      callback();
+      return;
+    }
 
-  const stream = new Writable({
-    objectMode: true,
-    async write(chunk: unknown, _encoding: string, callback: (error?: Error | null) => void) {
-      if (!isInitialized) {
-        callback();
+    try {
+      const data = typeof chunk === 'string' ? chunk : JSON.stringify(chunk);
+
+      this.buffer.push({
+        data,
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+        time: new Date(),
+      });
+
+      if (this.buffer.length >= this.maxBatchSize) {
+        this.flush()
+          .then(() => callback())
+          .catch((error: unknown) =>
+            callback(error instanceof Error ? error : new Error(String(error))),
+          );
         return;
       }
 
-      try {
-        const data = typeof chunk === 'string' ? chunk : JSON.stringify(chunk);
-
-        buffer.push({
-          data,
-          id: `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-          time: new Date(),
-        });
-
-        if (buffer.length >= options.maxBatchSize) {
-          await flush();
-        }
-
-        callback();
-      } catch (error) {
-        callback(error instanceof Error ? error : new Error(String(error)));
-      }
-    },
-
-    async final(callback: (error?: Error | null) => void) {
-      if (flushTimer) {
-        clearInterval(flushTimer);
-      }
-
-      try {
-        await flush();
-        callback();
-      } catch (error) {
-        callback(error instanceof Error ? error : new Error(String(error)));
-      }
+      callback();
+    } catch (error) {
+      callback(error instanceof Error ? error : new Error(String(error)));
     }
-  });
+  }
 
-  ociService.onModuleInit()
-    .then(() => {
-      isInitialized = true;
-      flushTimer = setInterval(() => {
-        flush().catch(err => console.error('[OCI Transport] Flush error:', err));
-      }, options.flushIntervalMs);
-    })
-    .catch(err => {
-      console.error('[OCI Transport] Initialization failed:', err);
-    });
+  public override _final(callback: (error?: Error | null) => void): void {
+    if (this.flushTimer) {
+      clearInterval(this.flushTimer);
+    }
 
-  return stream;
+    this.flush()
+      .then(() => callback())
+      .catch((error: unknown) =>
+        callback(error instanceof Error ? error : new Error(String(error))),
+      );
+  }
+
+  private initialize(): void {
+    this.ociService
+      .onModuleInit()
+      .then(() => {
+        this.isInitialized = true;
+        this.flushTimer = setInterval(() => {
+          this.flush().catch((err) =>
+            console.error('[OCI Transport] Flush error:', err),
+          );
+        }, this.flushIntervalMs);
+      })
+      .catch((err) => {
+        console.error('[OCI Transport] Initialization failed:', err);
+      });
+  }
+
+  private async flush(): Promise<void> {
+    if (this.buffer.length === 0 || !this.isInitialized) return;
+
+    const entries = [...this.buffer];
+    this.buffer = [];
+
+    await this.ociService.sendLogBatch(entries);
+  }
 }

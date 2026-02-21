@@ -3,7 +3,7 @@ import pino from 'pino';
 import { Options } from 'pino-http';
 import { IncomingMessage, ServerResponse } from 'http';
 import { getOciLoggingConfig } from './oci-logging.config';
-import { createOciTransportStream } from '../common/transports/oci-transport-stream';
+import { OciTransportStream } from '../common/transports/oci-transport-stream';
 
 interface RequestWithFrameworkProperties {
   query?: Record<string, unknown>;
@@ -75,7 +75,7 @@ export function getPinoConfig(): Params {
   };
 
   if (ociConfig.enabled) {
-    const ociStream = createOciTransportStream({
+    const ociStream = new OciTransportStream({
       ociConfig,
       maxBatchSize: parseInt(process.env.OCI_LOGGING_MAX_BATCH_SIZE || '50', 10),
       flushIntervalMs: parseInt(process.env.OCI_LOGGING_FLUSH_INTERVAL_MS || '5000', 10),
