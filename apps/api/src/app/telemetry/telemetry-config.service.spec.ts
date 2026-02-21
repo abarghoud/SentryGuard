@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { TelemetryConfigService } from './telemetry-config.service';
+import { AccessTokenService } from '../auth/services/access-token.service';
 import { AuthService } from '../auth/auth.service';
 import { TeslaPartnerAuthService } from '../auth/tesla-partner-auth.service';
 import { Vehicle } from '../../entities/vehicle.entity';
@@ -18,9 +19,12 @@ const mockAxiosInstance = {
 
 mockedAxios.create = jest.fn().mockReturnValue(mockAxiosInstance);
 
-const mockAuthService = {
+const mockAccessTokenService = {
   getAccessTokenForUserId: jest.fn(),
   getAccessToken: jest.fn(),
+};
+
+const mockAuthService = {
   invalidateUserTokens: jest.fn(),
 };
 
@@ -47,6 +51,10 @@ describe('TelemetryConfigService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TelemetryConfigService,
+        {
+          provide: AccessTokenService,
+          useValue: mockAccessTokenService,
+        },
         {
           provide: AuthService,
           useValue: mockAuthService,
@@ -80,7 +88,7 @@ describe('TelemetryConfigService', () => {
   describe('getVehicles', () => {
     it('should return empty array and log error when token is invalid', async () => {
       const userId = 'test-user-id';
-      mockAuthService.getAccessTokenForUserId.mockResolvedValue(null);
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue(null);
       const loggerSpy = jest
         .spyOn(service['logger'], 'error')
         .mockImplementation();
@@ -102,7 +110,7 @@ describe('TelemetryConfigService', () => {
         { vin: 'VIN456', display_name: 'Tesla Model Y' },
       ];
 
-      mockAuthService.getAccessTokenForUserId.mockResolvedValue(userToken);
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue(userToken);
       mockAxiosInstance.get.mockResolvedValueOnce({
         data: { response: mockVehicles },
       });
@@ -141,7 +149,7 @@ describe('TelemetryConfigService', () => {
     });
 
     it('should return empty array on error', async () => {
-      mockAuthService.getAccessTokenForUserId.mockResolvedValue('test-token');
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('test-token');
       const loggerSpy = jest
         .spyOn(service['logger'], 'error')
         .mockImplementation();
@@ -164,7 +172,7 @@ describe('TelemetryConfigService', () => {
         },
       ];
 
-      mockAuthService.getAccessTokenForUserId.mockResolvedValue('user-token');
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('user-token');
       mockAxiosInstance.get
         .mockResolvedValueOnce({
           data: { response: mockVehicles },
@@ -208,7 +216,7 @@ describe('TelemetryConfigService', () => {
         telemetry_enabled: false,
       };
 
-      mockAuthService.getAccessTokenForUserId.mockResolvedValue('user-token');
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('user-token');
       mockAxiosInstance.get
         .mockResolvedValueOnce({
           data: { response: mockVehicles },
@@ -231,7 +239,7 @@ describe('TelemetryConfigService', () => {
       const userId = 'test-user-id';
       const mockVehicles = [{ vin: 'VIN123', display_name: 'Tesla Model 3' }];
 
-      mockAuthService.getAccessTokenForUserId.mockResolvedValue('user-token');
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('user-token');
       mockAxiosInstance.get
         .mockResolvedValueOnce({
           data: { response: mockVehicles },
@@ -281,7 +289,7 @@ describe('TelemetryConfigService', () => {
       const userId = 'test-user-id';
       const userToken = 'user-access-token';
 
-      mockAuthService.getAccessTokenForUserId.mockResolvedValue(userToken);
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue(userToken);
       mockAxiosInstance.post.mockResolvedValueOnce({
         data: { response: { ok: true } },
       });
@@ -330,7 +338,7 @@ describe('TelemetryConfigService', () => {
         },
       };
 
-      mockAuthService.getAccessTokenForUserId.mockResolvedValue(userToken);
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue(userToken);
       mockAxiosInstance.post.mockResolvedValueOnce({
         data: skippedPayload,
       });
@@ -462,7 +470,7 @@ describe('TelemetryConfigService', () => {
       const userId = 'test-user-id';
       const userToken = 'user-access-token';
 
-      mockAuthService.getAccessTokenForUserId.mockResolvedValue(userToken);
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue(userToken);
       mockAxiosInstance.delete.mockResolvedValueOnce({
         data: { success: true },
       });
@@ -491,7 +499,7 @@ describe('TelemetryConfigService', () => {
       const userId = 'test-user-id';
       const userToken = 'user-access-token';
 
-      mockAuthService.getAccessTokenForUserId.mockResolvedValue(userToken);
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue(userToken);
       mockAxiosInstance.delete.mockRejectedValueOnce({
         isAxiosError: true,
         response: { status: 404 },
@@ -524,7 +532,7 @@ describe('TelemetryConfigService', () => {
       const userId = 'test-user-id';
       const userToken = 'user-access-token';
 
-      mockAuthService.getAccessTokenForUserId.mockResolvedValue(userToken);
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue(userToken);
       mockAxiosInstance.delete.mockRejectedValueOnce({
         isAxiosError: true,
         response: { status: 500, data: { error: 'Internal Server Error' } },
@@ -552,7 +560,7 @@ describe('TelemetryConfigService', () => {
       const vin = 'VIN123';
       const userId = 'test-user-id';
 
-      mockAuthService.getAccessTokenForUserId.mockResolvedValue(null);
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue(null);
 
       const loggerSpy = jest
         .spyOn(service['logger'], 'error')
@@ -585,7 +593,7 @@ describe('TelemetryConfigService', () => {
           },
         };
 
-        mockAuthService.getAccessTokenForUserId.mockResolvedValue('revoked-token');
+        mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('revoked-token');
         mockAxiosInstance.get.mockRejectedValue(revokedTokenError);
 
         const loggerWarnSpy = jest
@@ -620,7 +628,7 @@ describe('TelemetryConfigService', () => {
           },
         };
 
-        mockAuthService.getAccessTokenForUserId.mockResolvedValue('revoked-token');
+        mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('revoked-token');
         mockAxiosInstance.post.mockRejectedValue(revokedTokenError);
 
         const loggerWarnSpy = jest
@@ -654,7 +662,7 @@ describe('TelemetryConfigService', () => {
           },
         };
 
-        mockAuthService.getAccessTokenForUserId.mockResolvedValue('revoked-token');
+        mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('revoked-token');
         mockAxiosInstance.get.mockRejectedValue(revokedTokenError);
 
         const loggerWarnSpy = jest
@@ -688,7 +696,7 @@ describe('TelemetryConfigService', () => {
           },
         };
 
-        mockAuthService.getAccessTokenForUserId.mockResolvedValue('revoked-token');
+        mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('revoked-token');
         mockAxiosInstance.delete.mockRejectedValue(revokedTokenError);
 
         const loggerWarnSpy = jest
@@ -721,7 +729,7 @@ describe('TelemetryConfigService', () => {
           },
         };
 
-        mockAuthService.getAccessTokenForUserId.mockResolvedValue('valid-token');
+        mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('valid-token');
         mockAxiosInstance.get.mockRejectedValue(genericUnauthorizedError);
 
         const loggerWarnSpy = jest

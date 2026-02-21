@@ -1,18 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { oauthProviderRequirementsSymbol } from './interfaces/oauth-provider.requirements';
 import { User } from '../../entities/user.entity';
 
-describe('AuthController', () => {
+describe('The AuthController class', () => {
   let controller: AuthController;
-  let authService: AuthService;
 
   const mockAuthService = {
+    validateJwtToken: jest.fn(),
+    revokeJwtToken: jest.fn(),
+  };
+
+  const mockOAuthProvider = {
     generateLoginUrl: jest.fn(),
     generateScopeChangeUrl: jest.fn(),
-    getTokenInfo: jest.fn(),
-    getUserProfile: jest.fn(),
-    getStats: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -23,22 +25,25 @@ describe('AuthController', () => {
           provide: AuthService,
           useValue: mockAuthService,
         },
+        {
+          provide: oauthProviderRequirementsSymbol,
+          useValue: mockOAuthProvider,
+        },
       ],
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
-    authService = module.get<AuthService>(AuthService);
 
     jest.clearAllMocks();
   });
 
-  describe('loginWithTesla', () => {
+  describe('The loginWithTesla() method', () => {
     it('should return a login URL', () => {
       const mockUrl =
         'https://auth.tesla.com/oauth2/v3/authorize?state=test-state';
       const mockState = 'test-state';
 
-      mockAuthService.generateLoginUrl.mockReturnValue({
+      mockOAuthProvider.generateLoginUrl.mockReturnValue({
         url: mockUrl,
         state: mockState,
       });
@@ -48,17 +53,17 @@ describe('AuthController', () => {
       expect(result.url).toBe(mockUrl);
       expect(result.state).toBe(mockState);
       expect(result.message).toBe('Use this URL to authenticate with Tesla');
-      expect(authService.generateLoginUrl).toHaveBeenCalled();
+      expect(mockOAuthProvider.generateLoginUrl).toHaveBeenCalled();
     });
   });
 
-  describe('scopeChangeWithTesla', () => {
+  describe('The scopeChangeWithTesla() method', () => {
     it('should return a scope change URL without parameters', () => {
       const mockUrl =
         'https://auth.tesla.com/oauth2/v3/authorize?prompt_missing_scopes=true&state=test-state';
       const mockState = 'test-state';
 
-      mockAuthService.generateScopeChangeUrl.mockReturnValue({
+      mockOAuthProvider.generateScopeChangeUrl.mockReturnValue({
         url: mockUrl,
         state: mockState,
       });
@@ -68,7 +73,7 @@ describe('AuthController', () => {
       expect(result.url).toBe(mockUrl);
       expect(result.state).toBe(mockState);
       expect(result.message).toBe('Use this URL to grant additional permissions to SentryGuard');
-      expect(authService.generateScopeChangeUrl).toHaveBeenCalledWith('en', undefined);
+      expect(mockOAuthProvider.generateScopeChangeUrl).toHaveBeenCalledWith('en', undefined);
     });
 
     it('should return a scope change URL with missing scopes', () => {
@@ -77,7 +82,7 @@ describe('AuthController', () => {
       const mockState = 'test-state';
       const missingScopes = 'vehicle_device_data,offline_access';
 
-      mockAuthService.generateScopeChangeUrl.mockReturnValue({
+      mockOAuthProvider.generateScopeChangeUrl.mockReturnValue({
         url: mockUrl,
         state: mockState,
       });
@@ -87,23 +92,12 @@ describe('AuthController', () => {
       expect(result.url).toBe(mockUrl);
       expect(result.state).toBe(mockState);
       expect(result.message).toBe('Use this URL to grant additional permissions to SentryGuard');
-      expect(authService.generateScopeChangeUrl).toHaveBeenCalledWith('en', ['vehicle_device_data', 'offline_access']);
+      expect(mockOAuthProvider.generateScopeChangeUrl).toHaveBeenCalledWith('en', ['vehicle_device_data', 'offline_access']);
     });
-
-
   });
 
-  describe('getUserStatus', () => {
+  describe('The getAuthStatus() method', () => {
     it('should return the status for an authenticated user', async () => {
-      const mockTokenInfo = {
-        exists: true,
-        expires_at: new Date('2025-12-31'),
-        created_at: new Date('2025-01-01'),
-        has_profile: true,
-      };
-
-      mockAuthService.getTokenInfo.mockReturnValue(mockTokenInfo);
-
       const mockUser = {
         userId: 'test-user-id',
         jwt_expires_at: new Date('2025-12-31'),
@@ -126,10 +120,6 @@ describe('AuthController', () => {
     });
 
     it('should return unauthenticated for a user without a token', async () => {
-      mockAuthService.getTokenInfo.mockReturnValue({
-        exists: false,
-      });
-
       const mockUser = {
         userId: 'test-user-id',
         jwt_expires_at: null,
@@ -142,14 +132,6 @@ describe('AuthController', () => {
     });
 
     it('should detect an expired token', async () => {
-      const mockTokenInfo = {
-        exists: true,
-        expires_at: new Date('2020-01-01'),
-        created_at: new Date('2020-01-01'),
-      };
-
-      mockAuthService.getTokenInfo.mockReturnValue(mockTokenInfo);
-
       const mockUser = {
         userId: 'test-user-id',
         jwt_expires_at: new Date('2025-01-01'),
@@ -167,15 +149,8 @@ describe('AuthController', () => {
     });
   });
 
-  describe('getUserProfile', () => {
+  describe('The getProfile() method', () => {
     it('should return the user profile', async () => {
-      const mockProfile = {
-        email: 'test@tesla.com',
-        full_name: 'Test User',
-      };
-
-      mockAuthService.getUserProfile.mockReturnValue(mockProfile);
-
       const mockUser = {
         userId: 'test-user-id',
         email: 'test@example.com',

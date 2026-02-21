@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import axios from 'axios';
 import * as https from 'https';
+import { AccessTokenService } from '../auth/services/access-token.service';
 import { AuthService } from '../auth/auth.service';
 import { TeslaPartnerAuthService } from '../auth/tesla-partner-auth.service';
 import { Vehicle } from '../../entities/vehicle.entity';
@@ -48,6 +49,7 @@ export class TelemetryConfigService {
   });
 
   constructor(
+    private readonly accessTokenService: AccessTokenService,
     private readonly authService: AuthService,
     private readonly partnerAuthService: TeslaPartnerAuthService,
     @InjectRepository(Vehicle)
@@ -58,7 +60,7 @@ export class TelemetryConfigService {
    * Retrieves the access token for a user
    */
   private async getAccessToken(userId: string): Promise<string> {
-    const token = await this.authService.getAccessTokenForUserId(userId);
+    const token = await this.accessTokenService.getAccessTokenForUserId(userId);
     if (!token) {
       throw new UnauthorizedException(ERROR_MESSAGES.INVALID_TOKEN);
     }
