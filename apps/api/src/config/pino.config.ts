@@ -18,6 +18,12 @@ export function getPinoConfig(): Params {
 
   const baseOptions: Options = {
     level: process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug'),
+    messageKey: 'message',
+    formatters: {
+      level(label: string) {
+        return { level: label.toUpperCase() };
+      },
+    },
     hooks: {
       logMethod(inputArgs, method) {
         if (inputArgs.length <= 2) {
