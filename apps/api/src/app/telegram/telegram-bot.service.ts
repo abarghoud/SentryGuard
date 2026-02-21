@@ -349,33 +349,7 @@ export class TelegramBotService implements OnModuleInit {
       i18n.t('Your SentryGuard account has been linked successfully!', { lng })
     );
 
-    await this.sendContinueSetupButton(ctx, lng);
-  }
-
-  private async sendContinueSetupButton(ctx: Context, lng: 'en' | 'fr'): Promise<void> {
-    try {
-      const appBaseUrl = process.env.WEBAPP_URL || 'https://sentryguard.org';
-      const continueSetupUrl = `${appBaseUrl}/onboarding`;
-
-      await this.safeReply(
-        ctx,
-        i18n.t('telegramLinkedFollowUp', { lng }),
-        {
-          keyboard: {
-            inline_keyboard: [
-              [
-                {
-                  text: i18n.t('continueSetup', { lng }),
-                  url: continueSetupUrl,
-                },
-              ],
-            ],
-          },
-        }
-      );
-    } catch (error) {
-      this.logger.warn('⚠️ Could not send continue setup button:', error);
-    }
+    await this.safeReply(ctx, i18n.t('telegramLinkedFollowUp', { lng }));
   }
 
   private getWebhookPath(secretPath: string): string {
