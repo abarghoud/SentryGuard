@@ -36,6 +36,12 @@ describe('The TeslaOAuthService class', () => {
   const fakeStateJwt = 'fake-state-jwt-token';
 
   beforeEach(async () => {
+    process.env.TESLA_CLIENT_ID = 'test-client-id';
+    process.env.TESLA_CLIENT_SECRET = 'test-client-secret';
+    process.env.TESLA_REDIRECT_URI = 'https://test.com/callback';
+    process.env.JWT_OAUTH_STATE_SECRET = 'test-oauth-state-secret';
+    delete process.env.TESLA_API_BASE_URL;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TeslaOAuthService,
@@ -46,14 +52,12 @@ describe('The TeslaOAuthService class', () => {
       ],
     }).compile();
 
+    await module.init();
+
     service = module.get<TeslaOAuthService>(TeslaOAuthService);
 
     jest.clearAllMocks();
     mockedDecode.mockClear();
-
-    process.env.TESLA_CLIENT_ID = 'test-client-id';
-    process.env.TESLA_CLIENT_SECRET = 'test-client-secret';
-    process.env.TESLA_REDIRECT_URI = 'https://test.com/callback';
 
     mockedRandomBytes.mockImplementation((size: number) => {
       return Buffer.alloc(size, 'a');
@@ -66,6 +70,25 @@ describe('The TeslaOAuthService class', () => {
       userLocale: 'en',
       nonce: 'test-nonce',
       iat: 1609459200,
+    });
+  });
+
+  describe('The onModuleInit() method', () => {
+    describe('When JWT_OAUTH_STATE_SECRET is not defined', () => {
+      it('should throw an error', async () => {
+        delete process.env.JWT_OAUTH_STATE_SECRET;
+
+        const module = await Test.createTestingModule({
+          providers: [
+            TeslaOAuthService,
+            { provide: JwtService, useValue: mockJwtService },
+          ],
+        }).compile();
+
+        await expect(module.init()).rejects.toThrow(
+          'JWT_OAUTH_STATE_SECRET environment variable is required'
+        );
+      });
     });
   });
 

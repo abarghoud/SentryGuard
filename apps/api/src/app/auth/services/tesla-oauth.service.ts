@@ -1,4 +1,9 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import axios from 'axios';
 import * as crypto from 'crypto';
@@ -20,9 +25,8 @@ interface StatePayload {
 }
 
 @Injectable()
-export class TeslaOAuthService implements OAuthProviderRequirements {
+export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleInit {
   private readonly logger = new Logger(TeslaOAuthService.name);
-
   // SECURITY NOTE: rejectUnauthorized: false is acceptable here because tesla-vehicle-command
   // is a local service on the same Docker network with self-signed certificate.
   private readonly teslaApi = axios.create({
@@ -34,6 +38,14 @@ export class TeslaOAuthService implements OAuthProviderRequirements {
   });
 
   constructor(private readonly jwtService: JwtService) {}
+
+  onModuleInit(): void {
+    if (!process.env.JWT_OAUTH_STATE_SECRET) {
+      throw new Error(
+        'JWT_OAUTH_STATE_SECRET environment variable is required'
+      );
+    }
+  }
 
   generateLoginUrl(
     userLocale: 'en' | 'fr' = 'en'
@@ -120,7 +132,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements {
       });
 
       if (decoded.type !== 'oauth_state') {
-        this.logger.warn('Invalid state token type', decoded);
+        this.logger.warn(`Invalid state token type: ${decoded.type}`);
         throw new UnauthorizedException('Invalid or expired state');
       }
 
@@ -183,7 +195,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements {
   }
 
   private validateJwtScopes(accessToken: string): void {
-    const decodedToken = decode(accessToken) as any;
+    const decodedToken = decode(accessToken) as Record<string, unknown> | null;
     if (!decodedToken || !decodedToken.scp) {
       throw new UnauthorizedException(
         'Invalid JWT token: missing scopes'
@@ -223,7 +235,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements {
 
       return response.data.response || response.data;
     } catch (error: unknown) {
-      const errorData = (error as any)?.response?.data;
+      const errorData = (error as { response?: { data?: unknown } })?.response?.data;
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(

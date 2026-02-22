@@ -4,7 +4,6 @@ export interface OAuthUserProfile {
   email?: string;
   full_name?: string;
   profile_image_url?: string;
-  [key: string]: any;
 }
 
 export interface OAuthTokensResponse {
