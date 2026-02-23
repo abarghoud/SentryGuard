@@ -58,7 +58,7 @@ export const SUCCESS_MESSAGES = {
 export const TELEMETRY_CONFIG = {
   DEFAULT_SENTRY_MODE_INTERVAL: 30,
   FIELD_NAME: 'SentryMode',
-  PORT: 12345,
+  PORT: parseInt(process.env.TESLA_FLEET_TELEMETRY_SERVER_PORT ?? '443', 10),
 } as const;
 
 /**
