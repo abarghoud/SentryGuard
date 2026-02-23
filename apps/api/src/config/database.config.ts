@@ -52,12 +52,7 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
     migrationsRun,
     migrations: ['dist/migrations/*.js'],
     logging: process.env.DATABASE_LOGGING === 'true',
-    ssl:
-      process.env.DATABASE_SSL === 'true'
-        ? {
-            rejectUnauthorized: false,
-          }
-        : false,
+    ssl: process.env.DATABASE_SSL === 'true',
     extra: {
       max: parseInt(process.env.DATABASE_POOL_MAX || '10', 10),
       connectionTimeoutMillis: parseInt(process.env.DATABASE_CONNECTION_TIMEOUT || '10000', 10),
@@ -86,12 +81,7 @@ export const dataSourceOptions: DataSourceOptions = {
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
   logging: process.env.DATABASE_LOGGING === 'true',
-  ssl:
-    process.env.DATABASE_SSL === 'true'
-      ? {
-          rejectUnauthorized: false,
-        }
-      : false,
+  ssl: process.env.DATABASE_SSL === 'true'
 };
 
 // Default export for TypeORM CLI
