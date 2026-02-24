@@ -307,7 +307,7 @@ describe('TelemetryConfigService', () => {
           config: {
             ca: 'test_certificate',
             hostname: 'test-hostname',
-            port: 12345,
+            port: 443,
             fields: {
               SentryMode: { interval_seconds: 30 },
             },

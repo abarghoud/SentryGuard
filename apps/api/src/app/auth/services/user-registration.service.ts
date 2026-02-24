@@ -15,6 +15,8 @@ import {
 
 @Injectable()
 export class UserRegistrationService {
+  private static readonly DEFAULT_JWT_EXPIRY_IN_DAYS = 30;
+
   private readonly logger = new Logger(UserRegistrationService.name);
 
   constructor(
@@ -196,7 +198,7 @@ export class UserRegistrationService {
           break;
       }
     } else {
-      expiresAt.setDate(expiresAt.getDate() + 30);
+      expiresAt.setDate(expiresAt.getDate() + UserRegistrationService.DEFAULT_JWT_EXPIRY_IN_DAYS);
     }
 
     return { token, expiresAt };

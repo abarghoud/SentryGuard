@@ -26,6 +26,8 @@ interface StatePayload {
 
 @Injectable()
 export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleInit {
+  private static readonly DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 3600;
+
   private readonly logger = new Logger(TeslaOAuthService.name);
   // SECURITY NOTE: rejectUnauthorized: false is acceptable here because tesla-vehicle-command
   // is a local service on the same Docker network with self-signed certificate.
@@ -187,7 +189,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
     this.validateJwtScopes(access_token);
 
     const expiresAt = new Date();
-    expiresAt.setSeconds(expiresAt.getSeconds() + (expires_in || 3600));
+    expiresAt.setSeconds(expiresAt.getSeconds() + (expires_in || TeslaOAuthService.DEFAULT_TOKEN_EXPIRY_IN_SECONDS));
 
     this.logger.log(`Tesla token expiration: ${expiresAt.toISOString()}`);
 
