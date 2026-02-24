@@ -12,10 +12,11 @@ export class ZeptomailService implements EmailServiceRequirements {
 
   constructor() {
     const apiKey = this.getRequiredEnv('ZEPTOMAIL_API_KEY');
+    const transporterPort = parseInt(this.getRequiredEnv('ZEPTOMAIL_PORT'), 10);
     this.fromEmail = this.getRequiredEnv('ZEPTOMAIL_FROM_EMAIL');
     this.fromName = process.env.ZEPTOMAIL_FROM_NAME || 'SentryGuard';
 
-    this.transporter = this.createTransporter(apiKey);
+    this.transporter = this.createTransporter(apiKey, transporterPort);
   }
 
   public async sendEmail(
@@ -37,10 +38,10 @@ export class ZeptomailService implements EmailServiceRequirements {
     }
   }
 
-  private createTransporter(apiKey: string): Transporter {
+  private createTransporter(apiKey: string, port: number): Transporter {
     return nodemailer.createTransport({
       host: 'smtp.zeptomail.com',
-      port: 587,
+      port,
       secure: false,
       auth: {
         user: 'emailapikey',
