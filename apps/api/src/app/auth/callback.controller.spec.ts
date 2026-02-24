@@ -102,7 +102,6 @@ describe('The CallbackController class', () => {
       beforeEach(async () => {
         mockAuthService.exchangeCodeForTokens.mockResolvedValue({
           userId: 'test-user-id',
-          access_token: 'test-access-token',
           jwt: mockJwt,
         });
 

@@ -1,6 +1,8 @@
-import { Controller, Get, Logger, UseGuards, Headers, Query } from '@nestjs/common';
+import { Controller, Get, Inject, Logger, UseGuards, Headers, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
+import type { OAuthProviderRequirements } from './interfaces/oauth-provider.requirements';
+import { oauthProviderRequirementsSymbol } from './interfaces/oauth-provider.requirements';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import { User } from '../../entities/user.entity';
@@ -11,7 +13,11 @@ import { ThrottleOptions } from '../../config/throttle.config';
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    @Inject(oauthProviderRequirementsSymbol)
+    private readonly oauthProvider: OAuthProviderRequirements
+  ) {}
 
   @Throttle(ThrottleOptions.publicSensitive())
   @Get('tesla/login')
@@ -19,9 +25,9 @@ export class AuthController {
     @Headers('accept-language') acceptLanguage?: string
   ): { url: string; state: string; message: string } {
     const userLocale = extractPreferredLanguage(acceptLanguage);
-    this.logger.log(`🚀 New Tesla OAuth login request with locale: ${userLocale}`);
+    this.logger.log(`New Tesla OAuth login request with locale: ${userLocale}`);
 
-    const { url, state } = this.authService.generateLoginUrl(userLocale);
+    const { url, state } = this.oauthProvider.generateLoginUrl(userLocale);
 
     return {
       url,
@@ -39,9 +45,9 @@ export class AuthController {
     const userLocale = extractPreferredLanguage(acceptLanguage);
     const missingScopes = missing ? missing.split(',').map(s => s.trim()) : undefined;
 
-    this.logger.log(`🔄 New Tesla OAuth scope change request with locale: ${userLocale}${missingScopes ? ` (missing: ${missingScopes.join(', ')})` : ''}`);
+    this.logger.log(`New Tesla OAuth scope change request with locale: ${userLocale}${missingScopes ? ` (missing: ${missingScopes.join(', ')})` : ''}`);
 
-    const { url, state } = this.authService.generateScopeChangeUrl(userLocale, missingScopes);
+    const { url, state } = this.oauthProvider.generateScopeChangeUrl(userLocale, missingScopes);
 
     return {
       url,
@@ -50,16 +56,11 @@ export class AuthController {
     };
   }
 
-  /**
-   * Get current user's authentication status
-   * GET /auth/status
-   * Requires: Authorization: Bearer <jwt>
-   */
   @Throttle(ThrottleOptions.authenticatedRead())
   @Get('status')
   @UseGuards(JwtAuthGuard)
   async getAuthStatus(@CurrentUser() user: User) {
-    this.logger.log(`🔍 Checking JWT status for user: ${user.userId}`);
+    this.logger.log(`Checking JWT status for user: ${user.userId}`);
 
     const now = new Date();
     const isValid = !!user.jwt_expires_at && now < user.jwt_expires_at;
@@ -78,11 +79,6 @@ export class AuthController {
     };
   }
 
-  /**
-   * Get current user's profile
-   * GET /auth/profile
-   * Requires: Authorization: Bearer <jwt>
-   */
   @Throttle(ThrottleOptions.authenticatedRead())
   @Get('profile')
   @UseGuards(JwtAuthGuard)
@@ -95,7 +91,7 @@ export class AuthController {
       profile_image_url?: string;
     };
   }> {
-    this.logger.log(`👤 Retrieving profile for user: ${user.userId}`);
+    this.logger.log(`Retrieving profile for user: ${user.userId}`);
 
     return {
       success: true,
@@ -108,11 +104,6 @@ export class AuthController {
     };
   }
 
-  /**
-   * Validate a JWT token
-   * GET /auth/validate
-   * Requires: Authorization header with Bearer token
-   */
   @Throttle(ThrottleOptions.authenticatedRead())
   @Get('validate')
   async validateToken(
@@ -148,11 +139,6 @@ export class AuthController {
     };
   }
 
-  /**
-   * Revoke current user's JWT token (logout)
-   * GET /auth/logout
-   * Requires: Authorization: Bearer <jwt>
-   */
   @Throttle(ThrottleOptions.authenticatedWrite())
   @Get('logout')
   @UseGuards(JwtAuthGuard)
@@ -160,7 +146,7 @@ export class AuthController {
     success: boolean;
     message: string;
   }> {
-    this.logger.log(`🔓 Logging out user: ${user.userId}`);
+    this.logger.log(`Logging out user: ${user.userId}`);
 
     await this.authService.revokeJwtToken(user.userId);
 
