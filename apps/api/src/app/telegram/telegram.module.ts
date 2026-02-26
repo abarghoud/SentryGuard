@@ -5,6 +5,10 @@ import { TelegramBotService } from './telegram-bot.service';
 import { TelegramController } from './telegram.controller';
 import { TelegramWebhookController } from './telegram-webhook.controller';
 import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
+import { TelegramContextService } from './telegram-context.service';
+import { TelegramAccountLinkingService } from './telegram-account-linking.service';
+import { TelegramMuteService } from './telegram-mute.service';
+import { TelegramStatusService } from './telegram-status.service';
 import { TelegramConfigService } from './telegram-config.service';
 import { TelegramFailureHandlerService } from './handlers/telegram-failure-handler.service';
 import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
@@ -29,6 +33,10 @@ import { UserModule } from '../user/user.module';
     TelegramService,
     TelegramBotService,
     TelegramKeyboardBuilderService,
+    TelegramContextService,
+    TelegramAccountLinkingService,
+    TelegramMuteService,
+    TelegramStatusService,
     TelegramConfigService,
     TelegramFailureHandlerService,
     {
