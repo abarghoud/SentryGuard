@@ -25,9 +25,7 @@ describe('The DistributedLockService class', () => {
       let result: boolean;
 
       beforeEach(async () => {
-        mockQueryRunner.query
-          .mockResolvedValueOnce([{ locked: true }])
-          .mockResolvedValueOnce(undefined);
+        mockQueryRunner.query.mockResolvedValueOnce([{ locked: true }]);
 
         result = await service.withLock(fakeLockKey, fakeTask);
       });
@@ -40,11 +38,19 @@ describe('The DistributedLockService class', () => {
         expect(fakeTask).toHaveBeenCalledTimes(1);
       });
 
-      it('should release the lock', () => {
+      it('should use a transaction-level advisory lock', () => {
         expect(mockQueryRunner.query).toHaveBeenCalledWith(
-          'SELECT pg_advisory_unlock($1)',
+          'SELECT pg_try_advisory_xact_lock($1) AS locked',
           [fakeLockKey]
         );
+      });
+
+      it('should commit the transaction', () => {
+        expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+      });
+
+      it('should not rollback the transaction', () => {
+        expect(mockQueryRunner.rollbackTransaction).not.toHaveBeenCalled();
       });
 
       it('should release the query runner connection', () => {
@@ -57,9 +63,7 @@ describe('The DistributedLockService class', () => {
       let result: boolean;
 
       beforeEach(async () => {
-        (mockQueryRunner.query as jest.Mock).mockResolvedValueOnce([
-          { locked: false },
-        ]);
+        mockQueryRunner.query.mockResolvedValueOnce([{ locked: false }]);
 
         result = await service.withLock(fakeLockKey, fakeTask);
       });
@@ -72,8 +76,12 @@ describe('The DistributedLockService class', () => {
         expect(fakeTask).not.toHaveBeenCalled();
       });
 
-      it('should not attempt to release the lock', () => {
-        expect(mockQueryRunner.query).toHaveBeenCalledTimes(1);
+      it('should rollback the transaction', () => {
+        expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+      });
+
+      it('should not commit the transaction', () => {
+        expect(mockQueryRunner.commitTransaction).not.toHaveBeenCalled();
       });
 
       it('should release the query runner connection', () => {
@@ -83,15 +91,11 @@ describe('The DistributedLockService class', () => {
 
     describe('When the task throws an error', () => {
       const expectedError = 'Task failed';
-      const fakeTask = jest
-        .fn()
-        .mockRejectedValue(new Error(expectedError));
+      const fakeTask = jest.fn().mockRejectedValue(new Error(expectedError));
       let act: () => Promise<boolean>;
 
       beforeEach(() => {
-        (mockQueryRunner.query as jest.Mock)
-          .mockResolvedValueOnce([{ locked: true }])
-          .mockResolvedValueOnce(undefined);
+        mockQueryRunner.query.mockResolvedValueOnce([{ locked: true }]);
 
         act = () => service.withLock(fakeLockKey, fakeTask);
       });
@@ -100,17 +104,24 @@ describe('The DistributedLockService class', () => {
         await expect(act()).rejects.toThrow(expectedError);
       });
 
-      it('should still release the lock', async () => {
+      it('should rollback the transaction', async () => {
         try {
           await act();
         } catch {
           // Expected
         }
 
-        expect(mockQueryRunner.query).toHaveBeenCalledWith(
-          'SELECT pg_advisory_unlock($1)',
-          [fakeLockKey]
-        );
+        expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+      });
+
+      it('should not commit the transaction', async () => {
+        try {
+          await act();
+        } catch {
+          // Expected
+        }
+
+        expect(mockQueryRunner.commitTransaction).not.toHaveBeenCalled();
       });
 
       it('should still release the query runner connection', async () => {

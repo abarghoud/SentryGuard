@@ -15,18 +15,22 @@ export class DistributedLockService {
 
     try {
       await queryRunner.connect();
+      await queryRunner.startTransaction();
 
       const isLockAcquired = await this.tryAcquireLock(queryRunner, lockKey);
 
       if (!isLockAcquired) {
         this.logger.warn(`Lock ${lockKey} already held, skipping task`);
+        await queryRunner.rollbackTransaction();
         return false;
       }
 
       try {
         await task();
-      } finally {
-        await this.releaseLock(queryRunner, lockKey);
+        await queryRunner.commitTransaction();
+      } catch (error) {
+        await queryRunner.rollbackTransaction();
+        throw error;
       }
 
       return true;
@@ -40,17 +44,10 @@ export class DistributedLockService {
     lockKey: number
   ): Promise<boolean> {
     const result = await queryRunner.query(
-      `SELECT pg_try_advisory_lock($1) AS locked`,
+      `SELECT pg_try_advisory_xact_lock($1) AS locked`,
       [lockKey]
     );
 
     return result[0].locked;
-  }
-
-  private async releaseLock(
-    queryRunner: QueryRunner,
-    lockKey: number
-  ): Promise<void> {
-    await queryRunner.query(`SELECT pg_advisory_unlock($1)`, [lockKey]);
   }
 }
