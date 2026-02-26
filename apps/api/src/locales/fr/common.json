@@ -4,7 +4,7 @@
   "Available commands": "📖 Commandes disponibles :\n\n/start - Démarrer et lier votre compte\n/status - Vérifier l'état du lien\n/help - Afficher l'aide",
   "Invalid or expired token": "❌ Token invalide ou expiré. Veuillez générer un nouveau lien depuis l'application.",
   "No account linked": "❌ Aucun compte lié. Utilisez le lien depuis l'application web.",
-  "Sentry Mode activated - Check your vehicle!": "Mode Sentry activé - Vérifiez votre véhicule !",
+  "Sentry Mode activated - Check your vehicle!": "Événement sentinelle détecté - Vérifiez votre véhicule !",
   "TESLA SENTRY ALERT": "ALERTE SENTINELLE TESLA",
   "This token has expired": "⏰ Ce token a expiré. Veuillez générer un nouveau lien depuis l'application.",
   "Vehicle": "Véhicule",
