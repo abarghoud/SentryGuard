@@ -14,6 +14,7 @@ describe('The ZeptomailService class', () => {
     process.env = {
       ...originalEnv,
       ZEPTOMAIL_API_KEY: 'test-api-key',
+      ZEPTOMAIL_PORT: '587',
       ZEPTOMAIL_FROM_EMAIL: 'test@sentryguard.org',
       ZEPTOMAIL_FROM_NAME: 'TestSentryGuard',
     };
