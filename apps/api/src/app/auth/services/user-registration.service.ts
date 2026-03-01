@@ -28,13 +28,13 @@ export class UserRegistrationService {
 
   async createOrUpdateUser(
     tokens: OAuthTokensResponse,
-    profile: OAuthUserProfile | undefined,
+    profile: OAuthUserProfile,
     userLocale: 'en' | 'fr'
   ): Promise<string> {
     const encryptedAccessToken = encrypt(tokens.access_token);
     const encryptedRefreshToken = encrypt(tokens.refresh_token);
 
-    const existingUser = profile?.email
+    const existingUser = profile.email
       ? await this.userRepository.findOne({
           where: { email: profile.email },
         })
@@ -62,10 +62,10 @@ export class UserRegistrationService {
   }
 
   private async verifyWaitlistApproval(
-    profile: OAuthUserProfile | undefined,
+    profile: OAuthUserProfile,
     userLocale: 'en' | 'fr'
   ): Promise<void> {
-    if (!profile?.email) {
+    if (!profile.email) {
       return;
     }
 
@@ -84,7 +84,7 @@ export class UserRegistrationService {
   private async updateExistingUser(
     user: User,
     tokens: OAuthTokensResponse,
-    profile: OAuthUserProfile | undefined,
+    profile: OAuthUserProfile,
     encryptedAccessToken: string,
     encryptedRefreshToken: string
   ): Promise<string> {
@@ -121,7 +121,7 @@ export class UserRegistrationService {
 
   private async createNewUser(
     tokens: OAuthTokensResponse,
-    profile: OAuthUserProfile | undefined,
+    profile: OAuthUserProfile,
     encryptedAccessToken: string,
     encryptedRefreshToken: string,
     userLocale: 'en' | 'fr'

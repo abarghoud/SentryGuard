@@ -141,30 +141,6 @@ describe('The UserRegistrationService class', () => {
       });
     });
 
-    describe('When profile is undefined', () => {
-      let result: string;
-
-      beforeEach(async () => {
-        mockUserRepository.create.mockImplementation(
-          (userData) => userData as User
-        );
-
-        result = await service.createOrUpdateUser(
-          fakeTokens,
-          undefined,
-          'en'
-        );
-      });
-
-      it('should create a new user without searching by email', () => {
-        expect(result).toBeDefined();
-        expect(mockUserRepository.findOne).not.toHaveBeenCalled();
-      });
-
-      it('should not check waitlist', () => {
-        expect(mockWaitlistService.isApproved).not.toHaveBeenCalled();
-      });
-    });
   });
 
   describe('The createOrUpdateUser() method (waitlist behavior)', () => {
@@ -209,14 +185,14 @@ describe('The UserRegistrationService class', () => {
       });
     });
 
-    describe('When the new user has no email', () => {
+    describe('When the new user has no email in profile', () => {
       beforeEach(async () => {
         mockUserRepository.findOne.mockResolvedValue(null);
         mockUserRepository.create.mockImplementation(
           (userData) => userData as User
         );
 
-        await service.createOrUpdateUser(fakeTokens, undefined, 'en');
+        await service.createOrUpdateUser(fakeTokens, {}, 'en');
       });
 
       it('should not check the waitlist', () => {

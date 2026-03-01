@@ -15,7 +15,7 @@ export interface OAuthTokensResponse {
 
 export interface OAuthAuthenticationResult {
   tokens: OAuthTokensResponse;
-  profile: OAuthUserProfile | undefined;
+  profile: OAuthUserProfile;
   userLocale: 'en' | 'fr';
 }
 

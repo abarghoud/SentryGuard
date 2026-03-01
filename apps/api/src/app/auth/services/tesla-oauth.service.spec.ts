@@ -227,9 +227,9 @@ describe('The TeslaOAuthService class', () => {
     });
 
     describe('When the profile fetch fails', () => {
-      let result: OAuthAuthenticationResult;
+      let act: () => Promise<OAuthAuthenticationResult>;
 
-      beforeEach(async () => {
+      beforeEach(() => {
         mockedAxios.post.mockResolvedValueOnce({
           data: {
             access_token: 'test-access-token',
@@ -249,15 +249,11 @@ describe('The TeslaOAuthService class', () => {
           new Error('Profile API Error')
         );
 
-        result = await service.authenticateWithCode('test-code', validState);
+        act = () => service.authenticateWithCode('test-code', validState);
       });
 
-      it('should return undefined profile', () => {
-        expect(result.profile).toBeUndefined();
-      });
-
-      it('should still return tokens', () => {
-        expect(result.tokens.access_token).toBe('test-access-token');
+      it('should throw an error', async () => {
+        await expect(act()).rejects.toThrow('Unable to retrieve user profile');
       });
     });
 

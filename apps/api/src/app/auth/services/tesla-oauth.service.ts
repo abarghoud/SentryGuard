@@ -120,7 +120,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
   ): Promise<OAuthAuthenticationResult> {
     const userLocale = this.validateOAuthState(state);
     const tokens = await this.exchangeCodeForTokens(code);
-    const profile = await this.fetchUserProfileSafely(tokens.access_token);
+    const profile = await this.fetchUserProfile(tokens.access_token);
 
     return { tokens, profile, userLocale };
   }
@@ -240,28 +240,8 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
       const errorData = (error as { response?: { data?: unknown } })?.response?.data;
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(
-        'Error retrieving profile:',
-        errorData || errorMessage
-      );
+      this.logger.error('Error retrieving profile:', errorData || errorMessage);
       throw new Error('Unable to retrieve user profile');
-    }
-  }
-
-  private async fetchUserProfileSafely(
-    accessToken: string
-  ): Promise<OAuthUserProfile | undefined> {
-    try {
-      const profile = await this.fetchUserProfile(accessToken);
-      this.logger.log(
-        `User profile retrieved: ${profile?.email || 'N/A'}`
-      );
-      return profile;
-    } catch {
-      this.logger.warn(
-        'Unable to retrieve user profile, continuing anyway'
-      );
-      return undefined;
     }
   }
 

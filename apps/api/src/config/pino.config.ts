@@ -32,12 +32,17 @@ export function getPinoConfig(): Params {
         }
 
         const [firstArg, message, ...extraArgs] = inputArgs;
-        const hasObjectParams = extraArgs.some(
-          (arg: unknown) => typeof arg === 'object' && arg !== null,
-        );
 
-        if (typeof firstArg === 'object' && firstArg !== null && hasObjectParams) {
-          method.apply(this, [{ ...firstArg, optionalParams: extraArgs }, message]);
+        if (typeof firstArg === 'object' && firstArg !== null && extraArgs.length > 0) {
+          const hasObjectParams = extraArgs.some(
+            (arg: unknown) => typeof arg === 'object' && arg !== null,
+          );
+          if (hasObjectParams) {
+            method.apply(this, [{ ...firstArg, optionalParams: extraArgs }, message]);
+          } else {
+            const detail = extraArgs.length === 1 ? extraArgs[0] : extraArgs;
+            method.apply(this, [{ ...firstArg, detail }, message]);
+          }
           return;
         }
 
