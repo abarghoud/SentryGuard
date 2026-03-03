@@ -18,10 +18,6 @@ export class TelegramKeyboardBuilderService {
           {
             text: `🔍 ${i18n.t('Open Tesla App', { lng: userLanguage })}`,
             url: redirectUrl
-          },
-          {
-            text: '⚙️',
-            callback_data: 'menu:open'
           }
         ]
       ]

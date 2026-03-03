@@ -46,6 +46,9 @@ export class TelegramConfig {
   @Column({ type: 'timestamp', nullable: true })
   muted_until?: Date | null;
 
+  @Column({ type: 'int', default: 0 })
+  bot_ui_version: number;
+
   @CreateDateColumn()
   created_at: Date;
 

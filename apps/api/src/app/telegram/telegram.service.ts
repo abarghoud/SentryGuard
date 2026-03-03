@@ -4,6 +4,7 @@ import i18n from '../../i18n';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramMuteService } from './telegram-mute.service';
 import { TelegramContextService } from './telegram-context.service';
+import { TelegramBotUpdateService } from './telegram-bot-update.service';
 import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import type { ITelegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import { telegramRetryManager } from './telegram-retry-manager.token';
@@ -24,6 +25,7 @@ export class TelegramService implements OnModuleDestroy {
     private readonly telegramBotService: TelegramBotService,
     private readonly telegramMuteService: TelegramMuteService,
     private readonly telegramContextService: TelegramContextService,
+    private readonly telegramBotUpdateService: TelegramBotUpdateService,
     @Inject(telegramFailureHandler) private readonly failureHandler: ITelegramFailureHandler,
     @Inject(telegramRetryManager) private readonly retryManager: RetryManager,
   ) {}
@@ -49,6 +51,8 @@ export class TelegramService implements OnModuleDestroy {
       this.logger.warn(`⚠️ No chat_id found for user: ${userId}`);
       return false;
     }
+
+    await this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage);
 
     if (this.shouldSimulateMessage(alertInfo.vin)) {
       return await this.simulateMessage(userId, 'alert', alertInfo.vin);

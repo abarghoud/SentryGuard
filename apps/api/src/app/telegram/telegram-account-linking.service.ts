@@ -8,7 +8,7 @@ import { UserLanguageService } from '../user/user-language.service';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
 import { TelegramContextService } from './telegram-context.service';
-import { TelegramMessageOptions, buildTelegramOptions } from './telegram.types';
+import { TelegramMessageOptions, buildTelegramOptions, CURRENT_BOT_UI_VERSION } from './telegram.types';
 
 @Injectable()
 export class TelegramAccountLinkingService implements OnModuleInit {
@@ -112,6 +112,7 @@ export class TelegramAccountLinkingService implements OnModuleInit {
     config.chat_id = chatId;
     config.status = TelegramLinkStatus.LINKED;
     config.linked_at = new Date();
+    config.bot_ui_version = CURRENT_BOT_UI_VERSION;
     await this.telegramConfigRepository.save(config);
 
     this.logger.log(`✅ Account linked: userId=${config.userId}, chatId=${chatId}`);

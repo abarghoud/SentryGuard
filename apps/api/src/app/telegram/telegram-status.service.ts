@@ -30,11 +30,6 @@ export class TelegramStatusService implements OnModuleInit {
       async (ctx) => this.handleStatusButton(ctx)
     );
 
-    this.botService.registerAction('menu:open', async (ctx) => {
-      await ctx.answerCbQuery();
-      await this.handleStatusButton(ctx);
-    });
-
     this.botService.registerCommand('status', async (ctx) => this.handleStatusButton(ctx));
     this.botService.registerHelp(async (ctx) => this.handleHelp(ctx));
   }

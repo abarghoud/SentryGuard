@@ -53,5 +53,6 @@
   "configStatusVehicles": "🚗 Vehicles",
   "configStatusNoVehicles": "No vehicles registered",
   "configStatusTelemetryActive": "✅ Telemetry active",
-  "configStatusTelemetryInactive": "❌ Telemetry inactive"
+  "configStatusTelemetryInactive": "❌ Telemetry inactive",
+  "botUpdateV1": "🆕 <b>SentryGuard has been updated!</b>\n\nYou can now manage your alert preferences directly from the menu below.\n\n• <b>📊 My status</b> — View your configuration\n• <b>🔕 Mute alerts</b> — Temporarily silence notifications"
 }
