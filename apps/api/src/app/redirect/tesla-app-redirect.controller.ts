@@ -12,7 +12,8 @@ export class TeslaAppRedirectController {
     @Query('userId') userId?: string,
     @Query('lang') lang?: string
   ) {
-    const detectedLang = lang || 'fr';
+    const supportedLanguages = ['en', 'fr'];
+    const detectedLang = supportedLanguages.includes(lang ?? '') ? (lang as string) : 'fr';
 
     this.logger.log('🚗 Tesla app redirect accessed', {
       userId: userId || 'unknown',

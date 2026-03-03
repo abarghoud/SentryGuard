@@ -119,6 +119,24 @@ describe('The TeslaAppRedirectController class', () => {
           );
         });
       });
+
+      describe('When lang is an unsupported value', () => {
+        beforeEach(() => {
+          controller.teslaRedirect(mockResponse, undefined, '"><img src=x onerror=alert(1)>');
+        });
+
+        it('should default to French language', () => {
+          expect((mockResponse.send as jest.Mock)).toHaveBeenCalledWith(
+            expect.stringContaining('lang="fr"')
+          );
+        });
+
+        it('should not include the malicious payload in the HTML', () => {
+          expect((mockResponse.send as jest.Mock)).not.toHaveBeenCalledWith(
+            expect.stringContaining('onerror')
+          );
+        });
+      });
     });
 
     describe('The HTML structure', () => {

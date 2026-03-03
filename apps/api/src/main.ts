@@ -31,6 +31,16 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization', 'X-User-Id'],
   });
 
+  app.use((_req: any, res: any, next: () => void) => {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    next();
+  });
+
+  app.use(['/auth', '/callback'], (_req: any, res: any, next: () => void) => {
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+  });
+
   // Enable trust proxy for Cloudflare and Nginx Proxy Manager
   // This allows rate limiting to work correctly by detecting real client IPs
   // from forwarded headers (CF-Connecting-IP, X-Forwarded-For, X-Real-IP)
