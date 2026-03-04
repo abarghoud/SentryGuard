@@ -3,7 +3,9 @@ import { mock, MockProxy } from 'jest-mock-extended';
 import { TelegramError } from 'telegraf';
 import { TelegramService } from './telegram.service';
 import { TelegramBotService } from './telegram-bot.service';
-import { UserLanguageService } from '../user/user-language.service';
+import { TelegramMuteService } from './telegram-mute.service';
+import { TelegramContextService } from './telegram-context.service';
+import { TelegramBotUpdateService } from './telegram-bot-update.service';
 import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import type { ITelegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import { telegramRetryManager } from './telegram-retry-manager.token';
@@ -33,46 +35,39 @@ jest.mock('../../i18n', () => ({
   },
 }));
 
-describe('TelegramService', () => {
+describe('The TelegramService class', () => {
+  const fakeChatId = 'chat-123';
+  const fakeUserId = 'user-123';
+
   let service: TelegramService;
-  let telegramBotService: TelegramBotService;
-  let userLanguageService: UserLanguageService;
 
   const mockTelegramBotService: MockProxy<TelegramBotService> = mock<TelegramBotService>();
-  const mockUserLanguageService: MockProxy<UserLanguageService> = mock<UserLanguageService>();
+  const mockTelegramMuteService: MockProxy<TelegramMuteService> = mock<TelegramMuteService>();
+  const mockTelegramContextService: MockProxy<TelegramContextService> = mock<TelegramContextService>();
+  const mockTelegramBotUpdateService: MockProxy<TelegramBotUpdateService> = mock<TelegramBotUpdateService>();
   const mockTelegramFailureHandler: MockProxy<ITelegramFailureHandler> = mock<ITelegramFailureHandler>();
   const mockRetryManager: MockProxy<RetryManager> = mock<RetryManager>();
 
   beforeEach(async () => {
-    mockTelegramFailureHandler.canHandle.mockImplementation((error: Error) => {
-      return error.message.toLowerCase().includes('bot was blocked by the user');
-    });
+    mockTelegramMuteService.isNotificationMuted.mockResolvedValue(false);
+    mockTelegramContextService.getChatIdFromUserId.mockResolvedValue(fakeChatId);
+    mockTelegramBotUpdateService.ensureUserIsUpToDate.mockResolvedValue(undefined);
+    mockTelegramFailureHandler.canHandle.mockReturnValue(false);
     mockTelegramFailureHandler.handleFailure.mockResolvedValue(undefined);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TelegramService,
-        {
-          provide: TelegramBotService,
-          useValue: mockTelegramBotService,
-        },
-        {
-          provide: UserLanguageService,
-          useValue: mockUserLanguageService,
-        },
-        {
-          provide: telegramFailureHandler,
-          useValue: mockTelegramFailureHandler,
-        },
-        {
-          provide: telegramRetryManager,
-          useValue: mockRetryManager,
-        },
+        { provide: TelegramBotService, useValue: mockTelegramBotService },
+        { provide: TelegramMuteService, useValue: mockTelegramMuteService },
+        { provide: TelegramContextService, useValue: mockTelegramContextService },
+        { provide: TelegramBotUpdateService, useValue: mockTelegramBotUpdateService },
+        { provide: telegramFailureHandler, useValue: mockTelegramFailureHandler },
+        { provide: telegramRetryManager, useValue: mockRetryManager },
       ],
     }).compile();
 
     service = module.get<TelegramService>(TelegramService);
-    telegramBotService = module.get<TelegramBotService>(TelegramBotService);
-    userLanguageService = module.get<UserLanguageService>(UserLanguageService);
   });
 
   afterEach(() => {
@@ -83,147 +78,145 @@ describe('TelegramService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('sendSentryAlert', () => {
-    it('should send alert in English with VIN only', async () => {
-      const alertInfo = {
-        vin: 'TEST123456',
-      };
+  describe('The sendSentryAlert() method', () => {
+    const alertInfo = { vin: 'TEST123456' };
 
-      mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
-      mockTelegramBotService.sendMessageToUser.mockResolvedValue(true);
+    describe('When the user is muted', () => {
+      beforeEach(() => {
+        mockTelegramMuteService.isNotificationMuted.mockResolvedValue(true);
+      });
 
-      await service.sendSentryAlert('user-123', alertInfo, 'en', undefined);
+      it('should return false without sending a message', async () => {
+        const result = await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
 
-      expect(userLanguageService.getUserLanguage).not.toHaveBeenCalled();
-      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
-        'user-123',
-        expect.stringContaining('TESLA SENTRY ALERT'),
-        undefined
-      );
-      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
-        'user-123',
-        expect.stringContaining('Vehicle'),
-        undefined
-      );
-      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
-        'user-123',
-        expect.stringContaining('TEST123456'),
-        undefined
-      );
-      expect(telegramBotService.sendMessageToUser).not.toHaveBeenCalledWith(
-        'user-123',
-        expect.stringContaining('(TEST123456)'),
-        undefined
-      );
+        expect(result).toBe(false);
+        expect(mockTelegramBotService.sendMessage).not.toHaveBeenCalled();
+      });
     });
 
-    it('should send alert in French with display name', async () => {
-      const alertInfo = {
-        vin: 'TEST123456',
-        display_name: 'Mon Tesla',
-      };
+    describe('When no chat_id is found for the user', () => {
+      beforeEach(() => {
+        mockTelegramContextService.getChatIdFromUserId.mockResolvedValue(null);
+      });
 
-      mockUserLanguageService.getUserLanguage.mockResolvedValue('fr');
-      mockTelegramBotService.sendMessageToUser.mockResolvedValue(true);
+      it('should return false without sending a message', async () => {
+        const result = await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
 
-      await service.sendSentryAlert('user-123', alertInfo, 'fr', undefined);
-
-      expect(userLanguageService.getUserLanguage).not.toHaveBeenCalled();
-      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
-        'user-123',
-        expect.stringContaining('ALERTE SENTRY TESLA'),
-        undefined
-      );
-      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
-        'user-123',
-        expect.stringContaining('Véhicule'),
-        undefined
-      );
-      expect(telegramBotService.sendMessageToUser).toHaveBeenCalledWith(
-        'user-123',
-        expect.stringContaining('Mon Tesla'),
-        undefined
-      );
-      expect(telegramBotService.sendMessageToUser).not.toHaveBeenCalledWith(
-        'user-123',
-        expect.stringContaining('TEST123456'),
-        undefined
-      );
+        expect(result).toBe(false);
+        expect(mockTelegramBotService.sendMessage).not.toHaveBeenCalled();
+      });
     });
 
-    it('should use provided language without DB call', async () => {
-      const alertInfo = {
-        vin: 'TEST123456',
-      };
+    describe('When alert is sent in English with VIN only', () => {
+      beforeEach(() => {
+        mockTelegramBotService.sendMessage.mockResolvedValue(true);
+      });
 
-      mockTelegramBotService.sendMessageToUser.mockResolvedValue(true);
+      it('should send the message to the resolved chat_id', async () => {
+        await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
 
-      await service.sendSentryAlert('user-123', alertInfo, 'fr', undefined);
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(
+          fakeChatId,
+          expect.stringContaining('TESLA SENTRY ALERT'),
+          undefined
+        );
+      });
 
-      expect(userLanguageService.getUserLanguage).not.toHaveBeenCalled();
+      it('should include the VIN in the message', async () => {
+        await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
+
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(
+          fakeChatId,
+          expect.stringContaining('TEST123456'),
+          undefined
+        );
+      });
+
+      it('should call ensureUserIsUpToDate before sending', async () => {
+        await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
+
+        expect(mockTelegramBotUpdateService.ensureUserIsUpToDate).toHaveBeenCalledWith(
+          fakeUserId,
+          fakeChatId,
+          'en'
+        );
+      });
     });
 
-    it('should handle errors gracefully', async () => {
-      const alertInfo = {
-        vin: 'TEST123456',
-      };
+    describe('When alert is sent in French with a display name', () => {
+      const frAlertInfo = { vin: 'TEST123456', display_name: 'Mon Tesla' };
 
-      mockTelegramBotService.sendMessageToUser.mockRejectedValue(
-        new Error('Forbidden: bot was blocked by the user')
-      );
+      beforeEach(() => {
+        mockTelegramBotService.sendMessage.mockResolvedValue(true);
+      });
 
-      const result = await service.sendSentryAlert('user-123', alertInfo, 'en', undefined);
+      it('should use translated strings', async () => {
+        await service.sendSentryAlert(fakeUserId, frAlertInfo, 'fr');
 
-      expect(result).toBe(false);
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(
+          fakeChatId,
+          expect.stringContaining('ALERTE SENTRY TESLA'),
+          undefined
+        );
+      });
+
+      it('should display the display_name instead of VIN', async () => {
+        await service.sendSentryAlert(fakeUserId, frAlertInfo, 'fr');
+
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(
+          fakeChatId,
+          expect.stringContaining('Mon Tesla'),
+          undefined
+        );
+      });
+
+      it('should not include the VIN when display_name is provided', async () => {
+        await service.sendSentryAlert(fakeUserId, frAlertInfo, 'fr');
+
+        expect(mockTelegramBotService.sendMessage).not.toHaveBeenCalledWith(
+          fakeChatId,
+          expect.stringContaining('TEST123456'),
+          undefined
+        );
+      });
     });
 
-    describe('When failure handler can handle the error', () => {
+    describe('When the failure handler can handle the error', () => {
       it('should call handleFailure and return false', async () => {
-        const alertInfo = {
-          vin: 'TEST123456',
-        };
         const testError = new Error('Forbidden: bot was blocked by the user');
 
-        mockTelegramBotService.sendMessageToUser.mockRejectedValue(testError);
+        mockTelegramBotService.sendMessage.mockRejectedValue(testError);
         mockTelegramFailureHandler.canHandle.mockReturnValue(true);
-        mockTelegramFailureHandler.handleFailure.mockResolvedValue(undefined);
 
-        const result = await service.sendSentryAlert('user-123', alertInfo, 'en', undefined);
+        const result = await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
 
         expect(mockTelegramFailureHandler.canHandle).toHaveBeenCalledWith(testError);
-        expect(mockTelegramFailureHandler.handleFailure).toHaveBeenCalledWith(testError, 'user-123');
+        expect(mockTelegramFailureHandler.handleFailure).toHaveBeenCalledWith(testError, fakeUserId);
         expect(result).toBe(false);
       });
     });
 
-    describe('When failure handler cannot handle the error', () => {
+    describe('When the failure handler cannot handle the error', () => {
       it('should rethrow the error', async () => {
-        const alertInfo = {
-          vin: 'TEST123456',
-        };
         const testError = new Error('Unknown error');
 
-        mockTelegramBotService.sendMessageToUser.mockRejectedValue(testError);
+        mockTelegramBotService.sendMessage.mockRejectedValue(testError);
         mockTelegramFailureHandler.canHandle.mockReturnValue(false);
 
-        await expect(service.sendSentryAlert('user-123', alertInfo, 'en', undefined)).rejects.toThrow(testError);
+        await expect(service.sendSentryAlert(fakeUserId, alertInfo, 'en')).rejects.toThrow(testError);
 
-        expect(mockTelegramFailureHandler.canHandle).toHaveBeenCalledWith(testError);
         expect(mockTelegramFailureHandler.handleFailure).not.toHaveBeenCalled();
         expect(mockRetryManager.addToRetry).not.toHaveBeenCalled();
       });
     });
 
-    describe('When error is a retryable TelegramError', () => {
-      const alertInfo = { vin: 'TEST123456' };
-
-      it('should schedule retry for 429 Too Many Requests and return false', async () => {
+    describe('When the error is a retryable TelegramError', () => {
+      it('should schedule a retry for 429 Too Many Requests and return false', async () => {
         const telegramError = new TelegramError({ error_code: 429, description: 'Too Many Requests' });
 
-        mockTelegramBotService.sendMessageToUser.mockRejectedValue(telegramError);
-        mockTelegramFailureHandler.canHandle.mockReturnValue(false);
+        mockTelegramBotService.sendMessage.mockRejectedValue(telegramError);
 
-        const result = await service.sendSentryAlert('user-123', alertInfo, 'en', undefined);
+        const result = await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
 
         expect(result).toBe(false);
         expect(mockRetryManager.addToRetry).toHaveBeenCalledWith(
@@ -233,42 +226,37 @@ describe('TelegramService', () => {
         );
       });
 
-      it('should schedule retry for 502 Bad Gateway and return false', async () => {
+      it('should schedule a retry for 502 Bad Gateway and return false', async () => {
         const telegramError = new TelegramError({ error_code: 502, description: 'Bad Gateway' });
 
-        mockTelegramBotService.sendMessageToUser.mockRejectedValue(telegramError);
-        mockTelegramFailureHandler.canHandle.mockReturnValue(false);
+        mockTelegramBotService.sendMessage.mockRejectedValue(telegramError);
 
-        const result = await service.sendSentryAlert('user-123', alertInfo, 'en', undefined);
+        const result = await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
 
         expect(result).toBe(false);
         expect(mockRetryManager.addToRetry).toHaveBeenCalledTimes(1);
       });
     });
 
-    describe('When error is a non-retryable TelegramError', () => {
+    describe('When the error is a non-retryable TelegramError', () => {
       it('should throw the error', async () => {
-        const alertInfo = { vin: 'TEST123456' };
         const telegramError = new TelegramError({ error_code: 400, description: 'Bad Request' });
 
-        mockTelegramBotService.sendMessageToUser.mockRejectedValue(telegramError);
-        mockTelegramFailureHandler.canHandle.mockReturnValue(false);
+        mockTelegramBotService.sendMessage.mockRejectedValue(telegramError);
 
-        await expect(service.sendSentryAlert('user-123', alertInfo, 'en', undefined)).rejects.toThrow(telegramError);
+        await expect(service.sendSentryAlert(fakeUserId, alertInfo, 'en')).rejects.toThrow(telegramError);
 
         expect(mockRetryManager.addToRetry).not.toHaveBeenCalled();
       });
     });
 
-    describe('When error is a retryable network error', () => {
-      it('should schedule retry for ETIMEDOUT and return false', async () => {
-        const alertInfo = { vin: 'TEST123456' };
+    describe('When the error is a retryable network error', () => {
+      it('should schedule a retry for ETIMEDOUT and return false', async () => {
         const networkError = new Error('connect ETIMEDOUT 149.154.167.220:443');
 
-        mockTelegramBotService.sendMessageToUser.mockRejectedValue(networkError);
-        mockTelegramFailureHandler.canHandle.mockReturnValue(false);
+        mockTelegramBotService.sendMessage.mockRejectedValue(networkError);
 
-        const result = await service.sendSentryAlert('user-123', alertInfo, 'en', undefined);
+        const result = await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
 
         expect(result).toBe(false);
         expect(mockRetryManager.addToRetry).toHaveBeenCalledWith(
@@ -278,14 +266,12 @@ describe('TelegramService', () => {
         );
       });
 
-      it('should schedule retry for ECONNRESET and return false', async () => {
-        const alertInfo = { vin: 'TEST123456' };
+      it('should schedule a retry for ECONNRESET and return false', async () => {
         const networkError = new Error('read ECONNRESET');
 
-        mockTelegramBotService.sendMessageToUser.mockRejectedValue(networkError);
-        mockTelegramFailureHandler.canHandle.mockReturnValue(false);
+        mockTelegramBotService.sendMessage.mockRejectedValue(networkError);
 
-        const result = await service.sendSentryAlert('user-123', alertInfo, 'en', undefined);
+        const result = await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
 
         expect(result).toBe(false);
         expect(mockRetryManager.addToRetry).toHaveBeenCalledTimes(1);
