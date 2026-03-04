@@ -26,17 +26,18 @@ export class TelegramStatusService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
+    const { withChatId } = TelegramMessageHelper;
+
     this.botService.registerHears(
       [i18n.t('menuButtonStatus', { lng: 'en' }), i18n.t('menuButtonStatus', { lng: 'fr' })],
-      async (ctx) => this.handleStatusButton(ctx)
+      withChatId((ctx, chatId) => this.handleStatusButton(ctx, chatId))
     );
 
-    this.botService.registerCommand('status', async (ctx) => this.handleStatusButton(ctx));
-    this.botService.registerHelp(async (ctx) => this.handleHelp(ctx));
+    this.botService.registerCommand('status', withChatId((ctx, chatId) => this.handleStatusButton(ctx, chatId)));
+    this.botService.registerHelp(withChatId((ctx, chatId) => this.handleHelp(ctx, chatId)));
   }
 
-  private async handleStatusButton(ctx: Context): Promise<void> {
-    const chatId = ctx.chat.id.toString();
+  private async handleStatusButton(ctx: Context, chatId: string): Promise<void> {
     const lng = await this.contextService.getUserLanguageFromChatId(chatId);
     const config = await this.telegramConfigRepository.findOne({
       where: { chat_id: chatId, status: TelegramLinkStatus.LINKED },
@@ -55,8 +56,8 @@ export class TelegramStatusService implements OnModuleInit {
     );
   }
 
-  private async handleHelp(ctx: Context): Promise<void> {
-    const lng = await this.contextService.getUserLanguageFromChatId(ctx.chat.id.toString());
+  private async handleHelp(ctx: Context, chatId: string): Promise<void> {
+    const lng = await this.contextService.getUserLanguageFromChatId(chatId);
     await ctx.reply(i18n.t('Available commands', { lng }));
   }
 

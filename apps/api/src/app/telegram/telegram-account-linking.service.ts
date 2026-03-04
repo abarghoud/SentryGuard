@@ -26,26 +26,25 @@ export class TelegramAccountLinkingService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.botService.registerStart(async (ctx) => {
-      const text = (ctx.message as { text: string } | undefined)?.text ?? '';
-      const args = text.split(' ');
-      const linkToken = args.length > 1 ? args[1] : undefined;
-      await this.handleStart(ctx, linkToken);
-    });
+    this.botService.registerStart(
+      TelegramMessageHelper.withChatId((ctx, chatId) => {
+        const text = (ctx.message as { text: string } | undefined)?.text ?? '';
+        const args = text.split(' ');
+        const linkToken = args.length > 1 ? args[1] : undefined;
+        return this.handleStart(ctx, chatId, linkToken);
+      })
+    );
   }
 
-  private async handleStart(ctx: Context, linkToken?: string): Promise<void> {
+  private async handleStart(ctx: Context, chatId: string, linkToken?: string): Promise<void> {
     if (linkToken) {
       await this.handleLinkToken(ctx, linkToken);
     } else {
-      await this.handleStartWithoutToken(ctx);
+      await this.handleStartWithoutToken(ctx, chatId);
     }
   }
 
-  private async handleStartWithoutToken(ctx: Context): Promise<void> {
-    if (!ctx.chat) return;
-
-    const chatId = ctx.chat.id.toString();
+  private async handleStartWithoutToken(ctx: Context, chatId: string): Promise<void> {
     const lng = await this.contextService.getUserLanguageFromChatId(chatId);
     const config = await this.telegramConfigRepository.findOne({
       where: { chat_id: chatId, status: TelegramLinkStatus.LINKED },

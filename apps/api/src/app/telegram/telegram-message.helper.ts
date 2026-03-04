@@ -25,7 +25,18 @@ export class TelegramMessageHelper {
     };
   }
 
-  static async safeReply(ctx: Context, message: string, options: TelegramMessageOptions | undefined, logger: Logger): Promise<void> {
+  static withChatId(
+    handler: (ctx: Context, chatId: string) => Promise<void>
+  ): (ctx: Context) => Promise<void> {
+    return async (ctx: Context) => {
+      const chatId = ctx.chat?.id.toString();
+      if (chatId) await handler(ctx, chatId);
+    };
+  }
+
+  static async safeReply(
+    ctx: Context, message: string, options: TelegramMessageOptions | undefined, logger: Logger
+  ): Promise<void> {
     try {
       const telegramOptions = TelegramMessageHelper.buildOptions(options);
       await ctx.reply(message, Object.keys(telegramOptions).length > 1 ? telegramOptions : undefined);

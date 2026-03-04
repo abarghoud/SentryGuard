@@ -45,6 +45,8 @@ export class TelegramMuteService implements OnModuleInit {
   }
 
   onModuleInit(): void {
+    const { withChatId } = TelegramMessageHelper;
+
     this.botService.registerHears(
       [
         i18n.t('menuButtonMute', { lng: 'en' }),
@@ -52,17 +54,16 @@ export class TelegramMuteService implements OnModuleInit {
         i18n.t('menuButtonMuteActive', { lng: 'en' }),
         i18n.t('menuButtonMuteActive', { lng: 'fr' }),
       ],
-      async (ctx) => this.handleMuteButton(ctx)
+      withChatId((ctx, chatId) => this.handleMuteButton(ctx, chatId))
     );
 
-    this.botService.registerAction(/^mute:(\d+)$/, async (ctx) => this.handleMuteDuration(ctx));
-    this.botService.registerAction('mute:reactivate', async (ctx) => this.handleMuteReactivate(ctx));
-    this.botService.registerAction('mute:change', async (ctx) => this.handleMuteChange(ctx));
+    this.botService.registerAction(/^mute:(\d+)$/, withChatId((ctx, chatId) => this.handleMuteDuration(ctx, chatId)));
+    this.botService.registerAction('mute:reactivate', withChatId((ctx, chatId) => this.handleMuteReactivate(ctx, chatId)));
+    this.botService.registerAction('mute:change', withChatId((ctx, chatId) => this.handleMuteChange(ctx, chatId)));
     this.botService.registerAction('mute:cancel', async (ctx) => this.handleMuteCancel(ctx));
   }
 
-  private async handleMuteButton(ctx: Context): Promise<void> {
-    const chatId = ctx.chat.id.toString();
+  private async handleMuteButton(ctx: Context, chatId: string): Promise<void> {
     const [lng, config] = await Promise.all([
       this.contextService.getUserLanguageFromChatId(chatId),
       this.telegramConfigRepository.findOne({ where: { chat_id: chatId, status: TelegramLinkStatus.LINKED } }),
@@ -76,12 +77,11 @@ export class TelegramMuteService implements OnModuleInit {
     }
   }
 
-  private async handleMuteDuration(ctx: Context): Promise<void> {
+  private async handleMuteDuration(ctx: Context, chatId: string): Promise<void> {
     const MAX_MUTE_MINUTES = 1440;
 
     try {
       const minutes = Math.min(parseInt(ctx.match[1]), MAX_MUTE_MINUTES);
-      const chatId = ctx.chat.id.toString();
       const lng = await this.contextService.getUserLanguageFromChatId(chatId);
       const mutedUntil = new Date(Date.now() + minutes * MILLISECONDS_PER_MINUTE);
 
@@ -94,9 +94,8 @@ export class TelegramMuteService implements OnModuleInit {
     }
   }
 
-  private async handleMuteReactivate(ctx: Context): Promise<void> {
+  private async handleMuteReactivate(ctx: Context, chatId: string): Promise<void> {
     try {
-      const chatId = ctx.chat.id.toString();
       const lng = await this.contextService.getUserLanguageFromChatId(chatId);
       await this.clearMutedUntil(chatId);
       this.logger.log(`[MUTE] chat_id=${chatId} reactivated alerts`);
@@ -108,9 +107,8 @@ export class TelegramMuteService implements OnModuleInit {
     }
   }
 
-  private async handleMuteChange(ctx: Context): Promise<void> {
+  private async handleMuteChange(ctx: Context, chatId: string): Promise<void> {
     try {
-      const chatId = ctx.chat.id.toString();
       const lng = await this.contextService.getUserLanguageFromChatId(chatId);
       this.logger.log(`[MUTE] chat_id=${chatId} requested duration change`);
       await ctx.answerCbQuery();
