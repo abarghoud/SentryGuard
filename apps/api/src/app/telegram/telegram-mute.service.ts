@@ -27,7 +27,21 @@ export class TelegramMuteService implements OnModuleInit {
       where: { userId, status: TelegramLinkStatus.LINKED },
     });
 
-    return config?.muted_until != null && new Date() < config.muted_until;
+    if (!config) {
+      this.logger.debug(`[MUTE_CHECK] No linked config found for user ${userId} — alert will be skipped`);
+      return false;
+    }
+
+    const mutedUntil = config.muted_until;
+    const isMuted = mutedUntil != null && new Date() < mutedUntil;
+
+    if (isMuted) {
+      this.logger.log(`[MUTE_CHECK] Alerts muted for user ${userId} until ${mutedUntil.toISOString()}`);
+    } else {
+      this.logger.debug(`[MUTE_CHECK] Alerts active for user ${userId}`);
+    }
+
+    return isMuted;
   }
 
   onModuleInit(): void {
@@ -70,6 +84,7 @@ export class TelegramMuteService implements OnModuleInit {
       const mutedUntil = new Date(Date.now() + minutes * 60 * 1000);
 
       await this.saveMutedUntil(chatId, mutedUntil);
+      this.logger.log(`[MUTE] chat_id=${chatId} muted for ${minutes}min until ${mutedUntil.toISOString()}`);
       await this.confirmMute(ctx, mutedUntil, lng);
     } catch (error) {
       this.logger.warn(`⚠️ Error handling mute duration: ${error}`, error);
@@ -82,6 +97,7 @@ export class TelegramMuteService implements OnModuleInit {
       const chatId = ctx.chat.id.toString();
       const lng = await this.contextService.getUserLanguageFromChatId(chatId);
       await this.clearMutedUntil(chatId);
+      this.logger.log(`[MUTE] chat_id=${chatId} reactivated alerts`);
       await ctx.answerCbQuery();
       await ctx.deleteMessage();
       await this.safeReply(ctx, i18n.t('muteReactivated', { lng }), this.keyboardBuilderService.buildMainMenuKeyboard(lng));
@@ -95,6 +111,7 @@ export class TelegramMuteService implements OnModuleInit {
     try {
       const chatId = ctx.chat.id.toString();
       const lng = await this.contextService.getUserLanguageFromChatId(chatId);
+      this.logger.log(`[MUTE] chat_id=${chatId} requested duration change`);
       await ctx.answerCbQuery();
       await ctx.deleteMessage();
       await this.safeReply(ctx, i18n.t('muteDurationTitle', { lng }), this.keyboardBuilderService.buildMuteDurationKeyboard());
