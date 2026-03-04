@@ -350,13 +350,12 @@ export async function unlinkTelegram(): Promise<{
 /**
  * Send test message via Telegram (requires JWT)
  */
-export async function sendTestMessage(message?: string): Promise<{
+export async function sendTestMessage(): Promise<{
   success: boolean;
   message: string;
 }> {
   return apiRequest('/telegram/test-message', {
     method: 'POST',
-    body: JSON.stringify({ message }),
   });
 }
 

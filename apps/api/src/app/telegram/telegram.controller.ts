@@ -4,7 +4,6 @@ import {
   Get,
   Delete,
   Logger,
-  Body,
   UseGuards,
   BadRequestException,
 } from '@nestjs/common';
@@ -172,19 +171,13 @@ export class TelegramController {
    * Send a test message (for development)
    * POST /telegram/test-message
    * Requires: Authorization Bearer JWT
-   * Body: { message: string }
    */
   @Throttle(ThrottleOptions.critical())
   @Post('test-message')
-  async sendTestMessage(
-    @CurrentUser() user: User,
-    @Body('message') message?: string
-  ) {
+  async sendTestMessage(@CurrentUser() user: User) {
     const userId = user.userId;
-
-    if (!message) {
-      message = i18n.t('🧪 Test message from SentryGuard API');
-    }
+    const lng = (user.preferred_language ?? 'en') as 'en' | 'fr';
+    const message = i18n.t('🧪 Test message from SentryGuard API', { lng });
 
     this.logger.log(`📤 Sending test message to: ${userId} (${user.email})`);
 
