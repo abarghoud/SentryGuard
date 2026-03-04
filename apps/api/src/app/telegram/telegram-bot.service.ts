@@ -1,7 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Telegraf, Context } from 'telegraf';
 import type { Request, Response } from 'express';
-import { TelegramMessageOptions, buildTelegramOptions } from './telegram.types';
+import { TelegramMessageOptions } from './telegram.types';
+import { TelegramMessageHelper } from './telegram-message.helper';
 
 @Injectable()
 export class TelegramBotService implements OnModuleInit {
@@ -107,7 +108,7 @@ export class TelegramBotService implements OnModuleInit {
       return false;
     }
 
-    const telegramOptions = buildTelegramOptions(options);
+    const telegramOptions = TelegramMessageHelper.buildOptions(options);
     await this.bot.telegram.sendMessage(chatId, message, telegramOptions);
 
     this.logger.log(`📱 Message sent to chat_id: ${chatId}`);

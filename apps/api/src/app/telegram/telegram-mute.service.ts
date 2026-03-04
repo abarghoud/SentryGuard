@@ -7,7 +7,8 @@ import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-conf
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
 import { TelegramContextService } from './telegram-context.service';
-import { TelegramMessageOptions, buildTelegramOptions, formatRemainingTime } from './telegram.types';
+import { TelegramMessageOptions } from './telegram.types';
+import { TelegramMessageHelper } from './telegram-message.helper';
 
 @Injectable()
 export class TelegramMuteService implements OnModuleInit {
@@ -54,7 +55,7 @@ export class TelegramMuteService implements OnModuleInit {
     });
 
     if (config?.muted_until && new Date() < config.muted_until) {
-      const duration = formatRemainingTime(config.muted_until);
+      const duration = TelegramMessageHelper.formatRemainingTime(config.muted_until);
       await this.safeReply(ctx, i18n.t('muteAlreadyActive', { lng, duration }), this.keyboardBuilderService.buildMuteActiveKeyboard(lng));
     } else {
       await this.safeReply(ctx, i18n.t('muteDurationTitle', { lng }), this.keyboardBuilderService.buildMuteDurationKeyboard());
@@ -127,7 +128,7 @@ export class TelegramMuteService implements OnModuleInit {
   }
 
   private async confirmMute(ctx: Context, mutedUntil: Date, lng: 'en' | 'fr'): Promise<void> {
-    const confirmation = i18n.t('muteConfirmed', { lng, duration: formatRemainingTime(mutedUntil) });
+    const confirmation = i18n.t('muteConfirmed', { lng, duration: TelegramMessageHelper.formatRemainingTime(mutedUntil) });
     await ctx.answerCbQuery();
     await ctx.deleteMessage();
     await this.safeReply(ctx, confirmation, this.keyboardBuilderService.buildMainMenuKeyboard(lng, mutedUntil));
@@ -135,7 +136,7 @@ export class TelegramMuteService implements OnModuleInit {
 
   private async safeReply(ctx: Context, message: string, options?: TelegramMessageOptions): Promise<void> {
     try {
-      const telegramOptions = buildTelegramOptions(options);
+      const telegramOptions = TelegramMessageHelper.buildOptions(options);
       await ctx.reply(message, Object.keys(telegramOptions).length > 1 ? telegramOptions : undefined);
     } catch (error) {
       this.logger.warn(`⚠️ Could not send message to user (possibly blocked the bot): ${error}`, error);

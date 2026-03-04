@@ -8,7 +8,8 @@ import { UserLanguageService } from '../user/user-language.service';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
 import { TelegramContextService } from './telegram-context.service';
-import { TelegramMessageOptions, buildTelegramOptions, CURRENT_BOT_UI_VERSION } from './telegram.types';
+import { TelegramMessageOptions, CURRENT_BOT_UI_VERSION } from './telegram.types';
+import { TelegramMessageHelper } from './telegram-message.helper';
 
 @Injectable()
 export class TelegramAccountLinkingService implements OnModuleInit {
@@ -125,7 +126,7 @@ export class TelegramAccountLinkingService implements OnModuleInit {
 
   private async safeReply(ctx: Context, message: string, options?: TelegramMessageOptions): Promise<void> {
     try {
-      const telegramOptions = buildTelegramOptions(options);
+      const telegramOptions = TelegramMessageHelper.buildOptions(options);
       await ctx.reply(message, Object.keys(telegramOptions).length > 1 ? telegramOptions : undefined);
     } catch (error) {
       this.logger.warn(`⚠️ Could not send message to user (possibly blocked the bot): ${error}`, error);

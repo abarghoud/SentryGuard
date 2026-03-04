@@ -8,7 +8,8 @@ import { Vehicle } from '../../entities/vehicle.entity';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
 import { TelegramContextService } from './telegram-context.service';
-import { TelegramMessageOptions, buildTelegramOptions, formatRemainingTime } from './telegram.types';
+import { TelegramMessageOptions } from './telegram.types';
+import { TelegramMessageHelper } from './telegram-message.helper';
 
 @Injectable()
 export class TelegramStatusService implements OnModuleInit {
@@ -80,7 +81,7 @@ export class TelegramStatusService implements OnModuleInit {
     ];
 
     if (config.muted_until && new Date() < config.muted_until) {
-      lines.push(i18n.t('configStatusMutedUntil', { lng, duration: formatRemainingTime(config.muted_until) }));
+      lines.push(i18n.t('configStatusMutedUntil', { lng, duration: TelegramMessageHelper.formatRemainingTime(config.muted_until) }));
     }
 
     return lines.join('\n');
@@ -105,7 +106,7 @@ export class TelegramStatusService implements OnModuleInit {
 
   private async safeReply(ctx: Context, message: string, options?: TelegramMessageOptions): Promise<void> {
     try {
-      const telegramOptions = buildTelegramOptions(options);
+      const telegramOptions = TelegramMessageHelper.buildOptions(options);
       await ctx.reply(message, Object.keys(telegramOptions).length > 1 ? telegramOptions : undefined);
     } catch (error) {
       this.logger.warn(`⚠️ Could not send message to user (possibly blocked the bot): ${error}`, error);
