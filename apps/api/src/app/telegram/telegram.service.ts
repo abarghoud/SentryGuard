@@ -2,6 +2,9 @@ import { Injectable, Logger, Inject, OnModuleDestroy } from '@nestjs/common';
 import { TelegramError } from 'telegraf';
 import i18n from '../../i18n';
 import { TelegramBotService } from './telegram-bot.service';
+import { TelegramMuteService } from './telegram-mute.service';
+import { TelegramContextService } from './telegram-context.service';
+import { TelegramBotUpdateService } from './telegram-bot-update.service';
 import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import type { ITelegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import { telegramRetryManager } from './telegram-retry-manager.token';
@@ -20,6 +23,9 @@ export class TelegramService implements OnModuleDestroy {
 
   constructor(
     private readonly telegramBotService: TelegramBotService,
+    private readonly telegramMuteService: TelegramMuteService,
+    private readonly telegramContextService: TelegramContextService,
+    private readonly telegramBotUpdateService: TelegramBotUpdateService,
     @Inject(telegramFailureHandler) private readonly failureHandler: ITelegramFailureHandler,
     @Inject(telegramRetryManager) private readonly retryManager: RetryManager,
   ) {}
@@ -34,6 +40,20 @@ export class TelegramService implements OnModuleDestroy {
 
     const message = this.formatSentryAlertMessage(alertInfo, userLanguage);
 
+    if (await this.telegramMuteService.checkIsNotificationMuted(userId)) {
+      this.logger.log(`🔕 Sentry alert suppressed for muted user ${userId}`);
+      return false;
+    }
+
+    const chatId = await this.telegramContextService.getChatIdFromUserId(userId);
+
+    if (!chatId) {
+      this.logger.warn(`⚠️ No chat_id found for user: ${userId}`);
+      return false;
+    }
+
+    await this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage);
+
     if (this.shouldSimulateMessage(alertInfo.vin)) {
       return await this.simulateMessage(userId, 'alert', alertInfo.vin);
     }
@@ -41,7 +61,7 @@ export class TelegramService implements OnModuleDestroy {
     const options = keyboard ? { keyboard } : undefined;
 
     try {
-      const success = await this.telegramBotService.sendMessageToUser(userId, message, options);
+      const success = await this.telegramBotService.sendMessage(chatId, message, options);
 
       return success;
     } catch (error) {
@@ -56,7 +76,7 @@ export class TelegramService implements OnModuleDestroy {
         const correlationId = `telegram-alert-${userId}-${Date.now()}`;
         this.retryManager.addToRetry(
           async () => {
-            await this.telegramBotService.sendMessageToUser(userId, message, options);
+            await this.telegramBotService.sendMessage(chatId, message, options);
           },
           error as Error,
           correlationId

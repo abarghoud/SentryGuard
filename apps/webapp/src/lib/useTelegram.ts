@@ -128,11 +128,11 @@ export function useTelegram() {
     }
   };
 
-  const sendTest = async (message?: string) => {
+  const sendTest = async () => {
     setError(null);
 
     try {
-      const result = await sendTestMessage(message);
+      const result = await sendTestMessage();
       return result.success;
     } catch (err) {
       console.error('Failed to send test message:', err);

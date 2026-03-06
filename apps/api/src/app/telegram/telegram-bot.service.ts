@@ -1,26 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { Telegraf, Context } from 'telegraf';
 import type { Request, Response } from 'express';
-import i18n from '../../i18n';
-import {
-  TelegramConfig,
-  TelegramLinkStatus,
-} from '../../entities/telegram-config.entity';
-import { UserLanguageService } from '../user/user-language.service';
-
-interface TelegramKeyboard {
-  inline_keyboard?: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
-  keyboard?: Array<Array<{ text: string }>>;
-  one_time_keyboard?: boolean;
-  resize_keyboard?: boolean;
-}
-
-interface TelegramMessageOptions {
-  keyboard?: TelegramKeyboard;
-  parse_mode?: 'HTML' | 'Markdown' | 'MarkdownV2';
-}
+import { TelegramMessageOptions } from './telegram.types';
+import { TelegramMessageHelper } from './telegram-message.helper';
 
 @Injectable()
 export class TelegramBotService implements OnModuleInit {
@@ -37,12 +19,6 @@ export class TelegramBotService implements OnModuleInit {
     | ReturnType<Telegraf<Context>['webhookCallback']>
     | null = null;
 
-  constructor(
-    @InjectRepository(TelegramConfig)
-    private readonly telegramConfigRepository: Repository<TelegramConfig>,
-    private readonly userLanguageService: UserLanguageService
-  ) {}
-
   async onModuleInit() {
     if (!this.botToken) {
       this.logger.warn(
@@ -53,8 +29,6 @@ export class TelegramBotService implements OnModuleInit {
 
     try {
       this.bot = new Telegraf(this.botToken);
-
-      this.setupBotCommands();
 
       if (this.mode === 'polling') {
         await this.setupPollingMode();
@@ -67,6 +41,26 @@ export class TelegramBotService implements OnModuleInit {
     } catch (error) {
       this.logger.error('❌ Telegram bot initialization error:', error);
     }
+  }
+
+  public registerStart(handler: (ctx: Context) => Promise<void>): void {
+    this.bot?.start(handler);
+  }
+
+  public registerHears(patterns: string[], handler: (ctx: Context) => Promise<void>): void {
+    this.bot?.hears(patterns, handler);
+  }
+
+  public registerAction(trigger: string | RegExp, handler: (ctx: Context) => Promise<void>): void {
+    this.bot?.action(trigger, handler);
+  }
+
+  public registerCommand(command: string, handler: (ctx: Context) => Promise<void>): void {
+    this.bot?.command(command, handler);
+  }
+
+  public registerHelp(handler: (ctx: Context) => Promise<void>): void {
+    this.bot?.help(handler);
   }
 
   async getBotUsername(): Promise<string | null> {
@@ -104,8 +98,8 @@ export class TelegramBotService implements OnModuleInit {
     return this.webhookCallback(req, res);
   }
 
-  async sendMessageToUser(
-    userId: string,
+  async sendMessage(
+    chatId: string,
     message: string,
     options?: TelegramMessageOptions
   ): Promise<boolean> {
@@ -114,97 +108,11 @@ export class TelegramBotService implements OnModuleInit {
       return false;
     }
 
-    const config = await this.telegramConfigRepository.findOne({
-      where: { userId, status: TelegramLinkStatus.LINKED },
-    });
+    const telegramOptions = TelegramMessageHelper.buildOptions(options);
+    await this.bot.telegram.sendMessage(chatId, message, telegramOptions);
 
-    if (!config || !config.chat_id) {
-      this.logger.warn(
-        `⚠️ No chat_id found for user: ${userId}`
-      );
-      return false;
-    }
-
-    const telegramOptions = this.buildTelegramOptions(options);
-    await this.bot.telegram.sendMessage(config.chat_id, message, telegramOptions);
-
-    this.logger.log(`📱 Message sent to user ${userId} (chat_id: ${config.chat_id})`);
+    this.logger.log(`📱 Message sent to chat_id: ${chatId}`);
     return true;
-  }
-
-  private buildTelegramOptions(options?: TelegramMessageOptions): Record<string, unknown> {
-    const telegramOptions: Record<string, unknown> = {
-      parse_mode: options?.parse_mode || 'HTML',
-    };
-
-    if (options?.keyboard?.inline_keyboard) {
-      telegramOptions.reply_markup = {
-        inline_keyboard: options.keyboard.inline_keyboard,
-      };
-    } else if (options?.keyboard?.keyboard) {
-      telegramOptions.reply_markup = {
-        keyboard: options.keyboard.keyboard,
-        one_time_keyboard: options.keyboard.one_time_keyboard,
-        resize_keyboard: options.keyboard.resize_keyboard,
-      };
-    }
-
-    return telegramOptions;
-  }
-
-  private async safeReply(
-    ctx: Context,
-    message: string,
-    options?: TelegramMessageOptions
-  ): Promise<void> {
-    try {
-      const telegramOptions = this.buildTelegramOptions(options);
-      await ctx.reply(message, Object.keys(telegramOptions).length > 1 ? telegramOptions : undefined);
-    } catch (error) {
-      this.logger.warn(
-        `⚠️ Could not send message to user (possibly blocked the bot): ${error}`,
-        error
-      );
-    }
-  }
-
-  private setupBotCommands() {
-    if (!this.bot) return;
-
-    this.bot.start(async (ctx) => {
-      const args = ctx.message.text.split(' ');
-
-      if (args.length > 1) {
-        const linkToken = args[1];
-        await this.handleLinkToken(ctx, linkToken);
-      } else {
-        const lng = await this.getUserLanguageFromChatId(
-          ctx.chat.id.toString()
-        );
-        await ctx.reply(i18n.t('Welcome to SentryGuard Bot', { lng }));
-      }
-    });
-
-    this.bot.command('status', async (ctx) => {
-      const chatId = ctx.chat.id.toString();
-      const lng = await this.getUserLanguageFromChatId(chatId);
-      const config = await this.telegramConfigRepository.findOne({
-        where: { chat_id: chatId, status: TelegramLinkStatus.LINKED },
-      });
-
-      if (config) {
-        await ctx.reply(i18n.t('Your account is linked and active!', { lng }));
-      } else {
-        await ctx.reply(i18n.t('No account linked', { lng }));
-      }
-    });
-
-    this.bot.help(async (ctx) => {
-      const lng = await this.getUserLanguageFromChatId(
-        ctx.chat.id.toString()
-      );
-      await ctx.reply(i18n.t('Available commands', { lng }));
-    });
   }
 
   private async setupPollingMode() {
@@ -269,112 +177,7 @@ export class TelegramBotService implements OnModuleInit {
     }
   }
 
-  private async handleLinkToken(
-    ctx: Context,
-    linkToken: string
-  ): Promise<void> {
-    try {
-      const config = await this.findPendingConfig(linkToken);
-      const lng = await this.getLanguageForConfig(config);
-
-      if (!config) {
-        await this.safeReply(ctx, i18n.t('Invalid or expired token', { lng }));
-        return;
-      }
-
-      const isExpired = await this.handleExpiredToken(ctx, config, lng);
-      if (isExpired) return;
-
-      await this.linkAccountToChat(ctx, config, lng);
-    } catch (error) {
-      this.logger.error('❌ Error while trying to handle link token:', error);
-      await this.safeReply(ctx, '❌ An error occurred. Please try again later.');
-    }
-  }
-
-  private async findPendingConfig(linkToken: string): Promise<TelegramConfig | null> {
-    return await this.telegramConfigRepository.findOne({
-      where: { link_token: linkToken, status: TelegramLinkStatus.PENDING },
-    });
-  }
-
-  private async getLanguageForConfig(config: TelegramConfig | null): Promise<'en' | 'fr'> {
-    return config
-      ? await this.userLanguageService.getUserLanguage(config.userId)
-      : 'en';
-  }
-
-  private async handleExpiredToken(
-    ctx: Context,
-    config: TelegramConfig,
-    lng: 'en' | 'fr'
-  ): Promise<boolean> {
-    if (config.expires_at && new Date() > config.expires_at) {
-      config.status = TelegramLinkStatus.EXPIRED;
-      await this.telegramConfigRepository.save(config);
-      await this.safeReply(ctx, i18n.t('This token has expired', { lng }));
-      return true;
-    }
-    return false;
-  }
-
-  private async linkAccountToChat(
-    ctx: Context,
-    config: TelegramConfig,
-    lng: 'en' | 'fr'
-  ): Promise<void> {
-    const chatId = ctx.chat?.id?.toString();
-    if (!chatId) {
-      this.logger.warn('⚠️ chatId missing in Telegram update');
-      await this.safeReply(ctx, '❌ Unable to process this request.');
-      return;
-    }
-
-    await this.saveLinkConfig(config, chatId);
-    await this.sendLinkSuccessMessages(ctx, lng);
-  }
-
-  private async saveLinkConfig(config: TelegramConfig, chatId: string): Promise<void> {
-    config.chat_id = chatId;
-    config.status = TelegramLinkStatus.LINKED;
-    config.linked_at = new Date();
-    await this.telegramConfigRepository.save(config);
-
-    this.logger.log(`✅ Account linked: userId=${config.userId}, chatId=${chatId}`);
-  }
-
-  private async sendLinkSuccessMessages(ctx: Context, lng: 'en' | 'fr'): Promise<void> {
-    await this.safeReply(
-      ctx,
-      i18n.t('Your SentryGuard account has been linked successfully!', { lng })
-    );
-
-    await this.safeReply(ctx, i18n.t('telegramLinkedFollowUp', { lng }));
-  }
-
   private getWebhookPath(secretPath: string): string {
     return `/telegram/webhook/${secretPath}`;
-  }
-
-  private async getUserLanguageFromChatId(
-    chatId: string
-  ): Promise<'en' | 'fr'> {
-    try {
-      const config = await this.telegramConfigRepository.findOne({
-        where: { chat_id: chatId, status: TelegramLinkStatus.LINKED },
-      });
-
-      if (!config) {
-        return 'en';
-      }
-
-      return await this.userLanguageService.getUserLanguage(config.userId);
-    } catch (error) {
-      this.logger.warn(
-        `⚠️ Unable to get user language for chatId ${chatId}, defaulting to 'en'`,
-        error
-      );
-      return 'en';
-    }
   }
 }
