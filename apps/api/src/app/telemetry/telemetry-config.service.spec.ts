@@ -37,6 +37,7 @@ const mockVehicleRepository = {
   create: jest.fn(),
   save: jest.fn(),
   find: jest.fn(),
+  upsert: jest.fn(),
 };
 
 describe('TelemetryConfigService', () => {
@@ -162,7 +163,7 @@ describe('TelemetryConfigService', () => {
       loggerSpy.mockRestore();
     });
 
-    it('should create new vehicle in database when it does not exist', async () => {
+    it('should upsert vehicle in database', async () => {
       const userId = 'test-user-id';
       const mockVehicles = [
         {
@@ -181,40 +182,26 @@ describe('TelemetryConfigService', () => {
           data: { response: { config: null } },
         });
 
-      mockVehicleRepository.findOne.mockResolvedValue(null);
-      mockVehicleRepository.create.mockReturnValue({
-        vin: 'VIN123',
-        telemetry_enabled: false,
-      } as Vehicle);
-      mockVehicleRepository.save.mockResolvedValue({
-        vin: 'VIN123',
-        telemetry_enabled: false,
-      } as Vehicle);
       mockVehicleRepository.find.mockResolvedValue([
         { vin: 'VIN123', telemetry_enabled: false },
       ]);
 
       await service.getVehicles(userId);
 
-      expect(mockVehicleRepository.create).toHaveBeenCalledWith({
-        userId,
-        vin: 'VIN123',
-        display_name: 'Tesla Model 3',
-        model: 'model3',
-        telemetry_enabled: false,
-      });
-      expect(mockVehicleRepository.save).toHaveBeenCalled();
+      expect(mockVehicleRepository.upsert).toHaveBeenCalledWith(
+        {
+          userId,
+          vin: 'VIN123',
+          display_name: 'Tesla Model 3',
+          telemetry_enabled: false,
+        },
+        { conflictPaths: ['userId', 'vin'], skipUpdateIfNoValuesChanged: true }
+      );
     });
 
-    it('should update vehicle display_name when it changes', async () => {
+    it('should upsert vehicle with updated display_name', async () => {
       const userId = 'test-user-id';
       const mockVehicles = [{ vin: 'VIN123', display_name: 'Updated Name' }];
-
-      const existingVehicle = {
-        vin: 'VIN123',
-        display_name: 'Old Name',
-        telemetry_enabled: false,
-      };
 
       mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('user-token');
       mockAxiosInstance.get
@@ -225,17 +212,24 @@ describe('TelemetryConfigService', () => {
           data: { response: { config: null } },
         });
 
-      mockVehicleRepository.findOne.mockResolvedValue(existingVehicle);
-      mockVehicleRepository.save.mockResolvedValue(existingVehicle);
-      mockVehicleRepository.find.mockResolvedValue([existingVehicle]);
+      mockVehicleRepository.find.mockResolvedValue([
+        { vin: 'VIN123', display_name: 'Updated Name', telemetry_enabled: false },
+      ]);
 
       await service.getVehicles(userId);
 
-      expect(existingVehicle.display_name).toBe('Updated Name');
-      expect(mockVehicleRepository.save).toHaveBeenCalledWith(existingVehicle);
+      expect(mockVehicleRepository.upsert).toHaveBeenCalledWith(
+        {
+          userId,
+          vin: 'VIN123',
+          display_name: 'Updated Name',
+          telemetry_enabled: false,
+        },
+        { conflictPaths: ['userId', 'vin'], skipUpdateIfNoValuesChanged: true }
+      );
     });
 
-    it('should set telemetry_enabled to true when config is not null', async () => {
+    it('should upsert with telemetry_enabled true when config is not null', async () => {
       const userId = 'test-user-id';
       const mockVehicles = [{ vin: 'VIN123', display_name: 'Tesla Model 3' }];
 
@@ -248,21 +242,21 @@ describe('TelemetryConfigService', () => {
           data: { response: { config: { hostname: 'test.com' } } },
         });
 
-      const existingVehicle = {
-        vin: 'VIN123',
-        display_name: 'Tesla Model 3',
-        telemetry_enabled: false,
-      };
-
-      mockVehicleRepository.findOne.mockResolvedValue(existingVehicle);
-      mockVehicleRepository.save.mockResolvedValue(existingVehicle);
       mockVehicleRepository.find.mockResolvedValue([
-        { ...existingVehicle, telemetry_enabled: true },
+        { vin: 'VIN123', display_name: 'Tesla Model 3', telemetry_enabled: true },
       ]);
 
       await service.getVehicles(userId);
 
-      expect(existingVehicle.telemetry_enabled).toBe(true);
+      expect(mockVehicleRepository.upsert).toHaveBeenCalledWith(
+        {
+          userId,
+          vin: 'VIN123',
+          display_name: 'Tesla Model 3',
+          telemetry_enabled: true,
+        },
+        { conflictPaths: ['userId', 'vin'], skipUpdateIfNoValuesChanged: true }
+      );
     });
   });
 

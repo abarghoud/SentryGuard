@@ -46,8 +46,6 @@ export const SUCCESS_MESSAGES = {
   TELEMETRY_CONFIGURED: (vin: string) => `✅ Telemetry configured for VIN: ${vin}`,
   TELEMETRY_STATUS_UPDATED: (vin: string, enabled: boolean) =>
     `✅ Telemetry status updated for ${vin}: ${enabled}`,
-  VEHICLE_ADDED: (vin: string, telemetryEnabled: boolean) =>
-    `✅ Vehicle added to DB: ${vin} (telemetry: ${telemetryEnabled})`,
   VEHICLE_UPDATED: (vin: string, telemetryEnabled: boolean) =>
     `✅ Vehicle updated: ${vin} (telemetry: ${telemetryEnabled})`,
 } as const;

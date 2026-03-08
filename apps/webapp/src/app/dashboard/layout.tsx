@@ -60,7 +60,7 @@ export default function DashboardLayout({
     }
   }, [isAuthenticated, hasConsent, isOnboardingComplete, onboardingLoading, router]);
 
-  if (isLoading) {
+  if (isLoading || consentLoading || onboardingLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
@@ -68,7 +68,7 @@ export default function DashboardLayout({
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !hasConsent || !isOnboardingComplete) {
     return null;
   }
 

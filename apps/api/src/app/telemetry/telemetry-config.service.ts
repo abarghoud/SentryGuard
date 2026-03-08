@@ -158,33 +158,16 @@ export class TelemetryConfigService {
 
       const isTelemetryConfigured = telemetryConfig?.config !== null && telemetryConfig?.config !== undefined;
 
-      const existingVehicle = await this.vehicleRepository.findOne({
-        where: { userId, vin: teslaVehicle.vin },
-      });
-
-      if (!existingVehicle) {
-        const vehicle = this.vehicleRepository.create({
+      await this.vehicleRepository.upsert(
+        {
           userId,
           vin: teslaVehicle.vin,
           display_name: teslaVehicle.display_name ?? teslaVehicle.vin,
-          model: teslaVehicle.vehicle_state?.car_type ?? undefined,
           telemetry_enabled: isTelemetryConfigured,
-        });
-
-        await this.vehicleRepository.save(vehicle);
-        this.logger.log(SUCCESS_MESSAGES.VEHICLE_ADDED(teslaVehicle.vin, isTelemetryConfigured));
-      } else {
-        if (
-          teslaVehicle.display_name &&
-          existingVehicle.display_name !== teslaVehicle.display_name
-        ) {
-          existingVehicle.display_name = teslaVehicle.display_name;
-        }
-
-        existingVehicle.telemetry_enabled = isTelemetryConfigured;
-        await this.vehicleRepository.save(existingVehicle);
-        this.logger.log(SUCCESS_MESSAGES.VEHICLE_UPDATED(teslaVehicle.vin, isTelemetryConfigured));
-      }
+        },
+        { conflictPaths: ['userId', 'vin'], skipUpdateIfNoValuesChanged: true }
+      );
+      this.logger.log(SUCCESS_MESSAGES.VEHICLE_UPDATED(teslaVehicle.vin, isTelemetryConfigured));
     }
 
     return telemetryConfigsMap;

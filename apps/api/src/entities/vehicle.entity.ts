@@ -25,9 +25,6 @@ export class Vehicle {
   @Column({ type: 'varchar', length: 255, nullable: true })
   display_name?: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  model?: string;
-
   @Column({ type: 'boolean', default: false })
   telemetry_enabled!: boolean;
 
