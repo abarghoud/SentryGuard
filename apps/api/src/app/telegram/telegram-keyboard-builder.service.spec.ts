@@ -17,7 +17,6 @@ describe('The TelegramKeyboardBuilderService class', () => {
   });
 
   describe('The buildSentryAlertKeyboard() method', () => {
-    const alertInfo = { vin: 'TEST123' };
     const userId = 'user-123';
     const baseUrl = 'http://localhost:3000';
 
@@ -33,7 +32,7 @@ describe('The TelegramKeyboardBuilderService class', () => {
       let result: TelegramKeyboard;
 
       beforeEach(() => {
-        result = service.buildSentryAlertKeyboard(alertInfo, userId, 'en');
+        result = service.buildSentryAlertKeyboard(userId, 'en');
       });
 
       it('should return keyboard with inline_keyboard structure', () => {
@@ -65,7 +64,7 @@ describe('The TelegramKeyboardBuilderService class', () => {
       let result: TelegramKeyboard;
 
       beforeEach(() => {
-        result = service.buildSentryAlertKeyboard(alertInfo, userId, 'fr');
+        result = service.buildSentryAlertKeyboard(userId, 'fr');
       });
 
       it('should use French button text', () => {
@@ -80,7 +79,7 @@ describe('The TelegramKeyboardBuilderService class', () => {
 
       beforeEach(() => {
         delete process.env.TELEGRAM_WEBHOOK_BASE;
-        result = service.buildSentryAlertKeyboard(alertInfo, userId, 'en');
+        result = service.buildSentryAlertKeyboard(userId, 'en');
       });
 
       it('should use localhost fallback', () => {

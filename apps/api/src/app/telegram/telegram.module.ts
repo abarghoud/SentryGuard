@@ -5,6 +5,11 @@ import { TelegramBotService } from './telegram-bot.service';
 import { TelegramController } from './telegram.controller';
 import { TelegramWebhookController } from './telegram-webhook.controller';
 import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
+import { TelegramContextService } from './telegram-context.service';
+import { TelegramAccountLinkingService } from './telegram-account-linking.service';
+import { TelegramMuteService } from './telegram-mute.service';
+import { TelegramStatusService } from './telegram-status.service';
+import { TelegramBotUpdateService } from './telegram-bot-update.service';
 import { TelegramConfigService } from './telegram-config.service';
 import { TelegramFailureHandlerService } from './handlers/telegram-failure-handler.service';
 import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
@@ -12,13 +17,14 @@ import { RetryManager } from '../shared/retry-manager.service';
 import { telegramRetryManager } from './telegram-retry-manager.token';
 import { TelegramConfig } from '../../entities/telegram-config.entity';
 import { User } from '../../entities/user.entity';
+import { Vehicle } from '../../entities/vehicle.entity';
 import { AuthModule } from '../auth/auth.module';
 import { ConsentModule } from '../consent/consent.module';
 import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TelegramConfig, User]),
+    TypeOrmModule.forFeature([TelegramConfig, User, Vehicle]),
     AuthModule,
     ConsentModule,
     UserModule,
@@ -28,6 +34,11 @@ import { UserModule } from '../user/user.module';
     TelegramService,
     TelegramBotService,
     TelegramKeyboardBuilderService,
+    TelegramContextService,
+    TelegramAccountLinkingService,
+    TelegramMuteService,
+    TelegramStatusService,
+    TelegramBotUpdateService,
     TelegramConfigService,
     TelegramFailureHandlerService,
     {

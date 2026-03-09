@@ -4,7 +4,6 @@ import {
   Get,
   Delete,
   Logger,
-  Body,
   UseGuards,
   BadRequestException,
 } from '@nestjs/common';
@@ -17,6 +16,7 @@ import {
   TelegramLinkStatus,
 } from '../../entities/telegram-config.entity';
 import { TelegramBotService } from './telegram-bot.service';
+import { TelegramContextService } from './telegram-context.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ConsentGuard } from '../../common/guards/consent.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -33,7 +33,8 @@ export class TelegramController {
   constructor(
     @InjectRepository(TelegramConfig)
     private readonly telegramConfigRepository: Repository<TelegramConfig>,
-    private readonly telegramBotService: TelegramBotService
+    private readonly telegramBotService: TelegramBotService,
+    private readonly telegramContextService: TelegramContextService,
   ) {}
 
   /**
@@ -81,12 +82,11 @@ export class TelegramController {
 
     const deepLink = `https://t.me/${botUsername}?start=${linkToken}`;
 
-    this.logger.log(`✅ Lien généré pour ${userId}: ${deepLink}`);
+    this.logger.log(`✅ Link generated for ${userId}, expires at ${expiresAt.toISOString()}`);
 
     return {
       success: true,
       link: deepLink,
-      token: linkToken,
       expires_at: expiresAt,
       expires_in_minutes: this.LINK_EXPIRATION_MINUTES,
     };
@@ -170,26 +170,23 @@ export class TelegramController {
    * Send a test message (for development)
    * POST /telegram/test-message
    * Requires: Authorization Bearer JWT
-   * Body: { message: string }
    */
   @Throttle(ThrottleOptions.critical())
   @Post('test-message')
-  async sendTestMessage(
-    @CurrentUser() user: User,
-    @Body('message') message?: string
-  ) {
+  async sendTestMessage(@CurrentUser() user: User) {
     const userId = user.userId;
-
-    if (!message) {
-      message = i18n.t('🧪 Test message from SentryGuard API');
-    }
+    const lng = (user.preferred_language ?? 'en') as 'en' | 'fr';
+    const message = i18n.t('🧪 Test message from SentryGuard API', { lng });
 
     this.logger.log(`📤 Sending test message to: ${userId} (${user.email})`);
 
-    const success = await this.telegramBotService.sendMessageToUser(
-      userId,
-      message
-    );
+    const chatId = await this.telegramContextService.getChatIdFromUserId(userId);
+
+    if (!chatId) {
+      return { success: false, message: 'Failed to send message. Verify that the account is linked.' };
+    }
+
+    const success = await this.telegramBotService.sendMessage(chatId, message);
 
     return {
       success,
