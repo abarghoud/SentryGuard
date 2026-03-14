@@ -73,9 +73,9 @@ This is an Nx monorepo containing:
 
 - NestJS - Node.js framework
 - TypeORM - ORM with PostgreSQL
+- Apache Kafka - Real-time message processing
 - Telegraf - Telegram Bot API
 - Tesla Fleet API - Official Tesla API
-- Tesla Command Proxy
 
 **Frontend:**
 
@@ -111,6 +111,10 @@ This is an Nx monorepo containing:
 ### 4. Receive Alerts
 
 - When Sentry Mode is triggered, you'll receive an instant Telegram notification
+
+## 🏠 Self-Hosting
+
+Want to run SentryGuard on your own infrastructure? See the [Self-Hosting Guide](SELF-HOSTING.md) for full instructions.
 
 ## 🔧 Development
 
@@ -153,90 +157,14 @@ npx nx lint api
 npx nx lint webapp
 ```
 
-## 📊 Project Structure
-
-```bash
-SentryGuard/
-├── apps/
-│   ├── api/                    # NestJS Backend
-│   │   ├── src/
-│   │   │   ├── app/
-│   │   │   │   ├── auth/       # Tesla OAuth
-│   │   │   │   ├── telemetry/  # Vehicle telemetry
-│   │   │   │   ├── telegram/   # Telegram bot
-│   │   │   │   └── zmq/        # ZMQ service
-│   │   │   ├── entities/       # TypeORM entities
-│   │   │   ├── config/         # Configuration
-│   │   │   └── common/         # Shared utilities
-│   │   └── env.example
-│   │
-│   └── webapp/                 # Next.js Frontend
-│       ├── src/
-│       │   ├── app/            # Next.js pages (App Router)
-│       │   │   ├── dashboard/  # Protected dashboard
-│       │   │   └── callback/   # OAuth callback
-│       │   ├── components/     # React components
-│       │   └── lib/            # Utilities & hooks
-│       └── tailwind.config.js
-│
-├── nx.json                     # Nx configuration
-└── package.json
-```
-
-## 🗄️ Database Schema
-
-### Users
-
-- Stores Tesla OAuth tokens (encrypted)
-- User profile information
-
-### Vehicles
-
-- Vehicle details (VIN, model, name)
-- Telemetry configuration status
-
-### Telegram Configs
-
-- Link tokens for deep linking
-- Chat IDs for sending alerts
-
 ## 🔐 Security
 
 - **Token Encryption**: All Tesla access tokens are encrypted before storage
-- **Secure Communication**: HTTPS only in production
-- **Differentiated Rate Limiting**: Endpoints protected with adaptive rate limits (30-200 req/min depending on sensitivity)
-  - Centralized configuration in `apps/api/src/config/throttle.config.ts`
-  - No magic numbers - all limits defined as named constants
+- **Differentiated Rate Limiting**: Endpoints protected with adaptive rate limits
 - **OAuth 2.0**: Secure authentication flow with Tesla
 - **No Plaintext Secrets**: All sensitive data encrypted
 
 For detailed security information, see [SECURITY.md](SECURITY.md)
-
-## ☁️ Cloudflare Integration
-
-SentryGuard is designed to work seamlessly with Cloudflare's infrastructure:
-
-### Cloudflare as CDN/Proxy
-
-- **SSL/TLS**: Cloudflare provides automatic HTTPS with flexible SSL options
-- **DDoS Protection**: Built-in protection against DDoS attacks
-- **Rate Limiting**: Additional edge-level rate limiting complements API-level controls
-- **Caching**: Static assets cached at Cloudflare's edge network
-- **Analytics**: Real-time analytics and insights
-
-### Setup with Cloudflare
-
-1. **Add your domain to Cloudflare**
-2. **Configure DNS records**:
-   - `api.yourdomain.com` → Your API server IP
-   - `yourdomain.com` → Your webapp server IP
-3. **Enable Cloudflare Proxy** (orange cloud)
-4. **SSL/TLS Settings**: Set to "Full (strict)" mode
-5. **Firewall Rules**: Configure WAF rules for additional security
-
-### Cloudflare Project Alexandria
-
-SentryGuard is part of the [Cloudflare Project Alexandria](https://www.cloudflare.com/lp/project-alexandria/) program, supporting open-source projects with Cloudflare's enterprise features.
 
 ## 🤝 Contributing
 
@@ -268,12 +196,11 @@ Use this software at your own risk. The authors are not responsible for any dama
 - **Contributing**: [CONTRIBUTING.md](./CONTRIBUTING.md)
 - **Security**: [SECURITY.md](./SECURITY.md)
 
-> **Note**: A detailed setup guide with Docker support is coming soon!
-
 ## 🙏 Acknowledgments
 
 - [Tesla](https://developer.tesla.com/) for the Fleet API
 - [Telegram](https://telegram.org/) for the Bot API
+- [Apache Kafka](https://kafka.apache.org/) for real-time message processing
 - [Cloudflare](https://www.cloudflare.com/) for Project Alexandria support
 - [Nx](https://nx.dev/) team for the amazing monorepo tools
 - [NestJS](https://nestjs.com/) and [Next.js](https://nextjs.org/) communities
@@ -290,7 +217,6 @@ If you find SentryGuard useful, please consider giving it a star ⭐
 - ✅ **Active Development**: Regular updates and improvements
 - ✅ **Community Driven**: Open to contributions
 - ✅ **Production Ready**: Used by real Tesla owners
-- ✅ **Well Documented**: Comprehensive setup guides
 
 ---
 
