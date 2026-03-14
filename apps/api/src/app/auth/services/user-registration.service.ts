@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
@@ -6,7 +6,8 @@ import * as crypto from 'crypto';
 import { User } from '../../../entities/user.entity';
 import { encrypt } from '../../../common/utils/crypto.util';
 import { UserNotApprovedException } from '../../../common/exceptions/user-not-approved.exception';
-import { WaitlistService } from '../../waitlist/services/waitlist.service';
+import type { WaitlistServiceRequirements } from '../../waitlist/interfaces/waitlist-service.requirements';
+import { waitlistServiceRequirementsSymbol } from '../../waitlist/interfaces/waitlist-service.requirements';
 import { REFRESH_TOKEN_LIFETIME_DAYS } from './tesla-token-refresh.service';
 import {
   OAuthTokensResponse,
@@ -23,7 +24,8 @@ export class UserRegistrationService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
-    private readonly waitlistService: WaitlistService
+    @Inject(waitlistServiceRequirementsSymbol)
+    private readonly waitlistService: WaitlistServiceRequirements
   ) {}
 
   async createOrUpdateUser(

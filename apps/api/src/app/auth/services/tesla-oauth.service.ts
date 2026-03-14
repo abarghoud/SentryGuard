@@ -39,7 +39,17 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
     }),
   });
 
-  constructor(private readonly jwtService: JwtService) {}
+  private readonly redirectUri: string;
+
+  constructor(private readonly jwtService: JwtService) {
+    const redirectUri = process.env.TESLA_REDIRECT_URI;
+
+    if (!redirectUri) {
+      throw new Error('TESLA_REDIRECT_URI environment variable is required');
+    }
+
+    this.redirectUri = redirectUri;
+  }
 
   onModuleInit(): void {
     if (!process.env.JWT_OAUTH_STATE_SECRET) {
@@ -53,10 +63,6 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
     userLocale: 'en' | 'fr' = 'en'
   ): { url: string; state: string } {
     const clientId = process.env.TESLA_CLIENT_ID;
-    const redirectUri =
-      process.env.TESLA_REDIRECT_URI ||
-      'https://sentryguard.org/callback/auth';
-
     if (!clientId) {
       throw new Error('TESLA_CLIENT_ID not defined');
     }
@@ -67,7 +73,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
       client_id: clientId,
       locale: normalizeTeslaLocale(userLocale),
       prompt: 'login',
-      redirect_uri: redirectUri,
+      redirect_uri: this.redirectUri,
       response_type: 'code',
       show_keypair_step: 'true',
       scope: 'openid vehicle_device_data offline_access user_data',
@@ -85,10 +91,6 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
     missingScopes?: string[]
   ): { url: string; state: string } {
     const clientId = process.env.TESLA_CLIENT_ID;
-    const redirectUri =
-      process.env.TESLA_REDIRECT_URI ||
-      'https://sentryguard.org/callback/auth';
-
     if (!clientId) {
       throw new Error('TESLA_CLIENT_ID not defined');
     }
@@ -99,7 +101,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
       client_id: clientId,
       locale: normalizeTeslaLocale(userLocale),
       prompt_missing_scopes: 'true',
-      redirect_uri: redirectUri,
+      redirect_uri: this.redirectUri,
       response_type: 'code',
       show_keypair_step: 'true',
       scope: 'openid vehicle_device_data offline_access user_data',
@@ -157,10 +159,6 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
     const audience =
       process.env.TESLA_AUDIENCE ||
       'https://fleet-api.prd.na.vn.cloud.tesla.com';
-    const redirectUri =
-      process.env.TESLA_REDIRECT_URI ||
-      'https://sentryguard.org/callback/auth';
-
     if (!clientId || !clientSecret) {
       throw new Error('TESLA_CLIENT_ID or TESLA_CLIENT_SECRET not defined');
     }
@@ -175,7 +173,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
         client_secret: clientSecret,
         code: code,
         audience: audience,
-        redirect_uri: redirectUri,
+        redirect_uri: this.redirectUri,
       }),
       {
         headers: {
