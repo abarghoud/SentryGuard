@@ -8,6 +8,9 @@
     },
     {
       "path": "./apps/webapp"
+    },
+    {
+      "path": "./libs/beta/domain"
     }
   ]
 }
