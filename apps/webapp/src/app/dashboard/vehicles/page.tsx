@@ -2,6 +2,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { useVehicles } from '../../../lib/useVehicles';
+import { useAuth } from '../../../lib/useAuth';
 import VehicleCard from '../../../components/VehicleCard';
 
 export default function VehiclesPage() {
@@ -13,7 +14,9 @@ export default function VehiclesPage() {
     fetchVehicles,
     configureTelemetryForVehicle,
     deleteTelemetryForVehicle,
+    toggleBreakInMonitoringForVehicle,
   } = useVehicles();
+  const { profile } = useAuth();
 
   const isKeyPaired = vehicles.length > 0 ? vehicles[0].key_paired : null;
 
@@ -208,7 +211,9 @@ export default function VehiclesPage() {
             <VehicleCard
               key={vehicle.id}
               vehicle={vehicle}
+              isBetaTester={profile?.isBetaTester}
               onToggleTelemetry={configureTelemetryForVehicle}
+              onToggleBreakInMonitoring={toggleBreakInMonitoringForVehicle}
               onDeleteTelemetry={deleteTelemetryForVehicle}
             />
           ))}

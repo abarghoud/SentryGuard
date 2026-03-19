@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TelemetryConfigController } from './telemetry-config.controller';
 import { TelemetryConfigService } from './telemetry-config.service';
+import { SentryModeConfigService } from './sentry-mode-config.service';
 import { ConsentGuard } from '../../common/guards/consent.guard';
 import { User } from '../../entities/user.entity';
 import {
@@ -12,6 +13,7 @@ import {
 describe('TelemetryConfigController', () => {
   let controller: TelemetryConfigController;
   let service: TelemetryConfigService;
+  let sentryModeConfigService: SentryModeConfigService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -21,8 +23,13 @@ describe('TelemetryConfigController', () => {
           provide: TelemetryConfigService,
           useValue: {
             getVehicles: jest.fn(),
-            configureTelemetry: jest.fn(),
             checkTelemetryConfig: jest.fn(),
+          },
+        },
+        {
+          provide: SentryModeConfigService,
+          useValue: {
+            configureTelemetry: jest.fn(),
           },
         },
       ],
@@ -37,6 +44,7 @@ describe('TelemetryConfigController', () => {
       TelemetryConfigController
     );
     service = module.get<TelemetryConfigService>(TelemetryConfigService);
+    sentryModeConfigService = module.get<SentryModeConfigService>(SentryModeConfigService);
   });
 
   it('should be defined', () => {
@@ -46,8 +54,8 @@ describe('TelemetryConfigController', () => {
   describe('getVehicles', () => {
     it('should return vehicles list', async () => {
       const mockVehicles: TeslaVehicleWithStatus[] = [
-        { vin: 'VIN123', display_name: 'Tesla Model 3', telemetry_enabled: false, key_paired: false },
-        { vin: 'VIN456', display_name: 'Tesla Model Y', telemetry_enabled: false, key_paired: false },
+        { vin: 'VIN123', display_name: 'Tesla Model 3', sentry_mode_monitoring_enabled: false, key_paired: false },
+        { vin: 'VIN456', display_name: 'Tesla Model Y', sentry_mode_monitoring_enabled: false, key_paired: false },
       ];
 
       jest.spyOn(service, 'getVehicles').mockResolvedValue(mockVehicles);
@@ -83,7 +91,7 @@ describe('TelemetryConfigController', () => {
         response: { response: { skipped_vehicles: { missing_key: [] } } },
       };
 
-      jest.spyOn(service, 'configureTelemetry').mockResolvedValue(mockResult);
+      (sentryModeConfigService.configureTelemetry as jest.Mock).mockResolvedValue(mockResult);
 
       const mockUser = { userId: 'test-user-id' } as unknown as User;
 
@@ -93,7 +101,7 @@ describe('TelemetryConfigController', () => {
         message: `Configuration started for VIN: ${vin}`,
         result: mockResult,
       });
-      expect(service.configureTelemetry).toHaveBeenCalledWith(
+      expect(sentryModeConfigService.configureTelemetry).toHaveBeenCalledWith(
         vin,
         'test-user-id'
       );
@@ -107,7 +115,7 @@ describe('TelemetryConfigController', () => {
         response: { response: { skipped_vehicles: { missing_key: [vin] } } },
       };
 
-      jest.spyOn(service, 'configureTelemetry').mockResolvedValue(mockResult);
+      (sentryModeConfigService.configureTelemetry as jest.Mock).mockResolvedValue(mockResult);
 
       const mockUser = { userId: 'test-user-id' } as unknown as User;
 
@@ -122,7 +130,7 @@ describe('TelemetryConfigController', () => {
     it('should return failed message when service returns null', async () => {
       const vin = 'TEST_VIN_123';
 
-      jest.spyOn(service, 'configureTelemetry').mockResolvedValue(null);
+      (sentryModeConfigService.configureTelemetry as jest.Mock).mockResolvedValue(null);
 
       const mockUser = { userId: 'test-user-id' } as unknown as User;
 
@@ -135,9 +143,7 @@ describe('TelemetryConfigController', () => {
 
     it('should handle service errors', async () => {
       const vin = 'TEST_VIN_123';
-      jest
-        .spyOn(service, 'configureTelemetry')
-        .mockRejectedValue(new Error('Service error'));
+      (sentryModeConfigService.configureTelemetry as jest.Mock).mockRejectedValue(new Error('Service error'));
 
       const mockUser = { userId: 'test-user-id' } as unknown as User;
 

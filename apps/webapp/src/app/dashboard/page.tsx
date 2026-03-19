@@ -12,7 +12,7 @@ export default function DashboardPage() {
   const { vehicles } = useVehicles();
   const { status: telegramStatus } = useTelegram();
 
-  const enabledVehicles = vehicles.filter((v) => v.telemetry_enabled).length;
+  const enabledVehicles = vehicles.filter((v) => v.sentry_mode_monitoring_enabled).length;
   const totalVehicles = vehicles.length;
 
   return (

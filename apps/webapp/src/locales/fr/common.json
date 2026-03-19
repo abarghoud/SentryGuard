@@ -108,7 +108,7 @@
   "Tesla Authorization Revoked": "Autorisation Tesla révoquée",
   "Tesla security policies required re-authorization": "Les politiques de sécurité Tesla ont nécessité une ré-autorisation",
   "Telemetry monitors Sentry Mode and sends alerts without draining battery": "SentryGuard utilise la télémétrie pour surveiller l'état du mode Sentinel de votre véhicule et envoie des alertes Telegram instantanées lors de la détection d'activité suspecte. Une surveillance efficace qui n'épuise pas votre batterie.",
-  "Telemetry Status": "Statut de la télémétrie",
+  "Sentry Mode Monitoring": "Surveillance du mode sentinelle",
   "Test message sent! Check your Telegram.": "Message de test envoyé ! Vérifiez votre Telegram.",
   "This link expires in {{minutes}} minutes": "Ce lien expire dans {{minutes}} minutes",
   "To continue using SentryGuard, please reconnect your Tesla account.": "Pour continuer à utiliser SentryGuard, veuillez reconnecter votre compte Tesla.",
@@ -344,5 +344,9 @@
   "meta.home.ogDescription": "Surveillance en temps réel et alertes Telegram instantanées pour le mode Sentinelle de votre véhicule Tesla.",
   "meta.faq.title": "FAQ - SentryGuard",
   "meta.faq.description": "Questions fréquemment posées sur SentryGuard. Découvrez comment protéger votre Tesla avec la surveillance en temps réel du mode Sentinelle et les alertes Telegram.",
-  "meta.faq.ogDescription": "Questions fréquemment posées sur la surveillance Tesla de SentryGuard."
+  "meta.faq.ogDescription": "Questions fréquemment posées sur la surveillance Tesla de SentryGuard.",
+  "Break-in Monitoring": "Surveillance d'effraction",
+  "Enable Break-in": "Activer surveillance d'effraction",
+  "Disable Break-in": "Désactiver surveillance d'effraction",
+  "Failed to update Break-in monitoring": "Échec de la mise à la surveillance d'effraction"
 }

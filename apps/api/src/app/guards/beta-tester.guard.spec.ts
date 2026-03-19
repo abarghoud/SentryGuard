@@ -1,6 +1,7 @@
 import { mock, MockProxy } from 'jest-mock-extended';
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces/features/arguments-host.interface';
+import { ErrorCode } from '@sentryguard/beta-domain';
 import { BetaTesterGuard } from './beta-tester.guard';
 import { User } from '../../entities/user.entity';
 
@@ -30,7 +31,7 @@ describe('The BetaTesterGuard class', () => {
     let mockHttpArgumentsHost: MockProxy<HttpArgumentsHost>;
 
     describe('When user is not authenticated', () => {
-      const expectedError = 'BETA_TESTER_ONLY';
+      const expectedError = ErrorCode.BETA_TESTER_ONLY;
       let act: () => boolean;
 
       beforeEach(() => {
@@ -48,7 +49,7 @@ describe('The BetaTesterGuard class', () => {
     });
 
     describe('When user is not a beta tester', () => {
-      const expectedError = 'BETA_TESTER_ONLY';
+      const expectedError = ErrorCode.BETA_TESTER_ONLY;
       let act: () => boolean;
 
       beforeEach(() => {

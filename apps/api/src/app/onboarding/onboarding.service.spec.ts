@@ -96,7 +96,7 @@ describe('The OnboardingService class', () => {
         {
           vin: 'VIN123',
           key_paired: true,
-          telemetry_enabled: true,
+          sentry_mode_monitoring_enabled: true,
         },
       ];
 
@@ -218,7 +218,7 @@ describe('The OnboardingService class', () => {
         {
           vin: 'VIN123',
           key_paired: true,
-          telemetry_enabled: false,
+          sentry_mode_monitoring_enabled: false,
         },
       ];
 

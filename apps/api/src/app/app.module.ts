@@ -10,6 +10,7 @@ import { KafkaService } from './messaging/kafka/kafka.service';
 import { TelemetryMessageHandlerService } from './telemetry/handlers/telemetry-message-handler.service';
 import { TelemetryValidationService } from './telemetry/services/telemetry-validation.service';
 import { SentryAlertHandlerService } from './alerts/sentry/sentry-alert-handler.service';
+import { BreakInAlertHandlerService } from './alerts/break-in/break-in-alert-handler.service';
 import { TelemetryEventHandlerSymbol } from './telemetry/interfaces/telemetry-event-handler.interface';
 import { kafkaMessageHandler } from './messaging/kafka/interfaces/message-handler.interface';
 import { AuthModule } from './auth/auth.module';
@@ -62,6 +63,7 @@ import { RetryManager } from './shared/retry-manager.service';
     },
     TelemetryValidationService,
     SentryAlertHandlerService,
+    BreakInAlertHandlerService,
     {
       provide: kafkaMessageHandler,
       useClass: TelemetryMessageHandlerService,
@@ -70,8 +72,9 @@ import { RetryManager } from './shared/retry-manager.service';
       provide: TelemetryEventHandlerSymbol,
       useFactory: (
         sentryHandler: SentryAlertHandlerService,
-      ) => [sentryHandler],
-      inject: [SentryAlertHandlerService],
+        breakInHandler: BreakInAlertHandlerService,
+      ) => [sentryHandler, breakInHandler],
+      inject: [SentryAlertHandlerService, BreakInAlertHandlerService],
     },
     KafkaLogContextService,
     {
@@ -88,4 +91,4 @@ import { RetryManager } from './shared/retry-manager.service';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

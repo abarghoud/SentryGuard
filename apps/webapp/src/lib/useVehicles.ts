@@ -6,6 +6,7 @@ import {
   configureTelemetry,
   deleteTelemetryConfig,
   hasToken,
+  toggleBreakInMonitoring,
   type Vehicle,
 } from './api';
 
@@ -85,6 +86,24 @@ export function useVehicles() {
     }
   };
 
+  const toggleBreakInMonitoringForVehicle = async (vin: string, enable: boolean): Promise<boolean> => {
+    try {
+      const result = await toggleBreakInMonitoring(vin, enable);
+      if (result.success) {
+        await fetchVehicles();
+        return true;
+      }
+      setError(result.message);
+      return false;
+    } catch (err) {
+      console.error('Failed to toggle break-in monitoring:', err);
+      setError(
+        err instanceof Error ? err.message : 'Failed to toggle break-in monitoring'
+      );
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchVehicles();
   }, []);
@@ -96,5 +115,6 @@ export function useVehicles() {
     fetchVehicles,
     configureTelemetryForVehicle,
     deleteTelemetryForVehicle,
+    toggleBreakInMonitoringForVehicle,
   };
 }

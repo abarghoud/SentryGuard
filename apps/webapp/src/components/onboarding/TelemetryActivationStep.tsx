@@ -20,7 +20,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
   const [errors, setErrors] = useState<Map<string, string>>(new Map());
   const [isCompleting, setIsCompleting] = useState(false);
 
-  const hasTelemetryEnabled = vehicles.some((v) => v.telemetry_enabled === true);
+  const hasTelemetryEnabled = vehicles.some((v) => v.sentry_mode_monitoring_enabled === true);
 
   const handleActivateTelemetry = async (vin: string) => {
     setActivatingVins((prev) => new Set(prev).add(vin));
@@ -135,7 +135,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                       VIN: {vehicle.vin}
                     </p>
                   </div>
-                  {vehicle.telemetry_enabled && (
+                  {vehicle.sentry_mode_monitoring_enabled && (
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                       {t('Enabled')}
                     </span>
@@ -152,7 +152,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                 )}
 
                 {/* Activate button */}
-                {!vehicle.telemetry_enabled && (
+                {!vehicle.sentry_mode_monitoring_enabled && (
                   <button
                     onClick={() => handleActivateTelemetry(vehicle.vin)}
                     disabled={activatingVins.has(vehicle.vin)}

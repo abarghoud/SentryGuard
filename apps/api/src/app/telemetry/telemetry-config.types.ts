@@ -32,11 +32,7 @@ export interface TelemetryConfigRequest {
     ca: string;
     hostname: string;
     port: number;
-    fields: {
-      SentryMode: {
-        interval_seconds: number;
-      };
-    };
+    fields: Record<string, { interval_seconds: number }>;
   };
   vins: string[];
 }
@@ -74,10 +70,6 @@ export interface ConfigureTelemetryResult {
   response?: TeslaApiResponse<FleetTelemetryConfigResponse>;
 }
 
-/**
- * Tesla vehicle data from Tesla API
- * Only includes fields that are actually used in the application
- */
 export interface TeslaVehicle {
   vin: string;
   display_name: string;
@@ -86,10 +78,8 @@ export interface TeslaVehicle {
   };
 }
 
-/**
- * Tesla vehicle with additional status fields
- */
 export interface TeslaVehicleWithStatus extends TeslaVehicle {
-  telemetry_enabled: boolean;
+  sentry_mode_monitoring_enabled: boolean;
   key_paired: boolean;
+  break_in_monitoring_enabled?: boolean;
 }

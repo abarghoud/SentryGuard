@@ -54,11 +54,8 @@ export class TelemetryConfigService {
     private readonly partnerAuthService: TeslaPartnerAuthService,
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>
-  ) {}
+  ) { }
 
-  /**
-   * Retrieves the access token for a user
-   */
   private async getAccessToken(userId: string): Promise<string> {
     const token = await this.accessTokenService.getAccessTokenForUserId(userId);
     if (!token) {
@@ -67,13 +64,6 @@ export class TelemetryConfigService {
     return token;
   }
 
-  /**
-   * Handles Tesla token revocation by invalidating user tokens and throwing exception
-   *
-   * @param userId - The ID of the user whose token was revoked
-   * @param error - The error object to check for token revocation
-   * @throws TokenRevokedException - Throws only if error is a token revocation error
-   */
   private async handleTokenRevocation(userId: string, error: unknown): Promise<void> {
     if (!isTokenRevokedError(error)) {
       return;
@@ -103,7 +93,6 @@ export class TelemetryConfigService {
         const telemetryConfigs = await this.syncVehiclesToDatabase(userId, vehicles);
         const dbVehicles = await this.getUserVehiclesFromDB(userId);
 
-        // Check key_paired status from the first vehicle (sufficient for the account)
         let keyPaired = false;
         if (telemetryConfigs.size > 0) {
           const firstConfig = telemetryConfigs.get(vehicles[0].vin);
@@ -116,7 +105,8 @@ export class TelemetryConfigService {
           );
           return {
             ...teslaVehicle,
-            telemetry_enabled: dbVehicle?.telemetry_enabled ?? false,
+            sentry_mode_monitoring_enabled: dbVehicle?.sentry_mode_monitoring_enabled ?? false,
+            break_in_monitoring_enabled: dbVehicle?.break_in_monitoring_enabled ?? false,
             key_paired: keyPaired,
           };
         });
@@ -124,7 +114,8 @@ export class TelemetryConfigService {
 
       return vehicles.map((vehicle): TeslaVehicleWithStatus => ({
         ...vehicle,
-        telemetry_enabled: false,
+        sentry_mode_monitoring_enabled: false,
+        break_in_monitoring_enabled: false,
         key_paired: false,
       }));
     } catch (error: unknown) {
@@ -139,10 +130,6 @@ export class TelemetryConfigService {
     }
   }
 
-  /**
-   * Syncs Tesla API vehicles with the database
-   * @returns Map of telemetry configurations by VIN
-   */
   private async syncVehiclesToDatabase(
     userId: string,
     teslaVehicles: TeslaVehicle[]
@@ -163,7 +150,7 @@ export class TelemetryConfigService {
           userId,
           vin: teslaVehicle.vin,
           display_name: teslaVehicle.display_name ?? teslaVehicle.vin,
-          telemetry_enabled: isTelemetryConfigured,
+          sentry_mode_monitoring_enabled: isTelemetryConfigured,
         },
         { conflictPaths: ['userId', 'vin'], skipUpdateIfNoValuesChanged: true }
       );
@@ -173,110 +160,55 @@ export class TelemetryConfigService {
     return telemetryConfigsMap;
   }
 
-  /**
-   * Retrieves a user's vehicles from the database
-   */
-  async getUserVehiclesFromDB(userId: string): Promise<Vehicle[]> {
+  private async getUserVehiclesFromDB(userId: string): Promise<Vehicle[]> {
     return await this.vehicleRepository.find({
       where: { userId },
       order: { created_at: 'ASC' },
     });
   }
 
-  /**
-   * Configures telemetry for a specific vehicle
-   */
-  async configureTelemetry(
+  async patchTelemetryConfig(
     vin: string,
-    userId: string
+    userId: string,
+    fieldsToUpsert: Partial<Record<string, { interval_seconds: number }>>,
+    fieldsToDelete: string[] = []
   ): Promise<ConfigureTelemetryResult | null> {
-    const base64CAKey = process.env.LETS_ENCRYPT_CERTIFICATE;
-
-    if (!base64CAKey) {
-      this.logger.error(ERROR_MESSAGES.LETS_ENCRYPT_NOT_DEFINED);
-      return null;
-    }
-
-    const hostname = process.env.TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME;
-
-    if (!hostname) {
-      this.logger.error(ERROR_MESSAGES.HOSTNAME_NOT_DEFINED);
-      return null;
-    }
-
-    const decodedKey = Buffer.from(base64CAKey, 'base64').toString('utf8');
-
     try {
-      const accessToken = await this.getAccessToken(userId);
+      const currentConfig = await this.checkTelemetryConfig(vin, userId);
 
-      const sentryModeInterval = parseInt(
-        process.env.SENTRY_MODE_INTERVAL_SECONDS ?? String(TELEMETRY_CONFIG.DEFAULT_SENTRY_MODE_INTERVAL),
-        10
-      );
-
-      const requestPayload: TelemetryConfigRequest = {
-        config: {
-          ca: decodedKey,
-          hostname: hostname,
-          port: TELEMETRY_CONFIG.PORT,
-          fields: {
-            [TELEMETRY_CONFIG.FIELD_NAME]: {
-              interval_seconds: sentryModeInterval
-            },
-          },
-        },
-        vins: [vin],
+      const configPayload: NonNullable<TelemetryConfig['config']> = currentConfig?.config ? { ...currentConfig.config } : {
+        ca: process.env.LETS_ENCRYPT_CERTIFICATE ? Buffer.from(process.env.LETS_ENCRYPT_CERTIFICATE, 'base64').toString('utf8') : '',
+        hostname: process.env.TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME || '',
+        port: TELEMETRY_CONFIG.PORT,
+        fields: {},
       };
 
-      const response = await this.teslaApi.post<TeslaApiResponse<FleetTelemetryConfigResponse>>(
-        TESLA_API_ENDPOINTS.FLEET_TELEMETRY_CONFIG,
-        requestPayload,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      const skippedVehicle = new SkippedVehicleInfo(
-        vin,
-        response.data as TeslaApiResponse<FleetTelemetryConfigResponse>
-      ).get();
-
-      if (skippedVehicle) {
-        this.logger.warn(`⚠️ Vehicle ${vin} was skipped by Tesla API: ${skippedVehicle.reason}`);
-        return {
-          success: false,
-          skippedVehicle,
-          response: response.data as TeslaApiResponse<FleetTelemetryConfigResponse>,
-        };
+      if (!configPayload.fields) {
+        configPayload.fields = {};
       }
 
-      this.logger.log(SUCCESS_MESSAGES.TELEMETRY_CONFIGURED(vin));
+      for (const [field, value] of Object.entries(fieldsToUpsert)) {
+        if (value !== undefined) {
+          configPayload.fields[field] = value;
+        }
+      }
 
-      await this.updateVehicleTelemetryStatus(userId, vin, true);
+      for (const field of fieldsToDelete) {
+        delete configPayload.fields[field];
+      }
 
-      return {
-        success: true,
-        skippedVehicle: null,
-        response: response.data as TeslaApiResponse<FleetTelemetryConfigResponse>,
-      };
+      if (Object.keys(configPayload.fields).length === 0) {
+        await this.deleteTelemetryConfig(vin, userId);
+        return { success: true, skippedVehicle: null, response: { response: {} } } as unknown as ConfigureTelemetryResult;
+      }
+
+      return await this.pushTelemetryConfig(vin, userId, configPayload);
     } catch (error: unknown) {
-      this.logger.error(
-        ERROR_MESSAGES.ERROR_CONFIGURING_VIN(vin),
-        extractErrorDetails(error)
-      );
-
-      await this.handleTokenRevocation(userId, error);
-
+      this.logger.error(`Error patching telemetry config for ${vin}:`, extractErrorDetails(error));
       return null;
     }
   }
 
-  /**
-   * Updates the telemetry status of a vehicle
-   */
   async updateVehicleTelemetryStatus(
     userId: string,
     vin: string,
@@ -287,15 +219,12 @@ export class TelemetryConfigService {
     });
 
     if (vehicle) {
-      vehicle.telemetry_enabled = enabled;
+      vehicle.sentry_mode_monitoring_enabled = enabled;
       await this.vehicleRepository.save(vehicle);
       this.logger.log(SUCCESS_MESSAGES.TELEMETRY_STATUS_UPDATED(vin, enabled));
     }
   }
 
-  /**
-   * Checks the telemetry configuration for a vehicle
-   */
   async checkTelemetryConfig(
     vin: string,
     userId: string
@@ -323,9 +252,6 @@ export class TelemetryConfigService {
     }
   }
 
-  /**
-   * Deletes the telemetry configuration for a vehicle
-   */
   async deleteTelemetryConfig(
     vin: string,
     userId: string
@@ -415,4 +341,61 @@ export class TelemetryConfigService {
     }
   }
 
+
+  private async pushTelemetryConfig(
+    vin: string,
+    userId: string,
+    config: TelemetryConfig['config']
+  ): Promise<ConfigureTelemetryResult | null> {
+    try {
+      const accessToken = await this.getAccessToken(userId);
+
+      const requestPayload: TelemetryConfigRequest = {
+        config: config as TelemetryConfigRequest['config'],
+        vins: [vin],
+      };
+
+      const response = await this.teslaApi.post<TeslaApiResponse<FleetTelemetryConfigResponse>>(
+        TESLA_API_ENDPOINTS.FLEET_TELEMETRY_CONFIG,
+        requestPayload,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const skippedVehicle = new SkippedVehicleInfo(
+        vin,
+        response.data as TeslaApiResponse<FleetTelemetryConfigResponse>
+      ).get();
+
+      if (skippedVehicle) {
+        this.logger.warn(`⚠️ Vehicle ${vin} was skipped by Tesla API: ${skippedVehicle.reason}`);
+        return {
+          success: false,
+          skippedVehicle,
+          response: response.data as TeslaApiResponse<FleetTelemetryConfigResponse>,
+        };
+      }
+
+      this.logger.log(SUCCESS_MESSAGES.TELEMETRY_CONFIGURED(vin));
+
+      return {
+        success: true,
+        skippedVehicle: null,
+        response: response.data as TeslaApiResponse<FleetTelemetryConfigResponse>,
+      };
+    } catch (error: unknown) {
+      this.logger.error(
+        ERROR_MESSAGES.ERROR_CONFIGURING_VIN(vin),
+        extractErrorDetails(error)
+      );
+
+      await this.handleTokenRevocation(userId, error);
+
+      return null;
+    }
+  }
 }

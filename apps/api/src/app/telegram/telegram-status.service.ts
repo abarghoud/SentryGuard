@@ -100,7 +100,7 @@ export class TelegramStatusService implements OnModuleInit {
 
   private buildVehicleLine(vehicle: Vehicle, lng: 'en' | 'fr'): string {
     const name = vehicle.display_name || vehicle.vin;
-    const telemetryKey = vehicle.telemetry_enabled ? 'configStatusTelemetryActive' : 'configStatusTelemetryInactive';
+    const telemetryKey = vehicle.sentry_mode_monitoring_enabled ? 'configStatusTelemetryActive' : 'configStatusTelemetryInactive';
 
     return `• ${name} — ${i18n.t(telemetryKey, { lng })}`;
   }

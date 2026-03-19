@@ -249,7 +249,8 @@ export interface Vehicle {
   vin: string;
   display_name?: string;
   model?: string;
-  telemetry_enabled: boolean;
+  sentry_mode_monitoring_enabled: boolean;
+  break_in_monitoring_enabled?: boolean;
   key_paired?: boolean;
   created_at: string;
   updated_at: string;
@@ -298,6 +299,18 @@ export async function deleteTelemetryConfig(vin: string): Promise<{
 }> {
   return apiRequest(`/telemetry-config/${vin}`, {
     method: 'DELETE',
+  });
+}
+
+/**
+ * Toggle break-in monitoring for a vehicle (requires JWT)
+ */
+export async function toggleBreakInMonitoring(vin: string, enable: boolean): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  return apiRequest(`/telemetry-config/break-in-monitoring/${vin}/${enable ? 'enable' : 'disable'}`, {
+    method: 'POST',
   });
 }
 

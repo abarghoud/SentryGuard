@@ -45,7 +45,7 @@ if [ ${#VIN} -ne 17 ]; then
 fi
 
 echo ""
-echo "Available sentry states:"
+echo "Available SentryMode states:"
 echo "  1) SentryModeStateAware    # 🚨 Sentry alert (notification)"
 echo "  2) SentryModeStateArmed    # ✅ Mode activated"
 echo "  3) SentryModeStateOff      # ❌ Mode deactivated"
@@ -53,9 +53,26 @@ echo "  4) SentryModeStateIdle     # ⏸️ On standby"
 echo "  5) SentryModeStatePanic    # 🚨 Panic mode"
 echo "  6) SentryModeStateQuiet    # 🔇 Silent mode"
 echo ""
+echo "Available CenterDisplay states:"
+echo "  7) DisplayStateLock        # 🚨 Break-in alert (notification)"
+echo "  8) DisplayStateUnknown     # ❓ Unknown"
+echo "  9) DisplayStateOff         # ⬛ Off"
+echo " 10) DisplayStateDim         # 🔅 Dimmed"
+echo " 11) DisplayStateAccessory   # 📻 Accessory"
+echo " 12) DisplayStateOn          # 💡 On"
+echo " 13) DisplayStateDriving     # 🚗 Driving"
+echo " 14) DisplayStateCharging    # ⚡ Charging"
+echo " 15) DisplayStateSentry      # 👁️ Sentry"
+echo " 16) DisplayStateDog         # 🐶 Dog"
+echo " 17) DisplayStateEntertainment # 🎮 Entertainment"
+echo ""
 
 # Ask for state
-read -p "Choose state (1-6, or Enter for alert): " CHOICE
+read -p "Choose state (1-17, or Enter for alert): " CHOICE
+
+# Set defaults for SentryMode
+KEY="SentryMode"
+VALUE_KEY="sentryModeStateValue"
 
 case $CHOICE in
     1|"") SENTRY_STATE="SentryModeStateAware"; ICON="🚨" ;;
@@ -64,6 +81,17 @@ case $CHOICE in
     4) SENTRY_STATE="SentryModeStateIdle"; ICON="⏸️" ;;
     5) SENTRY_STATE="SentryModeStatePanic"; ICON="🚨" ;;
     6) SENTRY_STATE="SentryModeStateQuiet"; ICON="🔇" ;;
+    7) SENTRY_STATE="DisplayStateLock"; ICON="🚨"; KEY="CenterDisplay"; VALUE_KEY="stringValue" ;;
+    8) SENTRY_STATE="DisplayStateUnknown"; ICON="❓"; KEY="CenterDisplay"; VALUE_KEY="stringValue" ;;
+    9) SENTRY_STATE="DisplayStateOff"; ICON="⬛"; KEY="CenterDisplay"; VALUE_KEY="stringValue" ;;
+    10) SENTRY_STATE="DisplayStateDim"; ICON="🔅"; KEY="CenterDisplay"; VALUE_KEY="stringValue" ;;
+    11) SENTRY_STATE="DisplayStateAccessory"; ICON="📻"; KEY="CenterDisplay"; VALUE_KEY="stringValue" ;;
+    12) SENTRY_STATE="DisplayStateOn"; ICON="💡"; KEY="CenterDisplay"; VALUE_KEY="stringValue" ;;
+    13) SENTRY_STATE="DisplayStateDriving"; ICON="🚗"; KEY="CenterDisplay"; VALUE_KEY="stringValue" ;;
+    14) SENTRY_STATE="DisplayStateCharging"; ICON="⚡"; KEY="CenterDisplay"; VALUE_KEY="stringValue" ;;
+    15) SENTRY_STATE="DisplayStateSentry"; ICON="👁️"; KEY="CenterDisplay"; VALUE_KEY="stringValue" ;;
+    16) SENTRY_STATE="DisplayStateDog"; ICON="🐶"; KEY="CenterDisplay"; VALUE_KEY="stringValue" ;;
+    17) SENTRY_STATE="DisplayStateEntertainment"; ICON="🎮"; KEY="CenterDisplay"; VALUE_KEY="stringValue" ;;
     *) echo "❌ Invalid choice"; exit 1 ;;
 esac
 
@@ -75,15 +103,15 @@ echo "   State: $ICON $SENTRY_STATE"
 # Display message before sending
 echo ""
 echo "📝 Fleet API message:"
-printf '{"vin":"%s","createdAt":"%s","isResend":false,"data":[{"key":"SentryMode","value":{"sentryModeStateValue":"%s"}}]}' \
-  "$VIN" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$SENTRY_STATE" | \
+printf '{"vin":"%s","createdAt":"%s","isResend":false,"data":[{"key":"%s","value":{"%s":"%s"}}]}' \
+  "$VIN" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$KEY" "$VALUE_KEY" "$SENTRY_STATE" | \
 jq . 2>/dev/null || \
-printf '{"vin":"%s","createdAt":"%s","isResend":false,"data":[{"key":"SentryMode","value":{"sentryModeStateValue":"%s"}}]}' \
-  "$VIN" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$SENTRY_STATE"
+printf '{"vin":"%s","createdAt":"%s","isResend":false,"data":[{"key":"%s","value":{"%s":"%s"}}]}' \
+  "$VIN" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$KEY" "$VALUE_KEY" "$SENTRY_STATE"
 
 # Send message directly
-printf '{"vin":"%s","createdAt":"%s","isResend":false,"data":[{"key":"SentryMode","value":{"sentryModeStateValue":"%s"}}]}' \
-  "$VIN" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$SENTRY_STATE" | \
+printf '{"vin":"%s","createdAt":"%s","isResend":false,"data":[{"key":"%s","value":{"%s":"%s"}}]}' \
+  "$VIN" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$KEY" "$VALUE_KEY" "$SENTRY_STATE" | \
 $DOCKER_COMPOSE_CMD exec -T kafka kafka-console-producer \
   --bootstrap-server localhost:9092 \
   --topic TeslaLogger_V
@@ -91,6 +119,6 @@ $DOCKER_COMPOSE_CMD exec -T kafka kafka-console-producer \
 echo ""
 echo "✅ Fleet API message sent successfully!"
 
-if [ "$SENTRY_STATE" = "SentryModeStateAware" ]; then
+if [ "$SENTRY_STATE" = "SentryModeStateAware" ] || [ "$SENTRY_STATE" = "DisplayStateLock" ]; then
     echo "🚨 If this VIN is registered in your app, you should receive a Telegram alert!"
 fi

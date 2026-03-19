@@ -28,7 +28,7 @@ export class TelegramService implements OnModuleDestroy {
     private readonly telegramBotUpdateService: TelegramBotUpdateService,
     @Inject(telegramFailureHandler) private readonly failureHandler: ITelegramFailureHandler,
     @Inject(telegramRetryManager) private readonly retryManager: RetryManager,
-  ) {}
+  ) { }
 
   async sendSentryAlert(
     userId: string,
@@ -74,6 +74,67 @@ export class TelegramService implements OnModuleDestroy {
 
       if (this.isRetryableTelegramError(error)) {
         const correlationId = `telegram-alert-${userId}-${Date.now()}`;
+        this.retryManager.addToRetry(
+          async () => {
+            await this.telegramBotService.sendMessage(chatId, message, options);
+          },
+          error as Error,
+          correlationId
+        );
+
+        return false;
+      }
+
+      this.logError(userId, 'alert', error);
+
+      throw error;
+    }
+  }
+
+  async sendBreakInAlert(
+    userId: string,
+    alertInfo: { vin: string, display_name?: string },
+    userLanguage: 'en' | 'fr',
+    keyboard?: TelegramKeyboard,
+  ) {
+    this.logger.debug(`[OPTIMIZATION] Using provided language: ${userLanguage} for user: ${userId}`);
+
+    const message = this.formatBreakInAlertMessage(alertInfo, userLanguage);
+
+    if (await this.telegramMuteService.checkIsNotificationMuted(userId)) {
+      this.logger.log(`🔕 Break-in alert suppressed for muted user ${userId}`);
+      return false;
+    }
+
+    const chatId = await this.telegramContextService.getChatIdFromUserId(userId);
+
+    if (!chatId) {
+      this.logger.warn(`⚠️ No chat_id found for user: ${userId}`);
+      return false;
+    }
+
+    await this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage);
+
+    if (this.shouldSimulateMessage(alertInfo.vin)) {
+      return await this.simulateMessage(userId, 'alert', alertInfo.vin);
+    }
+
+    const options = keyboard ? { keyboard } : undefined;
+
+    try {
+      const success = await this.telegramBotService.sendMessage(chatId, message, options);
+
+      return success;
+    } catch (error) {
+      if (this.failureHandler.canHandle(error as Error)) {
+        await this.failureHandler.handleFailure(error as Error, userId);
+        this.logger.log(`[TELEGRAM_FAILURE_HANDLED] Error handled for user ${userId}`);
+
+        return false;
+      }
+
+      if (this.isRetryableTelegramError(error)) {
+        const correlationId = `telegram-alert-breakin-${userId}-${Date.now()}`;
         this.retryManager.addToRetry(
           async () => {
             await this.telegramBotService.sendMessage(chatId, message, options);
@@ -143,6 +204,19 @@ export class TelegramService implements OnModuleDestroy {
 🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${display_name ?? vin}
 
 <i>${i18n.t('Sentry Mode activated - Check your vehicle!', { lng })}</i>
+    `.trim();
+  }
+
+  private formatBreakInAlertMessage(
+    { display_name, vin }: { vin: string, display_name?: string },
+    lng: 'en' | 'fr'
+  ): string {
+    return `
+🚨 <b>${i18n.t('TESLA BREAK-IN ALERT', { lng })}</b> 🚨
+
+🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${display_name ?? vin}
+
+<i>${i18n.t('Break-in attempt detected. Check your vehicle immediately!', { lng })}</i>
     `.trim();
   }
 }

@@ -26,7 +26,10 @@ export class Vehicle {
   display_name?: string;
 
   @Column({ type: 'boolean', default: false })
-  telemetry_enabled!: boolean;
+  sentry_mode_monitoring_enabled!: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  break_in_monitoring_enabled!: boolean;
 
   @CreateDateColumn()
   created_at!: Date;

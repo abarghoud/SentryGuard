@@ -65,6 +65,10 @@ export class TelemetryMessage {
     return this.data.some(datum => datum.key === 'SentryMode');
   }
 
+  validateContainsCenterDisplay(): boolean {
+    return this.data.some(datum => datum.key === 'CenterDisplay');
+  }
+
   validateSentryModeValue(): boolean {
     const sentryDatum = this.data.find(d => d.key === 'SentryMode');
     if (!sentryDatum) return false;
@@ -97,6 +101,13 @@ export class TelemetryMessage {
     }
 
     return null;
+  }
+
+  getCenterDisplayState(): string | null {
+    const displayDatum = this.data.find(d => d.key === 'CenterDisplay');
+    if (!displayDatum) return null;
+
+    return displayDatum.value.stringValue || null;
   }
 
   calculateEndToEndLatency(): number | null {

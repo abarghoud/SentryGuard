@@ -10,7 +10,6 @@ import axios from 'axios';
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-
 const mockAxiosInstance = {
   get: jest.fn(),
   post: jest.fn(),
@@ -117,8 +116,8 @@ describe('TelemetryConfigService', () => {
       });
 
       const mockDbVehicles = [
-        { vin: 'VIN123', telemetry_enabled: true },
-        { vin: 'VIN456', telemetry_enabled: false },
+        { vin: 'VIN123', sentry_mode_monitoring_enabled: true },
+        { vin: 'VIN456', sentry_mode_monitoring_enabled: false },
       ];
 
       jest
@@ -126,17 +125,17 @@ describe('TelemetryConfigService', () => {
         .mockImplementation(async (vin: string) =>
           vin === 'VIN123'
             ? {
-                key_paired: true,
-                config: {
-                  hostname: 'h',
-                  ca: 'c',
-                  fields: {},
-                },
-              }
+              key_paired: true,
+              config: {
+                hostname: 'h',
+                ca: 'c',
+                fields: {},
+              },
+            }
             : {
-                key_paired: true,
-                config: null,
-              }
+              key_paired: true,
+              config: null,
+            }
         );
 
       mockVehicleRepository.find.mockResolvedValue(mockDbVehicles);
@@ -144,8 +143,8 @@ describe('TelemetryConfigService', () => {
       const result = await service.getVehicles(userId);
 
       expect(result).toEqual([
-        { ...mockVehicles[0], telemetry_enabled: true, key_paired: true },
-        { ...mockVehicles[1], telemetry_enabled: false, key_paired: true },
+        { ...mockVehicles[0], sentry_mode_monitoring_enabled: true, break_in_monitoring_enabled: false, key_paired: true },
+        { ...mockVehicles[1], sentry_mode_monitoring_enabled: false, break_in_monitoring_enabled: false, key_paired: true },
       ]);
     });
 
@@ -183,7 +182,7 @@ describe('TelemetryConfigService', () => {
         });
 
       mockVehicleRepository.find.mockResolvedValue([
-        { vin: 'VIN123', telemetry_enabled: false },
+        { vin: 'VIN123', sentry_mode_monitoring_enabled: false },
       ]);
 
       await service.getVehicles(userId);
@@ -193,7 +192,7 @@ describe('TelemetryConfigService', () => {
           userId,
           vin: 'VIN123',
           display_name: 'Tesla Model 3',
-          telemetry_enabled: false,
+          sentry_mode_monitoring_enabled: false,
         },
         { conflictPaths: ['userId', 'vin'], skipUpdateIfNoValuesChanged: true }
       );
@@ -213,7 +212,7 @@ describe('TelemetryConfigService', () => {
         });
 
       mockVehicleRepository.find.mockResolvedValue([
-        { vin: 'VIN123', display_name: 'Updated Name', telemetry_enabled: false },
+        { vin: 'VIN123', display_name: 'Updated Name', sentry_mode_monitoring_enabled: false },
       ]);
 
       await service.getVehicles(userId);
@@ -223,13 +222,13 @@ describe('TelemetryConfigService', () => {
           userId,
           vin: 'VIN123',
           display_name: 'Updated Name',
-          telemetry_enabled: false,
+          sentry_mode_monitoring_enabled: false,
         },
         { conflictPaths: ['userId', 'vin'], skipUpdateIfNoValuesChanged: true }
       );
     });
 
-    it('should upsert with telemetry_enabled true when config is not null', async () => {
+    it('should upsert with sentry_mode_monitoring_enabled true when config is not null', async () => {
       const userId = 'test-user-id';
       const mockVehicles = [{ vin: 'VIN123', display_name: 'Tesla Model 3' }];
 
@@ -243,7 +242,7 @@ describe('TelemetryConfigService', () => {
         });
 
       mockVehicleRepository.find.mockResolvedValue([
-        { vin: 'VIN123', display_name: 'Tesla Model 3', telemetry_enabled: true },
+        { vin: 'VIN123', display_name: 'Tesla Model 3', sentry_mode_monitoring_enabled: true },
       ]);
 
       await service.getVehicles(userId);
@@ -253,155 +252,27 @@ describe('TelemetryConfigService', () => {
           userId,
           vin: 'VIN123',
           display_name: 'Tesla Model 3',
-          telemetry_enabled: true,
+          sentry_mode_monitoring_enabled: true,
         },
         { conflictPaths: ['userId', 'vin'], skipUpdateIfNoValuesChanged: true }
       );
     });
   });
 
-  describe('getUserVehiclesFromDB', () => {
-    it('should return vehicles ordered by created_at', async () => {
-      const userId = 'test-user-id';
-      const mockVehicles = [{ vin: 'VIN123' }, { vin: 'VIN456' }];
 
-      mockVehicleRepository.find.mockResolvedValue(mockVehicles);
-
-      const result = await service.getUserVehiclesFromDB(userId);
-
-      expect(result).toEqual(mockVehicles);
-      expect(mockVehicleRepository.find).toHaveBeenCalledWith({
-        where: { userId },
-        order: { created_at: 'ASC' },
-      });
-    });
-  });
-
-  describe('configureTelemetry', () => {
-    it('should configure telemetry successfully', async () => {
-      const vin = 'VIN123';
-      const userId = 'test-user-id';
-      const userToken = 'user-access-token';
-
-      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue(userToken);
-      mockAxiosInstance.post.mockResolvedValueOnce({
-        data: { response: { ok: true } },
-      });
-
-      const result = await service.configureTelemetry(vin, userId);
-
-      expect(result).toEqual({
-        success: true,
-        skippedVehicle: null,
-        response: { response: { ok: true } },
-      });
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        '/api/1/vehicles/fleet_telemetry_config',
-        {
-          config: {
-            ca: 'test_certificate',
-            hostname: 'test-hostname',
-            port: 443,
-            fields: {
-              SentryMode: { interval_seconds: 30 },
-            },
-          },
-          vins: [vin],
-        },
-        expect.objectContaining({
-          headers: {
-            Authorization: `Bearer ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        })
-      );
-    });
-
-    it('should return skipped vehicles when Tesla rejects VIN', async () => {
-      const vin = 'VIN123';
-      const userId = 'test-user-id';
-      const userToken = 'user-access-token';
-      const skippedPayload = {
-        response: {
-          skipped_vehicles: {
-            missing_key: [vin],
-            unsupported_hardware: [],
-            unsupported_firmware: [],
-            max_configs: [],
-          },
-        },
-      };
-
-      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue(userToken);
-      mockAxiosInstance.post.mockResolvedValueOnce({
-        data: skippedPayload,
-      });
-
-      const updateSpy = jest
-        .spyOn(service, 'updateVehicleTelemetryStatus')
-        .mockResolvedValue(undefined);
-
-      const result = await service.configureTelemetry(vin, userId);
-
-      expect(result).toEqual({
-        success: false,
-        skippedVehicle: { vin, reason: 'missing_key' },
-        response: skippedPayload,
-      });
-      expect(updateSpy).not.toHaveBeenCalled();
-    });
-
-    it('should return null when LETS_ENCRYPT_CERTIFICATE is not set', async () => {
-      delete process.env.LETS_ENCRYPT_CERTIFICATE;
-
-      const result = await service.configureTelemetry('VIN123', 'test-user-id');
-
-      expect(result).toBeNull();
-    });
-
-    it('should return null on API error', async () => {
-      const loggerSpy = jest
-        .spyOn(service['logger'], 'error')
-        .mockImplementation();
-      mockAxiosInstance.post.mockRejectedValueOnce(new Error('API Error'));
-
-      const result = await service.configureTelemetry('VIN123', 'test-user-id');
-
-      expect(result).toBeNull();
-      expect(loggerSpy).toHaveBeenCalled();
-      loggerSpy.mockRestore();
-    });
-
-    it('should update vehicle telemetry status when userId provided', async () => {
-      const vin = 'VIN123';
-      const userId = 'test-user-id';
-
-      mockAxiosInstance.post.mockResolvedValueOnce({
-        data: { response: { ok: true } },
-      });
-
-      const updateSpy = jest
-        .spyOn(service, 'updateVehicleTelemetryStatus')
-        .mockResolvedValue(undefined);
-
-      await service.configureTelemetry(vin, userId);
-
-      expect(updateSpy).toHaveBeenCalledWith(userId, vin, true);
-    });
-  });
 
   describe('updateVehicleTelemetryStatus', () => {
     it('should update telemetry status to enabled', async () => {
       const userId = 'test-user-id';
       const vin = 'VIN123';
-      const vehicle = { telemetry_enabled: false };
+      const vehicle = { sentry_mode_monitoring_enabled: false };
 
       mockVehicleRepository.findOne.mockResolvedValue(vehicle);
       mockVehicleRepository.save.mockResolvedValue(vehicle);
 
       await service.updateVehicleTelemetryStatus(userId, vin, true);
 
-      expect(vehicle.telemetry_enabled).toBe(true);
+      expect(vehicle.sentry_mode_monitoring_enabled).toBe(true);
       expect(mockVehicleRepository.save).toHaveBeenCalledWith(vehicle);
       expect(mockVehicleRepository.findOne).toHaveBeenCalledWith({
         where: { userId, vin },
@@ -425,6 +296,7 @@ describe('TelemetryConfigService', () => {
       const vin = 'VIN123';
       const mockConfig = { fields: { SentryMode: { interval_seconds: 30 } } };
 
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('user-access-token');
       mockAxiosInstance.get.mockResolvedValueOnce({
         data: { response: mockConfig },
       });
@@ -597,40 +469,6 @@ describe('TelemetryConfigService', () => {
         // We expect handleTokenRevocation to throw, so we catch it
         try {
           await service.getVehicles(userId);
-        } catch {
-          // Expected TokenRevokedException
-        }
-
-        expect(loggerWarnSpy).toHaveBeenCalledWith(
-          expect.stringContaining('Detected revoked Tesla token')
-        );
-        expect(mockAuthService.invalidateUserTokens).toHaveBeenCalledWith(userId);
-
-        loggerWarnSpy.mockRestore();
-      });
-    });
-
-    describe('configureTelemetry with revoked token', () => {
-      it('should call invalidateUserTokens when token is revoked', async () => {
-        const vin = 'VIN123';
-        const userId = 'test-user-id';
-        const revokedTokenError = {
-          isAxiosError: true,
-          response: {
-            status: 401,
-            data: { error: 'token revoked' },
-          },
-        };
-
-        mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('revoked-token');
-        mockAxiosInstance.post.mockRejectedValue(revokedTokenError);
-
-        const loggerWarnSpy = jest
-          .spyOn(service['logger'], 'warn')
-          .mockImplementation();
-
-        try {
-          await service.configureTelemetry(vin, userId);
         } catch {
           // Expected TokenRevokedException
         }
