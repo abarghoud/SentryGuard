@@ -4,11 +4,12 @@ import { Repository, IsNull, Not } from 'typeorm';
 import { Waitlist, WaitlistStatus } from '../../../entities/waitlist.entity';
 import type { EmailServiceRequirements } from '../interfaces/email-service.requirements';
 import { emailServiceRequirementsSymbol } from '../interfaces/email-service.requirements';
+import type { WaitlistServiceRequirements } from '../interfaces/waitlist-service.requirements';
 import { waitlistEmailBatchSizeToken } from '../../../config/waitlist-cron.config';
 import { EmailContentBuilderService } from './email-content-builder.service';
 
 @Injectable()
-export class WaitlistService {
+export class WaitlistService implements WaitlistServiceRequirements {
   private readonly logger = new Logger(WaitlistService.name);
 
   constructor(

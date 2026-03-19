@@ -3,7 +3,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { UserRegistrationService } from './user-registration.service';
 import { User } from '../../../entities/user.entity';
-import { WaitlistService } from '../../waitlist/services/waitlist.service';
+import type { WaitlistServiceRequirements } from '../../waitlist/interfaces/waitlist-service.requirements';
+import { waitlistServiceRequirementsSymbol } from '../../waitlist/interfaces/waitlist-service.requirements';
 import { UserNotApprovedException } from '../../../common/exceptions/user-not-approved.exception';
 import { mock, MockProxy } from 'jest-mock-extended';
 
@@ -19,7 +20,7 @@ const mockedEncrypt = encrypt as jest.MockedFunction<typeof encrypt>;
 
 describe('The UserRegistrationService class', () => {
   let service: UserRegistrationService;
-  let mockWaitlistService: MockProxy<WaitlistService>;
+  let mockWaitlistService: MockProxy<WaitlistServiceRequirements>;
 
   const mockUserRepository = {
     findOne: jest.fn(),
@@ -32,7 +33,7 @@ describe('The UserRegistrationService class', () => {
   };
 
   beforeEach(async () => {
-    mockWaitlistService = mock<WaitlistService>();
+    mockWaitlistService = mock<WaitlistServiceRequirements>();
     mockWaitlistService.isApproved.mockResolvedValue(true);
     mockWaitlistService.addToWaitlist.mockResolvedValue(undefined);
 
@@ -48,7 +49,7 @@ describe('The UserRegistrationService class', () => {
           useValue: mockJwtService,
         },
         {
-          provide: WaitlistService,
+          provide: waitlistServiceRequirementsSymbol,
           useValue: mockWaitlistService,
         },
       ],
