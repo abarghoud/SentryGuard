@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useAuth } from '../../lib/useAuth';
 import { useConsent } from '../../lib/useConsent';
 import { useOnboarding } from '../../lib/useOnboarding';
+import BetaBadge from '../../components/BetaBadge';
 import MissingScopesBanner from '../../components/MissingScopesBanner';
 import { DiscordLink } from '../../components/DiscordLink';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
@@ -124,9 +125,12 @@ export default function DashboardLayout({
                     alt="SentryGuard Logo"
                     className="w-14 h-14"
                   />
-                  <span className="text-xl font-bold text-gray-900 dark:text-white">
-                    {t('SentryGuard')}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold text-gray-900 dark:text-white">
+                      {t('SentryGuard')}
+                    </span>
+                    <BetaBadge className="sm:hidden" />
+                  </div>
                 </Link>
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
@@ -154,8 +158,11 @@ export default function DashboardLayout({
                 Discord
               </DiscordLink>
               {profile ? (
-                <div className="hidden sm:block text-sm text-gray-700 dark:text-gray-300">
-                  {profile.full_name || profile.email || 'User'}
+                <div className="hidden sm:flex items-center gap-2">
+                  <BetaBadge />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    {profile.full_name || profile.email || 'User'}
+                  </span>
                 </div>
               ) : null}
               <button
@@ -232,8 +239,9 @@ export default function DashboardLayout({
           <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
             <div className="px-4 space-y-3">
               {profile ? (
-                <div className="text-sm text-gray-700 dark:text-gray-300 mb-3">
-                  {profile.full_name || profile.email || 'User'}
+                <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-3">
+                  <BetaBadge />
+                  <span>{profile.full_name || profile.email || 'User'}</span>
                 </div>
               ) : null}
               <LanguageSwitcher />

@@ -162,6 +162,7 @@ export interface UserProfile {
   userId: string;
   email?: string;
   full_name?: string;
+  isBetaTester?: boolean;
 }
 
 export interface ValidateTokenResponse {

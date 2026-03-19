@@ -148,6 +148,8 @@
   },
   "workspaces": [
     "apps/*",
-    "apps"
+    "apps",
+    "libs/*",
+    "libs/beta/*"
   ]
 }
