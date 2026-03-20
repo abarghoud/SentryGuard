@@ -22,7 +22,7 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
     private readonly kafkaLogContextService: KafkaLogContextService,
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>
-  ) {}
+  ) { }
 
   async handle(telemetryMessage: TelemetryMessage): Promise<void> {
     if (!telemetryMessage.validateContainsSentryMode() || !telemetryMessage.validateSentryModeValue()) {
@@ -42,10 +42,10 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
 
     try {
       const vehicles = await this.findVehiclesByVin(message.vin, message.correlationId);
-      
+
       if (vehicles.length === 0) {
         this.logger.warn(`No vehicle found for VIN: ${message.vin}`);
-        
+
         return;
       }
 
@@ -119,7 +119,7 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
   ): Promise<{ success: boolean; userId: string; error?: unknown }> {
     try {
       const userLanguage = await this.userLanguageService.getUserLanguage(userId);
-      const keyboard = this.keyboardBuilder.buildSentryAlertKeyboard(alertInfo, userId, userLanguage);
+      const keyboard = this.keyboardBuilder.buildSentryAlertKeyboard(userId, userLanguage);
 
       const telegramStart = Date.now();
       await this.telegramService.sendSentryAlert(userId, alertInfo, userLanguage, keyboard);

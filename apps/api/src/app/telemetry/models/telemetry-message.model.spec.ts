@@ -215,4 +215,61 @@ describe('TelemetryMessage Model', () => {
     });
   });
 
+  describe('CenterDisplay methods', () => {
+    it('should validate message containing CenterDisplay', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{ key: 'CenterDisplay', value: { displayStateValue: 'DisplayStateLock' } }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: '123',
+        isResend: false
+      });
+
+      expect(message.validateContainsCenterDisplay()).toBe(true);
+    });
+
+    it('should return true for isCenterDisplayLocked if displayStateValue is DisplayStateLock', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{ key: 'CenterDisplay', value: { displayStateValue: 'DisplayStateLock' } }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: '123',
+        isResend: false
+      });
+
+      expect(message.isCenterDisplayLocked()).toBe(true);
+    });
+
+    it('should fallback to stringValue if displayStateValue is absent', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{ key: 'CenterDisplay', value: { stringValue: 'Lock' } }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: '123',
+        isResend: false
+      });
+
+      expect(message.isCenterDisplayLocked()).toBe(true);
+    });
+
+    it('should return false if CenterDisplay is present but not Lock', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{ key: 'CenterDisplay', value: { stringValue: 'DisplayStateDog' } }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: '123',
+        isResend: false
+      });
+
+      expect(message.isCenterDisplayLocked()).toBe(false);
+    });
+
+    it('should return false if CenterDisplay is not present', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{ key: 'SentryMode', value: { stringValue: 'Off' } }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: '123',
+        isResend: false
+      });
+
+      expect(message.isCenterDisplayLocked()).toBe(false);
+    });
+  });
+
 });

@@ -27,9 +27,7 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
       return;
     }
 
-    const displayState = telemetryMessage.getCenterDisplayState();
-
-    if (displayState === 'DisplayStateLock') {
+    if (telemetryMessage.isCenterDisplayLocked()) {
       await this.sendBreakInAlert(telemetryMessage);
     }
   }

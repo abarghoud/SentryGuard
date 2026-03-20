@@ -12,7 +12,7 @@ import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model
 
 describe('The BreakInAlertHandlerService class', () => {
   let service: BreakInAlertHandlerService;
-  
+
   let mockTelegramService: MockProxy<TelegramService>;
   let mockKeyboardBuilder: MockProxy<TelegramKeyboardBuilderService>;
   let mockUserLanguageService: MockProxy<UserLanguageService>;
@@ -68,7 +68,7 @@ describe('The BreakInAlertHandlerService class', () => {
         message = new TelemetryMessage();
         message.vin = '123';
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
-        jest.spyOn(message, 'getCenterDisplayState').mockReturnValue('DisplayStateOn');
+        jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(false);
       });
 
       it('should not send an alert', async () => {
@@ -84,12 +84,12 @@ describe('The BreakInAlertHandlerService class', () => {
         message = new TelemetryMessage();
         message.vin = '123';
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
-        jest.spyOn(message, 'getCenterDisplayState').mockReturnValue('DisplayStateLock');
+        jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
 
         mockVehicleRepository.find.mockResolvedValue([
           { userId: 'user-1', display_name: 'Test Vehicle', break_in_monitoring_enabled: true } as Vehicle,
         ]);
-        
+
         mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
         mockKeyboardBuilder.buildBreakInAlertKeyboard.mockReturnValue({ inline_keyboard: [] });
       });
@@ -112,7 +112,7 @@ describe('The BreakInAlertHandlerService class', () => {
         message = new TelemetryMessage();
         message.vin = '123';
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
-        jest.spyOn(message, 'getCenterDisplayState').mockReturnValue('DisplayStateLock');
+        jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
 
         mockVehicleRepository.find.mockResolvedValue([]);
       });
@@ -130,7 +130,7 @@ describe('The BreakInAlertHandlerService class', () => {
         message = new TelemetryMessage();
         message.vin = '123';
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
-        jest.spyOn(message, 'getCenterDisplayState').mockReturnValue('DisplayStateLock');
+        jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
 
         mockVehicleRepository.find.mockResolvedValue([
           { userId: 'user-1', display_name: 'Test Vehicle', break_in_monitoring_enabled: false } as Vehicle,

@@ -161,10 +161,7 @@ describe('The SentryAlertHandlerService class', () => {
         });
 
         expect(mockUserLanguageService.getUserLanguage).toHaveBeenCalledWith('test-user');
-        expect(mockKeyboardBuilder.buildSentryAlertKeyboard).toHaveBeenCalledWith({
-          vin: 'TEST_VIN_123',
-          display_name: 'Test Vehicle'
-        }, 'test-user', 'en');
+        expect(mockKeyboardBuilder.buildSentryAlertKeyboard).toHaveBeenCalledWith('test-user', 'en');
         expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith('test-user', {
           vin: 'TEST_VIN_123',
           display_name: 'Test Vehicle'
@@ -408,10 +405,7 @@ describe('The SentryAlertHandlerService class', () => {
         });
 
         expect(mockUserLanguageService.getUserLanguage).toHaveBeenCalledWith('test-user');
-        expect(mockKeyboardBuilder.buildSentryAlertKeyboard).toHaveBeenCalledWith({
-          vin: 'TEST_VIN_123',
-          display_name: 'Test Vehicle'
-        }, 'test-user', 'en');
+        expect(mockKeyboardBuilder.buildSentryAlertKeyboard).toHaveBeenCalledWith('test-user', 'en');
         expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith('test-user', {
           vin: 'TEST_VIN_123',
           display_name: 'Test Vehicle'
