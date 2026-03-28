@@ -1,13 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { mock, MockProxy } from 'jest-mock-extended';
-import { Repository } from 'typeorm';
 import { BreakInAlertHandlerService } from './break-in-alert-handler.service';
 import { TelegramService } from '../../telegram/telegram.service';
 import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
-import { UserLanguageService } from '../../user/user-language.service';
-import { KafkaLogContextService } from '../../../common/services/kafka-log-context.service';
-import { Vehicle } from '../../../entities/vehicle.entity';
+import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
 import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 
 describe('The BreakInAlertHandlerService class', () => {
@@ -15,25 +11,19 @@ describe('The BreakInAlertHandlerService class', () => {
 
   let mockTelegramService: MockProxy<TelegramService>;
   let mockKeyboardBuilder: MockProxy<TelegramKeyboardBuilderService>;
-  let mockUserLanguageService: MockProxy<UserLanguageService>;
-  let mockKafkaLogContextService: MockProxy<KafkaLogContextService>;
-  let mockVehicleRepository: MockProxy<Repository<Vehicle>>;
+  let mockAlertNotifier: MockProxy<VehicleAlertNotifierService>;
 
   beforeEach(async () => {
     mockTelegramService = mock<TelegramService>();
     mockKeyboardBuilder = mock<TelegramKeyboardBuilderService>();
-    mockUserLanguageService = mock<UserLanguageService>();
-    mockKafkaLogContextService = mock<KafkaLogContextService>();
-    mockVehicleRepository = mock<Repository<Vehicle>>();
+    mockAlertNotifier = mock<VehicleAlertNotifierService>();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BreakInAlertHandlerService,
         { provide: TelegramService, useValue: mockTelegramService },
         { provide: TelegramKeyboardBuilderService, useValue: mockKeyboardBuilder },
-        { provide: UserLanguageService, useValue: mockUserLanguageService },
-        { provide: KafkaLogContextService, useValue: mockKafkaLogContextService },
-        { provide: getRepositoryToken(Vehicle), useValue: mockVehicleRepository },
+        { provide: VehicleAlertNotifierService, useValue: mockAlertNotifier },
       ],
     }).compile();
 
@@ -50,14 +40,9 @@ describe('The BreakInAlertHandlerService class', () => {
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(false);
       });
 
-      it('should not query vehicles', async () => {
+      it('should not dispatch alert', async () => {
         await service.handle(message);
-        expect(mockVehicleRepository.find).not.toHaveBeenCalled();
-      });
-
-      it('should not send an alert', async () => {
-        await service.handle(message);
-        expect(mockTelegramService.sendBreakInAlert).not.toHaveBeenCalled();
+        expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
       });
     });
 
@@ -71,13 +56,13 @@ describe('The BreakInAlertHandlerService class', () => {
         jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(false);
       });
 
-      it('should not send an alert', async () => {
+      it('should not dispatch alert', async () => {
         await service.handle(message);
-        expect(mockTelegramService.sendBreakInAlert).not.toHaveBeenCalled();
+        expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
       });
     });
 
-    describe('When displayState is DisplayStateLock and vehicle has break_in_monitoring_enabled', () => {
+    describe('When displayState is DisplayStateLock', () => {
       let message: TelemetryMessage;
 
       beforeEach(() => {
@@ -85,61 +70,36 @@ describe('The BreakInAlertHandlerService class', () => {
         message.vin = '123';
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
         jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
-
-        mockVehicleRepository.find.mockResolvedValue([
-          { userId: 'user-1', display_name: 'Test Vehicle', break_in_monitoring_enabled: true } as Vehicle,
-        ]);
-
-        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
-        mockKeyboardBuilder.buildBreakInAlertKeyboard.mockReturnValue({ inline_keyboard: [] });
       });
 
-      it('should send the alert to the matched vehicle', async () => {
+      it('should dispatch alert via alertNotifier', async () => {
         await service.handle(message);
+        
+        expect(mockAlertNotifier.dispatch).toHaveBeenCalledWith(expect.objectContaining({
+          telemetryMessage: message,
+          alertName: 'BREAK_IN_ALERT',
+          latencyLabel: 'BREAK_IN_LATENCY',
+          telegramNotifier: expect.any(Function),
+        }));
+      });
+
+      it('should construct and send telegram message when notifier callback is invoked', async () => {
+        await service.handle(message);
+
+        const dispatchCall = mockAlertNotifier.dispatch.mock.calls[0][0];
+        const notifierCb = dispatchCall.telegramNotifier;
+
+        mockKeyboardBuilder.buildBreakInAlertKeyboard.mockReturnValue({ inline_keyboard: [] });
+
+        await notifierCb('user-1', { vin: '123', display_name: 'Test Vehicle' }, 'en');
+
+        expect(mockKeyboardBuilder.buildBreakInAlertKeyboard).toHaveBeenCalledWith('user-1', 'en');
         expect(mockTelegramService.sendBreakInAlert).toHaveBeenCalledWith(
           'user-1',
           { vin: '123', display_name: 'Test Vehicle' },
           'en',
           { inline_keyboard: [] }
         );
-      });
-    });
-
-    describe('When no vehicles match the vin', () => {
-      let message: TelemetryMessage;
-
-      beforeEach(() => {
-        message = new TelemetryMessage();
-        message.vin = '123';
-        jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
-        jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
-
-        mockVehicleRepository.find.mockResolvedValue([]);
-      });
-
-      it('should not send an alert', async () => {
-        await service.handle(message);
-        expect(mockTelegramService.sendBreakInAlert).not.toHaveBeenCalled();
-      });
-    });
-
-    describe('When vehicle is found but break_in_monitoring_enabled is false', () => {
-      let message: TelemetryMessage;
-
-      beforeEach(() => {
-        message = new TelemetryMessage();
-        message.vin = '123';
-        jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
-        jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
-
-        mockVehicleRepository.find.mockResolvedValue([
-          { userId: 'user-1', display_name: 'Test Vehicle', break_in_monitoring_enabled: false } as Vehicle,
-        ]);
-      });
-
-      it('should not send an alert', async () => {
-        await service.handle(message);
-        expect(mockTelegramService.sendBreakInAlert).not.toHaveBeenCalled();
       });
     });
   });

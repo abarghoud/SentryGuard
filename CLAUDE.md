@@ -8,7 +8,7 @@ SentryGuard is a real-time Tesla vehicle monitoring and security alert system bu
 
 **Architecture**:
 - NestJS backend API (TypeORM + PostgreSQL + Kafka)
-- Next.js 15 frontend with App Router (SSR for SEO)
+- Next.js 16 frontend with App Router (SSR for SEO)
 - Tesla Fleet API integration for vehicle telemetry
 - Telegram Bot API for instant notifications
 - Apache Kafka for real-time message processing
@@ -21,7 +21,7 @@ SentryGuard is a real-time Tesla vehicle monitoring and security alert system bu
 npx nx serve api
 
 # Start WebApp (development mode)
-npx nx serve webapp
+npx nx dev webapp
 
 # Build for production
 npx nx build api
@@ -332,7 +332,6 @@ This is an Nx monorepo. Key points:
 
 ## Additional Documentation
 
-- See [AGENTS.md](AGENTS.md) for Nx agent guidelines
 - See [KAFKA-README.md](KAFKA-README.md) for Kafka setup
 - See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines
 - See [SECURITY.md](SECURITY.md) for security policies
