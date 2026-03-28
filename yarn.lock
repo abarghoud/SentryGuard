@@ -4649,7 +4649,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/common@npm:^11.0.0, @nestjs/common@npm:^11.1.6":
+"@nestjs/common@npm:^11.1.6":
   version: 11.1.6
   resolution: "@nestjs/common@npm:11.1.6"
   dependencies:
@@ -4672,7 +4672,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/core@npm:^11.0.0, @nestjs/core@npm:^11.1.6":
+"@nestjs/core@npm:^11.1.6":
   version: 11.1.6
   resolution: "@nestjs/core@npm:11.1.6"
   dependencies:
@@ -4722,7 +4722,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/platform-express@npm:^11.0.0, @nestjs/platform-express@npm:^11.1.6":
+"@nestjs/platform-express@npm:^11.1.6":
   version: 11.1.6
   resolution: "@nestjs/platform-express@npm:11.1.6"
   dependencies:
@@ -4753,14 +4753,14 @@ __metadata:
   linkType: hard
 
 "@nestjs/schedule@npm:^6.0.1":
-  version: 6.0.1
-  resolution: "@nestjs/schedule@npm:6.0.1"
+  version: 6.1.1
+  resolution: "@nestjs/schedule@npm:6.1.1"
   dependencies:
-    cron: "npm:4.3.3"
+    cron: "npm:4.4.0"
   peerDependencies:
     "@nestjs/common": ^10.0.0 || ^11.0.0
     "@nestjs/core": ^10.0.0 || ^11.0.0
-  checksum: 10c0/220af7977cc93f831223ac750dff5af64ce5d0e46a4970a8221e7ae233524fd6d0137ec0a5ecf12c5e6cb3d3acc9d7d0a8aa1525c053f8cdcfb26e4a0db283a8
+  checksum: 10c0/0185efe4824bd353fea792954ea04d2d4cb99836c93c6d42d76fe9d57a6fd97eb7ba9d874be6f7f94b6f8bbca11badab16993f30e9b1f94b4c341639407578de
   languageName: node
   linkType: hard
 
@@ -4779,7 +4779,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/testing@npm:^11.0.0, @nestjs/testing@npm:^11.1.6":
+"@nestjs/testing@npm:^11.1.6":
   version: 11.1.6
   resolution: "@nestjs/testing@npm:11.1.6"
   dependencies:
@@ -4799,13 +4799,13 @@ __metadata:
   linkType: hard
 
 "@nestjs/throttler@npm:^6.4.0":
-  version: 6.4.0
-  resolution: "@nestjs/throttler@npm:6.4.0"
+  version: 6.5.0
+  resolution: "@nestjs/throttler@npm:6.5.0"
   peerDependencies:
     "@nestjs/common": ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0
     "@nestjs/core": ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0
     reflect-metadata: ^0.1.13 || ^0.2.0
-  checksum: 10c0/796134644e341aad4a403b7431524db97adc31ae8771fc1160a4694a24c295b7a3dd15abcb72b9ea3a0702247b929f501fc5dc74a3f30d915f2667a39ba5c5d7
+  checksum: 10c0/bd755e765d020189b24fd8cb8a5989b47d7856abdc8efc881d73dd76e71b8e6e4466e532464434fd1199a106bf4752bda3d0036ef4aa13aa61e9317f60658da8
   languageName: node
   linkType: hard
 
@@ -7070,28 +7070,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@tesla-guard/api@workspace:apps/api"
   dependencies:
-    "@nestjs/common": "npm:^11.0.0"
-    "@nestjs/core": "npm:^11.0.0"
-    "@nestjs/platform-express": "npm:^11.0.0"
-    "@nestjs/schedule": "npm:^6.0.1"
-    "@nestjs/testing": "npm:^11.0.0"
-    "@nestjs/throttler": "npm:^6.4.0"
-    "@nestjs/typeorm": "npm:^11.0.0"
-    "@types/pg": "npm:^8"
-    axios: "npm:^1.6.0"
-    i18next: "npm:^25.6.0"
-    kafkajs: "npm:^2.2.4"
-    oci-common: "npm:^2.122.0"
-    oci-logging: "npm:^2.122.0"
-    oci-loggingingestion: "npm:^2.122.0"
-    pg: "npm:^8.16.3"
-    reflect-metadata: "npm:^0.1.13"
-    rxjs: "npm:^7.8.0"
-    telegraf: "npm:^4.16.3"
     ts-node: "npm:^10.9.2"
-    tslib: "npm:^2.3.0"
-    typeorm: "npm:^0.3.27"
-    zeromq: "npm:^6.0.0"
   languageName: unknown
   linkType: soft
 
@@ -7107,8 +7086,11 @@ __metadata:
     "@nestjs/passport": "npm:^11.0.5"
     "@nestjs/platform-express": "npm:^11.1.6"
     "@nestjs/platform-ws": "npm:^11.1.6"
+    "@nestjs/schedule": "npm:^6.0.1"
     "@nestjs/schematics": "npm:^11.0.0"
     "@nestjs/testing": "npm:^11.1.6"
+    "@nestjs/throttler": "npm:^6.4.0"
+    "@nestjs/typeorm": "npm:^11.0.0"
     "@nestjs/websockets": "npm:^11.1.6"
     "@nx/eslint": "npm:22.4.5"
     "@nx/eslint-plugin": "npm:22.4.5"
@@ -7141,6 +7123,7 @@ __metadata:
     "@types/nodemailer": "npm:^7.0.5"
     "@types/passport": "npm:^0"
     "@types/passport-jwt": "npm:^4.0.1"
+    "@types/pg": "npm:^8"
     "@types/react": "npm:^19.2.13"
     "@types/react-dom": "npm:^19.2.3"
     "@types/supertest": "npm:^6.0.3"
@@ -7148,7 +7131,7 @@ __metadata:
     "@vitest/coverage-v8": "npm:^3.0.5"
     "@vitest/ui": "npm:^3.0.0"
     autoprefixer: "npm:10.4.13"
-    axios: "npm:^1.12.2"
+    axios: "npm:^1.6.0"
     class-transformer: "npm:^0.5.1"
     class-validator: "npm:^0.14.3"
     eslint: "npm:^9.8.0"
@@ -7159,6 +7142,7 @@ __metadata:
     eslint-plugin-react-hooks: "npm:5.0.0"
     flush-promises: "npm:^1.0.2"
     google-protobuf: "npm:^4.0.0"
+    i18next: "npm:^25.6.0"
     identity-obj-proxy: "npm:^3.0.0"
     jest: "npm:^30.2.0"
     jest-environment-jsdom: "npm:^30.2.0"
@@ -7167,13 +7151,18 @@ __metadata:
     jest-util: "npm:^30.0.2"
     jiti: "npm:2.4.2"
     jsdom: "npm:~22.1.0"
+    kafkajs: "npm:^2.2.4"
     nestjs-pino: "npm:^4.5.0"
     next: "npm:^16.1.6"
     nodemailer: "npm:^7.0.12"
     nx: "npm:22.4.5"
+    oci-common: "npm:^2.122.0"
+    oci-logging: "npm:^2.122.0"
+    oci-loggingingestion: "npm:^2.122.0"
     p-limit: "npm:^7.2.0"
     passport: "npm:^0.7.0"
     passport-jwt: "npm:^4.0.1"
+    pg: "npm:^8.16.3"
     pino: "npm:^10.3.1"
     pino-abstract-transport: "npm:^3.0.0"
     pino-http: "npm:^11.0.0"
@@ -7188,16 +7177,19 @@ __metadata:
     rxjs: "npm:^7.8.2"
     supertest: "npm:^7.1.4"
     tailwindcss: "npm:3.4.3"
+    telegraf: "npm:^4.16.3"
     ts-jest: "npm:^29.4.5"
     ts-loader: "npm:^9.5.4"
     ts-node: "npm:^10.9.2"
     tsconfig-paths: "npm:^4.2.0"
     tslib: "npm:^2.3.0"
+    typeorm: "npm:^0.3.27"
     typescript: "npm:~5.9.2"
     typescript-eslint: "npm:^8.40.0"
     vite: "npm:6.0.0"
     vitest: "npm:^2.0.0"
     webpack-cli: "npm:^5.1.4"
+    zeromq: "npm:^6.0.0"
   languageName: unknown
   linkType: soft
 
@@ -9404,7 +9396,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"axios@npm:^1.12.0, axios@npm:^1.12.2, axios@npm:^1.6.0":
+"axios@npm:^1.12.0, axios@npm:^1.6.0":
   version: 1.12.2
   resolution: "axios@npm:1.12.2"
   dependencies:
@@ -10863,13 +10855,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cron@npm:4.3.3":
-  version: 4.3.3
-  resolution: "cron@npm:4.3.3"
+"cron@npm:4.4.0":
+  version: 4.4.0
+  resolution: "cron@npm:4.4.0"
   dependencies:
     "@types/luxon": "npm:~3.7.0"
     luxon: "npm:~3.7.0"
-  checksum: 10c0/f58976120a069406419d3b690f3e30a2d66c19de87712ce988bed47bbabc9e39c317e1793bdff92a466a57b9174aff7c40912c57f08f3198eb59838f10bf1247
+  checksum: 10c0/e3762fda4a9a2404ac2e54e1104a3c6c695747e14b2321bbc5531aa1192c75a319075695fcaf68b6927e0ffd877b5454f314c680f6586db1a78b2c25b76b8a32
   languageName: node
   linkType: hard
 
@@ -19313,13 +19305,6 @@ __metadata:
     indent-string: "npm:^4.0.0"
     strip-indent: "npm:^3.0.0"
   checksum: 10c0/d64a6b5c0b50eb3ddce3ab770f866658a2b9998c678f797919ceb1b586bab9259b311407280bd80b804e2a7c7539b19238ae6a2a20c843f1a7fcff21d48c2eae
-  languageName: node
-  linkType: hard
-
-"reflect-metadata@npm:^0.1.13":
-  version: 0.1.14
-  resolution: "reflect-metadata@npm:0.1.14"
-  checksum: 10c0/3a6190c7f6cb224f26a012d11f9e329360c01c1945e2cbefea23976a8bacf9db6b794aeb5bf18adcb673c448a234fbc06fc41853c00a6c206b30f0777ecf019e
   languageName: node
   linkType: hard
 

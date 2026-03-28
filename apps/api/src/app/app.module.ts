@@ -3,7 +3,7 @@ import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { LoggerModule } from 'nestjs-pino';
+import { LoggerModule, LoggerErrorInterceptor } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { KafkaService } from './messaging/kafka/kafka.service';
@@ -76,6 +76,10 @@ import { RetryManager } from './shared/retry-manager.service';
     KafkaLogContextService,
     {
       provide: APP_INTERCEPTOR,
+      useClass: LoggerErrorInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
       useClass: LogContextInterceptor,
     },
     {
@@ -88,4 +92,4 @@ import { RetryManager } from './shared/retry-manager.service';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }
