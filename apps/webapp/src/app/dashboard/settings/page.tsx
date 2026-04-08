@@ -1,8 +1,8 @@
 'use client';
 
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../../lib/useAuth';
-import { useConsent } from '../../../lib/useConsent';
+import { useAuth } from '../../../features/auth/presentation/hooks/use-auth';
+import { useConsent } from '../../../features/consent/presentation/hooks/use-consent';
 import { useRouter } from 'next/navigation';
 
 export default function SettingsPage() {
@@ -17,8 +17,8 @@ export default function SettingsPage() {
         t('Delete account confirmation')
       )
     ) {
-      const success = await revokeConsent();
-      if (success) {
+      const result = await revokeConsent();
+      if (result.success) {
         logout();
         router.push('/');
       }

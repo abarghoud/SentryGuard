@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '../../lib/useAuth';
-import { useConsent } from '../../lib/useConsent';
-import { useOnboarding } from '../../lib/useOnboarding';
+import { useAuth } from '../../features/auth/presentation/hooks/use-auth';
+import { useConsent } from '../../features/consent/presentation/hooks/use-consent';
+import { useOnboarding } from '../../features/onboarding/presentation/hooks/use-onboarding';
 import BetaBadge from '../../components/BetaBadge';
 import MissingScopesBanner from '../../components/MissingScopesBanner';
 import { DiscordLink } from '../../components/DiscordLink';
@@ -19,7 +19,8 @@ export default function DashboardLayout({
 }) {
   const { t } = useTranslation('common');
   const { isAuthenticated, isLoading, logout, profile, scopeError } = useAuth();
-  const { hasConsent, isLoading: consentLoading } = useConsent();
+  const { status, isLoading: consentLoading } = useConsent();
+  const hasConsent = status?.hasConsent ?? false;
   const { isComplete: isOnboardingComplete, isLoading: onboardingLoading } = useOnboarding();
   const router = useRouter();
   const pathname = usePathname();

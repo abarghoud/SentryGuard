@@ -1,9 +1,7 @@
-'use client';
-
 import { useMemo, useCallback } from 'react';
-import { OnboardingStep } from './useOnboarding';
-import { useTelegram } from './useTelegram';
-import { useVehicles } from './useVehicles';
+import { OnboardingStep } from './use-onboarding';
+import { useTelegram } from '../../../telegram/presentation/hooks/use-telegram';
+import { useVehicles } from '../../../vehicles/presentation/hooks/use-vehicles';
 
 interface TelegramStatus {
   linked: boolean;

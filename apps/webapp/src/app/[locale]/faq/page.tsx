@@ -3,9 +3,9 @@ import {
   getTranslation,
   renderRichTranslation,
   stripRichTextTags,
-} from '@/lib/server-i18n';
-import { SUPPORTED_LOCALES } from '@/lib/i18n-config';
-import { faqCategories } from '@/lib/faq-data';
+} from '@/core/i18n/server-i18n';
+import { SUPPORTED_LOCALES } from '@/core/i18n/i18n-config';
+import { faqCategories } from '@/core/faq/faq-data';
 import PublicLayout from '@/components/PublicLayout';
 import { ContactSection } from '@/components/faq/ContactSection';
 

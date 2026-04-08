@@ -1,8 +1,8 @@
 import { cookies, headers } from 'next/headers';
 import { ReactNode } from 'react';
 
-import en from '../locales/en/common.json';
-import fr from '../locales/fr/common.json';
+import en from '../../locales/en/common.json';
+import fr from '../../locales/fr/common.json';
 import { DEFAULT_LOCALE } from './i18n-config';
 
 const translations: Record<string, Record<string, string>> = { en, fr };

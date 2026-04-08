@@ -1,8 +1,8 @@
 'use client';
 
 import { useTranslation } from 'react-i18next';
-import { useVehicles } from '../../../lib/useVehicles';
-import { useAuth } from '../../../lib/useAuth';
+import { useVehicles } from '../../../features/vehicles/presentation/hooks/use-vehicles';
+import { useAuth } from '../../../features/auth/presentation/hooks/use-auth';
 import VehicleCard from '../../../components/VehicleCard';
 
 export default function VehiclesPage() {

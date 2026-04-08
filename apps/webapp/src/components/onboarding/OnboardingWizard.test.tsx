@@ -1,15 +1,15 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
 import OnboardingWizard from './OnboardingWizard';
-import { useOnboarding, OnboardingStep } from '../../lib/useOnboarding';
-import { useOnboardingStep } from '../../lib/useOnboardingStep';
+import { useOnboarding, OnboardingStep } from '../../features/onboarding/presentation/hooks/use-onboarding';
+import { useOnboardingStep } from '../../features/onboarding/presentation/hooks/use-onboarding-step';
 
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }));
 
-jest.mock('../../lib/useOnboarding');
-jest.mock('../../lib/useOnboardingStep');
+jest.mock('../../features/onboarding/presentation/hooks/use-onboarding');
+jest.mock('../../features/onboarding/presentation/hooks/use-onboarding-step');
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,

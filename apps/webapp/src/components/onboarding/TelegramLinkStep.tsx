@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useTelegram } from '../../lib/useTelegram';
+import { useTelegram } from '../../features/telegram/presentation/hooks/use-telegram';
 import TelegramLinkCard from '../TelegramLinkCard';
 import OnboardingStepLayout from './OnboardingStepLayout';
 

@@ -1,15 +1,12 @@
-'use client';
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { TelegramStatus, TelegramLinkInfo } from '../../domain/entities';
 import {
-  generateTelegramLink,
-  getTelegramStatus,
-  unlinkTelegram,
-  sendTestMessage,
-  hasToken,
-  type TelegramLinkInfo,
-  type TelegramStatus,
-} from './api';
+  getTelegramStatusUseCase,
+  generateTelegramLinkUseCase,
+  unlinkTelegramUseCase,
+  sendTestMessageUseCase,
+} from '../../di';
+import { hasToken } from '../../../../core/api/token-manager';
 
 const TELEGRAM_LINK_STORAGE_KEY = 'telegram_link_info';
 
@@ -28,9 +25,7 @@ const readStoredLinkInfo = (): TelegramLinkInfo | null => {
 
   try {
     const parsed: TelegramLinkInfo = JSON.parse(raw);
-    const expiresAt = parsed.expires_at
-      ? new Date(parsed.expires_at).getTime()
-      : 0;
+    const expiresAt = parsed.expires_at ? new Date(parsed.expires_at).getTime() : 0;
 
     if (expiresAt > Date.now()) {
       return parsed;
@@ -73,7 +68,7 @@ export function useTelegram() {
     setError(null);
 
     try {
-      const data = await getTelegramStatus();
+      const data = await getTelegramStatusUseCase.execute();
       setStatus(data);
 
       if (data.status === 'pending') {
@@ -84,9 +79,7 @@ export function useTelegram() {
       }
     } catch (err) {
       console.error('Failed to fetch Telegram status:', err);
-      setError(
-        err instanceof Error ? err.message : 'Failed to fetch Telegram status'
-      );
+      setError(err instanceof Error ? err.message : 'Failed to fetch Telegram status');
     } finally {
       setIsLoading(false);
     }
@@ -96,16 +89,14 @@ export function useTelegram() {
     setError(null);
 
     try {
-      const data = await generateTelegramLink();
+      const data = await generateTelegramLinkUseCase.execute();
       persistLinkInfo(data);
       setLinkInfo(data);
       await fetchStatus();
       return data;
     } catch (err) {
       console.error('Failed to generate Telegram link:', err);
-      setError(
-        err instanceof Error ? err.message : 'Failed to generate Telegram link'
-      );
+      setError(err instanceof Error ? err.message : 'Failed to generate Telegram link');
       return null;
     }
   };
@@ -114,16 +105,14 @@ export function useTelegram() {
     setError(null);
 
     try {
-      await unlinkTelegram();
+      await unlinkTelegramUseCase.execute();
       clearStoredLinkInfo();
       setLinkInfo(null);
       await fetchStatus();
       return true;
     } catch (err) {
       console.error('Failed to unlink Telegram:', err);
-      setError(
-        err instanceof Error ? err.message : 'Failed to unlink Telegram'
-      );
+      setError(err instanceof Error ? err.message : 'Failed to unlink Telegram');
       return false;
     }
   };
@@ -132,13 +121,11 @@ export function useTelegram() {
     setError(null);
 
     try {
-      const result = await sendTestMessage();
+      const result = await sendTestMessageUseCase.execute();
       return result.success;
     } catch (err) {
       console.error('Failed to send test message:', err);
-      setError(
-        err instanceof Error ? err.message : 'Failed to send test message'
-      );
+      setError(err instanceof Error ? err.message : 'Failed to send test message');
       return false;
     }
   };

@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../lib/useAuth';
+import { useAuth } from '../features/auth/presentation/hooks/use-auth';
 
 export default function AuthRedirect() {
   const { isAuthenticated, isLoading } = useAuth();

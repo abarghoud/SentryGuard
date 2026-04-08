@@ -4,13 +4,14 @@ import { useState, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { getScopeChangeUrl } from '../../lib/api';
+import { useAuth } from '../../features/auth/presentation/hooks/use-auth';
 import MissingScopesBanner from '../../components/MissingScopesBanner';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 function ScopesFixContent() {
   const { t } = useTranslation('common');
   const searchParams = useSearchParams();
+  const { getScopeChangeUrl } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const missingScopes = searchParams.get('missing')?.split(',') || [];

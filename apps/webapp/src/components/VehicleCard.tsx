@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Vehicle } from '../lib/api';
+import type { Vehicle } from '../features/vehicles/domain/entities';
 import Spinner from './Spinner';
 
 interface VehicleCardProps {

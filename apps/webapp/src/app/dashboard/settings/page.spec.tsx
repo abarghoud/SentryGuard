@@ -1,18 +1,18 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
 import SettingsPage from './page';
-import { useAuth } from '../../../lib/useAuth';
-import { useConsent } from '../../../lib/useConsent';
+import { useAuth } from '../../../features/auth/presentation/hooks/use-auth';
+import { useConsent } from '../../../features/consent/presentation/hooks/use-consent';
 
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }));
 
-jest.mock('../../../lib/useAuth', () => ({
+jest.mock('../../../features/auth/presentation/hooks/use-auth', () => ({
   useAuth: jest.fn(),
 }));
 
-jest.mock('../../../lib/useConsent', () => ({
+jest.mock('../../../features/consent/presentation/hooks/use-consent', () => ({
   useConsent: jest.fn(),
 }));
 
@@ -120,7 +120,7 @@ describe('The SettingsPage component', () => {
       describe('When revoke consent succeeds', () => {
         beforeEach(async () => {
           (window.confirm as jest.Mock).mockReturnValue(true);
-          mockRevokeConsent.mockResolvedValue(true);
+          mockRevokeConsent.mockResolvedValue({ success: true });
 
           render(<SettingsPage />);
           const deleteButton = screen.getByRole('button', { name: /Delete Account/i });
@@ -151,7 +151,7 @@ describe('The SettingsPage component', () => {
       describe('When revoke consent fails', () => {
         beforeEach(async () => {
           (window.confirm as jest.Mock).mockReturnValue(true);
-          mockRevokeConsent.mockResolvedValue(false);
+          mockRevokeConsent.mockResolvedValue({ success: false });
 
           render(<SettingsPage />);
           const deleteButton = screen.getByRole('button', { name: /Delete Account/i });

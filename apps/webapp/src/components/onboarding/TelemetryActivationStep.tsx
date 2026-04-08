@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
-import { useOnboarding } from '../../lib/useOnboarding';
-import { useVehicles } from '../../lib/useVehicles';
+import { useOnboarding } from '../../features/onboarding/presentation/hooks/use-onboarding';
+import { useVehicles } from '../../features/vehicles/presentation/hooks/use-vehicles';
 import OnboardingStepLayout from './OnboardingStepLayout';
 
 interface TelemetryActivationStepProps {

@@ -1,27 +1,24 @@
-'use client';
-
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { AuthStatus, UserProfile } from '../../domain/entities';
 import {
-  checkAuthStatus,
-  getUserProfile,
-  getToken,
-  clearToken,
-  logout as apiLogout,
-  validateToken,
-  type UserProfile,
-  type AuthStatus,
-  ScopeError,
-} from './api';
+  checkAuthStatusUseCase,
+  getUserProfileUseCase,
+  logoutUseCase,
+  getLoginUrlUseCase,
+  getScopeChangeUrlUseCase,
+} from '../../di';
+import { ScopeError } from '../../../../core/api/api-client';
+import { getToken, clearToken } from '../../../../core/api/token-manager';
 
 export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [scopeError, setScopeError] = useState<ScopeError | null>(null);
 
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     setScopeError(null);
@@ -37,28 +34,13 @@ export function useAuth() {
         return;
       }
 
-      // Validate token first
-      const isValid = await validateToken();
-
-      if (!isValid) {
-        // Token is invalid or expired
-        clearToken();
-        setIsAuthenticated(false);
-        setProfile(null);
-        setAuthStatus(null);
-        setIsLoading(false);
-        return;
-      }
-
-      // Get authentication status
-      const status = await checkAuthStatus();
+      const status = await checkAuthStatusUseCase.execute();
       setAuthStatus(status);
       setIsAuthenticated(status.authenticated);
 
       if (status.authenticated) {
-        // Get user profile
-        const userProfile = await getUserProfile();
-        setProfile(userProfile);
+        const p = await getUserProfileUseCase.execute();
+        setProfile(p);
       } else {
         setProfile(null);
       }
@@ -70,9 +52,7 @@ export function useAuth() {
         setAuthStatus(null);
       } else {
         console.error('Auth check error:', err);
-        setError(
-          err instanceof Error ? err.message : 'Authentication check failed'
-        );
+        setError(err instanceof Error ? err.message : 'Authentication check failed');
         setIsAuthenticated(false);
         setProfile(null);
         setAuthStatus(null);
@@ -81,50 +61,53 @@ export function useAuth() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
-      // Call API to revoke token
-      await apiLogout();
-    } catch (error) {
-      console.error('Logout error:', error);
+      await logoutUseCase.execute();
+    } catch (err) {
+      console.error('Logout error:', err);
     } finally {
-      // Always clear local state
       clearToken();
       setIsAuthenticated(false);
       setProfile(null);
       setAuthStatus(null);
 
-      // Redirect to home
       if (typeof window !== 'undefined') {
         window.location.href = '/';
       }
     }
-  };
+  }, []);
 
-  const refreshAuth = () => {
-    checkAuth();
-  };
+  const getLoginUrl = useCallback(async () => {
+    return getLoginUrlUseCase.execute();
+  }, []);
 
-  const clearScopeError = () => {
+  const getScopeChangeUrl = useCallback(async (missingScopes?: string[]) => {
+    return getScopeChangeUrlUseCase.execute(missingScopes);
+  }, []);
+
+  const clearScopeError = useCallback(() => {
     setScopeError(null);
-  };
+  }, []);
 
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, [checkAuth]);
 
   return {
     isAuthenticated,
-    isLoading,
-    profile,
     authStatus,
+    profile,
+    isLoading,
     error,
     scopeError,
+    refreshAuth: checkAuth,
     checkAuth,
-    refreshAuth,
     logout,
+    getLoginUrl,
+    getScopeChangeUrl,
     clearScopeError,
   };
 }

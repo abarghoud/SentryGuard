@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { OnboardingStep } from '../../lib/useOnboarding';
-import { useOnboarding } from '../../lib/useOnboarding';
-import { useOnboardingStep } from '../../lib/useOnboardingStep';
+import { OnboardingStep } from '../../features/onboarding/presentation/hooks/use-onboarding';
+import { useOnboarding } from '../../features/onboarding/presentation/hooks/use-onboarding';
+import { useOnboardingStep } from '../../features/onboarding/presentation/hooks/use-onboarding-step';
 import TelegramLinkStep from './TelegramLinkStep';
 import VirtualKeySetupStep from './VirtualKeySetupStep';
 import TelemetryActivationStep from './TelemetryActivationStep';

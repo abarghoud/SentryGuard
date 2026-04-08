@@ -1,7 +1,11 @@
-'use client';
-
-import { useState, useEffect, useCallback } from 'react';
-import { hasToken, getOnboardingStatus, completeOnboarding as completeOnboardingApi, skipOnboarding as skipOnboardingApi, ApiError } from './api';
+import { useState, useCallback, useEffect } from 'react';
+import {
+  getOnboardingStatusUseCase,
+  completeOnboardingUseCase,
+  skipOnboardingUseCase,
+} from '../../di';
+import { hasToken } from '../../../../core/api/token-manager';
+import { ApiError } from '../../../../core/api/api-client';
 
 export enum OnboardingStep {
   TELEGRAM_LINK = 'telegram_link',
@@ -10,8 +14,8 @@ export enum OnboardingStep {
 }
 
 export function useOnboarding() {
-  const [isComplete, setIsComplete] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isComplete, setIsComplete] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const checkStatus = useCallback(async () => {
@@ -21,8 +25,8 @@ export function useOnboarding() {
     }
 
     try {
-      const data = await getOnboardingStatus();
-      setIsComplete(data.isComplete);
+      const status = await getOnboardingStatusUseCase.execute();
+      setIsComplete(status.isComplete);
       setError(null);
     } catch (err) {
       console.error('Error checking onboarding status:', err);
@@ -32,14 +36,9 @@ export function useOnboarding() {
     }
   }, []);
 
-  useEffect(() => {
-    checkStatus();
-  }, [checkStatus]);
-
   const completeOnboarding = useCallback(async () => {
     try {
-      await completeOnboardingApi();
-
+      await completeOnboardingUseCase.execute();
       setIsComplete(true);
       return { success: true };
     } catch (err) {
@@ -51,8 +50,7 @@ export function useOnboarding() {
 
   const skipOnboarding = useCallback(async () => {
     try {
-      await skipOnboardingApi();
-
+      await skipOnboardingUseCase.execute();
       setIsComplete(true);
       return { success: true };
     } catch (err) {
@@ -61,6 +59,10 @@ export function useOnboarding() {
       return { success: false, error: message };
     }
   }, []);
+
+  useEffect(() => {
+    checkStatus();
+  }, [checkStatus]);
 
   return {
     isComplete,

@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import Link from 'next/link';
-import { getTranslation } from '../lib/server-i18n';
+import { getTranslation } from '../core/i18n/server-i18n';
 import LanguageSwitcher from './LanguageSwitcher';
 
 interface NavigationItem {

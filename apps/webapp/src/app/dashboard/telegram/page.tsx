@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslation } from 'react-i18next';
-import { useTelegram } from '../../../lib/useTelegram';
+import { useTelegram } from '../../../features/telegram/presentation/hooks/use-telegram';
 import TelegramLinkCard from '../../../components/TelegramLinkCard';
 
 export default function TelegramPage() {

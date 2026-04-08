@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
-import { acceptConsent, getConsentText, type ConsentTextResponse } from '../../lib/api';
+import { acceptConsentUseCase, getConsentTextUseCase } from '../../features/consent/di';
+import { type ConsentTextResponse } from '../../features/consent/domain/entities';
 
 export default function ConsentPage() {
   const { t, i18n } = useTranslation('common');
@@ -19,7 +20,7 @@ export default function ConsentPage() {
     const loadConsentText = async () => {
       try {
         const locale = i18n.language || 'en';
-        const text = await getConsentText('v1', locale);
+        const text = await getConsentTextUseCase.execute('v1', locale);
         setConsentText(text);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load consent text');
@@ -81,7 +82,7 @@ export default function ConsentPage() {
     setError(null);
 
     try {
-      await acceptConsent({
+      await acceptConsentUseCase.execute({
         version: consentText.version,
         locale: consentText.locale,
         appTitle: consentText.appTitle,

@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getLoginUrl } from '../lib/api';
+import { useAuth } from '../features/auth/presentation/hooks/use-auth';
 
 export default function TeslaLoginButton() {
   const { t } = useTranslation('common');
+  const { getLoginUrl } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

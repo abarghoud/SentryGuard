@@ -1,9 +1,9 @@
 'use client';
 
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../lib/useAuth';
-import { useVehicles } from '../../lib/useVehicles';
-import { useTelegram } from '../../lib/useTelegram';
+import { useAuth } from '../../features/auth/presentation/hooks/use-auth';
+import { useVehicles } from '../../features/vehicles/presentation/hooks/use-vehicles';
+import { useTelegram } from '../../features/telegram/presentation/hooks/use-telegram';
 import Link from 'next/link';
 
 export default function DashboardPage() {

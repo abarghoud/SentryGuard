@@ -7,7 +7,7 @@ import { Provider as RollbarProvider } from '@rollbar/react';
 import I18nProvider from '../components/I18nProvider';
 import BuyMeACoffeeWidget from '../components/BuyMeACoffeeWidget';
 import { clientConfig } from '@/logger/rollbar.config';
-import { getLocale } from '../lib/server-i18n';
+import { getLocale } from '../core/i18n/server-i18n';
 
 export const metadata: Metadata = {
   title: 'SentryGuard - Protect Your Tesla',

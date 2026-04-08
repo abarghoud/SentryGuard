@@ -1,6 +1,6 @@
 'use client';
 
-import { useBetaTester } from '../lib/useBetaTester';
+import { useAuth } from '../features/auth/presentation/hooks/use-auth';
 
 interface BetaFeatureProps {
   children: React.ReactNode;
@@ -9,7 +9,8 @@ interface BetaFeatureProps {
 }
 
 export default function BetaFeature({ children, fallback, showBadge }: BetaFeatureProps) {
-  const { isBetaTester } = useBetaTester();
+  const { profile } = useAuth();
+  const isBetaTester = profile?.isBetaTester ?? false;
 
   if (!isBetaTester) {
     return fallback ? <>{fallback}</> : null;

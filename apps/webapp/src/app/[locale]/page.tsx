@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import { getTranslation } from '@/lib/server-i18n';
-import { SUPPORTED_LOCALES } from '@/lib/i18n-config';
+import { getTranslation } from '@/core/i18n/server-i18n';
+import { SUPPORTED_LOCALES } from '@/core/i18n/i18n-config';
 import PublicLayout from '@/components/PublicLayout';
 import AuthRedirect from '@/components/AuthRedirect';
 import TeslaLoginButton from '@/components/TeslaLoginButton';

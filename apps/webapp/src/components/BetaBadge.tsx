@@ -1,13 +1,14 @@
 'use client';
 
-import { useBetaTester } from '../lib/useBetaTester';
+import { useAuth } from '../features/auth/presentation/hooks/use-auth';
 
 interface BetaBadgeProps {
   className?: string;
 }
 
 export default function BetaBadge({ className }: BetaBadgeProps) {
-  const { isBetaTester } = useBetaTester();
+  const { profile } = useAuth();
+  const isBetaTester = profile?.isBetaTester ?? false;
 
   if (!isBetaTester) {
     return null;

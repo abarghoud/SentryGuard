@@ -1,6 +1,6 @@
 'use client';
 
-import { OnboardingStep } from '../../lib/useOnboarding';
+import { OnboardingStep } from '../../features/onboarding/presentation/hooks/use-onboarding';
 
 interface OnboardingProgressProps {
   currentStep: OnboardingStep;
