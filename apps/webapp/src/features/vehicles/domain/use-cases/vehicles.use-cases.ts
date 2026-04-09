@@ -1,7 +1,14 @@
 import { VehicleRepositoryRequirements } from '../vehicle.repository.requirements';
 import { Vehicle, TelemetryConfigResult, GenericActionResponse } from '../entities';
+import {
+  GetVehiclesRequirements,
+  ConfigureTelemetryRequirements,
+  CheckTelemetryConfigRequirements,
+  DeleteTelemetryConfigRequirements,
+  ToggleBreakInMonitoringRequirements,
+} from './vehicles.use-cases.requirements';
 
-export class GetVehiclesUseCase {
+export class GetVehiclesUseCase implements GetVehiclesRequirements {
   constructor(private repository: VehicleRepositoryRequirements) {}
 
   async execute(): Promise<Vehicle[]> {
@@ -9,7 +16,7 @@ export class GetVehiclesUseCase {
   }
 }
 
-export class ConfigureTelemetryUseCase {
+export class ConfigureTelemetryUseCase implements ConfigureTelemetryRequirements {
   constructor(private repository: VehicleRepositoryRequirements) {}
 
   async execute(vin: string): Promise<TelemetryConfigResult> {
@@ -18,7 +25,7 @@ export class ConfigureTelemetryUseCase {
   }
 }
 
-export class CheckTelemetryConfigUseCase {
+export class CheckTelemetryConfigUseCase implements CheckTelemetryConfigRequirements {
   constructor(private repository: VehicleRepositoryRequirements) {}
 
   async execute(vin: string): Promise<TelemetryConfigResult> {
@@ -27,7 +34,7 @@ export class CheckTelemetryConfigUseCase {
   }
 }
 
-export class DeleteTelemetryConfigUseCase {
+export class DeleteTelemetryConfigUseCase implements DeleteTelemetryConfigRequirements {
   constructor(private repository: VehicleRepositoryRequirements) {}
 
   async execute(vin: string): Promise<GenericActionResponse> {
@@ -36,7 +43,7 @@ export class DeleteTelemetryConfigUseCase {
   }
 }
 
-export class ToggleBreakInMonitoringUseCase {
+export class ToggleBreakInMonitoringUseCase implements ToggleBreakInMonitoringRequirements {
   constructor(private repository: VehicleRepositoryRequirements) {}
 
   async execute(vin: string, enable: boolean): Promise<GenericActionResponse> {

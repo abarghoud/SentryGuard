@@ -2,15 +2,21 @@
 
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../features/auth/presentation/hooks/use-auth';
-import { useVehicles } from '../../features/vehicles/presentation/hooks/use-vehicles';
+import { useVehiclesStore } from '../../features/vehicles/di';
 import { useTelegram } from '../../features/telegram/presentation/hooks/use-telegram';
 import Link from 'next/link';
+import { useEffect } from 'react';
 
 export default function DashboardPage() {
   const { t } = useTranslation('common');
   const { profile } = useAuth();
-  const { vehicles } = useVehicles();
+  const vehicles = useVehiclesStore((state) => state.vehicles);
+  const fetchVehicles = useVehiclesStore((state) => state.fetchVehicles);
   const { status: telegramStatus } = useTelegram();
+
+  useEffect(() => {
+    fetchVehicles();
+  }, [fetchVehicles]);
 
   const enabledVehicles = vehicles.filter((v) => v.sentry_mode_monitoring_enabled).length;
   const totalVehicles = vehicles.length;

@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
 import SettingsPage from './page';
-import { useAuth } from '../../../features/auth/presentation/hooks/use-auth';
+import { useAuth } from "../../features/auth/di';
 import { useConsent } from '../../../features/consent/presentation/hooks/use-consent';
 
 jest.mock('next/navigation', () => ({
