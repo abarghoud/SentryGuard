@@ -19,11 +19,10 @@ jobs:
         include:
           - app: api
             dockerfile: apps/api/Dockerfile
-            image: ghcr.io/jordima/sentryguard-api
+            image_suffix: api
           - app: webapp
             dockerfile: apps/webapp/Dockerfile
-            image: ghcr.io/jordima/sentryguard-webapp
-
+            image_suffix: webapp
     steps:
       - uses: actions/checkout@v4
 
@@ -44,7 +43,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ matrix.image }}
+          images: ${{ env.REGISTRY }}/${{ github.repository }}-${{ matrix.image_suffix }}
           tags: |
             type=sha,prefix=
             type=ref,event=branch
