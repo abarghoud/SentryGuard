@@ -3,9 +3,12 @@ import {
   Post,
   Get,
   Delete,
+  Patch,
   Param,
+  Body,
   Logger,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { TelemetryConfigService } from './telemetry-config.service';
@@ -15,6 +18,8 @@ import { ConsentGuard } from '../../common/guards/consent.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { User } from '../../entities/user.entity';
 import { ThrottleOptions } from '../../config/throttle.config';
+import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
+import { OffensiveResponseService } from '../alerts/services/offensive-response.service';
 
 @Controller('telemetry-config')
 @UseGuards(JwtAuthGuard, ConsentGuard)
@@ -23,7 +28,8 @@ export class TelemetryConfigController {
 
   constructor(
     private readonly telemetryConfigService: TelemetryConfigService,
-    private readonly sentryModeConfigService: SentryModeConfigService
+    private readonly sentryModeConfigService: SentryModeConfigService,
+    private readonly offensiveResponseService: OffensiveResponseService
   ) {}
 
   @Throttle(ThrottleOptions.authenticatedRead())
@@ -89,5 +95,42 @@ export class TelemetryConfigController {
       `🗑️ Deleting telemetry configuration for VIN: ${vin} (user: ${userId})`
     );
     return await this.telemetryConfigService.deleteTelemetryConfig(vin, userId);
+  }
+
+  @Throttle(ThrottleOptions.authenticatedWrite())
+  @Patch(':vin/offensive-response')
+  async updateOffensiveResponse(
+    @Param('vin') vin: string,
+    @CurrentUser() user: User,
+    @Body() body: { offensive_response: string }
+  ) {
+    const validResponses = Object.values(OffensiveResponse);
+    if (!validResponses.includes(body.offensive_response as OffensiveResponse)) {
+      throw new BadRequestException(
+        `Invalid offensive_response value. Must be one of: ${validResponses.join(', ')}`
+      );
+    }
+
+    const userId = user.userId;
+    this.logger.log(
+      `🚨 Updating offensive response for VIN: ${vin} to ${body.offensive_response} (user: ${userId})`
+    );
+    return await this.telemetryConfigService.updateVehicleOffensiveResponse(
+      userId,
+      vin,
+      body.offensive_response
+    );
+  }
+
+  @Throttle(ThrottleOptions.authenticatedWrite())
+  @Post(':vin/test-offensive')
+  async testOffensiveResponse(
+    @Param('vin') vin: string,
+    @CurrentUser() user: User
+  ) {
+    const userId = user.userId;
+    this.logger.log(`🧪 Testing offensive response for VIN: ${vin} (user: ${userId})`);
+    await this.offensiveResponseService.handleOffensiveResponse(vin);
+    return { message: `Offensive response test triggered for VIN: ${vin}` };
   }
 }

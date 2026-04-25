@@ -55,10 +55,11 @@ SentryGuard is a comprehensive security monitoring solution for Tesla vehicles. 
 - 🔐 **Tesla OAuth Authentication** - Secure login with your Tesla account
 - 📱 **Telegram Integration** - Instant alerts via deep linking (no manual chatId setup)
 - 🚗 **Multi-Vehicle Support** - Monitor all your Tesla vehicles
-- 📊 **Real-time Telemetry** - Track Sentry Mode, receive a real-time telegram notification when a security event occurs
+- 📊 **Real-time Telemetry** - Track Sentry Mode, receive instant Telegram notifications when security events occur
+- 🚨 **Offensive Response** - Automatically flash lights, honk the horn, or both when an alert is triggered (configurable per vehicle via webapp or Telegram)
 - 🌐 **SEO-Friendly WebApp** - Next.js with server-side rendering
 - 🔒 **Secure by Design** - Encrypted token storage, secure communication
-- 🎨 **Modern UI** - Beautiful, responsive interface with Tailwind CSS
+- 🎨 **Modern UI** - Responsive interface with Tailwind CSS
 
 ## 🏗️ Architecture
 
@@ -110,7 +111,17 @@ This is an Nx monorepo containing:
 
 ### 4. Receive Alerts
 
-- When Sentry Mode is triggered, you'll receive an instant Telegram notification
+- When Sentry Mode or a break-in is detected, you'll receive an instant Telegram notification
+
+### 5. Configure Offensive Response
+
+Choose what happens when an alert is triggered:
+- **Disabled** — No vehicle response
+- **Flash Lights** — Flash the vehicle's headlights
+- **Honk Horn** — Sound the vehicle's horn
+- **Flash + Honk** — Both at the same time
+
+Configure per vehicle from the **Vehicles page** (dropdown) or via **Telegram** (🚨 Response button).
 
 ## 🔧 Development
 
@@ -162,9 +173,9 @@ SentryGuard/
 │   │   ├── src/
 │   │   │   ├── app/
 │   │   │   │   ├── auth/       # Tesla OAuth
-│   │   │   │   ├── telemetry/  # Vehicle telemetry
-│   │   │   │   ├── telegram/   # Telegram bot
-│   │   │   │   └── zmq/        # ZMQ service
+│   │   │   │   ├── telemetry/  # Vehicle telemetry & commands
+│   │   │   │   ├── alerts/     # Alert handlers & offensive response
+│   │   │   │   └── telegram/   # Telegram bot
 │   │   │   ├── entities/       # TypeORM entities
 │   │   │   ├── config/         # Configuration
 │   │   │   └── common/         # Shared utilities
@@ -194,11 +205,13 @@ SentryGuard/
 
 - Vehicle details (VIN, model, name)
 - Telemetry configuration status
+- Offensive response per vehicle (Disabled / Flash / Honk / Flash + Honk)
 
 ### Telegram Configs
 
 - Link tokens for deep linking
 - Chat IDs for sending alerts
+- Mute status and duration
 
 ## 🔐 Security
 
@@ -267,8 +280,7 @@ Use this software at your own risk. The authors are not responsible for any dama
 - **Issues**: [GitHub Issues](https://github.com/abarghoud/SentryGuard/issues)
 - **Contributing**: [CONTRIBUTING.md](./CONTRIBUTING.md)
 - **Security**: [SECURITY.md](./SECURITY.md)
-
-> **Note**: A detailed setup guide with Docker support is coming soon!
+- **Self-hosting**: [SELF_HOSTING.md](./SELF_HOSTING.md) — Complete Docker deployment guide
 
 ## 🙏 Acknowledgments
 

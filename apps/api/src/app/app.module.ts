@@ -12,6 +12,7 @@ import { TelemetryValidationService } from './telemetry/services/telemetry-valid
 import { SentryAlertHandlerService } from './alerts/sentry/sentry-alert-handler.service';
 import { BreakInAlertHandlerService } from './alerts/break-in/break-in-alert-handler.service';
 import { VehicleAlertNotifierService } from './alerts/common/vehicle-alert-notifier.service';
+import { OffensiveResponseService } from './alerts/services/offensive-response.service';
 import { TelemetryEventHandlerSymbol } from './telemetry/interfaces/telemetry-event-handler.interface';
 import { kafkaMessageHandler } from './messaging/kafka/interfaces/message-handler.interface';
 import { AuthModule } from './auth/auth.module';

@@ -71,5 +71,8 @@ error.log
 *.key
 *.cert
 
+# Fleet Telemetry certs (generated, never commit)
+fleet-telemetry/certs/
+
 # Cursor
 .cursor/custom/*

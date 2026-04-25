@@ -5,6 +5,7 @@ import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard
 import { TelemetryEventHandler } from '../../telemetry/interfaces/telemetry-event-handler.interface';
 import { SentryModeState, TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
+import { OffensiveResponseService } from '../services/offensive-response.service';
 
 @Injectable()
 export class SentryAlertHandlerService implements TelemetryEventHandler {
@@ -13,7 +14,8 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
   constructor(
     private readonly telegramService: TelegramService,
     private readonly keyboardBuilder: TelegramKeyboardBuilderService,
-    private readonly alertNotifier: VehicleAlertNotifierService
+    private readonly alertNotifier: VehicleAlertNotifierService,
+    private readonly offensiveResponseService: OffensiveResponseService,
   ) { }
 
   async handle(telemetryMessage: TelemetryMessage): Promise<void> {
@@ -29,7 +31,11 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
         telemetryMessage,
         alertName: 'SENTRY_ALERT',
         latencyLabel: 'SENTRY_LATENCY',
-        telegramNotifier: this.telegramNotifier
+        telegramNotifier: this.telegramNotifier,
+      });
+
+      this.offensiveResponseService.handleOffensiveResponse(telemetryMessage.vin).catch((error: unknown) => {
+        this.logger.warn(`[OFFENSIVE] Failed to execute offensive response for VIN ${telemetryMessage.vin}`, error);
       });
     }
   }

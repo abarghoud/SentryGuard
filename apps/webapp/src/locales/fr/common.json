@@ -348,5 +348,17 @@
   "Break-in Monitoring": "Surveillance d'effraction",
   "Enable Break-in": "Activer surveillance d'effraction",
   "Disable Break-in": "Désactiver surveillance d'effraction",
-  "Failed to update Break-in monitoring": "Échec de la mise à la surveillance d'effraction"
+  "Failed to update Break-in monitoring": "Échec de la mise à la surveillance d'effraction",
+  "Offensive Response": "Réponse offensive",
+  "Offensive: Disabled": "Désactivé",
+  "Offensive: Flash": "Flash des phares",
+  "Offensive: Honk": "Klaxon",
+  "Offensive: Flash & Honk": "Flash & Klaxon",
+  "Choose what happens when an alert is triggered": "Choisissez l'action lors du déclenchement d'une alerte",
+  "Failed to update offensive response": "Échec de la mise à jour de la réponse offensive",
+  "Test": "Tester",
+  "Testing...": "Test en cours...",
+  "Test Offensive Response": "Tester la réponse offensive",
+  "Offensive response test triggered": "Test de la réponse offensive déclenché",
+  "Failed to test offensive response": "Échec du test de la réponse offensive"
 }

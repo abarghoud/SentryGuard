@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import i18n from '../../i18n';
+import { Vehicle } from '../../entities/vehicle.entity';
+import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
 import { TelegramMessageOptions } from './telegram.types';
 
 @Injectable()
 export class TelegramKeyboardBuilderService {
+
   buildSentryAlertKeyboard(
     userId: string,
     userLanguage: 'en' | 'fr'
@@ -39,8 +42,46 @@ export class TelegramKeyboardBuilderService {
         keyboard: [[
           { text: i18n.t('menuButtonStatus', { lng }) },
           { text: i18n.t(muteButtonKey, { lng }) },
+        ], [
+          { text: i18n.t('menuButtonOffensive', { lng }) },
         ]],
         resize_keyboard: true,
+      },
+    };
+  }
+
+  buildVehicleSelectionKeyboard(vehicles: Vehicle[], prefix: string): TelegramMessageOptions {
+    const shortPrefix = prefix === 'offensive' ? 'o_sl' : prefix;
+    const rows = vehicles.map((vehicle) => [{
+      text: vehicle.display_name || vehicle.vin,
+      callback_data: `${shortPrefix}:${vehicle.id}`,
+    }]);
+
+    return {
+      keyboard: {
+        inline_keyboard: rows,
+      },
+    };
+  }
+
+  buildOffensiveResponseKeyboard(vehicleId: string, currentResponse: OffensiveResponse, lng: 'en' | 'fr'): TelegramMessageOptions {
+    const options: Array<{ key: OffensiveResponse; label: string }> = [
+      { key: OffensiveResponse.DISABLED, label: i18n.t('offensiveDisabled', { lng }) },
+      { key: OffensiveResponse.FLASH, label: i18n.t('offensiveFlash', { lng }) },
+      { key: OffensiveResponse.HONK, label: i18n.t('offensiveHonk', { lng }) },
+      { key: OffensiveResponse.FLASH_AND_HONK, label: i18n.t('offensiveFlashAndHonk', { lng }) },
+    ];
+
+    const keyboard = options.map(({ key, label }) => {
+      const prefix = key === currentResponse ? '✅ ' : '';
+      return [{ text: `${prefix}${label}`, callback_data: `o_s:${vehicleId}:${key}` }];
+    });
+
+    keyboard.push([{ text: i18n.t('offensiveTest', { lng }), callback_data: `o_t:${vehicleId}` }]);
+
+    return {
+      keyboard: {
+        inline_keyboard: keyboard,
       },
     };
   }

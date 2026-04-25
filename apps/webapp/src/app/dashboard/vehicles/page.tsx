@@ -15,6 +15,7 @@ export default function VehiclesPage() {
     configureTelemetryForVehicle,
     deleteTelemetryForVehicle,
     toggleBreakInMonitoringForVehicle,
+    updateOffensiveResponseForVehicle,
   } = useVehicles();
   const { profile } = useAuth();
 
@@ -214,6 +215,7 @@ export default function VehiclesPage() {
               isBetaTester={profile?.isBetaTester}
               onToggleTelemetry={configureTelemetryForVehicle}
               onToggleBreakInMonitoring={toggleBreakInMonitoringForVehicle}
+              onUpdateOffensiveResponse={updateOffensiveResponseForVehicle}
               onDeleteTelemetry={deleteTelemetryForVehicle}
             />
           ))}

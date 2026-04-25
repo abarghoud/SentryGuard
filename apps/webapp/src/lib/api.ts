@@ -251,6 +251,7 @@ export interface Vehicle {
   model?: string;
   sentry_mode_monitoring_enabled: boolean;
   break_in_monitoring_enabled?: boolean;
+  offensive_response?: string;
   key_paired?: boolean;
   created_at: string;
   updated_at: string;
@@ -310,6 +311,24 @@ export async function toggleBreakInMonitoring(vin: string, enable: boolean): Pro
   message: string;
 }> {
   return apiRequest(`/telemetry-config/break-in-monitoring/${vin}/${enable ? 'enable' : 'disable'}`, {
+    method: 'POST',
+  });
+}
+
+export async function updateOffensiveResponse(vin: string, offensiveResponse: string): Promise<{
+  success: boolean;
+  offensive_response: string;
+}> {
+  return apiRequest(`/telemetry-config/${vin}/offensive-response`, {
+    method: 'PATCH',
+    body: JSON.stringify({ offensive_response: offensiveResponse }),
+  });
+}
+
+export async function testOffensiveResponse(vin: string): Promise<{
+  message: string;
+}> {
+  return apiRequest(`/telemetry-config/${vin}/test-offensive`, {
     method: 'POST',
   });
 }

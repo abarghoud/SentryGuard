@@ -8,6 +8,7 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
+import { OffensiveResponse } from '../app/alerts/enums/offensive-response.enum';
 
 @Entity('vehicles')
 @Index(['userId', 'vin'], { unique: true })
@@ -30,6 +31,13 @@ export class Vehicle {
 
   @Column({ type: 'boolean', default: false })
   break_in_monitoring_enabled!: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: OffensiveResponse,
+    default: OffensiveResponse.DISABLED,
+  })
+  offensive_response!: OffensiveResponse;
 
   @CreateDateColumn()
   created_at!: Date;
