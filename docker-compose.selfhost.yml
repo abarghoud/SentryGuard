@@ -169,6 +169,7 @@ services:
         condition: service_started
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL: ${NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL:-}
     ports:
       - "${WEBAPP_PORT:-3000}:3000"
     networks:

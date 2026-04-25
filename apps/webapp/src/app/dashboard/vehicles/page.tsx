@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useVehicles } from '../../../lib/useVehicles';
 import { useAuth } from '../../../lib/useAuth';
 import VehicleCard from '../../../components/VehicleCard';
+import { getRuntimeConfig } from '../../../lib/RuntimeConfigProvider';
 
 export default function VehiclesPage() {
   const { t } = useTranslation('common');
@@ -22,7 +23,10 @@ export default function VehiclesPage() {
   const isKeyPaired = vehicles.length > 0 ? vehicles[0].key_paired : null;
 
   const handlePairVirtualKey = () => {
-    window.open(process.env.NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL, '_blank');
+    const config = getRuntimeConfig();
+    if (config?.virtualKeyUrl) {
+      window.open(config.virtualKeyUrl, '_blank');
+    }
   };
 
   if (isLoading) {

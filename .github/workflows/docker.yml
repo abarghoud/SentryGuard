@@ -57,8 +57,5 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            NEXT_PUBLIC_API_URL=${{ vars.API_URL }}
-            NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL=${{ vars.VIRTUAL_KEY_PAIRING_URL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

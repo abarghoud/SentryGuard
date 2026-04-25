@@ -3,8 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import OnboardingStepLayout from './OnboardingStepLayout';
-
-const TESLA_APP_URL = process.env.NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL;
+import { getRuntimeConfig } from '../../lib/RuntimeConfigProvider';
 
 interface VirtualKeySetupStepProps {
   onContinue?: () => void;
@@ -13,6 +12,8 @@ interface VirtualKeySetupStepProps {
 export default function VirtualKeySetupStep({ onContinue }: VirtualKeySetupStepProps) {
   const { t } = useTranslation('common');
   const [hasOpenedApp, setHasOpenedApp] = useState(false);
+  const config = getRuntimeConfig();
+  const teslaAppUrl = config?.virtualKeyUrl || '';
 
   const handleOpenTeslaApp = useCallback(() => {
     setHasOpenedApp(true);
@@ -71,7 +72,7 @@ export default function VirtualKeySetupStep({ onContinue }: VirtualKeySetupStepP
         </div>
 
         <a
-          href={TESLA_APP_URL}
+          href={teslaAppUrl}
           target="_blank"
           rel="noopener noreferrer"
           onClick={handleOpenTeslaApp}

@@ -386,32 +386,8 @@ docker exec sentryguard-kafka kafka-topics --bootstrap-server localhost:9092 \
 | `TESLA_PUBLIC_KEY_BASE64` | Base64 of Tesla public key | Output from `generate-certs.sh` |
 | `WEBAPP_URL` | Webapp public URL (for CORS + redirects) | `https://yourdomain.com` |
 | `CORS_ALLOWED_ORIGINS` | Additional CORS origins (comma-separated) | `https://yourdomain.com,https://api.yourdomain.com` |
-| `NEXT_PUBLIC_API_URL` | API URL for webapp client-side calls (build-time) | `https://api.yourdomain.com` |
-
-### Build-Time Variables (GitHub Actions)
-
-These are baked into the Docker image at build time and **cannot be changed without rebuilding**. They are configured as GitHub repository variables:
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `API_URL` | API URL for webapp client-side calls | `https://api.yourdomain.com` |
-| `VIRTUAL_KEY_PAIRING_URL` | Tesla virtual key pairing URL | `https://tesla.com/_ak/yourdomain.com` |
-
-#### Setting up GitHub Actions variables
-
-1. Go to your fork on GitHub → **Settings → Secrets and variables → Actions → Variables**
-2. Click **New variable** and add:
-   - `API_URL`: `https://api.yourdomain.com`
-   - `VIRTUAL_KEY_PAIRING_URL`: `https://tesla.com/_ak/yourdomain.com`
-
-Or use the `gh` CLI:
-
-```bash
-gh variable set API_URL --body "https://api.yourdomain.com" --repo YOUR_GITHUB_USERNAME/SentryGuard
-gh variable set VIRTUAL_KEY_PAIRING_URL --body "https://tesla.com/_ak/yourdomain.com" --repo YOUR_GITHUB_USERNAME/SentryGuard
-```
-
-These variables are used by the GitHub Actions workflow (`.github/workflows/docker.yml`) as build arguments when building the webapp Docker image.
+| `NEXT_PUBLIC_API_URL` | API URL for webapp client-side calls (runtime) | `https://api.yourdomain.com` |
+| `NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL` | Tesla virtual key pairing URL (runtime) | `https://tesla.com/_ak/yourdomain.com` |
 
 ### Optional
 

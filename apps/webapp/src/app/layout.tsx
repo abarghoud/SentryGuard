@@ -8,6 +8,7 @@ import I18nProvider from '../components/I18nProvider';
 import BuyMeACoffeeWidget from '../components/BuyMeACoffeeWidget';
 import { clientConfig } from '@/logger/rollbar.config';
 import { getLocale } from '../lib/server-i18n';
+import { RuntimeConfigProvider } from '../lib/RuntimeConfigProvider';
 
 export const metadata: Metadata = {
   title: 'SentryGuard - Protect Your Tesla',
@@ -37,13 +38,24 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const locale = await getLocale();
+  const runtimeConfig = {
+    apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
+    virtualKeyUrl: process.env.NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL || '',
+  };
 
   return (
     <RollbarProvider config={clientConfig}>
       <html lang={locale} translate="no">
         <head />
         <body suppressHydrationWarning>
-          <I18nProvider initialLocale={locale}>{children}</I18nProvider>
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `window.__RUNTIME_CONFIG__ = ${JSON.stringify(runtimeConfig)};`,
+            }}
+          />
+          <RuntimeConfigProvider>
+            <I18nProvider initialLocale={locale}>{children}</I18nProvider>
+          </RuntimeConfigProvider>
           <BuyMeACoffeeWidget />
           <Script id="crisp-widget" strategy="afterInteractive">
             {`

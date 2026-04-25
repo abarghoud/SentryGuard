@@ -3,8 +3,34 @@
  * All authenticated requests use JWT tokens via Authorization header
  */
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+import { getRuntimeConfig } from './RuntimeConfigProvider';
+
+const DEFAULT_API_URL = 'http://localhost:3001';
+
+let apiBaseUrl: string | null = null;
+
+export function ensureConfig(): Promise<void> {
+  const config = getRuntimeConfig();
+  if (config?.apiUrl) {
+    apiBaseUrl = config.apiUrl;
+  } else {
+    apiBaseUrl = DEFAULT_API_URL;
+  }
+  return Promise.resolve();
+}
+
+export function getApiBaseUrl(): string {
+  if (apiBaseUrl) {
+    return apiBaseUrl;
+  }
+  const config = getRuntimeConfig();
+  if (config?.apiUrl) {
+    apiBaseUrl = config.apiUrl;
+  } else {
+    apiBaseUrl = DEFAULT_API_URL;
+  }
+  return apiBaseUrl;
+}
 
 // ============ Token Management ============
 
@@ -59,6 +85,7 @@ async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  await ensureConfig();
   const token = getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -69,7 +96,7 @@ async function apiRequest<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = `${getApiBaseUrl()}${endpoint}`;
 
   try {
     const response = await fetch(url, {
