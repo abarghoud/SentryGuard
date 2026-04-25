@@ -108,7 +108,7 @@ describe('The TelegramOffensiveResponseService class', () => {
   describe('The onModuleInit() method', () => {
     it('should register hears and action handlers', () => {
       expect(mockBotService.registerHears).toHaveBeenCalledTimes(1);
-      expect(mockBotService.registerAction).toHaveBeenCalledTimes(2);
+      expect(mockBotService.registerAction).toHaveBeenCalledTimes(3);
     });
   });
 
