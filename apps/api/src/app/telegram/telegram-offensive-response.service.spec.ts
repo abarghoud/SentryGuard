@@ -6,6 +6,7 @@ import { TelegramOffensiveResponseService } from './telegram-offensive-response.
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
 import { TelegramContextService } from './telegram-context.service';
+import { OffensiveResponseService } from '../alerts/services/offensive-response.service';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
 import { Vehicle } from '../../entities/vehicle.entity';
 import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
@@ -35,6 +36,7 @@ describe('The TelegramOffensiveResponseService class', () => {
   const mockBotService: MockProxy<TelegramBotService> = mock<TelegramBotService>();
   const mockKeyboardBuilderService: MockProxy<TelegramKeyboardBuilderService> = mock<TelegramKeyboardBuilderService>();
   const mockContextService: MockProxy<TelegramContextService> = mock<TelegramContextService>();
+  const mockOffensiveResponseService: MockProxy<OffensiveResponseService> = mock<OffensiveResponseService>();
 
   const fakeVehicle: Vehicle = {
     id: 'vehicle-1',
@@ -95,6 +97,7 @@ describe('The TelegramOffensiveResponseService class', () => {
         { provide: TelegramBotService, useValue: mockBotService },
         { provide: TelegramKeyboardBuilderService, useValue: mockKeyboardBuilderService },
         { provide: TelegramContextService, useValue: mockContextService },
+        { provide: OffensiveResponseService, useValue: mockOffensiveResponseService },
       ],
     }).compile();
 
