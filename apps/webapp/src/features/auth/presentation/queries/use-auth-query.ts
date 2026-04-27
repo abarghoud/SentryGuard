@@ -1,21 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AuthStatus, UserProfile } from '../../domain/entities';
-import { ScopeError } from '../../../../core/api/api-client';
+import { ApiError } from '../../../../core/api/api-client';
 import { getToken, clearToken } from '../../../../core/api/token-manager';
 import {
   CheckAuthStatusRequirements,
   GetUserProfileRequirements,
   LogoutRequirements,
-  GetLoginUrlRequirements,
-  GetScopeChangeUrlRequirements,
 } from '../../domain/use-cases/auth.use-cases.requirements';
 
 export interface AuthQueryDependencies {
   checkAuthStatusUseCase: CheckAuthStatusRequirements;
   getUserProfileUseCase: GetUserProfileRequirements;
   logoutUseCase: LogoutRequirements;
-  getLoginUrlUseCase: GetLoginUrlRequirements;
-  getScopeChangeUrlUseCase: GetScopeChangeUrlRequirements;
 }
 
 export const createUseAuthQuery = (deps: AuthQueryDependencies) => () => {
@@ -40,13 +36,13 @@ export const createUseAuthQuery = (deps: AuthQueryDependencies) => () => {
         }
         return { status, profile };
       } catch (err) {
-        if (!(err instanceof ScopeError)) {
+        if (err instanceof ApiError && err.status === 401) {
           clearToken();
         }
         throw err;
       }
     },
-    retry: false, // Don't retry auth checks
+    retry: false,
   });
 
   const logoutMutation = useMutation({

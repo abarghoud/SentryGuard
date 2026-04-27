@@ -24,6 +24,4 @@ export const useAuthQuery = createUseAuthQuery({
   checkAuthStatusUseCase,
   getUserProfileUseCase,
   logoutUseCase,
-  getLoginUrlUseCase,
-  getScopeChangeUrlUseCase,
 });
