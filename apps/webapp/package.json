@@ -9,8 +9,7 @@
     "next-i18next": "^15.4.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-i18next": "^16.2.4",
-    "zustand": "^5.0.12"
+    "react-i18next": "^16.2.4"
   },
   "devDependencies": {
     "autoprefixer": "10.4.20",
