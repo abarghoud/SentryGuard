@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { createUseTelegramQuery } from './use-telegram-query';
@@ -138,20 +138,37 @@ describe('The useTelegramQuery() hook', () => {
   });
 
   describe('When generating a link', () => {
+    beforeEach(() => {
+      (hasToken as jest.Mock).mockReturnValue(true);
+      mockGetTelegramStatusUseCase.execute.mockResolvedValue({ status: 'pending', message: '' } as unknown as TelegramStatus);
+    });
+
     it('should save the link info in storage and state', async () => {
-      const expectedData = { token: 'test-token', bot_url: 'https://t.me/bot' } as unknown as TelegramLinkInfo;
+      const expectedData = { 
+        token: 'test-token', 
+        bot_url: 'https://t.me/bot',
+        expires_at: new Date(Date.now() + 100000).toISOString()
+      } as unknown as TelegramLinkInfo;
       mockGenerateTelegramLinkUseCase.execute.mockResolvedValue(expectedData);
 
       const { result } = renderHook(() => useTelegramQuery(), { wrapper });
-      const response = await result.current.generateLinkMutation.mutateAsync();
+      
+      let response: TelegramLinkInfo | undefined;
+      await act(async () => {
+        response = await result.current.generateLinkMutation.mutateAsync();
+      });
 
       expect(response).toEqual(expectedData);
-      expect(result.current.linkInfo).toEqual(expectedData);
+      await waitFor(() => expect(result.current.linkInfo).toEqual(expectedData));
       expect(JSON.parse(localStorage.getItem('telegram_link_info') as string)).toEqual(expectedData);
     });
   });
 
   describe('When unlinking telegram', () => {
+    beforeEach(() => {
+      (hasToken as jest.Mock).mockReturnValue(false);
+    });
+
     it('should clear the link info and call the use case', async () => {
       localStorage.setItem('telegram_link_info', JSON.stringify({ token: 'test' }));
       mockUnlinkTelegramUseCase.execute.mockResolvedValue({ success: true, message: '' });
@@ -161,7 +178,9 @@ describe('The useTelegramQuery() hook', () => {
       // Need to wait for initial load to finish setting linkInfo
       await waitFor(() => expect(result.current.query.isSuccess).toBe(true));
       
-      await result.current.unlinkMutation.mutateAsync();
+      await act(async () => {
+        await result.current.unlinkMutation.mutateAsync();
+      });
 
       expect(mockUnlinkTelegramUseCase.execute).toHaveBeenCalled();
       expect(result.current.linkInfo).toBeNull();
