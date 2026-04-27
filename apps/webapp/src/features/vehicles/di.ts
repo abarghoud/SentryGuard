@@ -8,7 +8,7 @@ import {
   ToggleBreakInMonitoringUseCase,
 } from './domain/use-cases/vehicles.use-cases';
 
-import { createVehiclesStore } from './presentation/store/vehicles.store';
+import { createUseVehiclesQuery } from './presentation/queries/use-vehicles-query';
 
 export const vehicleRepository = new VehicleApiRepository(apiClient);
 
@@ -18,7 +18,7 @@ export const checkTelemetryConfigUseCase = new CheckTelemetryConfigUseCase(vehic
 export const deleteTelemetryConfigUseCase = new DeleteTelemetryConfigUseCase(vehicleRepository);
 export const toggleBreakInMonitoringUseCase = new ToggleBreakInMonitoringUseCase(vehicleRepository);
 
-export const useVehiclesStore = createVehiclesStore({
+export const useVehiclesQuery = createUseVehiclesQuery({
   getVehiclesUseCase,
   configureTelemetryUseCase,
   deleteTelemetryConfigUseCase,

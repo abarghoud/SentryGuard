@@ -1,40 +1,30 @@
-import { useEffect } from 'react';
 import { VehiclesView } from '../views/VehiclesView';
-import { VehiclesState } from '../store/vehicles.store';
-import { UseBoundStore, StoreApi } from 'zustand';
+import { useVehiclesQuery } from '../../../vehicles/di';
+import { useAuthQuery } from '../../../auth/di';
 
-import { AuthHookRequirements } from '../../../auth/presentation/hooks/auth-hook.requirements';
-
-interface VehiclesContainerProps {
-  useVehiclesStore: UseBoundStore<StoreApi<VehiclesState>>;
-  useAuth: () => AuthHookRequirements;
-}
-
-export function VehiclesContainer({ useVehiclesStore, useAuth }: VehiclesContainerProps) {
-  const { profile } = useAuth();
-  const vehicles = useVehiclesStore((state) => state.vehicles);
-  const isLoading = useVehiclesStore((state) => state.isLoading);
-  const error = useVehiclesStore((state) => state.error);
+export function VehiclesContainer() {
+  const { query: authQuery } = useAuthQuery();
+  const profile = authQuery.data?.profile;
   
-  const fetchVehicles = useVehiclesStore((state) => state.fetchVehicles);
-  const configureTelemetryForVehicle = useVehiclesStore((state) => state.configureTelemetryForVehicle);
-  const deleteTelemetryForVehicle = useVehiclesStore((state) => state.deleteTelemetryForVehicle);
-  const toggleBreakInMonitoringForVehicle = useVehiclesStore((state) => state.toggleBreakInMonitoringForVehicle);
+  const {
+    query,
+    configureTelemetryMutation,
+    deleteTelemetryMutation,
+    toggleBreakInMutation,
+  } = useVehiclesQuery();
 
-  useEffect(() => {
-    fetchVehicles();
-  }, [fetchVehicles]);
+  const { data: vehicles = [], isLoading, isFetching, error, refetch } = query;
 
   return (
     <VehiclesView
       vehicles={vehicles}
-      isLoading={isLoading}
-      error={error}
+      isLoading={isLoading || isFetching}
+      error={error?.message || null}
       isBetaTester={profile?.isBetaTester ?? false}
-      onRefresh={fetchVehicles}
-      onConfigureTelemetry={configureTelemetryForVehicle}
-      onDeleteTelemetry={deleteTelemetryForVehicle}
-      onToggleBreakInMonitoring={toggleBreakInMonitoringForVehicle}
+      onRefresh={refetch}
+      onConfigureTelemetry={async (vin) => configureTelemetryMutation.mutateAsync(vin)}
+      onDeleteTelemetry={async (vin) => deleteTelemetryMutation.mutateAsync(vin)}
+      onToggleBreakInMonitoring={async (vin, enable) => toggleBreakInMutation.mutateAsync({ vin, enable })}
     />
   );
 }

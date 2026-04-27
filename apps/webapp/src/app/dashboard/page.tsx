@@ -1,22 +1,21 @@
 'use client';
 
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../features/auth/presentation/hooks/use-auth';
-import { useVehiclesStore } from '../../features/vehicles/di';
-import { useTelegram } from '../../features/telegram/presentation/hooks/use-telegram';
+import { useAuthQuery } from '../../features/auth/di';
+import { useVehiclesQuery } from '../../features/vehicles/di';
+import { useTelegramQuery } from '../../features/telegram/di';
 import Link from 'next/link';
-import { useEffect } from 'react';
 
 export default function DashboardPage() {
   const { t } = useTranslation('common');
-  const { profile } = useAuth();
-  const vehicles = useVehiclesStore((state) => state.vehicles);
-  const fetchVehicles = useVehiclesStore((state) => state.fetchVehicles);
-  const { status: telegramStatus } = useTelegram();
-
-  useEffect(() => {
-    fetchVehicles();
-  }, [fetchVehicles]);
+  const { query: authQuery } = useAuthQuery();
+  const profile = authQuery.data?.profile;
+  
+  const { query } = useVehiclesQuery();
+  const { data: vehicles = [] } = query;
+  
+  const { query: telegramQuery } = useTelegramQuery();
+  const { data: telegramStatus } = telegramQuery;
 
   const enabledVehicles = vehicles.filter((v) => v.sentry_mode_monitoring_enabled).length;
   const totalVehicles = vehicles.length;

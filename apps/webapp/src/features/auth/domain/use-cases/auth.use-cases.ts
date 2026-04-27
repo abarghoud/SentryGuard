@@ -1,7 +1,15 @@
 import { AuthRepositoryRequirements } from '../auth.repository.requirements';
 import { LoginUrlResponse, AuthStatus, UserProfile } from '../entities';
+import {
+  GetLoginUrlRequirements,
+  GetScopeChangeUrlRequirements,
+  CheckAuthStatusRequirements,
+  GetUserProfileRequirements,
+  ValidateTokenRequirements,
+  LogoutRequirements,
+} from './auth.use-cases.requirements';
 
-export class GetLoginUrlUseCase {
+export class GetLoginUrlUseCase implements GetLoginUrlRequirements {
   constructor(private repository: AuthRepositoryRequirements) {}
 
   async execute(): Promise<LoginUrlResponse> {
@@ -9,7 +17,7 @@ export class GetLoginUrlUseCase {
   }
 }
 
-export class GetScopeChangeUrlUseCase {
+export class GetScopeChangeUrlUseCase implements GetScopeChangeUrlRequirements {
   constructor(private repository: AuthRepositoryRequirements) {}
 
   async execute(missingScopes?: string[]): Promise<LoginUrlResponse> {
@@ -17,7 +25,7 @@ export class GetScopeChangeUrlUseCase {
   }
 }
 
-export class CheckAuthStatusUseCase {
+export class CheckAuthStatusUseCase implements CheckAuthStatusRequirements {
   constructor(private repository: AuthRepositoryRequirements) {}
 
   async execute(): Promise<AuthStatus> {
@@ -25,7 +33,7 @@ export class CheckAuthStatusUseCase {
   }
 }
 
-export class GetUserProfileUseCase {
+export class GetUserProfileUseCase implements GetUserProfileRequirements {
   constructor(private repository: AuthRepositoryRequirements) {}
 
   async execute(): Promise<UserProfile | null> {
@@ -33,7 +41,7 @@ export class GetUserProfileUseCase {
   }
 }
 
-export class ValidateTokenUseCase {
+export class ValidateTokenUseCase implements ValidateTokenRequirements {
   constructor(private repository: AuthRepositoryRequirements) {}
 
   async execute(): Promise<boolean> {
@@ -41,7 +49,7 @@ export class ValidateTokenUseCase {
   }
 }
 
-export class LogoutUseCase {
+export class LogoutUseCase implements LogoutRequirements {
   constructor(private repository: AuthRepositoryRequirements) {}
 
   async execute(): Promise<void> {

@@ -1,7 +1,11 @@
 import { UserRepositoryRequirements } from '../user.repository.requirements';
 import { UserLanguage, UpdateLanguageResponse } from '../entities';
+import {
+  GetUserLanguageRequirements,
+  UpdateUserLanguageRequirements,
+} from './user.use-cases.requirements';
 
-export class GetUserLanguageUseCase {
+export class GetUserLanguageUseCase implements GetUserLanguageRequirements {
   constructor(private repository: UserRepositoryRequirements) {}
 
   async execute(): Promise<UserLanguage> {
@@ -9,7 +13,7 @@ export class GetUserLanguageUseCase {
   }
 }
 
-export class UpdateUserLanguageUseCase {
+export class UpdateUserLanguageUseCase implements UpdateUserLanguageRequirements {
   constructor(private repository: UserRepositoryRequirements) {}
 
   async execute(language: 'en' | 'fr'): Promise<UpdateLanguageResponse> {

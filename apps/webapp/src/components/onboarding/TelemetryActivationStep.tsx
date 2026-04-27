@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
-import { useOnboarding } from '../../features/onboarding/presentation/hooks/use-onboarding';
-import { useVehicles } from '../../features/vehicles/presentation/hooks/use-vehicles';
+import { useOnboardingQuery } from '../../features/onboarding/di';
+import { useVehiclesQuery } from '../../features/vehicles/di';
 import OnboardingStepLayout from './OnboardingStepLayout';
 
 interface TelemetryActivationStepProps {
@@ -14,8 +14,17 @@ interface TelemetryActivationStepProps {
 export default function TelemetryActivationStep({ onCompleted }: TelemetryActivationStepProps) {
   const { t } = useTranslation('common');
   const router = useRouter();
-  const { completeOnboarding } = useOnboarding();
-  const { vehicles, configureTelemetryForVehicle, isLoading } = useVehicles();
+  const { completeOnboardingMutation } = useOnboardingQuery();
+  const completeOnboarding = async () => {
+    try {
+      await completeOnboardingMutation.mutateAsync();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  };
+  const { query: vehicleQuery, configureTelemetryMutation } = useVehiclesQuery();
+  const { data: vehicles = [], isLoading } = vehicleQuery;
   const [activatingVins, setActivatingVins] = useState<Set<string>>(new Set());
   const [errors, setErrors] = useState<Map<string, string>>(new Map());
   const [isCompleting, setIsCompleting] = useState(false);
@@ -31,7 +40,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
     });
 
     try {
-      const result = await configureTelemetryForVehicle(vin);
+      const result = await configureTelemetryMutation.mutateAsync(vin);
 
       if (!result.success) {
         setErrors((prev) => {

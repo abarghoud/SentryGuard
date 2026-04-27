@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '../../features/auth/presentation/hooks/use-auth';
-import { useConsent } from '../../features/consent/presentation/hooks/use-consent';
-import { useOnboarding } from '../../features/onboarding/presentation/hooks/use-onboarding';
+import { useAuthQuery } from '../../features/auth/di';
+import { useConsentQuery } from '../../features/consent/di';
+import { useOnboardingQuery } from '../../features/onboarding/di';
 import BetaBadge from '../../components/BetaBadge';
 import MissingScopesBanner from '../../components/MissingScopesBanner';
 import { DiscordLink } from '../../components/DiscordLink';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
+import { ScopeError } from '../../core/api/api-client';
 
 export default function DashboardLayout({
   children,
@@ -18,10 +19,26 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { t } = useTranslation('common');
-  const { isAuthenticated, isLoading, logout, profile, scopeError } = useAuth();
-  const { status, isLoading: consentLoading } = useConsent();
+  const { query: authQuery, logoutMutation } = useAuthQuery();
+  const scopeError = authQuery.error instanceof ScopeError ? authQuery.error : null;
+  const { data: authData, isLoading } = authQuery;
+  const isAuthenticated = authData?.status.authenticated ?? false;
+  const profile = authData?.profile;
+
+  const logout = async () => {
+    try {
+      await logoutMutation.mutateAsync();
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+  const { query: consentQuery } = useConsentQuery();
+  const { data: status, isLoading: consentLoading } = consentQuery;
   const hasConsent = status?.hasConsent ?? false;
-  const { isComplete: isOnboardingComplete, isLoading: onboardingLoading } = useOnboarding();
+  const { query: onboardingQuery } = useOnboardingQuery();
+  const { data: onboardingData, isLoading: onboardingLoading } = onboardingQuery;
+  const isOnboardingComplete = onboardingData?.isComplete ?? false;
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

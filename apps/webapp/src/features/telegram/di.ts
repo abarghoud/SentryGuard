@@ -13,3 +13,12 @@ export const generateTelegramLinkUseCase = new GenerateTelegramLinkUseCase(teleg
 export const getTelegramStatusUseCase = new GetTelegramStatusUseCase(telegramRepository);
 export const unlinkTelegramUseCase = new UnlinkTelegramUseCase(telegramRepository);
 export const sendTestMessageUseCase = new SendTestMessageUseCase(telegramRepository);
+
+import { createUseTelegramQuery } from './presentation/queries/use-telegram-query';
+
+export const useTelegramQuery = createUseTelegramQuery({
+  getTelegramStatusUseCase,
+  generateTelegramLinkUseCase,
+  unlinkTelegramUseCase,
+  sendTestMessageUseCase,
+});

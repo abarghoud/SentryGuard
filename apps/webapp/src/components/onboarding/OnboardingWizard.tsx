@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { OnboardingStep } from '../../features/onboarding/presentation/hooks/use-onboarding';
-import { useOnboarding } from '../../features/onboarding/presentation/hooks/use-onboarding';
+import { OnboardingStep } from '../../features/onboarding/domain/entities';
+import { useOnboardingQuery } from '../../features/onboarding/di';
 import { useOnboardingStep } from '../../features/onboarding/presentation/hooks/use-onboarding-step';
 import TelegramLinkStep from './TelegramLinkStep';
 import VirtualKeySetupStep from './VirtualKeySetupStep';
@@ -17,7 +17,18 @@ const REDIRECT_DELAY_MS = 2000;
 
 export default function OnboardingWizard() {
   const router = useRouter();
-  const { isLoading: isOnboardingLoading, skipOnboarding, isComplete, checkStatus } = useOnboarding();
+  const { query, skipOnboardingMutation } = useOnboardingQuery();
+  const { data: onboardingData, isLoading: isOnboardingLoading, refetch: checkStatus } = query;
+  const isComplete = onboardingData?.isComplete ?? false;
+
+  const skipOnboarding = async () => {
+    try {
+      await skipOnboardingMutation.mutateAsync();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  };
   const { currentStep, refreshAll, isLoading: isStepLoading } = useOnboardingStep();
 
   const [isSkipping, setIsSkipping] = useState(false);

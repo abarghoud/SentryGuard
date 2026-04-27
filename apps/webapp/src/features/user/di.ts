@@ -9,3 +9,10 @@ export const userRepository = new UserApiRepository(apiClient);
 
 export const getUserLanguageUseCase = new GetUserLanguageUseCase(userRepository);
 export const updateUserLanguageUseCase = new UpdateUserLanguageUseCase(userRepository);
+
+import { createUseUserQuery } from './presentation/queries/use-user-query';
+
+export const useUserQuery = createUseUserQuery({
+  getUserLanguageUseCase,
+  updateUserLanguageUseCase,
+});

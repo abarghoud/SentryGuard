@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from 'react';
-import { OnboardingStep } from './use-onboarding';
-import { useTelegram } from '../../../telegram/presentation/hooks/use-telegram';
-import { useVehicles } from '../../../vehicles/presentation/hooks/use-vehicles';
+import { OnboardingStep } from '../../domain/entities';
+import { useTelegramQuery } from '../../../telegram/di';
+import { useVehiclesQuery } from '../../../vehicles/di';
 
 interface TelegramStatus {
   linked: boolean;
@@ -20,8 +20,10 @@ function getVirtualKeyPairStatus(vehicles: readonly Vehicle[]): boolean {
 }
 
 export function useOnboardingStep() {
-  const { status: telegramStatus, fetchStatus: fetchTelegramStatus, isLoading: isTelegramLoading } = useTelegram();
-  const { vehicles, fetchVehicles, isLoading: isVehiclesLoading } = useVehicles();
+  const { query: telegramQuery } = useTelegramQuery();
+  const { data: telegramStatus, refetch: fetchTelegramStatus, isLoading: isTelegramLoading } = telegramQuery;
+  const { query: vehicleQuery } = useVehiclesQuery();
+  const { data: vehicles = [], isLoading: isVehiclesLoading, refetch: fetchVehicles } = vehicleQuery;
 
   const isTelegramLinked = getTelegramLinkStatus(telegramStatus);
   const isVirtualKeyPaired = getVirtualKeyPairStatus(vehicles);

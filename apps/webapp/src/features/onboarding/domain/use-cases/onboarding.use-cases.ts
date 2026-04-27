@@ -1,7 +1,12 @@
 import { OnboardingRepositoryRequirements } from '../onboarding.repository.requirements';
 import { OnboardingStatus, OnboardingActionResponse } from '../entities';
+import {
+  GetOnboardingStatusRequirements,
+  CompleteOnboardingRequirements,
+  SkipOnboardingRequirements,
+} from './onboarding.use-cases.requirements';
 
-export class GetOnboardingStatusUseCase {
+export class GetOnboardingStatusUseCase implements GetOnboardingStatusRequirements {
   constructor(private repository: OnboardingRepositoryRequirements) {}
 
   async execute(): Promise<OnboardingStatus> {
@@ -9,7 +14,7 @@ export class GetOnboardingStatusUseCase {
   }
 }
 
-export class CompleteOnboardingUseCase {
+export class CompleteOnboardingUseCase implements CompleteOnboardingRequirements {
   constructor(private repository: OnboardingRepositoryRequirements) {}
 
   async execute(): Promise<OnboardingActionResponse> {
@@ -17,7 +22,7 @@ export class CompleteOnboardingUseCase {
   }
 }
 
-export class SkipOnboardingUseCase {
+export class SkipOnboardingUseCase implements SkipOnboardingRequirements {
   constructor(private repository: OnboardingRepositoryRequirements) {}
 
   async execute(): Promise<OnboardingActionResponse> {

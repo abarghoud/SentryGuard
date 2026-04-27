@@ -7059,6 +7059,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tanstack/query-core@npm:5.99.0":
+  version: 5.99.0
+  resolution: "@tanstack/query-core@npm:5.99.0"
+  checksum: 10c0/e46315e0a532be77b86e3bf47c4395b2ba072251f007794b670f72d36062ae6b5560957400281ece8c177c9518fe6b2fef92d3e56cea3bc12d5c2f750ea7743b
+  languageName: node
+  linkType: hard
+
+"@tanstack/react-query@npm:^5.99.0":
+  version: 5.99.0
+  resolution: "@tanstack/react-query@npm:5.99.0"
+  dependencies:
+    "@tanstack/query-core": "npm:5.99.0"
+  peerDependencies:
+    react: ^18 || ^19
+  checksum: 10c0/4a4783da869b29f166f13bde592662477b7473e19758f3cdd862538876d237fa0d1593d47c7c758d6b86fecc6a92f7db89c5ba7f5528c705ed0cb8a8e5e5eef0
+  languageName: node
+  linkType: hard
+
 "@telegraf/types@npm:^7.1.0":
   version: 7.1.0
   resolution: "@telegraf/types@npm:7.1.0"
@@ -7196,6 +7214,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@tesla-guard/webapp@workspace:apps/webapp"
   dependencies:
+    "@tanstack/react-query": "npm:^5.99.0"
     autoprefixer: "npm:10.4.20"
     i18next: "npm:^25.6.0"
     i18next-parser: "npm:^9.3.0"

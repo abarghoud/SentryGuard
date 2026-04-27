@@ -1,7 +1,13 @@
 import { TelegramRepositoryRequirements } from '../telegram.repository.requirements';
 import { TelegramLinkInfo, TelegramStatus, TelegramActionResponse } from '../entities';
+import {
+  GenerateTelegramLinkRequirements,
+  GetTelegramStatusRequirements,
+  UnlinkTelegramRequirements,
+  SendTestMessageRequirements,
+} from './telegram.use-cases.requirements';
 
-export class GenerateTelegramLinkUseCase {
+export class GenerateTelegramLinkUseCase implements GenerateTelegramLinkRequirements {
   constructor(private repository: TelegramRepositoryRequirements) {}
 
   async execute(): Promise<TelegramLinkInfo> {
@@ -9,7 +15,7 @@ export class GenerateTelegramLinkUseCase {
   }
 }
 
-export class GetTelegramStatusUseCase {
+export class GetTelegramStatusUseCase implements GetTelegramStatusRequirements {
   constructor(private repository: TelegramRepositoryRequirements) {}
 
   async execute(): Promise<TelegramStatus> {
@@ -17,7 +23,7 @@ export class GetTelegramStatusUseCase {
   }
 }
 
-export class UnlinkTelegramUseCase {
+export class UnlinkTelegramUseCase implements UnlinkTelegramRequirements {
   constructor(private repository: TelegramRepositoryRequirements) {}
 
   async execute(): Promise<TelegramActionResponse> {
@@ -25,7 +31,7 @@ export class UnlinkTelegramUseCase {
   }
 }
 
-export class SendTestMessageUseCase {
+export class SendTestMessageUseCase implements SendTestMessageRequirements {
   constructor(private repository: TelegramRepositoryRequirements) {}
 
   async execute(): Promise<TelegramActionResponse> {

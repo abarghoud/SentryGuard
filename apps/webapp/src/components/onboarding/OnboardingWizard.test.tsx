@@ -1,14 +1,15 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
 import OnboardingWizard from './OnboardingWizard';
-import { useOnboarding, OnboardingStep } from '../../features/onboarding/presentation/hooks/use-onboarding';
+import { OnboardingStep } from '../../features/onboarding/domain/entities';
+import { useOnboardingQuery } from '../../features/onboarding/di';
 import { useOnboardingStep } from '../../features/onboarding/presentation/hooks/use-onboarding-step';
 
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }));
 
-jest.mock('../../features/onboarding/presentation/hooks/use-onboarding');
+jest.mock('../../features/onboarding/di');
 jest.mock('../../features/onboarding/presentation/hooks/use-onboarding-step');
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -17,7 +18,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
-const mockUseOnboarding = useOnboarding as jest.MockedFunction<typeof useOnboarding>;
+const mockUseOnboardingQuery = useOnboardingQuery as jest.Mock;
 const mockUseOnboardingStep = useOnboardingStep as jest.MockedFunction<typeof useOnboardingStep>;
 
 jest.mock('./TelegramLinkStep', () => ({
@@ -84,13 +85,15 @@ describe('The OnboardingWizard component', () => {
       push: mockPush,
     } as any);
 
-    mockUseOnboarding.mockReturnValue({
-      isLoading: false,
-      isComplete: false,
-      error: null,
-      skipOnboarding: mockSkipOnboarding,
-      completeOnboarding: jest.fn(),
-      checkStatus: mockCheckStatus,
+    mockUseOnboardingQuery.mockReturnValue({
+      query: {
+        data: { isComplete: false },
+        isLoading: false,
+        refetch: mockCheckStatus,
+      },
+      skipOnboardingMutation: {
+        mutateAsync: mockSkipOnboarding,
+      },
     });
 
     mockUseOnboardingStep.mockReturnValue({
@@ -104,13 +107,15 @@ describe('The OnboardingWizard component', () => {
 
   describe('When onboarding is loading', () => {
     beforeEach(() => {
-      mockUseOnboarding.mockReturnValue({
-        isLoading: true,
-        isComplete: false,
-        error: null,
-        skipOnboarding: mockSkipOnboarding,
-        completeOnboarding: jest.fn(),
-        checkStatus: mockCheckStatus,
+      mockUseOnboardingQuery.mockReturnValue({
+        query: {
+          data: { isComplete: false },
+          isLoading: true,
+          refetch: mockCheckStatus,
+        },
+        skipOnboardingMutation: {
+          mutateAsync: mockSkipOnboarding,
+        },
       });
     });
 
@@ -141,13 +146,15 @@ describe('The OnboardingWizard component', () => {
 
   describe('When onboarding is complete', () => {
     beforeEach(() => {
-      mockUseOnboarding.mockReturnValue({
-        isLoading: false,
-        isComplete: true,
-        error: null,
-        skipOnboarding: mockSkipOnboarding,
-        completeOnboarding: jest.fn(),
-        checkStatus: mockCheckStatus,
+      mockUseOnboardingQuery.mockReturnValue({
+        query: {
+          data: { isComplete: true },
+          isLoading: false,
+          refetch: mockCheckStatus,
+        },
+        skipOnboardingMutation: {
+          mutateAsync: mockSkipOnboarding,
+        },
       });
     });
 
@@ -257,7 +264,7 @@ describe('The OnboardingWizard component', () => {
 
     it('should handle skip failure', async () => {
       const consoleError = jest.spyOn(console, 'error').mockImplementation();
-      mockSkipOnboarding.mockResolvedValue({ success: false, error: 'Skip failed' });
+      mockSkipOnboarding.mockRejectedValue(new Error('Skip failed'));
 
       render(<OnboardingWizard />);
 

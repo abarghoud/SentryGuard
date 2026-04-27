@@ -13,3 +13,12 @@ export const getConsentTextUseCase = new GetConsentTextUseCase(consentRepository
 export const getConsentStatusUseCase = new GetConsentStatusUseCase(consentRepository);
 export const acceptConsentUseCase = new AcceptConsentUseCase(consentRepository);
 export const revokeConsentUseCase = new RevokeConsentUseCase(consentRepository);
+
+import { createUseConsentQuery } from './presentation/queries/use-consent-query';
+
+export const useConsentQuery = createUseConsentQuery({
+  getConsentStatusUseCase,
+  getConsentTextUseCase,
+  acceptConsentUseCase,
+  revokeConsentUseCase,
+});

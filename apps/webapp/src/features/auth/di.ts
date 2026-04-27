@@ -17,3 +17,13 @@ export const checkAuthStatusUseCase = new CheckAuthStatusUseCase(authRepository)
 export const getUserProfileUseCase = new GetUserProfileUseCase(authRepository);
 export const validateTokenUseCase = new ValidateTokenUseCase(authRepository);
 export const logoutUseCase = new LogoutUseCase(authRepository);
+
+import { createUseAuthQuery } from './presentation/queries/use-auth-query';
+
+export const useAuthQuery = createUseAuthQuery({
+  checkAuthStatusUseCase,
+  getUserProfileUseCase,
+  logoutUseCase,
+  getLoginUrlUseCase,
+  getScopeChangeUrlUseCase,
+});

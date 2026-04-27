@@ -2,17 +2,21 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../features/auth/presentation/hooks/use-auth';
-import { useConsent } from '../../features/consent/presentation/hooks/use-consent';
-import { useOnboarding } from '../../features/onboarding/presentation/hooks/use-onboarding';
+import { useAuthQuery } from '../../features/auth/di';
+import { useConsentQuery } from '../../features/consent/di';
+import { useOnboardingQuery } from '../../features/onboarding/di';
 import OnboardingWizard from '../../components/onboarding/OnboardingWizard';
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const { status, isLoading: consentLoading } = useConsent();
+  const { query: authQuery } = useAuthQuery();
+  const { data: authData, isLoading: authLoading } = authQuery;
+  const isAuthenticated = authData?.status.authenticated ?? false;
+  const { query: consentQuery } = useConsentQuery();
+  const { data: status, isLoading: consentLoading } = consentQuery;
   const hasConsent = status?.hasConsent ?? false;
-  const { isComplete } = useOnboarding();
+  const { query: onboardingQuery } = useOnboardingQuery();
+  const isComplete = onboardingQuery.data?.isComplete ?? false;
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {

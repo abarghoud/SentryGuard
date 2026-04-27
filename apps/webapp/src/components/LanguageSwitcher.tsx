@@ -4,14 +4,14 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { i18n, addLocaleIfNeeded } from './I18nProvider';
 import { hasToken } from '../core/api/token-manager';
-import { useUserLanguage } from '../features/user/presentation/hooks/use-user';
+import { useUserQuery } from '../features/user/di';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, setLocaleCookie } from '../core/i18n/i18n-config';
 
 export default function LanguageSwitcher() {
   const [currentLang, setCurrentLang] = useState(i18n.language || DEFAULT_LOCALE);
   const router = useRouter();
   const pathname = usePathname();
-  const { updateLanguage } = useUserLanguage();
+  const { updateLanguageMutation } = useUserQuery();
 
   useEffect(() => {
     setCurrentLang(i18n.language);
@@ -35,7 +35,7 @@ export default function LanguageSwitcher() {
 
     if (hasToken()) {
       try {
-        await updateLanguage(lng as 'en' | 'fr');
+        await updateLanguageMutation.mutateAsync(lng as 'en' | 'fr');
       } catch (error) {
         console.warn('Failed to update language on server:', error);
       }

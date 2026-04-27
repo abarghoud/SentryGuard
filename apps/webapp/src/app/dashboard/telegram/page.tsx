@@ -1,21 +1,50 @@
 'use client';
 
 import { useTranslation } from 'react-i18next';
-import { useTelegram } from '../../../features/telegram/presentation/hooks/use-telegram';
+import { useTelegramQuery } from '../../../features/telegram/di';
 import TelegramLinkCard from '../../../components/TelegramLinkCard';
 
 export default function TelegramPage() {
   const { t } = useTranslation('common');
   const {
-    status,
+    query,
+    generateLinkMutation,
+    unlinkMutation,
+    sendTestMutation,
     linkInfo,
-    isLoading,
-    error,
-    fetchStatus,
-    generateLink,
-    unlink,
-    sendTest,
-  } = useTelegram();
+  } = useTelegramQuery();
+
+  const { data: status, isLoading, error } = query;
+
+  const generateLink = async () => {
+    try {
+      return await generateLinkMutation.mutateAsync();
+    } catch {
+      return null;
+    }
+  };
+
+  const unlink = async () => {
+    try {
+      await unlinkMutation.mutateAsync();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const sendTest = async () => {
+    try {
+      await sendTestMutation.mutateAsync();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const fetchStatus = async () => {
+    await query.refetch();
+  };
 
   if (isLoading && !status) {
     return (
@@ -51,7 +80,7 @@ export default function TelegramPage() {
               />
             </svg>
             <div className="ml-3">
-              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+              <p className="text-sm text-red-800 dark:text-red-200">{error.message}</p>
             </div>
           </div>
         </div>
@@ -59,7 +88,7 @@ export default function TelegramPage() {
 
       <div className="max-w-3xl">
         <TelegramLinkCard
-          status={status}
+          status={status ?? null}
           linkInfo={linkInfo}
           onGenerateLink={generateLink}
           onUnlink={unlink}

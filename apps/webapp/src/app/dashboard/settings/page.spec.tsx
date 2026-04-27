@@ -1,19 +1,19 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
 import SettingsPage from './page';
-import { useAuth } from "../../features/auth/di';
-import { useConsent } from '../../../features/consent/presentation/hooks/use-consent';
+import { useAuthQuery } from '../../../features/auth/di';
+import { useConsentQuery } from '../../../features/consent/di';
 
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }));
 
-jest.mock('../../../features/auth/presentation/hooks/use-auth', () => ({
-  useAuth: jest.fn(),
+jest.mock('../../../features/auth/di', () => ({
+  useAuthQuery: jest.fn(),
 }));
 
-jest.mock('../../../features/consent/presentation/hooks/use-consent', () => ({
-  useConsent: jest.fn(),
+jest.mock('../../../features/consent/di', () => ({
+  useConsentQuery: jest.fn(),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -32,16 +32,24 @@ describe('The SettingsPage component', () => {
       push: mockPush,
     });
 
-    (useAuth as jest.Mock).mockReturnValue({
-      profile: {
-        full_name: 'John Doe',
-        email: 'john@example.com',
+    (useAuthQuery as jest.Mock).mockReturnValue({
+      query: {
+        data: {
+          profile: {
+            full_name: 'John Doe',
+            email: 'john@example.com',
+          },
+        },
       },
-      logout: mockLogout,
+      logoutMutation: {
+        mutateAsync: mockLogout,
+      },
     });
 
-    (useConsent as jest.Mock).mockReturnValue({
-      revokeConsent: mockRevokeConsent,
+    (useConsentQuery as jest.Mock).mockReturnValue({
+      revokeConsentMutation: {
+        mutateAsync: mockRevokeConsent,
+      },
     });
 
     jest.clearAllMocks();
@@ -84,11 +92,17 @@ describe('The SettingsPage component', () => {
 
   describe('When profile has no name', () => {
     beforeEach(() => {
-      (useAuth as jest.Mock).mockReturnValue({
-        profile: {
-          email: 'john@example.com',
+      (useAuthQuery as jest.Mock).mockReturnValue({
+        query: {
+          data: {
+            profile: {
+              email: 'john@example.com',
+            },
+          },
         },
-        logout: mockLogout,
+        logoutMutation: {
+          mutateAsync: mockLogout,
+        },
       });
 
       render(<SettingsPage />);
@@ -151,7 +165,7 @@ describe('The SettingsPage component', () => {
       describe('When revoke consent fails', () => {
         beforeEach(async () => {
           (window.confirm as jest.Mock).mockReturnValue(true);
-          mockRevokeConsent.mockResolvedValue({ success: false });
+          mockRevokeConsent.mockRejectedValue(new Error('Revoke failed'));
 
           render(<SettingsPage />);
           const deleteButton = screen.getByRole('button', { name: /Delete Account/i });

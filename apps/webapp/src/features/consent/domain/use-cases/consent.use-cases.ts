@@ -6,8 +6,14 @@ import {
   ConsentAcceptResponse,
   GenericConsentResponse,
 } from '../entities';
+import {
+  GetConsentTextRequirements,
+  GetConsentStatusRequirements,
+  AcceptConsentRequirements,
+  RevokeConsentRequirements,
+} from './consent.use-cases.requirements';
 
-export class GetConsentTextUseCase {
+export class GetConsentTextUseCase implements GetConsentTextRequirements {
   constructor(private repository: ConsentRepositoryRequirements) {}
 
   async execute(version = 'v1', locale = 'en'): Promise<ConsentTextResponse> {
@@ -15,7 +21,7 @@ export class GetConsentTextUseCase {
   }
 }
 
-export class GetConsentStatusUseCase {
+export class GetConsentStatusUseCase implements GetConsentStatusRequirements {
   constructor(private repository: ConsentRepositoryRequirements) {}
 
   async execute(): Promise<ConsentStatus> {
@@ -23,7 +29,7 @@ export class GetConsentStatusUseCase {
   }
 }
 
-export class AcceptConsentUseCase {
+export class AcceptConsentUseCase implements AcceptConsentRequirements {
   constructor(private repository: ConsentRepositoryRequirements) {}
 
   async execute(consentData: ConsentAcceptRequest): Promise<ConsentAcceptResponse> {
@@ -31,7 +37,7 @@ export class AcceptConsentUseCase {
   }
 }
 
-export class RevokeConsentUseCase {
+export class RevokeConsentUseCase implements RevokeConsentRequirements {
   constructor(private repository: ConsentRepositoryRequirements) {}
 
   async execute(): Promise<GenericConsentResponse> {

@@ -4,12 +4,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
-import { acceptConsentUseCase, getConsentTextUseCase } from '../../features/consent/di';
+import { getConsentTextUseCase, useConsentQuery } from '../../features/consent/di';
 import { type ConsentTextResponse } from '../../features/consent/domain/entities';
 
 export default function ConsentPage() {
   const { t, i18n } = useTranslation('common');
   const router = useRouter();
+  const { acceptConsentMutation } = useConsentQuery();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingText, setIsLoadingText] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +83,7 @@ export default function ConsentPage() {
     setError(null);
 
     try {
-      await acceptConsentUseCase.execute({
+      await acceptConsentMutation.mutateAsync({
         version: consentText.version,
         locale: consentText.locale,
         appTitle: consentText.appTitle,
