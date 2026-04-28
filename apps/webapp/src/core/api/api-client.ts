@@ -1,6 +1,35 @@
 import { getToken } from './token-manager';
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const DEFAULT_API_URL = 'http://localhost:3001';
+
+let cachedApiUrl: string | null = null;
+let fetchPromise: Promise<string> | null = null;
+
+async function resolveApiUrl(): Promise<string> {
+  if (cachedApiUrl) {
+    return cachedApiUrl;
+  }
+
+  if (fetchPromise) {
+    return fetchPromise;
+  }
+
+  fetchPromise = fetch('/api/runtime-config')
+    .then((res) => res.json())
+    .then((data: { apiUrl?: string }) => {
+      cachedApiUrl = data.apiUrl || DEFAULT_API_URL;
+      return cachedApiUrl;
+    })
+    .catch(() => {
+      cachedApiUrl = DEFAULT_API_URL;
+      return cachedApiUrl;
+    })
+    .finally(() => {
+      fetchPromise = null;
+    });
+
+  return fetchPromise;
+}
 
 export class ApiError extends Error {
   constructor(message: string, public status?: number, public data?: any) {
@@ -32,7 +61,8 @@ export class ApiClient implements ApiClientRequirements {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const url = `${API_BASE_URL}${endpoint}`;
+    const baseUrl = await resolveApiUrl();
+    const url = `${baseUrl}${endpoint}`;
 
     try {
       const response = await fetch(url, {
