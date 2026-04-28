@@ -1,0 +1,14 @@
+.git
+.github
+node_modules
+dist
+.next
+coverage
+out-tsc
+*.md
+!README.md
+.env
+.env.*
+!.env.docker
+.vscode
+.idea
