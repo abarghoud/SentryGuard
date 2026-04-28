@@ -348,5 +348,17 @@
   "Break-in Monitoring": "Break-in Monitoring",
   "Enable Break-in": "Enable Break-in",
   "Disable Break-in": "Disable Break-in",
-  "Failed to update Break-in monitoring": "Failed to update Break-in monitoring"
+  "Failed to update Break-in monitoring": "Failed to update Break-in monitoring",
+  "Offensive Response": "Offensive Response",
+  "Offensive: Disabled": "Disabled",
+  "Offensive: Flash": "Flash Lights",
+  "Offensive: Honk": "Honk Horn",
+  "Offensive: Flash & Honk": "Flash & Honk",
+  "Choose what happens when an alert is triggered": "Choose what happens when an alert is triggered",
+  "Failed to update offensive response": "Failed to update offensive response",
+  "Test": "Test",
+  "Testing...": "Testing...",
+  "Test Offensive Response": "Test Offensive Response",
+  "Offensive response test triggered": "Offensive response test triggered",
+  "Failed to test offensive response": "Failed to test offensive response"
 }

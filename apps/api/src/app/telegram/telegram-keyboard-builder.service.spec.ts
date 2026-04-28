@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
+import { Vehicle } from '../../entities/vehicle.entity';
+import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
 
 type TelegramKeyboard = {
   inline_keyboard: Array<Array<{ text: string; url: string }>>;
@@ -86,6 +88,40 @@ describe('The TelegramKeyboardBuilderService class', () => {
         const button = result.inline_keyboard[0][0];
         expect(button.url).toContain('http://localhost:3000/redirect/tesla-app');
       });
+    });
+  });
+
+  describe('The buildMainMenuKeyboard() method', () => {
+    it('should have a third row with the offensive button', () => {
+      const result = service.buildMainMenuKeyboard('en');
+
+      expect(result.keyboard).toBeDefined();
+      const keyboard = result.keyboard?.keyboard as Array<Array<{ text: string }>>;
+      expect(keyboard).toHaveLength(2);
+      expect(keyboard[1]).toHaveLength(1);
+    });
+  });
+
+  describe('The buildOffensiveResponseKeyboard() method', () => {
+    it('should return four option rows with callback data containing vehicleId', () => {
+      const result = service.buildOffensiveResponseKeyboard('vehicle-1', OffensiveResponse.DISABLED, 'en');
+
+      expect(result.keyboard).toBeDefined();
+      const inlineKeyboard = result.keyboard?.inline_keyboard;
+      expect(inlineKeyboard).toHaveLength(5);
+      expect(inlineKeyboard?.[0]?.[0]?.callback_data).toBe(`o_s:vehicle-1:${OffensiveResponse.DISABLED}`);
+      expect(inlineKeyboard?.[1]?.[0]?.callback_data).toBe(`o_s:vehicle-1:${OffensiveResponse.FLASH}`);
+      expect(inlineKeyboard?.[2]?.[0]?.callback_data).toBe(`o_s:vehicle-1:${OffensiveResponse.HONK}`);
+      expect(inlineKeyboard?.[3]?.[0]?.callback_data).toBe(`o_s:vehicle-1:${OffensiveResponse.FLASH_AND_HONK}`);
+      expect(inlineKeyboard?.[4]?.[0]?.callback_data).toBe(`o_t:vehicle-1`);
+    });
+
+    it('should prefix the current response with checkmark', () => {
+      const result = service.buildOffensiveResponseKeyboard('vehicle-1', OffensiveResponse.FLASH, 'en');
+      const inlineKeyboard = result.keyboard?.inline_keyboard;
+
+      expect(inlineKeyboard?.[0]?.[0]?.text).not.toContain('✅');
+      expect(inlineKeyboard?.[1]?.[0]?.text).toContain('✅');
     });
   });
 });

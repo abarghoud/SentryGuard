@@ -6,4 +6,6 @@ export interface VehicleRepositoryRequirements {
   checkTelemetryConfig(vin: string): Promise<TelemetryConfigResult>;
   deleteTelemetryConfig(vin: string): Promise<GenericActionResponse>;
   toggleBreakInMonitoring(vin: string, enable: boolean): Promise<GenericActionResponse>;
+  updateOffensiveResponse(vin: string, offensiveResponse: string): Promise<GenericActionResponse>;
+  testOffensiveResponse(vin: string): Promise<GenericActionResponse>;
 }

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TelemetryConfigController } from './telemetry-config.controller';
 import { TelemetryConfigService } from './telemetry-config.service';
 import { SentryModeConfigService } from './sentry-mode-config.service';
+import { OffensiveResponseService } from '../alerts/services/offensive-response.service';
 import { ConsentGuard } from '../../common/guards/consent.guard';
 import { User } from '../../entities/user.entity';
 import {
@@ -31,6 +32,10 @@ describe('TelemetryConfigController', () => {
           useValue: {
             configureTelemetry: jest.fn(),
           },
+        },
+        {
+          provide: OffensiveResponseService,
+          useValue: {},
         },
       ],
     })

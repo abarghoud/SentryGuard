@@ -65,6 +65,8 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
     migrations: ['dist/migrations/*.js'],
     logging: process.env.DATABASE_LOGGING === 'true',
     ssl: buildSslConfig(),
+    retryAttempts: parseInt(process.env.DATABASE_RETRY_ATTEMPTS || '10', 10),
+    retryDelay: parseInt(process.env.DATABASE_RETRY_DELAY || '3000', 10),
     extra: {
       max: parseInt(process.env.DATABASE_POOL_MAX || '10', 10),
       connectionTimeoutMillis: parseInt(process.env.DATABASE_CONNECTION_TIMEOUT || '10000', 10),

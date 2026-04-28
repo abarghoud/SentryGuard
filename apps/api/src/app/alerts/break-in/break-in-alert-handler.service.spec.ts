@@ -4,6 +4,7 @@ import { BreakInAlertHandlerService } from './break-in-alert-handler.service';
 import { TelegramService } from '../../telegram/telegram.service';
 import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
+import { OffensiveResponseService } from '../services/offensive-response.service';
 import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 
 describe('The BreakInAlertHandlerService class', () => {
@@ -12,11 +13,14 @@ describe('The BreakInAlertHandlerService class', () => {
   let mockTelegramService: MockProxy<TelegramService>;
   let mockKeyboardBuilder: MockProxy<TelegramKeyboardBuilderService>;
   let mockAlertNotifier: MockProxy<VehicleAlertNotifierService>;
+  let mockOffensiveResponseService: MockProxy<OffensiveResponseService>;
 
   beforeEach(async () => {
     mockTelegramService = mock<TelegramService>();
     mockKeyboardBuilder = mock<TelegramKeyboardBuilderService>();
     mockAlertNotifier = mock<VehicleAlertNotifierService>();
+    mockOffensiveResponseService = mock<OffensiveResponseService>();
+    mockOffensiveResponseService.handleOffensiveResponse.mockResolvedValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -24,6 +28,7 @@ describe('The BreakInAlertHandlerService class', () => {
         { provide: TelegramService, useValue: mockTelegramService },
         { provide: TelegramKeyboardBuilderService, useValue: mockKeyboardBuilder },
         { provide: VehicleAlertNotifierService, useValue: mockAlertNotifier },
+        { provide: OffensiveResponseService, useValue: mockOffensiveResponseService },
       ],
     }).compile();
 
@@ -81,6 +86,12 @@ describe('The BreakInAlertHandlerService class', () => {
           latencyLabel: 'BREAK_IN_LATENCY',
           telegramNotifier: expect.any(Function),
         }));
+      });
+
+      it('should trigger offensive response for the VIN', async () => {
+        await service.handle(message);
+
+        expect(mockOffensiveResponseService.handleOffensiveResponse).toHaveBeenCalledWith('123');
       });
 
       it('should construct and send telegram message when notifier callback is invoked', async () => {

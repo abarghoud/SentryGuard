@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2021",
+    "lib": ["ES2021"],
+    "moduleResolution": "node10",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "resolveJsonModule": true,
+    "outDir": "./dist-migrations",
+    "rootDir": "./src",
+    "declaration": false,
+    "sourceMap": false,
+    "removeComments": true,
+    "incremental": false,
+    "noEmit": false
+  },
+  "include": ["src/migrations/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

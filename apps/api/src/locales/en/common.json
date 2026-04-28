@@ -56,5 +56,17 @@
   "configStatusNoVehicles": "No vehicles registered",
   "configStatusTelemetryActive": "✅ Telemetry active",
   "configStatusTelemetryInactive": "❌ Telemetry inactive",
-  "botUpdateV1": "🆕 <b>SentryGuard has been updated!</b>\n\nYou can now manage your alert preferences directly from the menu below.\n\n• <b>📊 My status</b> — View your configuration\n• <b>🔕 Mute alerts</b> — Temporarily silence notifications"
+  "botUpdateV1": "🆕 <b>SentryGuard has been updated!</b>\n\nYou can now manage your alert preferences directly from the menu below.\n\n• <b>📊 My status</b> — View your configuration\n• <b>🔕 Mute alerts</b> — Temporarily silence notifications",
+  "menuButtonOffensive": "🚨 Response",
+  "offensiveNoVehicles": "🚫 No vehicles registered yet. Enable monitoring first.",
+  "offensiveSelectVehicle": "🚗 Select a vehicle:",
+  "offensiveChooseResponse": "🚗 <b>{{vehicle}}</b>\n\nChoose the offensive response:",
+  "offensiveDisabled": "⛔ Disabled",
+  "offensiveFlash": "💡 Flash lights",
+  "offensiveHonk": "📯 Honk",
+  "offensiveFlashAndHonk": "💡📯 Flash + Honk",
+  "offensiveConfirmed": "✅ <b>{{vehicle}}</b> response set to: {{response}}",
+  "offensiveTest": "🧪 Test",
+  "offensiveTestTriggered": "Test triggered!",
+  "offensiveTestDisabled": "Enable an offensive response first before testing."
 }
