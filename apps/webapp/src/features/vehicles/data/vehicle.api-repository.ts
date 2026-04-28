@@ -36,4 +36,17 @@ export class VehicleApiRepository implements VehicleRepositoryRequirements {
       { method: 'POST' }
     );
   }
+
+  async updateOffensiveResponse(vin: string, offensiveResponse: string): Promise<GenericActionResponse> {
+    return this.client.request<GenericActionResponse>(`/telemetry-config/${vin}/offensive-response`, {
+      method: 'PATCH',
+      body: JSON.stringify({ offensive_response: offensiveResponse }),
+    });
+  }
+
+  async testOffensiveResponse(vin: string): Promise<GenericActionResponse> {
+    return this.client.request<GenericActionResponse>(`/telemetry-config/${vin}/test-offensive`, {
+      method: 'POST',
+    });
+  }
 }

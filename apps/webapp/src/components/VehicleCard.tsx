@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { testOffensiveResponse, type Vehicle } from '../features/vehicles/domain/entities';
+import { type Vehicle } from '../features/vehicles/domain/entities';
 import Spinner from './Spinner';
 
 interface VehicleCardProps {
@@ -18,6 +18,7 @@ interface VehicleCardProps {
   onToggleBreakInMonitoring: (vin: string, enable: boolean) => Promise<boolean>;
   onUpdateOffensiveResponse: (vin: string, response: string) => Promise<boolean>;
   onDeleteTelemetry: (vin: string) => Promise<boolean>;
+  onTestOffensiveResponse: (vin: string) => Promise<unknown>;
 }
 
 export default function VehicleCard({
@@ -27,6 +28,7 @@ export default function VehicleCard({
   onToggleBreakInMonitoring,
   onUpdateOffensiveResponse,
   onDeleteTelemetry,
+  onTestOffensiveResponse,
 }: VehicleCardProps) {
   const { t } = useTranslation('common');
   const [isConfiguring, setIsConfiguring] = useState(false);
@@ -113,7 +115,7 @@ export default function VehicleCard({
     setInlineError(null);
     setTestOffensiveMessage(null);
     try {
-      await testOffensiveResponse(vehicle.vin);
+      await onTestOffensiveResponse(vehicle.vin);
       setTestOffensiveMessage(t('Offensive response test triggered'));
     } catch {
       setInlineError(t('Failed to test offensive response'));
