@@ -114,7 +114,7 @@ services:
       - sentryguard
 
   api:
-    image: ghcr.io/jordima/sentryguard-api:feat-offensive-response
+    image: ghcr.io/jordima/sentryguard-api:latest
     container_name: sentryguard-api
     restart: unless-stopped
     depends_on:
@@ -161,7 +161,7 @@ services:
       - sentryguard
 
   webapp:
-    image: ghcr.io/jordima/sentryguard-webapp:feat-offensive-response
+    image: ghcr.io/jordima/sentryguard-webapp:latest
     container_name: sentryguard-webapp
     restart: unless-stopped
     depends_on:
