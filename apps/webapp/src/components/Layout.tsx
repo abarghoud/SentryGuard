@@ -44,7 +44,7 @@ export function Navigation({ navigationItems = [] }: { navigationItems?: Navigat
               {t(item.label)}
             </Link>
           ))}
-          <LanguageSwitcher />
+          <LanguageSwitcher className="w-full sm:w-auto" />
           <a
             href="https://github.com/abarghoud/SentryGuard"
             target="_blank"

@@ -171,7 +171,7 @@ export default function DashboardLayout({
               </div>
             </div>
             <div className="hidden sm:flex items-center gap-4">
-              <LanguageSwitcher />
+              <LanguageSwitcher className="w-auto" variant="minimal" />
               <DiscordLink className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-md transition-colors duration-200 text-sm font-medium">
                 Discord
               </DiscordLink>
@@ -262,7 +262,7 @@ export default function DashboardLayout({
                   <span>{profile.full_name || profile.email || 'User'}</span>
                 </div>
               ) : null}
-              <LanguageSwitcher />
+              <LanguageSwitcher className="w-full" variant="minimal" />
               <DiscordLink className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-md transition-colors duration-200 text-sm font-medium">
                 Discord
               </DiscordLink>
