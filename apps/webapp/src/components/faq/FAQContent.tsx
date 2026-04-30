@@ -5,7 +5,7 @@ import React from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { FAQCategoryComponent } from './FAQCategory';
 import { ContactSection } from './ContactSection';
-import { faqCategories } from '../../lib/faq-data';
+import { faqCategories } from '../../core/faq/faq-data';
 
 const linkClassName =
   'text-blue-400 hover:text-blue-300 underline transition-colors duration-200';

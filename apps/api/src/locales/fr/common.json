@@ -6,6 +6,8 @@
   "No account linked": "❌ Aucun compte lié. Utilisez le lien depuis l'application web.",
   "Sentry Mode activated - Check your vehicle!": "Événement sentinelle détecté - Vérifiez votre véhicule !",
   "TESLA SENTRY ALERT": "ALERTE SENTINELLE TESLA",
+  "TESLA BREAK-IN ALERT": "ALERTE EFFRACTION TESLA",
+  "Break-in attempt detected. Check your vehicle immediately!": "Tentative d'effraction détectée. Vérifiez votre véhicule immédiatement !",
   "This token has expired": "⏰ Ce token a expiré. Veuillez générer un nouveau lien depuis l'application.",
   "Vehicle": "Véhicule",
   "Welcome to SentryGuard Bot": "🚗 Bienvenue sur le bot SentryGuard !\n\nPour lier votre compte, utilisez le lien fourni dans l'application web.",

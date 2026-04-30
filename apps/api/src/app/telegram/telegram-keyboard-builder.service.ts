@@ -23,6 +23,13 @@ export class TelegramKeyboardBuilderService {
     };
   }
 
+  buildBreakInAlertKeyboard(
+    userId: string,
+    userLanguage: 'en' | 'fr'
+  ) {
+    return this.buildSentryAlertKeyboard(userId, userLanguage);
+  }
+
   buildMainMenuKeyboard(lng: 'en' | 'fr', mutedUntil: Date | null | undefined = null): TelegramMessageOptions {
     const isMuted = mutedUntil != null && new Date() < mutedUntil;
     const muteButtonKey = isMuted ? 'menuButtonMuteActive' : 'menuButtonMute';

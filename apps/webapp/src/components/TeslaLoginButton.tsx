@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getLoginUrl } from '../lib/api';
+import { getLoginUrlUseCase } from '../features/auth/di';
 
 export default function TeslaLoginButton() {
   const { t } = useTranslation('common');
@@ -14,7 +14,7 @@ export default function TeslaLoginButton() {
     setError(null);
 
     try {
-      const { url } = await getLoginUrl();
+      const { url } = await getLoginUrlUseCase.execute();
       // Rediriger vers Tesla OAuth
       window.location.href = url;
     } catch (err) {

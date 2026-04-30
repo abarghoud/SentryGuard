@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { TelemetryConfigService } from './telemetry-config.service';
+import { SentryModeConfigService } from './sentry-mode-config.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ConsentGuard } from '../../common/guards/consent.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -21,7 +22,8 @@ export class TelemetryConfigController {
   private readonly logger = new Logger(TelemetryConfigController.name);
 
   constructor(
-    private readonly telemetryConfigService: TelemetryConfigService
+    private readonly telemetryConfigService: TelemetryConfigService,
+    private readonly sentryModeConfigService: SentryModeConfigService
   ) {}
 
   @Throttle(ThrottleOptions.authenticatedRead())
@@ -41,7 +43,7 @@ export class TelemetryConfigController {
     this.logger.log(
       `🚗 Configuring telemetry for VIN: ${vin} (user: ${userId})`
     );
-    const result = await this.telemetryConfigService.configureTelemetry(
+    const result = await this.sentryModeConfigService.configureTelemetry(
       vin,
       userId
     );

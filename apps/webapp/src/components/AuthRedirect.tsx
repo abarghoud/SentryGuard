@@ -2,10 +2,12 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../lib/useAuth';
+import { useAuthQuery } from '../features/auth/di';
 
 export default function AuthRedirect() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { query: authQuery } = useAuthQuery();
+  const { data: authData, isLoading } = authQuery;
+  const isAuthenticated = authData?.status.authenticated ?? false;
   const router = useRouter();
 
   useEffect(() => {

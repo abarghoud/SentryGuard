@@ -55,7 +55,7 @@ export class OnboardingService {
 
     const vehiclesWithStatus = await this.telemetryConfigService.getVehicles(userId);
     const isVirtualKeyPaired = vehiclesWithStatus.some((vehicle) => vehicle.key_paired);
-    const isTelemetryEnabled = vehiclesWithStatus.some((vehicle) => vehicle.telemetry_enabled);
+    const isTelemetryEnabled = vehiclesWithStatus.some((vehicle) => vehicle.sentry_mode_monitoring_enabled);
 
     if (!isTelegramLinked) {
       throw new BadRequestException('Telegram account not linked');

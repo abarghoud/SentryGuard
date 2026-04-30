@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { getScopeChangeUrl } from '../../lib/api';
+import { getScopeChangeUrlUseCase } from '../../features/auth/di';
 import MissingScopesBanner from '../../components/MissingScopesBanner';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
@@ -12,13 +12,11 @@ function ScopesFixContent() {
   const { t } = useTranslation('common');
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
-
   const missingScopes = searchParams.get('missing')?.split(',') || [];
-
   const handleFixPermissions = async () => {
     setIsLoading(true);
     try {
-      const { url } = await getScopeChangeUrl(missingScopes);
+      const { url } = await getScopeChangeUrlUseCase.execute(missingScopes);
       window.location.href = url;
     } catch (error) {
       console.error('Failed to get scope change URL:', error);

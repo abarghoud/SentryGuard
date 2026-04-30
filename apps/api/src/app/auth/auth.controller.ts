@@ -88,6 +88,7 @@ export class AuthController {
       userId: string;
       email?: string;
       full_name?: string;
+      isBetaTester: boolean;
     };
   }> {
     this.logger.log(`Retrieving profile for user: ${user.userId}`);
@@ -98,6 +99,7 @@ export class AuthController {
         userId: user.userId,
         email: user.email,
         full_name: user.full_name,
+        isBetaTester: user.is_beta_tester,
       },
     };
   }

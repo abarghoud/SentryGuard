@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '../../lib/useAuth';
-import { useConsent } from '../../lib/useConsent';
-import { useOnboarding } from '../../lib/useOnboarding';
+import { useAuthQuery } from '../../features/auth/di';
+import { useConsentQuery } from '../../features/consent/di';
+import { useOnboardingQuery } from '../../features/onboarding/di';
+import BetaBadge from '../../components/BetaBadge';
 import MissingScopesBanner from '../../components/MissingScopesBanner';
 import { DiscordLink } from '../../components/DiscordLink';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
+import { ScopeError } from '../../core/api/api-client';
 
 export default function DashboardLayout({
   children,
@@ -17,9 +19,26 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { t } = useTranslation('common');
-  const { isAuthenticated, isLoading, logout, profile, scopeError } = useAuth();
-  const { hasConsent, isLoading: consentLoading } = useConsent();
-  const { isComplete: isOnboardingComplete, isLoading: onboardingLoading } = useOnboarding();
+  const { query: authQuery, logoutMutation } = useAuthQuery();
+  const scopeError = authQuery.error instanceof ScopeError ? authQuery.error : null;
+  const { data: authData, isLoading } = authQuery;
+  const isAuthenticated = authData?.status.authenticated ?? false;
+  const profile = authData?.profile;
+
+  const logout = async () => {
+    try {
+      await logoutMutation.mutateAsync();
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+  const { query: consentQuery } = useConsentQuery();
+  const { data: status, isLoading: consentLoading } = consentQuery;
+  const hasConsent = status?.hasConsent ?? false;
+  const { query: onboardingQuery } = useOnboardingQuery();
+  const { data: onboardingData, isLoading: onboardingLoading } = onboardingQuery;
+  const isOnboardingComplete = onboardingData?.isComplete ?? false;
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -124,9 +143,12 @@ export default function DashboardLayout({
                     alt="SentryGuard Logo"
                     className="w-14 h-14"
                   />
-                  <span className="text-xl font-bold text-gray-900 dark:text-white">
-                    {t('SentryGuard')}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold text-gray-900 dark:text-white">
+                      {t('SentryGuard')}
+                    </span>
+                    <BetaBadge className="sm:hidden" />
+                  </div>
                 </Link>
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
@@ -154,8 +176,11 @@ export default function DashboardLayout({
                 Discord
               </DiscordLink>
               {profile ? (
-                <div className="hidden sm:block text-sm text-gray-700 dark:text-gray-300">
-                  {profile.full_name || profile.email || 'User'}
+                <div className="hidden sm:flex items-center gap-2">
+                  <BetaBadge />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    {profile.full_name || profile.email || 'User'}
+                  </span>
                 </div>
               ) : null}
               <button
@@ -232,8 +257,9 @@ export default function DashboardLayout({
           <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
             <div className="px-4 space-y-3">
               {profile ? (
-                <div className="text-sm text-gray-700 dark:text-gray-300 mb-3">
-                  {profile.full_name || profile.email || 'User'}
+                <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-3">
+                  <BetaBadge />
+                  <span>{profile.full_name || profile.email || 'User'}</span>
                 </div>
               ) : null}
               <LanguageSwitcher />

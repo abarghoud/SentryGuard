@@ -7,7 +7,8 @@ import { Provider as RollbarProvider } from '@rollbar/react';
 import I18nProvider from '../components/I18nProvider';
 import BuyMeACoffeeWidget from '../components/BuyMeACoffeeWidget';
 import { clientConfig } from '@/logger/rollbar.config';
-import { getLocale } from '../lib/server-i18n';
+import { getLocale } from '../core/i18n/server-i18n';
+import { QueryProvider } from '../core/api/query-provider';
 
 export const metadata: Metadata = {
   title: 'SentryGuard - Protect Your Tesla',
@@ -43,8 +44,9 @@ export default async function RootLayout({
       <html lang={locale} translate="no">
         <head />
         <body suppressHydrationWarning>
-          <I18nProvider initialLocale={locale}>{children}</I18nProvider>
-          <BuyMeACoffeeWidget />
+          <QueryProvider>
+            <I18nProvider initialLocale={locale}>{children}</I18nProvider>
+            <BuyMeACoffeeWidget />
           <Script id="crisp-widget" strategy="afterInteractive">
             {`
               window.$crisp = [];
@@ -58,6 +60,7 @@ export default async function RootLayout({
               })();
             `}
           </Script>
+          </QueryProvider>
         </body>
       </html>
     </RollbarProvider>

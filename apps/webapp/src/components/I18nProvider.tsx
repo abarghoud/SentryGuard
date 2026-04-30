@@ -3,8 +3,9 @@
 import { createInstance, i18n as I18n } from 'i18next';
 import { I18nextProvider, initReactI18next } from 'react-i18next';
 import { useEffect, useRef, useState } from 'react';
-import { getUserLanguage, hasToken } from '../lib/api';
-import { DEFAULT_LOCALE, setLocaleCookie } from '../lib/i18n-config';
+import { hasToken } from '../core/api/token-manager';
+import { getUserLanguageUseCase } from '../features/user/di';
+import { DEFAULT_LOCALE, setLocaleCookie } from '../core/i18n/i18n-config';
 
 const localeLoaders: Record<string, () => Promise<Record<string, string>>> = {
   en: () => import('../locales/en/common.json').then((m) => m.default),
@@ -84,7 +85,7 @@ export default function I18nProvider({
       }
 
       try {
-        const response = await getUserLanguage();
+        const response = await getUserLanguageUseCase.execute();
 
         if (response.language !== i18n.language) {
           await addLocaleIfNeeded(response.language);

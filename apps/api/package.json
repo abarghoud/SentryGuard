@@ -3,36 +3,13 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "typeorm": "ts-node --project tsconfig.typeorm.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
+    "typeorm": "ts-node --project tsconfig.typeorm.json -r tsconfig-paths/register ./../../node_modules/typeorm/cli.js",
     "migration:generate": "npm run typeorm -- migration:generate src/migrations -d src/config/database.config.ts",
     "migration:run": "npm run typeorm -- migration:run -d src/config/database.config.ts",
     "migration:revert": "npm run typeorm -- migration:revert -d src/config/database.config.ts",
     "migration:show": "npm run typeorm -- migration:show -d src/config/database.config.ts"
   },
-  "dependencies": {
-    "@nestjs/common": "^11.0.0",
-    "@nestjs/core": "^11.0.0",
-    "@nestjs/platform-express": "^11.0.0",
-    "@nestjs/schedule": "^6.0.1",
-    "@nestjs/throttler": "^6.4.0",
-    "@nestjs/typeorm": "^11.0.0",
-    "axios": "^1.6.0",
-    "i18next": "^25.6.0",
-    "kafkajs": "^2.2.4",
-    "oci-common": "^2.122.0",
-    "oci-logging": "^2.122.0",
-    "oci-loggingingestion": "^2.122.0",
-    "pg": "^8.16.3",
-    "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.8.0",
-    "telegraf": "^4.16.3",
-    "tslib": "^2.3.0",
-    "typeorm": "^0.3.27",
-    "zeromq": "^6.0.0"
-  },
   "devDependencies": {
-    "@nestjs/testing": "^11.0.0",
-    "@types/pg": "^8",
     "ts-node": "^10.9.2"
   }
 }

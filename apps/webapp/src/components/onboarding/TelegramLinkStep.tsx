@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useTelegram } from '../../lib/useTelegram';
+import { useTelegramQuery } from '../../features/telegram/di';
 import TelegramLinkCard from '../TelegramLinkCard';
 import OnboardingStepLayout from './OnboardingStepLayout';
 
@@ -12,7 +12,37 @@ interface TelegramLinkStepProps {
 
 export default function TelegramLinkStep({ onContinue }: TelegramLinkStepProps) {
   const { t } = useTranslation('common');
-  const { status, linkInfo, generateLink, unlink, sendTest, fetchStatus } = useTelegram();
+  const { query, linkInfo, generateLinkMutation, unlinkMutation, sendTestMutation } = useTelegramQuery();
+  const { data: status, refetch } = query;
+  const fetchStatus = async () => {
+    await refetch();
+  };
+
+  const generateLink = async () => {
+    try {
+      return await generateLinkMutation.mutateAsync();
+    } catch {
+      return null;
+    }
+  };
+
+  const unlink = async () => {
+    try {
+      await unlinkMutation.mutateAsync();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const sendTest = async () => {
+    try {
+      await sendTestMutation.mutateAsync();
+      return true;
+    } catch {
+      return false;
+    }
+  };
   const [hasOpenedTelegram, setHasOpenedTelegram] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
 
@@ -66,7 +96,7 @@ export default function TelegramLinkStep({ onContinue }: TelegramLinkStepProps) 
 
         <div onClick={handleLinkClick}>
           <TelegramLinkCard
-            status={status}
+            status={status ?? null}
             linkInfo={linkInfo}
             onGenerateLink={generateLink}
             onUnlink={unlink}

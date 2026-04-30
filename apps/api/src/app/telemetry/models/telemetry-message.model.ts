@@ -29,6 +29,10 @@ export class TelemetryValue {
   @IsOptional()
   @IsEnum(SentryModeState)
   sentryModeStateValue?: SentryModeState;
+
+  @IsOptional()
+  @IsString()
+  displayStateValue?: string;
 }
 
 export class TelemetryDatum {
@@ -65,6 +69,10 @@ export class TelemetryMessage {
     return this.data.some(datum => datum.key === 'SentryMode');
   }
 
+  validateContainsCenterDisplay(): boolean {
+    return this.data.some(datum => datum.key === 'CenterDisplay');
+  }
+
   validateSentryModeValue(): boolean {
     const sentryDatum = this.data.find(d => d.key === 'SentryMode');
     if (!sentryDatum) return false;
@@ -97,6 +105,15 @@ export class TelemetryMessage {
     }
 
     return null;
+  }
+
+  isCenterDisplayLocked(): boolean {
+    const displayDatum = this.data.find(d => d.key === 'CenterDisplay');
+    if (!displayDatum) return false;
+
+    const { displayStateValue, stringValue } = displayDatum.value;
+    const value = displayStateValue ?? stringValue;
+    return value === 'DisplayStateLock' || value === 'Lock';
   }
 
   calculateEndToEndLatency(): number | null {

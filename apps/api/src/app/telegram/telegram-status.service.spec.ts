@@ -119,8 +119,8 @@ describe('The TelegramStatusService class', () => {
 
     describe('When a linked account is found with vehicles', () => {
       const vehicles = [
-        { display_name: 'My Model 3', vin: 'VIN001', telemetry_enabled: true } as Vehicle,
-        { display_name: undefined, vin: 'VIN002', telemetry_enabled: false } as Vehicle,
+        { display_name: 'My Model 3', vin: 'VIN001', sentry_mode_monitoring_enabled: true } as Vehicle,
+        { display_name: undefined, vin: 'VIN002', sentry_mode_monitoring_enabled: false } as Vehicle,
       ];
 
       beforeEach(() => {

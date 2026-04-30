@@ -378,13 +378,13 @@ describe('The ConsentService class', () => {
             id: 'vehicle-1',
             userId,
             vin: 'VIN123456789',
-            telemetry_enabled: true,
+            sentry_mode_monitoring_enabled: true,
           } as Vehicle,
           {
             id: 'vehicle-2',
             userId,
             vin: 'VIN987654321',
-            telemetry_enabled: true,
+            sentry_mode_monitoring_enabled: true,
           } as Vehicle,
         ];
 
@@ -519,7 +519,7 @@ describe('The ConsentService class', () => {
             id: 'vehicle-1',
             userId,
             vin: 'VIN123456789',
-            telemetry_enabled: true,
+            sentry_mode_monitoring_enabled: true,
           } as Vehicle,
         ];
 

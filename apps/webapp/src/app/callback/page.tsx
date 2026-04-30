@@ -3,7 +3,8 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { setToken, getConsentStatus } from '../../lib/api';
+import { setToken } from '../../core/api/token-manager';
+import { getConsentStatusUseCase } from '../../features/consent/di';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 function CallbackContent() {
@@ -55,7 +56,7 @@ function CallbackContent() {
         setMessage(t('Authentication successful! Checking consent status...'));
 
         try {
-          const consentStatus = await getConsentStatus();
+          const consentStatus = await getConsentStatusUseCase.execute();
           if (!consentStatus.hasConsent) {
             setMessage(t('Authentication successful! Redirecting to consent form...'));
             setTimeout(() => {

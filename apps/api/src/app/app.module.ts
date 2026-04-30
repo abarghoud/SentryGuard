@@ -3,13 +3,15 @@ import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { LoggerModule } from 'nestjs-pino';
+import { LoggerModule, LoggerErrorInterceptor } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { KafkaService } from './messaging/kafka/kafka.service';
 import { TelemetryMessageHandlerService } from './telemetry/handlers/telemetry-message-handler.service';
 import { TelemetryValidationService } from './telemetry/services/telemetry-validation.service';
 import { SentryAlertHandlerService } from './alerts/sentry/sentry-alert-handler.service';
+import { BreakInAlertHandlerService } from './alerts/break-in/break-in-alert-handler.service';
+import { VehicleAlertNotifierService } from './alerts/common/vehicle-alert-notifier.service';
 import { TelemetryEventHandlerSymbol } from './telemetry/interfaces/telemetry-event-handler.interface';
 import { kafkaMessageHandler } from './messaging/kafka/interfaces/message-handler.interface';
 import { AuthModule } from './auth/auth.module';
@@ -61,7 +63,9 @@ import { RetryManager } from './shared/retry-manager.service';
       ),
     },
     TelemetryValidationService,
+    VehicleAlertNotifierService,
     SentryAlertHandlerService,
+    BreakInAlertHandlerService,
     {
       provide: kafkaMessageHandler,
       useClass: TelemetryMessageHandlerService,
@@ -70,10 +74,15 @@ import { RetryManager } from './shared/retry-manager.service';
       provide: TelemetryEventHandlerSymbol,
       useFactory: (
         sentryHandler: SentryAlertHandlerService,
-      ) => [sentryHandler],
-      inject: [SentryAlertHandlerService],
+        breakInHandler: BreakInAlertHandlerService,
+      ) => [sentryHandler, breakInHandler],
+      inject: [SentryAlertHandlerService, BreakInAlertHandlerService],
     },
     KafkaLogContextService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggerErrorInterceptor,
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: LogContextInterceptor,
@@ -88,4 +97,4 @@ import { RetryManager } from './shared/retry-manager.service';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

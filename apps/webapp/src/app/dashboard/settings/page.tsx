@@ -1,15 +1,19 @@
 'use client';
 
+
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../../lib/useAuth';
-import { useConsent } from '../../../lib/useConsent';
+import { useAuthQuery } from '../../../features/auth/di';
+import { useConsentQuery } from '../../../features/consent/di';
 import { useRouter } from 'next/navigation';
 
 export default function SettingsPage() {
   const { t } = useTranslation('common');
-  const { profile, logout } = useAuth();
-  const { revokeConsent } = useConsent();
+  const { query: authQuery, logoutMutation } = useAuthQuery();
+  const profile = authQuery.data?.profile;
   const router = useRouter();
+
+  const { revokeConsentMutation } = useConsentQuery();
+
 
   const handleDeleteAccount = async () => {
     if (
@@ -17,10 +21,12 @@ export default function SettingsPage() {
         t('Delete account confirmation')
       )
     ) {
-      const success = await revokeConsent();
-      if (success) {
-        logout();
+      try {
+        await revokeConsentMutation.mutateAsync();
+        await logoutMutation.mutateAsync();
         router.push('/');
+      } catch (error) {
+        console.error('Revoke consent failed:', error);
       }
     }
   };

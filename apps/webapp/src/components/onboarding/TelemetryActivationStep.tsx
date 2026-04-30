@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
-import { useOnboarding } from '../../lib/useOnboarding';
-import { useVehicles } from '../../lib/useVehicles';
+import { useOnboardingQuery } from '../../features/onboarding/di';
+import { useVehiclesQuery } from '../../features/vehicles/di';
 import OnboardingStepLayout from './OnboardingStepLayout';
 
 interface TelemetryActivationStepProps {
@@ -14,13 +14,22 @@ interface TelemetryActivationStepProps {
 export default function TelemetryActivationStep({ onCompleted }: TelemetryActivationStepProps) {
   const { t } = useTranslation('common');
   const router = useRouter();
-  const { completeOnboarding } = useOnboarding();
-  const { vehicles, configureTelemetryForVehicle, isLoading } = useVehicles();
+  const { completeOnboardingMutation } = useOnboardingQuery();
+  const completeOnboarding = async () => {
+    try {
+      await completeOnboardingMutation.mutateAsync();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  };
+  const { query: vehicleQuery, configureTelemetryMutation } = useVehiclesQuery();
+  const { data: vehicles = [], isLoading } = vehicleQuery;
   const [activatingVins, setActivatingVins] = useState<Set<string>>(new Set());
   const [errors, setErrors] = useState<Map<string, string>>(new Map());
   const [isCompleting, setIsCompleting] = useState(false);
 
-  const hasTelemetryEnabled = vehicles.some((v) => v.telemetry_enabled === true);
+  const hasTelemetryEnabled = vehicles.some((v) => v.sentry_mode_monitoring_enabled === true);
 
   const handleActivateTelemetry = async (vin: string) => {
     setActivatingVins((prev) => new Set(prev).add(vin));
@@ -31,7 +40,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
     });
 
     try {
-      const result = await configureTelemetryForVehicle(vin);
+      const result = await configureTelemetryMutation.mutateAsync(vin);
 
       if (!result.success) {
         setErrors((prev) => {
@@ -135,7 +144,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                       VIN: {vehicle.vin}
                     </p>
                   </div>
-                  {vehicle.telemetry_enabled && (
+                  {vehicle.sentry_mode_monitoring_enabled && (
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                       {t('Enabled')}
                     </span>
@@ -152,7 +161,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                 )}
 
                 {/* Activate button */}
-                {!vehicle.telemetry_enabled && (
+                {!vehicle.sentry_mode_monitoring_enabled && (
                   <button
                     onClick={() => handleActivateTelemetry(vehicle.vin)}
                     disabled={activatingVins.has(vehicle.vin)}

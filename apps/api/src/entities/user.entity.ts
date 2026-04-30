@@ -55,6 +55,9 @@ export class User {
   @Column({ type: 'boolean', default: false })
   onboarding_skipped!: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  is_beta_tester!: boolean;
+
   @CreateDateColumn()
   created_at!: Date;
 
