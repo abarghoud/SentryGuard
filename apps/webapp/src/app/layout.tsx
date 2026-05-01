@@ -2,11 +2,9 @@ import './global.css';
 import type { Metadata } from 'next';
 import Script from 'next/script';
 
-import { Provider as RollbarProvider } from '@rollbar/react';
-
+import RuntimeRollbarProvider from '../components/RuntimeRollbarProvider';
 import I18nProvider from '../components/I18nProvider';
 import BuyMeACoffeeWidget from '../components/BuyMeACoffeeWidget';
-import { clientConfig } from '@/logger/rollbar.config';
 import { getLocale } from '../core/i18n/server-i18n';
 import { QueryProvider } from '../core/api/query-provider';
 
@@ -40,7 +38,7 @@ export default async function RootLayout({
   const locale = await getLocale();
 
   return (
-    <RollbarProvider config={clientConfig}>
+    <RuntimeRollbarProvider>
       <html lang={locale} translate="no">
         <head />
         <body suppressHydrationWarning>
@@ -63,6 +61,6 @@ export default async function RootLayout({
           </QueryProvider>
         </body>
       </html>
-    </RollbarProvider>
+    </RuntimeRollbarProvider>
   );
 }

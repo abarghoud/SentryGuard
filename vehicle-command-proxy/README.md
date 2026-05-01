@@ -1,35 +1,81 @@
 # Vehicle Command Proxy Docker Image
 
-Image Docker personnalisée pour déployer `vehicle-command` sans volumes, en utilisant des variables d'environnement base64. Basée sur Ubuntu 22.04 pour la compatibilité avec les binaires compilés avec glibc.
+Custom Docker image to deploy [Tesla Vehicle Command Proxy](https://github.com/teslamotors/vehicle-command) without persistent volumes, using base64-encoded environment variables. Based on Ubuntu 22.04 for glibc binary compatibility.
 
-## Build de l'image
+## Environment Variables
 
-L'image est construite pour les architectures **amd64** et **arm64** via Docker Buildx.
+### Required
 
-### Prérequis
+| Variable | Description |
+|----------|-------------|
+| `VEHICLE_COMMAND_TLS_KEY_B64` | TLS key, base64-encoded |
+| `VEHICLE_COMMAND_TLS_CERT_B64` | TLS certificate, base64-encoded |
+| `VEHICLE_COMMAND_PRIVATE_KEY_B64` | Private key for signing commands, base64-encoded |
 
-- Docker Desktop >= 2.2.0 (Buildx inclus) ou Docker Engine avec le plugin Buildx
-- Être connecté à Docker Hub : `docker login`
+### Optional
 
-### Option 1 : Utiliser le script
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VEHICLE_COMMAND_HOST` | `0.0.0.0` | Listening address |
+| `VEHICLE_COMMAND_PORT` | `443` | Listening port |
+| `VEHICLE_COMMAND_VERBOSE` | `false` | Enable verbose logging (`true` or `1`) |
 
-Le script crée automatiquement un builder multi-plateforme (`sentryguard-builder`) s'il n'existe pas, puis build et push les deux architectures en une seule commande.
+### Encoding files to base64
 
 ```bash
-# Build et push avec le tag latest
+# Linux
+cat <file> | base64 -w 0
+
+# macOS
+cat <file> | base64 | tr -d '\n'
+```
+
+## Usage with docker-compose
+
+This image is included in the root `docker-compose.yml`. Configure your `.env` file and run:
+
+```bash
+docker compose up vehicle-command-proxy
+```
+
+## Standalone usage
+
+```bash
+docker run --rm -it \
+  -e VEHICLE_COMMAND_TLS_KEY_B64="<your_tls_key_base64>" \
+  -e VEHICLE_COMMAND_TLS_CERT_B64="<your_tls_cert_base64>" \
+  -e VEHICLE_COMMAND_PRIVATE_KEY_B64="<your_private_key_base64>" \
+  -e VEHICLE_COMMAND_VERBOSE="true" \
+  -p 4444:4444 \
+  abarghoud/sentryguard-vehicle-command:latest
+```
+
+## Building the image
+
+The image supports **amd64** and **arm64** architectures via Docker Buildx.
+
+### Prerequisites
+
+- Docker Desktop >= 2.2.0 (Buildx included) or Docker Engine with Buildx plugin
+- Logged in to Docker Hub: `docker login`
+
+### Using the build script
+
+```bash
+# Build and push with latest tag
 ./build.sh
 
-# Build et push avec une version spécifique
+# Build and push with a specific version
 ./build.sh v1.0.0
 ```
 
-### Option 2 : Commandes Docker manuelles
+### Manual Docker commands
 
 ```bash
-# Créer un builder multi-plateforme (une seule fois)
+# Create a multi-platform builder (once)
 docker buildx create --name sentryguard-builder --driver docker-container --bootstrap
 
-# Build et push pour amd64 et arm64
+# Build and push for amd64 and arm64
 docker buildx build \
   --builder sentryguard-builder \
   --platform linux/amd64,linux/arm64 \
@@ -38,165 +84,56 @@ docker buildx build \
   .
 ```
 
-> **Note :** `--push` est obligatoire pour les builds multi-arch. Docker ne peut pas charger une image multi-plateforme dans le daemon local avec `--load`.
+> **Note:** `--push` is required for multi-arch builds. Docker cannot load a multi-platform image into the local daemon with `--load`.
 
-## Test en local
+## Security
 
-Avant de push l'image sur Docker Hub, vous pouvez la tester localement :
+- **Non-root user**: Runs as a dedicated `vehicleuser` user
+- **Minimal permissions**: Only necessary files have execution permissions
+- **Ubuntu 22.04 LTS**: Stable base image with glibc for binary compatibility
+- **Built-in health check**: Automatic service health monitoring
+- **Multi-stage build**: Reduced image size and build dependency isolation
 
-### Prérequis
+## Architecture
 
-Vous devez avoir les fichiers suivants :
-- `tls-key.pem` : Clé TLS pour la communication sécurisée
-- `tls-cert.pem` : Certificat TLS
-- `private-key.pem` : Clé privée pour signer les commandes
+The image uses a multi-stage, multi-platform build:
 
-### Encoder vos fichiers en base64
+1. **Stage 1**: Extracts the `tesla-http-proxy` binary from the official Tesla image for the target platform
+2. **Stage 2**: Final Ubuntu 22.04 image with the binary and entrypoint script
 
-```bash
-# Encoder la clé TLS
-export VEHICLE_COMMAND_TLS_KEY_B64=$(cat tls-key.pem | base64 | tr -d '\n')
-
-# Encoder le certificat TLS
-export VEHICLE_COMMAND_TLS_CERT_B64=$(cat tls-cert.pem | base64 | tr -d '\n')
-
-# Encoder la clé privée
-export VEHICLE_COMMAND_PRIVATE_KEY_B64=$(cat private-key.pem | base64 | tr -d '\n')
-```
-
-**Note macOS** : Sur macOS, `base64` n'a pas l'option `-w 0`, utilisez `tr -d '\n'` comme montré ci-dessus.
-
-### Lancer le conteneur
-
-```bash
-docker run --rm -it \
-  -e VEHICLE_COMMAND_TLS_KEY_B64="${VEHICLE_COMMAND_TLS_KEY_B64}" \
-  -e VEHICLE_COMMAND_TLS_CERT_B64="${VEHICLE_COMMAND_TLS_CERT_B64}" \
-  -e VEHICLE_COMMAND_PRIVATE_KEY_B64="${VEHICLE_COMMAND_PRIVATE_KEY_B64}" \
-  -e VEHICLE_COMMAND_HOST="0.0.0.0" \
-  -e VEHICLE_COMMAND_PORT="443" \
-  -e VEHICLE_COMMAND_VERBOSE="true" \
-  -p 443:443 \
-  abarghoud/sentryguard-vehicle-command:latest
-```
-
-## Push vers Docker Hub
-
-Le push est intégré directement dans le build via `--push`. Il suffit d'être connecté avant de lancer `build.sh` :
-
-```bash
-docker login
-./build.sh v1.0.0
-```
-
-## Déploiement avec Coolify
-
-### Variables d'environnement requises
-
-Dans Coolify, configurez les variables d'environnement suivantes :
-
-#### Requis :
-- `VEHICLE_COMMAND_TLS_KEY_B64` : Clé TLS encodée en base64
-- `VEHICLE_COMMAND_TLS_CERT_B64` : Certificat TLS encodé en base64
-- `VEHICLE_COMMAND_PRIVATE_KEY_B64` : Clé privée encodée en base64
-
-#### Optionnels :
-- `VEHICLE_COMMAND_HOST` : Adresse d'écoute (défaut: `0.0.0.0`)
-- `VEHICLE_COMMAND_PORT` : Port d'écoute (défaut: `443`)
-- `VEHICLE_COMMAND_VERBOSE` : Mode verbeux (défaut: `false`, mettre `true` ou `1` pour activer)
-
-### Configuration dans Coolify
-
-1. Créez une nouvelle application dans Coolify
-2. Sélectionnez l'image : `abarghoud/sentryguard-vehicle-command:latest` (ou la version de votre choix)
-3. Ajoutez les variables d'environnement listées ci-dessus
-4. Configurez le port :
-   - `443:443` (ou le port que vous avez défini dans `VEHICLE_COMMAND_PORT`)
-5. Déployez !
-
-## Sécurité
-
-L'image Docker utilise les meilleures pratiques de sécurité :
-
-- **Utilisateur non-root** : Le conteneur s'exécute avec un utilisateur dédié `vehicleuser`
-- **Permissions minimales** : Seuls les fichiers nécessaires ont les permissions d'exécution
-- **Image de base Ubuntu 22.04** : Image LTS stable avec glibc pour la compatibilité binaire
-- **Health check intégré** : Vérification automatique de la santé du service
-- **Build multi-stage** : Réduction de la taille de l'image et isolation des dépendances de build
-
-## Structure des fichiers
-
-```
-vehicle-command-proxy/
-├── Dockerfile          # Image Docker optimisée et sécurisée
-├── .dockerignore       # Optimisation du contexte de build
-├── entrypoint.sh       # Script shell qui décode les variables d'env et lance vehicle-command
-├── build.sh            # Script pour builder l'image
-└── README.md           # Ce fichier
-```
-
-## Utilisation avec docker-compose
-
-Exemple de configuration docker-compose :
-
-```yaml
-vehicle-command:
-  image: abarghoud/sentryguard-vehicle-command:latest
-  container_name: tesla-vehicle-command
-  restart: unless-stopped
-  networks:
-    - coolify
-  environment:
-    - VEHICLE_COMMAND_TLS_KEY_B64=${VEHICLE_COMMAND_TLS_KEY_B64}
-    - VEHICLE_COMMAND_TLS_CERT_B64=${VEHICLE_COMMAND_TLS_CERT_B64}
-    - VEHICLE_COMMAND_PRIVATE_KEY_B64=${VEHICLE_COMMAND_PRIVATE_KEY_B64}
-    - VEHICLE_COMMAND_HOST=0.0.0.0
-    - VEHICLE_COMMAND_PORT=443
-    - VEHICLE_COMMAND_VERBOSE=true
-  ports:
-    - "443:443"
-```
+This approach produces a native image for each architecture (amd64, arm64) without runtime emulation.
 
 ## Troubleshooting
 
-### Le conteneur ne démarre pas
+### Container does not start
 
-Vérifiez que toutes les variables d'environnement requises sont définies :
+Check logs for missing environment variables:
 ```bash
 docker logs <container_id>
 ```
 
-Vous devriez voir les messages suivants au démarrage :
+You should see the following messages on startup:
 ```
 ✅ TLS key decoded
 ✅ TLS certificate decoded
 ✅ Private key decoded
-🚀 Starting vehicle-command with args: [...]
+🚀 Starting tesla-http-proxy with: [...]
 ```
 
-### Erreur de décodage base64
+### Base64 decoding errors
 
-Assurez-vous que vos fichiers sont correctement encodés sans retours à la ligne :
+Make sure your files are encoded without line breaks:
 ```bash
-# Sur Linux
+# Linux
 cat file.pem | base64 -w 0
 
-# Sur macOS
+# macOS
 cat file.pem | base64 | tr -d '\n'
 ```
 
-### Le service ne répond pas
+### Service not responding
 
-Vérifiez que :
-- Le port est correctement mappé dans docker-compose ou dans la commande `docker run`
-- Le firewall autorise les connexions sur le port configuré
-- Les certificats TLS sont valides
-
-## Architecture
-
-L'image utilise un build multi-stage et multi-plateforme :
-
-1. **Stage 1** : Extraction du binaire `tesla-http-proxy` depuis l'image officielle Tesla pour la plateforme cible
-2. **Stage 2** : Image finale Ubuntu 22.04 pour la plateforme cible, avec le binaire et le script entrypoint
-
-Cette approche produit une image native pour chaque architecture (amd64, arm64), sans émulation à l'exécution.
+Check that:
+- The port is correctly mapped in docker-compose or in the `docker run` command
+- The firewall allows connections on the configured port
+- The TLS certificates are valid

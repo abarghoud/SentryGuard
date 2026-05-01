@@ -572,6 +572,8 @@ docker exec sentryguard-kafka kafka-topics --bootstrap-server localhost:9092 \
 | `CORS_ALLOWED_ORIGINS` | Additional CORS origins (comma-separated) | `https://yourdomain.com,https://api.yourdomain.com` |
 | `NEXT_PUBLIC_API_URL` | API URL for webapp client-side calls (runtime) | `https://api.yourdomain.com` |
 | `NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL` | Tesla virtual key pairing URL (runtime) | `https://tesla.com/_ak/yourdomain.com` |
+| `NEXT_PUBLIC_ROLLBAR_CLIENT_TOKEN` | Rollbar client-side error tracking token (runtime) | — |
+| `NEXT_PUBLIC_DISCORD_URL` | Discord invite URL (runtime) | `https://discord.gg/your-invite` |
 
 ### Optional
 

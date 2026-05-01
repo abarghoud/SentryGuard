@@ -1,16 +1,22 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { DiscordLink } from '../../components/DiscordLink';
+import { resolveDiscordUrl } from '../../core/api/api-client';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 function WaitlistContent() {
   const { t } = useTranslation('common');
   const searchParams = useSearchParams();
   const email = searchParams.get('email') || '';
+  const [discordUrl, setDiscordUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    resolveDiscordUrl().then(setDiscordUrl);
+  }, []);
 
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
@@ -65,7 +71,7 @@ function WaitlistContent() {
             </p>
           </div>
 
-          {process.env.NEXT_PUBLIC_DISCORD_URL ? (
+          {discordUrl ? (
             <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                 {t('Join our Discord community while you wait')}

@@ -2,10 +2,17 @@ import { getToken } from './token-manager';
 
 const DEFAULT_API_URL = 'http://localhost:3001';
 
-let cachedConfig: { apiUrl: string; virtualKeyUrl: string } | null = null;
-let fetchPromise: Promise<{ apiUrl: string; virtualKeyUrl: string }> | null = null;
+interface RuntimeConfig {
+  apiUrl: string;
+  virtualKeyUrl: string;
+  rollbarClientToken: string;
+  discordUrl: string;
+}
 
-async function resolveRuntimeConfig(): Promise<{ apiUrl: string; virtualKeyUrl: string }> {
+let cachedConfig: RuntimeConfig | null = null;
+let fetchPromise: Promise<RuntimeConfig> | null = null;
+
+async function resolveRuntimeConfig(): Promise<RuntimeConfig> {
   if (cachedConfig) {
     return cachedConfig;
   }
@@ -16,15 +23,17 @@ async function resolveRuntimeConfig(): Promise<{ apiUrl: string; virtualKeyUrl: 
 
   fetchPromise = fetch('/api/runtime-config')
     .then((res) => res.json())
-    .then((data: { apiUrl?: string; virtualKeyUrl?: string }) => {
+    .then((data: Partial<RuntimeConfig>) => {
       cachedConfig = {
         apiUrl: data.apiUrl || DEFAULT_API_URL,
         virtualKeyUrl: data.virtualKeyUrl || '',
+        rollbarClientToken: data.rollbarClientToken || '',
+        discordUrl: data.discordUrl || '',
       };
       return cachedConfig;
     })
     .catch(() => {
-      cachedConfig = { apiUrl: DEFAULT_API_URL, virtualKeyUrl: '' };
+      cachedConfig = { apiUrl: DEFAULT_API_URL, virtualKeyUrl: '', rollbarClientToken: '', discordUrl: '' };
       return cachedConfig;
     })
     .finally(() => {
@@ -42,6 +51,16 @@ export async function resolveApiUrl(): Promise<string> {
 export async function resolveVirtualKeyUrl(): Promise<string> {
   const config = await resolveRuntimeConfig();
   return config.virtualKeyUrl;
+}
+
+export async function resolveRollbarClientToken(): Promise<string> {
+  const config = await resolveRuntimeConfig();
+  return config.rollbarClientToken;
+}
+
+export async function resolveDiscordUrl(): Promise<string> {
+  const config = await resolveRuntimeConfig();
+  return config.discordUrl;
 }
 
 export class ApiError extends Error {

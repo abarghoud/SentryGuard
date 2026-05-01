@@ -56,7 +56,7 @@ services:
       - sentryguard
 
   fleet-telemetry:
-    image: abarghoud/sentryguard-fleet-telemetry:latest
+    image: ghcr.io/abarghoud/sentryguard-fleet-telemetry:latest
     container_name: sentryguard-fleet-telemetry
     restart: unless-stopped
     depends_on:
@@ -73,7 +73,7 @@ services:
       - sentryguard
 
   vehicle-command:
-    image: abarghoud/sentryguard-vehicle-command:latest
+    image: ghcr.io/abarghoud/sentryguard-vehicle-command:latest
     container_name: sentryguard-vehicle-command
     restart: unless-stopped
     environment:
@@ -146,6 +146,8 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
       NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL: ${NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL:-}
+      NEXT_PUBLIC_ROLLBAR_CLIENT_TOKEN: ${NEXT_PUBLIC_ROLLBAR_CLIENT_TOKEN:-}
+      NEXT_PUBLIC_DISCORD_URL: ${NEXT_PUBLIC_DISCORD_URL:-}
     ports:
       - "${WEBAPP_PORT:-3000}:3000"
     networks:

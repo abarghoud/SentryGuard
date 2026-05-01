@@ -1,35 +1,104 @@
 # Fleet Telemetry Docker Image
 
-Image Docker personnalisée pour déployer `fleet-telemetry` sans volumes, en utilisant des variables d'environnement base64. Basée sur Ubuntu 22.04 pour la compatibilité avec les binaires compilés avec glibc.
+Custom Docker image to deploy [Tesla Fleet Telemetry](https://github.com/teslamotors/fleet-telemetry) without persistent volumes, using base64-encoded environment variables. Based on Ubuntu 22.04 for glibc binary compatibility.
 
-## Build de l'image
+## Configuration
 
-L'image est construite pour les architectures **amd64** et **arm64** via Docker Buildx.
+Fleet Telemetry requires a JSON config file that defines the listening port, Kafka connection, TLS paths, and which record types to dispatch.
 
-### Prérequis
+An example config is provided in [`config.example.json`](config.example.json). Key points:
 
-- Docker Desktop >= 2.2.0 (Buildx inclus) ou Docker Engine avec le plugin Buildx
-- Être connecté à Docker Hub : `docker login`
+- **`port`** must match `FLEET_TELEMETRY_PORT` in your `.env`
+- **`namespace`** is the Kafka topic prefix — with `"FleetTelemetry"`, vehicle telemetry is published to `FleetTelemetry_V`
+- **`kafka.bootstrap.servers`** should be `kafka:29092` when using docker-compose (internal Docker network)
+- **`tls.server_cert`** and **`tls.server_key`** must stay as-is — the entrypoint writes the decoded certificates to these paths
+- **`records.V`** must include `"kafka"` for telemetry data to reach SentryGuard
 
-### Option 1 : Utiliser le script
-
-Le script crée automatiquement un builder multi-plateforme (`sentryguard-builder`) s'il n'existe pas, puis build et push les deux architectures en une seule commande.
+To use it:
 
 ```bash
-# Build et push avec le tag latest
+# Adapt config.example.json to your needs, then encode it
+cat config.example.json | base64 -w 0    # Linux
+cat config.example.json | base64 | tr -d '\n'  # macOS
+
+# Set the result as FLEET_TELEMETRY_CONFIG_B64 in your .env
+```
+
+For the full list of configuration options, see the [Tesla Fleet Telemetry documentation](https://github.com/teslamotors/fleet-telemetry).
+
+## Environment Variables
+
+### Required
+
+| Variable | Description |
+|----------|-------------|
+| `FLEET_TELEMETRY_CONFIG_B64` | Fleet Telemetry JSON config, base64-encoded |
+| `FLEET_TELEMETRY_SERVER_CERT_B64` | Server certificate (fullchain.pem), base64-encoded |
+| `FLEET_TELEMETRY_SERVER_KEY_B64` | Server private key (privkey.pem), base64-encoded |
+
+### Optional
+
+| Variable | Description |
+|----------|-------------|
+| `FLEET_TELEMETRY_CA_FILE_B64` | CA file for test vehicles, base64-encoded |
+
+### Encoding files to base64
+
+```bash
+# Linux
+cat <file> | base64 -w 0
+
+# macOS
+cat <file> | base64 | tr -d '\n'
+```
+
+## Usage with docker-compose
+
+This image is included in the root `docker-compose.yml`. Configure your `.env` file and run:
+
+```bash
+docker compose up fleet-telemetry
+```
+
+The listening port is defined inside your Fleet Telemetry JSON config. Make sure `FLEET_TELEMETRY_PORT` in your `.env` matches the port in your config.
+
+## Standalone usage
+
+```bash
+docker run --rm -it \
+  -e FLEET_TELEMETRY_CONFIG_B64="<your_config_base64>" \
+  -e FLEET_TELEMETRY_SERVER_CERT_B64="<your_cert_base64>" \
+  -e FLEET_TELEMETRY_SERVER_KEY_B64="<your_key_base64>" \
+  -p 4443:4443 \
+  abarghoud/sentryguard-fleet-telemetry:latest
+```
+
+## Building the image
+
+The image supports **amd64** and **arm64** architectures via Docker Buildx.
+
+### Prerequisites
+
+- Docker Desktop >= 2.2.0 (Buildx included) or Docker Engine with Buildx plugin
+- Logged in to Docker Hub: `docker login`
+
+### Using the build script
+
+```bash
+# Build and push with latest tag
 ./build.sh
 
-# Build et push avec une version spécifique
+# Build and push with a specific version
 ./build.sh v1.0.0
 ```
 
-### Option 2 : Commandes Docker manuelles
+### Manual Docker commands
 
 ```bash
-# Créer un builder multi-plateforme (une seule fois)
+# Create a multi-platform builder (once)
 docker buildx create --name sentryguard-builder --driver docker-container --bootstrap
 
-# Build et push pour amd64 et arm64
+# Build and push for amd64 and arm64
 docker buildx build \
   --builder sentryguard-builder \
   --platform linux/amd64,linux/arm64 \
@@ -38,165 +107,40 @@ docker buildx build \
   .
 ```
 
-> **Note :** `--push` est obligatoire pour les builds multi-arch. Docker ne peut pas charger une image multi-plateforme dans le daemon local avec `--load`.
+> **Note:** `--push` is required for multi-arch builds. Docker cannot load a multi-platform image into the local daemon with `--load`.
 
-## Test en local
+## Security
 
-Avant de push l'image sur Docker Hub, vous pouvez la tester localement :
+- **Non-root user**: Runs as a dedicated `fleetuser` user
+- **Minimal permissions**: Only necessary files have execution permissions
+- **Ubuntu 22.04 LTS**: Stable base image with glibc for binary compatibility
+- **Built-in health check**: Automatic service health monitoring
+- **Multi-stage build**: Reduced image size and build dependency isolation
 
-### Option 1 : Utiliser le script de test
+## Troubleshooting
 
-1. **Encoder vos fichiers en base64** et définir les variables d'environnement :
-   ```bash
-   export FLEET_TELEMETRY_CONFIG_B64=$(cat config.json | base64 | tr -d '\n')
-   export FLEET_TELEMETRY_SERVER_CERT_B64=$(cat fullchain.pem | base64 | tr -d '\n')
-   export FLEET_TELEMETRY_SERVER_KEY_B64=$(cat privkey.pem | base64 | tr -d '\n')
-   
-   # Optionnel
-   export FLEET_TELEMETRY_CA_FILE_B64=$(cat test-vehicles-ca.crt | base64 | tr -d '\n')
-   ```
+### Container does not start
 
-2. **Lancer le test** :
-   ```bash
-   ./test.sh
-   ```
-
-Le script va :
-- Vérifier que les variables d'environnement sont définies
-- Builder l'image si elle n'existe pas
-- Lancer le conteneur avec les bonnes variables et ports
-
-### Option 2 : Test manuel avec Docker
-
-1. **Builder l'image** :
-   ```bash
-   ./build.sh
-   ```
-
-2. **Encoder vos fichiers** (voir section "Encoder vos fichiers en base64")
-
-3. **Lancer le conteneur** :
-   ```bash
-   docker run --rm -it \
-     -e FLEET_TELEMETRY_CONFIG_B64="<votre_config_base64>" \
-     -e FLEET_TELEMETRY_SERVER_CERT_B64="<votre_cert_base64>" \
-     -e FLEET_TELEMETRY_SERVER_KEY_B64="<votre_key_base64>" \
-     -e FLEET_TELEMETRY_CA_FILE_B64="<votre_ca_base64>" \
-     -p 12345:12345 \
-     -p 29090:9090 \
-     abarghoud/sentryguard-fleet-telemetry:latest
-   ```
-
-4. **Vérifier les logs** : Le conteneur devrait afficher les messages de décodage et démarrer fleet-telemetry
-
-5. **Arrêter le conteneur** : Appuyez sur `Ctrl+C`
-
-## Push vers Docker Hub
-
-Le push est intégré directement dans le build via `--push`. Il suffit d'être connecté avant de lancer `build.sh` :
-
+Check logs for missing environment variables:
 ```bash
-docker login
-./build.sh v1.0.0
+docker logs <container_id>
 ```
 
-## Déploiement avec Coolify
+You should see the following messages on startup:
+```
+✅ fleet-telemetry config decoded
+✅ server certificate decoded
+✅ server key decoded
+🚀 Starting fleet-telemetry...
+```
 
-### Variables d'environnement requises
+### Base64 decoding errors
 
-Dans Coolify, configurez les variables d'environnement suivantes :
-
-#### Requis :
-- `FLEET_TELEMETRY_CONFIG_B64` : Configuration JSON encodée en base64
-- `FLEET_TELEMETRY_SERVER_CERT_B64` : Certificat serveur (fullchain.pem) encodé en base64
-- `FLEET_TELEMETRY_SERVER_KEY_B64` : Clé privée serveur (privkey.pem) encodée en base64
-- `FLEET_TELEMETRY_CA_FILE_B64` : Fichier CA (test-vehicles-ca.crt) encodé en base64
-
-### Encoder vos fichiers en base64
-
+Make sure your files are encoded without line breaks:
 ```bash
-# Encoder le fichier de configuration
-cat config.json | base64 -w 0
+# Linux
+cat file.pem | base64 -w 0
 
-# Encoder le certificat
-cat fullchain.pem | base64 -w 0
-
-# Encoder la clé privée
-cat privkey.pem | base64 -w 0
-
-# Encoder le fichier CA (si nécessaire)
-cat test-vehicles-ca.crt | base64 -w 0
+# macOS
+cat file.pem | base64 | tr -d '\n'
 ```
-
-**Note macOS** : Utilisez `base64` sans `-w 0` (ou `base64 | tr -d '\n'` pour supprimer les retours à la ligne)
-
-### Configuration dans Coolify
-
-1. Créez une nouvelle application dans Coolify
-2. Sélectionnez l'image : `abarghoud/sentryguard-fleet-telemetry:latest` (ou la version de votre choix)
-3. Ajoutez les variables d'environnement listées ci-dessus
-4. Configurez les ports :
-   - `12345:12345`
-   - `29090:9090`
-5. Déployez !
-
-## Sécurité
-
-L'image Docker utilise les meilleures pratiques de sécurité :
-
-- **Utilisateur non-root** : Le conteneur s'exécute avec un utilisateur dédié `fleetuser`
-- **Permissions minimales** : Seuls les fichiers nécessaires ont les permissions d'exécution
-- **Image de base Ubuntu 22.04** : Image LTS stable avec glibc pour la compatibilité binaire
-- **Health check intégré** : Vérification automatique de la santé du service
-
-## Structure des fichiers
-
-```
-fleet-telemetry/
-├── Dockerfile          # Image Docker optimisée et sécurisée
-├── .dockerignore       # Optimisation du contexte de build
-├── entrypoint.sh       # Script shell qui décode les variables d'env et lance fleet-telemetry
-├── build.sh            # Script pour builder l'image
-└── README.md           # Ce fichier
-```
-
-## Configuration avancée de Coolify
-
-### Variables d'environnement recommandées
-
-En plus des variables requises, vous pouvez configurer :
-
-```bash
-# Configuration réseau
-FLEET_TELEMETRY_HOST=0.0.0.0          # Écouter sur toutes les interfaces
-FLEET_TELEMETRY_PORT=12345             # Port d'écoute (défaut: 443)
-
-# Logs et debugging
-FLEET_TELEMETRY_LOG_LEVEL=info         # Niveau de log (debug, info, warn, error)
-FLEET_TELEMETRY_LOG_FORMAT=json        # Format des logs (json ou text)
-```
-
-### Health Checks dans Coolify
-
-Configurez le health check dans Coolify :
-
-- **Path** : `/health` (ou le endpoint que vous avez configuré)
-- **Port** : `29090` (port de management)
-- **Interval** : `30s`
-- **Timeout** : `10s`
-
-### Scaling horizontal
-
-Pour déployer sur plusieurs serveurs :
-
-1. **Load Balancer** : Configurez un load balancer (nginx, traefik, ou cloud LB)
-2. **Session Affinity** : Si nécessaire, configurez l'affinité de session par IP
-3. **Base de données partagée** : Si fleet-telemetry utilise une base de données, assurez-vous qu'elle soit accessible depuis tous les serveurs
-
-### Monitoring
-
-L'image inclut un health check intégré. Pour un monitoring avancé :
-
-- **Métriques** : Configurez les métriques Prometheus si disponibles
-- **Logs** : Centralisez les logs avec Loki ou ELK stack
-- **Alertes** : Configurez des alertes sur les health checks

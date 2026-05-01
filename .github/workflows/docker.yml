@@ -23,10 +23,17 @@ jobs:
           - app: webapp
             dockerfile: apps/webapp/Dockerfile
             image_suffix: webapp
+          - app: fleet-telemetry
+            dockerfile: fleet-telemetry/Dockerfile
+            image_suffix: fleet-telemetry
+          - app: vehicle-command
+            dockerfile: vehicle-command-proxy/Dockerfile
+            image_suffix: vehicle-command
     steps:
       - uses: actions/checkout@v4
 
       - name: Enable Corepack
+        if: matrix.app == 'api' || matrix.app == 'webapp'
         run: corepack enable
 
       - name: Set up Docker Buildx

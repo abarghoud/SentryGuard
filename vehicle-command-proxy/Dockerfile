@@ -19,7 +19,7 @@ RUN mkdir -p /config
 COPY --from=vehicle-command-binary /usr/local/bin/tesla-http-proxy /usr/local/bin/tesla-http-proxy
 RUN chmod +x /usr/local/bin/tesla-http-proxy
 
-COPY entrypoint.sh /entrypoint.sh
+COPY vehicle-command-proxy/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 RUN chown -R vehicleuser:vehicleuser /config /entrypoint.sh

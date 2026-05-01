@@ -41,7 +41,7 @@ To propose a new feature:
 
 4. **Install dependencies**:
    ```bash
-   yarn install
+   npm install
    ```
 
 5. **Make your changes** following our code standards
@@ -101,56 +101,20 @@ To propose a new feature:
 ### Tests
 
 - Write tests for all new features
-- Maintain code coverage > 80%
 - Tests must be isolated and reproducible
 - Use mocks for external dependencies
 
 ### Documentation
 
-- Document complex functions with JSDoc
 - Update README if necessary
-- Add comments for non-obvious logic
 - Document new environment variables
-
-## 🏗️ Project Structure
-
-```
-SentryGuard/
-├── apps/
-│   ├── api/          # NestJS Backend
-│   └── webapp/       # Next.js Frontend
-└── README.md         # Main documentation
-```
-
-## 🧪 Tests
-
-### Running tests
-
-```bash
-# All tests
-npx nx test api
-npx nx test webapp
-
-# Watch mode
-npx nx test api --watch
-
-# With coverage
-npx nx test api --coverage
-```
-
-### Writing tests
-
-- Place tests next to source files (`.spec.ts`)
-- Use Jest for unit tests
-- Mock external dependencies (DB, Tesla API, Telegram)
-- Test normal cases AND error cases
 
 ## 📝 Review Process
 
 1. A maintainer will review your PR within 48h
 2. Changes may be requested
 3. Once approved, your PR will be merged
-4. Your contribution will be listed in the CHANGELOG
+4. Your contribution will be credited
 
 ## 🐛 Security
 
@@ -163,7 +127,7 @@ If you discover a security vulnerability, please follow our [Security Policy](SE
 - Open an issue with the `question` label
 - Check the [documentation](README.md)
 
-> **Note**: A detailed setup guide with Docker support is coming soon!
+> **Note**: See the [Self-Hosting section](README.md#-self-hosting) in the README for Docker setup instructions.
 
 ## 🙏 Acknowledgments
 

@@ -19,7 +19,7 @@ RUN mkdir -p /etc/fleet-telemetry/certs
 COPY --from=fleet-binary /fleet-telemetry /fleet-telemetry
 RUN chmod +x /fleet-telemetry
 
-COPY entrypoint.sh /entrypoint.sh
+COPY fleet-telemetry/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 RUN chown -R fleetuser:fleetuser /etc/fleet-telemetry /entrypoint.sh /fleet-telemetry
