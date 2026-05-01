@@ -393,9 +393,9 @@ cat > config.json << 'EOF'
     "level": "info"
   },
   "server": {
-    "cert": "/etc/fleet-telemetry/certs/fullchain.pem",
-    "key": "/etc/fleet-telemetry/certs/privkey.pem",
-    "ca": "/etc/fleet-telemetry/certs/test-vehicles-ca.crt"
+    "ca_cert": "/etc/fleet-telemetry/certs/test-vehicles-ca.crt",
+    "server_cert": "/etc/fleet-telemetry/certs/fullchain.pem",
+    "server_key": "/etc/fleet-telemetry/certs/privkey.pem"
   },
   "metrics": {
     "port": 9090
