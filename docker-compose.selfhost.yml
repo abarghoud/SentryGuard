@@ -1,7 +1,7 @@
 # SentryGuard - Self-Hosting Deployment (Docker Compose)
 #
 # Prerequisites:
-#   1. Create a folder on your server (e.g. /volume1/docker/sentryguard/)
+#   1. Create a folder on your server (e.g. /path/to/docker/sentryguard/)
 #   2. Generate certificates (see SELF_HOSTING.md)
 #   3. Create .env file (see SELF_HOSTING.md)
 #
@@ -18,7 +18,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DATABASE_USER:-sentryguard}
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-sentryguard}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?DATABASE_PASSWORD is required}
       POSTGRES_DB: ${DATABASE_NAME:-sentryguard}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -99,16 +99,16 @@ services:
       kafka:
         condition: service_healthy
     environment:
-      NODE_ENV: production
-      PORT: 3001
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-3001}
       WEBAPP_URL: ${WEBAPP_URL:-http://localhost:3000}
-      DATABASE_HOST: postgres
-      DATABASE_PORT: 5432
+      DATABASE_HOST: ${DATABASE_HOST:-postgres}
+      DATABASE_PORT: ${DATABASE_PORT:-5432}
       DATABASE_USER: ${DATABASE_USER:-sentryguard}
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-sentryguard}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:?DATABASE_PASSWORD is required}
       DATABASE_NAME: ${DATABASE_NAME:-sentryguard}
       DATABASE_SSL: ${DATABASE_SSL:-false}
-      DATABASE_RUN_MIGRATIONS: "true"
+      DATABASE_RUN_MIGRATIONS: ${DATABASE_RUN_MIGRATIONS:-true}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY is required}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_OAUTH_STATE_SECRET: ${JWT_OAUTH_STATE_SECRET:?JWT_OAUTH_STATE_SECRET is required}
@@ -127,7 +127,7 @@ services:
       TESLA_FLEET_TELEMETRY_SERVER_PORT: ${TESLA_FLEET_TELEMETRY_SERVER_PORT:-11111}
       LETS_ENCRYPT_CERTIFICATE: ${LETS_ENCRYPT_CERTIFICATE:?LETS_ENCRYPT_CERTIFICATE is required}
       TESLA_PUBLIC_KEY_BASE64: ${TESLA_PUBLIC_KEY_BASE64:?TESLA_PUBLIC_KEY_BASE64 is required}
-      KAFKA_BROKERS: kafka:29092
+      KAFKA_BROKERS: ${KAFKA_BROKERS:-kafka:29092}
       KAFKA_TOPIC: ${KAFKA_TOPIC:-FleetTelemetry_V}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}

@@ -346,8 +346,9 @@ Use [Certbot](https://certbot.eff.org/) to get free certificates for your `fleet
 sudo certbot certonly --standalone -d fleet-telemetry.yourdomain.com
 
 # Certificates are saved to:
-# /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/fullchain.pem
-# /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/privkey.pem
+# /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/fullchain.pem (Server cert + Chain)
+# /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/privkey.pem   (Private key)
+# /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/chain.pem     (CA / Intermediate cert)
 ```
 
 > **Note:** You can reuse these same files for `vehicle-command` by encoding them into the `VEHICLE_COMMAND_TLS_*` variables. Even if the domain doesn't match, the API will accept them for internal communication.
@@ -423,15 +424,26 @@ echo "VEHICLE_COMMAND_TLS_KEY_B64=$(base64 -w 0 /etc/letsencrypt/live/fleet-tele
 echo "VEHICLE_COMMAND_PRIVATE_KEY_B64=$(base64 -w 0 fleet-telemetry/certs/private-key.pem)"
 
 # API
-echo "LETS_ENCRYPT_CERTIFICATE=$(base64 -w 0 /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/fullchain.pem)"
+echo "LETS_ENCRYPT_CERTIFICATE=$(base64 -w 0 /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/chain.pem)"
 echo "TESLA_PUBLIC_KEY_BASE64=$(base64 -w 0 fleet-telemetry/certs/public-key.pem)"
 ```
 
-**macOS** (replace `-w 0` with `| tr -d '\n'`):
+**macOS** (uses `<` for input and `tr` to remove newlines):
 
 ```bash
-echo "FLEET_TELEMETRY_CONFIG_B64=$(base64 fleet-telemetry/config.json | tr -d '\n')"
-# etc.
+# Fleet Telemetry
+echo "FLEET_TELEMETRY_CONFIG_B64=$(base64 < fleet-telemetry/config.json | tr -d '\n')"
+echo "FLEET_TELEMETRY_SERVER_CERT_B64=$(base64 < /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/fullchain.pem | tr -d '\n')"
+echo "FLEET_TELEMETRY_SERVER_KEY_B64=$(base64 < /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/privkey.pem | tr -d '\n')"
+
+# Vehicle Command Proxy (reuses the same TLS cert)
+echo "VEHICLE_COMMAND_TLS_CERT_B64=$(base64 < /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/fullchain.pem | tr -d '\n')"
+echo "VEHICLE_COMMAND_TLS_KEY_B64=$(base64 < /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/privkey.pem | tr -d '\n')"
+echo "VEHICLE_COMMAND_PRIVATE_KEY_B64=$(base64 < fleet-telemetry/certs/private-key.pem | tr -d '\n')"
+
+# API
+echo "LETS_ENCRYPT_CERTIFICATE=$(base64 < /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/chain.pem | tr -d '\n')"
+echo "TESLA_PUBLIC_KEY_BASE64=$(base64 < fleet-telemetry/certs/public-key.pem | tr -d '\n')"
 ```
 
 Save these values in your `.env` file.
@@ -440,13 +452,14 @@ Save these values in your `.env` file.
 
 ### 7.5 Certificate Files Summary
 
-| File                            | Purpose                                               | Environment Variable                                                                          |
-| ------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `fullchain.pem` (Let's Encrypt) | TLS certificate for fleet-telemetry + vehicle-command | `FLEET_TELEMETRY_SERVER_CERT_B64`, `VEHICLE_COMMAND_TLS_CERT_B64`, `LETS_ENCRYPT_CERTIFICATE` |
-| `privkey.pem` (Let's Encrypt)   | TLS private key                                       | `FLEET_TELEMETRY_SERVER_KEY_B64`, `VEHICLE_COMMAND_TLS_KEY_B64`                               |
-| `private-key.pem`               | Tesla vehicle command private key (**keep secret**)   | `VEHICLE_COMMAND_PRIVATE_KEY_B64`                                                             |
-| `public-key.pem`                | Tesla vehicle command public key                      | `TESLA_PUBLIC_KEY_BASE64`                                                                     |
-| `config.json`                   | Fleet Telemetry configuration                         | `FLEET_TELEMETRY_CONFIG_B64`                                                                  |
+| File                            | Purpose                                               | Environment Variable                                              |
+| ------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------- |
+| `fullchain.pem` (Let's Encrypt) | TLS certificate for fleet-telemetry + vehicle-command | `FLEET_TELEMETRY_SERVER_CERT_B64`, `VEHICLE_COMMAND_TLS_CERT_B64` |
+| `chain.pem` (Let's Encrypt)     | CA certificate for telemetry verification             | `LETS_ENCRYPT_CERTIFICATE`                                        |
+| `privkey.pem` (Let's Encrypt)   | TLS private key                                       | `FLEET_TELEMETRY_SERVER_KEY_B64`, `VEHICLE_COMMAND_TLS_KEY_B64`   |
+| `private-key.pem`               | Tesla vehicle command private key (**keep secret**)   | `VEHICLE_COMMAND_PRIVATE_KEY_B64`                                 |
+| `public-key.pem`                | Tesla vehicle command public key                      | `TESLA_PUBLIC_KEY_BASE64`                                         |
+| `config.json`                   | Fleet Telemetry configuration                         | `FLEET_TELEMETRY_CONFIG_B64`                                      |
 
 ---
 
@@ -560,29 +573,29 @@ docker exec sentryguard-kafka kafka-topics --bootstrap-server localhost:9092 \
 
 ### Required
 
-| Variable                                | Description                                                   | Example                                             |
-| --------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------- |
-| `DATABASE_PASSWORD`                     | PostgreSQL password (generate with `openssl rand -base64 24`) | Random string                                       |
-| `ENCRYPTION_KEY`                        | Token encryption key (min 32 chars)                           | Random 32+ char string                              |
-| `JWT_SECRET`                            | JWT signing secret (min 32 chars)                             | Random 32+ char string                              |
-| `JWT_OAUTH_STATE_SECRET`                | OAuth state signing secret (min 32 chars)                     | Random 32+ char string                              |
-| `TELEGRAM_BOT_TOKEN`                    | Telegram bot token from @BotFather                            | `123456:ABC-DEF...`                                 |
-| `TELEGRAM_MODE`                         | Bot mode (`webhook` or `polling`)                             | `webhook`                                           |
-| `TELEGRAM_WEBHOOK_BASE`                 | API public URL (required for `webhook` mode)                  | `https://api.yourdomain.com`                        |
-| `TELEGRAM_WEBHOOK_SECRET_PATH`          | Random URL path (required for `webhook` mode, min 16 chars)   | Random string                                       |
-| `TELEGRAM_WEBHOOK_SECRET_TOKEN`         | Verification token (required for `webhook` mode, min 24 chars)| Random string                                       |
-| `TESLA_CLIENT_ID`                       | Tesla Developer Client ID                                     | From developer.tesla.com                            |
-| `TESLA_CLIENT_SECRET`                   | Tesla Developer Client Secret                                 | From developer.tesla.com                            |
-| `TESLA_REDIRECT_URI`                    | OAuth callback URL                                            | `https://api.yourdomain.com/callback/auth`          |
-| `TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME` | Fleet telemetry hostname (no protocol)                        | `fleet-telemetry.yourdomain.com`                    |
-| `LETS_ENCRYPT_CERTIFICATE`              | Base64 of fleet-telemetry CA cert                             | Output from `generate-certs.sh`                     |
-| `TESLA_PUBLIC_KEY_BASE64`               | Base64 of Tesla public key                                    | Output from `generate-certs.sh`                     |
-| `WEBAPP_URL`                            | Webapp public URL (for CORS + redirects)                      | `https://yourdomain.com`                            |
-| `CORS_ALLOWED_ORIGINS`                  | Additional CORS origins (comma-separated)                     | `https://yourdomain.com,https://api.yourdomain.com` |
-| `NEXT_PUBLIC_API_URL`                   | API URL for webapp client-side calls (runtime)                | `https://api.yourdomain.com`                        |
-| `NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL`   | Tesla virtual key pairing URL (runtime)                       | `https://tesla.com/_ak/yourdomain.com`              |
-| `NEXT_PUBLIC_ROLLBAR_CLIENT_TOKEN`      | Rollbar client-side error tracking token (runtime)            | —                                                   |
-| `NEXT_PUBLIC_DISCORD_URL`               | Discord invite URL (runtime)                                  | `https://discord.gg/your-invite`                    |
+| Variable                                | Description                                                    | Example                                             |
+| --------------------------------------- | -------------------------------------------------------------- | --------------------------------------------------- |
+| `DATABASE_PASSWORD`                     | PostgreSQL password (generate with `openssl rand -base64 24`)  | Random string                                       |
+| `ENCRYPTION_KEY`                        | Token encryption key (min 32 chars)                            | Random 32+ char string                              |
+| `JWT_SECRET`                            | JWT signing secret (min 32 chars)                              | Random 32+ char string                              |
+| `JWT_OAUTH_STATE_SECRET`                | OAuth state signing secret (min 32 chars)                      | Random 32+ char string                              |
+| `TELEGRAM_BOT_TOKEN`                    | Telegram bot token from @BotFather                             | `123456:ABC-DEF...`                                 |
+| `TELEGRAM_MODE`                         | Bot mode (`webhook` or `polling`)                              | `webhook`                                           |
+| `TELEGRAM_WEBHOOK_BASE`                 | API public URL (required for `webhook` mode)                   | `https://api.yourdomain.com`                        |
+| `TELEGRAM_WEBHOOK_SECRET_PATH`          | Random URL path (required for `webhook` mode, min 16 chars)    | Random string                                       |
+| `TELEGRAM_WEBHOOK_SECRET_TOKEN`         | Verification token (required for `webhook` mode, min 24 chars) | Random string                                       |
+| `TESLA_CLIENT_ID`                       | Tesla Developer Client ID                                      | From developer.tesla.com                            |
+| `TESLA_CLIENT_SECRET`                   | Tesla Developer Client Secret                                  | From developer.tesla.com                            |
+| `TESLA_REDIRECT_URI`                    | OAuth callback URL                                             | `https://api.yourdomain.com/callback/auth`          |
+| `TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME` | Fleet telemetry hostname (no protocol)                         | `fleet-telemetry.yourdomain.com`                    |
+| `LETS_ENCRYPT_CERTIFICATE`              | Base64 of fleet-telemetry CA cert                              | Output from `generate-certs.sh`                     |
+| `TESLA_PUBLIC_KEY_BASE64`               | Base64 of Tesla public key                                     | Output from `generate-certs.sh`                     |
+| `WEBAPP_URL`                            | Webapp public URL (for CORS + redirects)                       | `https://yourdomain.com`                            |
+| `CORS_ALLOWED_ORIGINS`                  | Additional CORS origins (comma-separated)                      | `https://yourdomain.com,https://api.yourdomain.com` |
+| `NEXT_PUBLIC_API_URL`                   | API URL for webapp client-side calls (runtime)                 | `https://api.yourdomain.com`                        |
+| `NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL`   | Tesla virtual key pairing URL (runtime)                        | `https://tesla.com/_ak/yourdomain.com`              |
+| `NEXT_PUBLIC_ROLLBAR_CLIENT_TOKEN`      | Rollbar client-side error tracking token (runtime)             | —                                                   |
+| `NEXT_PUBLIC_DISCORD_URL`               | Discord invite URL (runtime)                                   | `https://discord.gg/your-invite`                    |
 
 ### Optional
 
