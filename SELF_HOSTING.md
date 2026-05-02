@@ -457,15 +457,15 @@ Save these values in your `.env` file.
 Copy the example file and fill in your values:
 
 ```bash
-cp apps/api/.env.selfhost.example /volume1/docker/sentryguard/.env
+cp .env.selfhost.example /path/to/docker/sentryguard/.env
 ```
 
-Edit `/volume1/docker/sentryguard/.env` — all variables marked `REQUIRED` must be set, docker-compose will fail if any are missing.
+Edit `/path/to/docker/sentryguard/.env` — all variables marked `REQUIRED` must be set, docker-compose will fail if any are missing.
 
 ### 8.2 Deploy
 
 ```bash
-cd /volume1/docker/sentryguard
+cd /path/to/docker/sentryguard
 
 # Pull the latest images
 docker compose -f docker-compose.selfhost.yml pull
