@@ -395,7 +395,7 @@ cat > fleet-telemetry/config.json << 'EOF'
   "logger": {
     "level": "info"
   },
-  "server": {
+  "tls": {
     "server_cert": "/etc/fleet-telemetry/certs/fullchain.pem",
     "server_key": "/etc/fleet-telemetry/certs/privkey.pem"
   },
