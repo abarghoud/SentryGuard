@@ -10,7 +10,7 @@ export function getOciLoggingConfig(): OciLoggingConfig {
     privateKeyBase64: process.env.OCI_PRIVATE_KEY_BASE64,
     region: process.env.OCI_REGION ?? '',
     logId: process.env.OCI_LOG_ID ?? '',
-    enabled: process.env.OCI_LOGGING_ENABLED !== 'false',
+    enabled: process.env.OCI_LOGGING_ENABLED === 'true',
   };
 }
 
