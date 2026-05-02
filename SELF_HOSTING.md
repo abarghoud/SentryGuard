@@ -260,13 +260,15 @@ If this command returns a list of API versions, Kafka is running correctly.
 
 ### 6.1 Create a Tesla Developer Application
 
-1. Go to [developer.tesla.com](https://developer.tesla.com) and create an application
-2. Set the **Redirect URI** to: `https://api.yourdomain.com/callback/auth`
-3. Note your **Client ID** and **Client Secret**
-4. Set the **Audience** based on your region:
-   - Europe: `https://fleet-api.prd.eu.vn.cloud.tesla.com`
-   - North America: `https://fleet-api.prd.na.vn.cloud.tesla.com`
-   - Asia Pacific: `https://fleet-api.prd.cn.vn.cloud.tesla.com`
+1. Go to [developer.tesla.com](https://developer.tesla.com) and create an application.
+2. Configure the following URLs (replace `yourdomain.com` with your actual domain):
+   - **Allowed Origin(s)**: `https://yourdomain.com` (Your Webapp URL)
+   - **Allowed Redirect URI(s)**: `https://api.yourdomain.com/callback/auth` (Your API callback URL)
+3. **Select Scopes (Permissions)**:
+   Ensure you select at least the following permissions:
+   - `Vehicle Information` (required for telemetry data)
+   - `User Data` / `Profile Information` (required to identify the user in the)
+4. Note your **Client ID** and **Client Secret**.
 
 ### 6.2 Make the Public Key Accessible
 
@@ -278,7 +280,7 @@ The Tesla well-known public key must be accessible at:
 https://api.yourdomain.com/.well-known/appspecific/com.tesla.3p.public-key.pem
 ```
 
-This endpoint serves the **public part** of the EC key pair you will generate in [Section 7.2](#72-generate-the-tesla-command-key-pair). The API serves it automatically from the `TESLA_PUBLIC_KEY_BASE64` environment variable. 
+This endpoint serves the **public part** of the EC key pair you will generate in [Section 7.2](#72-generate-the-tesla-command-key-pair). The API serves it automatically from the `TESLA_PUBLIC_KEY_BASE64` environment variable.
 
 Since `api.yourdomain.com` already points to the API container via your reverse proxy, no additional configuration is needed — the endpoint is available out of the box once the API is deployed (see [Section 8](#8-deploy-with-docker-compose)).
 
@@ -323,7 +325,6 @@ curl -X POST "https://fleet-api.prd.cn.vn.cloud.tesla.cn/api/1/partner_accounts"
 
 > **Note:** Register only in the regions where your users have vehicles. If all your users are in one region, you only need to register with that region's endpoint.
 
-
 ---
 
 ## 7. Generate Certificates
@@ -350,7 +351,6 @@ sudo certbot certonly --standalone -d fleet-telemetry.yourdomain.com
 ```
 
 > **Note:** You can reuse these same files for `vehicle-command` by encoding them into the `VEHICLE_COMMAND_TLS_*` variables. Even if the domain doesn't match, the API will accept them for internal communication.
-
 
 Set up auto-renewal (Let's Encrypt certificates expire every 90 days):
 
@@ -410,6 +410,7 @@ EOF
 ### 7.4 Encode Everything to Base64
 
 **Linux:**
+
 ```bash
 # Fleet Telemetry
 echo "FLEET_TELEMETRY_CONFIG_B64=$(base64 -w 0 fleet-telemetry/config.json)"
@@ -427,6 +428,7 @@ echo "TESLA_PUBLIC_KEY_BASE64=$(base64 -w 0 fleet-telemetry/certs/public-key.pem
 ```
 
 **macOS** (replace `-w 0` with `| tr -d '\n'`):
+
 ```bash
 echo "FLEET_TELEMETRY_CONFIG_B64=$(base64 fleet-telemetry/config.json | tr -d '\n')"
 # etc.
@@ -438,14 +440,13 @@ Save these values in your `.env` file.
 
 ### 7.5 Certificate Files Summary
 
-| File | Purpose | Environment Variable |
-| ---- | ------- | -------------------- |
+| File                            | Purpose                                               | Environment Variable                                                                          |
+| ------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | `fullchain.pem` (Let's Encrypt) | TLS certificate for fleet-telemetry + vehicle-command | `FLEET_TELEMETRY_SERVER_CERT_B64`, `VEHICLE_COMMAND_TLS_CERT_B64`, `LETS_ENCRYPT_CERTIFICATE` |
-| `privkey.pem` (Let's Encrypt) | TLS private key | `FLEET_TELEMETRY_SERVER_KEY_B64`, `VEHICLE_COMMAND_TLS_KEY_B64` |
-| `private-key.pem` | Tesla vehicle command private key (**keep secret**) | `VEHICLE_COMMAND_PRIVATE_KEY_B64` |
-| `public-key.pem` | Tesla vehicle command public key | `TESLA_PUBLIC_KEY_BASE64` |
-| `config.json` | Fleet Telemetry configuration | `FLEET_TELEMETRY_CONFIG_B64` |
-
+| `privkey.pem` (Let's Encrypt)   | TLS private key                                       | `FLEET_TELEMETRY_SERVER_KEY_B64`, `VEHICLE_COMMAND_TLS_KEY_B64`                               |
+| `private-key.pem`               | Tesla vehicle command private key (**keep secret**)   | `VEHICLE_COMMAND_PRIVATE_KEY_B64`                                                             |
+| `public-key.pem`                | Tesla vehicle command public key                      | `TESLA_PUBLIC_KEY_BASE64`                                                                     |
+| `config.json`                   | Fleet Telemetry configuration                         | `FLEET_TELEMETRY_CONFIG_B64`                                                                  |
 
 ---
 
