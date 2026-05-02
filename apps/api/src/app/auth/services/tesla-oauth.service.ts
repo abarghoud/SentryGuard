@@ -33,7 +33,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
   // is a local service on the same Docker network with self-signed certificate.
   private readonly teslaApi = axios.create({
     baseURL:
-      process.env.TESLA_API_BASE_URL || 'https://tesla-vehicle-command:443',
+      process.env.TESLA_API_BASE_URL || 'https://tesla-vehicle-command:8443',
     httpsAgent: new https.Agent({
       rejectUnauthorized: false,
     }),

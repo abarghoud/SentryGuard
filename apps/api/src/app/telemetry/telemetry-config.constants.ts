@@ -3,7 +3,7 @@
  * Points to the local tesla-vehicle-command proxy service
  */
 export const DEFAULT_TESLA_API_BASE_URL =
-  'https://tesla-vehicle-command:443';
+  'https://tesla-vehicle-command:8443';
 
 /**
  * Error messages
@@ -56,7 +56,7 @@ export const SUCCESS_MESSAGES = {
 export const TELEMETRY_CONFIG = {
   DEFAULT_SENTRY_MODE_INTERVAL: 30,
   DEFAULT_BREAK_IN_MONITORING_INTERVAL: 30,
-  PORT: parseInt(process.env.TESLA_FLEET_TELEMETRY_SERVER_PORT ?? '443', 10),
+  PORT: parseInt(process.env.TESLA_FLEET_TELEMETRY_SERVER_PORT ?? '8443', 10),
 } as const;
 
 /**

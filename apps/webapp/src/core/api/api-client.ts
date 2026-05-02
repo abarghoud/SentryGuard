@@ -1,6 +1,67 @@
 import { getToken } from './token-manager';
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const DEFAULT_API_URL = 'http://localhost:3001';
+
+interface RuntimeConfig {
+  apiUrl: string;
+  virtualKeyUrl: string;
+  rollbarClientToken: string;
+  discordUrl: string;
+}
+
+let cachedConfig: RuntimeConfig | null = null;
+let fetchPromise: Promise<RuntimeConfig> | null = null;
+
+async function resolveRuntimeConfig(): Promise<RuntimeConfig> {
+  if (cachedConfig) {
+    return cachedConfig;
+  }
+
+  if (fetchPromise) {
+    return fetchPromise;
+  }
+
+  fetchPromise = fetch('/api/runtime-config')
+    .then((res) => res.json())
+    .then((data: Partial<RuntimeConfig>) => {
+      cachedConfig = {
+        apiUrl: data.apiUrl || DEFAULT_API_URL,
+        virtualKeyUrl: data.virtualKeyUrl || '',
+        rollbarClientToken: data.rollbarClientToken || '',
+        discordUrl: data.discordUrl || '',
+      };
+      return cachedConfig;
+    })
+    .catch(() => {
+      cachedConfig = { apiUrl: DEFAULT_API_URL, virtualKeyUrl: '', rollbarClientToken: '', discordUrl: '' };
+      return cachedConfig;
+    })
+    .finally(() => {
+      fetchPromise = null;
+    });
+
+  return fetchPromise;
+}
+
+export async function resolveApiUrl(): Promise<string> {
+  const config = await resolveRuntimeConfig();
+  return config.apiUrl;
+}
+
+export async function resolveVirtualKeyUrl(): Promise<string> {
+  const config = await resolveRuntimeConfig();
+  return config.virtualKeyUrl;
+}
+
+export async function resolveRollbarClientToken(): Promise<string> {
+  const config = await resolveRuntimeConfig();
+  return config.rollbarClientToken;
+}
+
+export async function resolveDiscordUrl(): Promise<string> {
+  const config = await resolveRuntimeConfig();
+  return config.discordUrl;
+}
 
 export class ApiError extends Error {
   constructor(message: string, public status?: number, public data?: any) {
@@ -32,7 +93,8 @@ export class ApiClient implements ApiClientRequirements {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const url = `${API_BASE_URL}${endpoint}`;
+    const baseUrl = await resolveApiUrl();
+    const url = `${baseUrl}${endpoint}`;
 
     try {
       const response = await fetch(url, {

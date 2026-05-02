@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Vehicle } from '../../domain/entities';
 import VehicleCard from '../../../../components/VehicleCard';
+import { resolveVirtualKeyUrl } from '../../../../core/api/api-client';
 
 export interface VehiclesViewProps {
   vehicles: Vehicle[];
@@ -31,8 +32,11 @@ export function VehiclesView({
 
   const isKeyPaired = vehicles.length > 0 ? vehicles[0].key_paired : null;
 
-  const handlePairVirtualKey = () => {
-    window.open(process.env.NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL, '_blank');
+  const handlePairVirtualKey = async () => {
+    const url = await resolveVirtualKeyUrl();
+    if (url) {
+      window.open(url, '_blank');
+    }
   };
 
   if (isLoading) {

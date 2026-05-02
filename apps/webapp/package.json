@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
-    "@tanstack/react-query": "^5.99.0",
+    "@tanstack/react-query": "^5.100.6",
     "i18next": "^25.6.0",
     "next": "16.1.5",
     "next-i18next": "^15.4.2",

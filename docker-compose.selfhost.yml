@@ -1,0 +1,161 @@
+# SentryGuard - Self-Hosting Deployment (Docker Compose)
+#
+# Prerequisites:
+#   1. Create a folder on your server (e.g. /volume1/docker/sentryguard/)
+#   2. Generate certificates (see SELF_HOSTING.md)
+#   3. Create .env file (see SELF_HOSTING.md)
+#
+# Deploy:
+#   docker compose -f docker-compose.selfhost.yml --env-file .env up -d
+#
+# Update:
+#   docker compose -f docker-compose.selfhost.yml pull && docker compose -f docker-compose.selfhost.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sentryguard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DATABASE_USER:-sentryguard}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-sentryguard}
+      POSTGRES_DB: ${DATABASE_NAME:-sentryguard}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-sentryguard}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - sentryguard
+
+  kafka:
+    image: apache/kafka:4.1.1
+    container_name: sentryguard-kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - sentryguard
+
+  fleet-telemetry:
+    image: ghcr.io/abarghoud/sentryguard-fleet-telemetry:latest
+    container_name: sentryguard-fleet-telemetry
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "${TESLA_FLEET_TELEMETRY_SERVER_PORT:-11111}:8443"
+    environment:
+      FLEET_TELEMETRY_CONFIG_B64: ${FLEET_TELEMETRY_CONFIG_B64:?required}
+      FLEET_TELEMETRY_SERVER_CERT_B64: ${FLEET_TELEMETRY_SERVER_CERT_B64:?required}
+      FLEET_TELEMETRY_SERVER_KEY_B64: ${FLEET_TELEMETRY_SERVER_KEY_B64:?required}
+      FLEET_TELEMETRY_CA_FILE_B64: ${FLEET_TELEMETRY_CA_FILE_B64:-}
+    networks:
+      - sentryguard
+
+  vehicle-command:
+    image: ghcr.io/abarghoud/sentryguard-vehicle-command:latest
+    container_name: sentryguard-vehicle-command
+    restart: unless-stopped
+    environment:
+      VEHICLE_COMMAND_TLS_KEY_B64: ${VEHICLE_COMMAND_TLS_KEY_B64:?required}
+      VEHICLE_COMMAND_TLS_CERT_B64: ${VEHICLE_COMMAND_TLS_CERT_B64:?required}
+      VEHICLE_COMMAND_PRIVATE_KEY_B64: ${VEHICLE_COMMAND_PRIVATE_KEY_B64:?required}
+      VEHICLE_COMMAND_PORT: 8443
+    networks:
+      - sentryguard
+    healthcheck:
+      test: [ "CMD-SHELL", "exit 0" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  api:
+    image: ghcr.io/abarghoud/sentryguard-api:latest
+    container_name: sentryguard-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      WEBAPP_URL: ${WEBAPP_URL:-http://localhost:3000}
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: ${DATABASE_USER:-sentryguard}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-sentryguard}
+      DATABASE_NAME: ${DATABASE_NAME:-sentryguard}
+      DATABASE_SSL: ${DATABASE_SSL:-false}
+      DATABASE_RUN_MIGRATIONS: "true"
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_OAUTH_STATE_SECRET: ${JWT_OAUTH_STATE_SECRET:?JWT_OAUTH_STATE_SECRET is required}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-1d}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?TELEGRAM_BOT_TOKEN is required}
+      TELEGRAM_MODE: ${TELEGRAM_MODE:-webhook}
+      TELEGRAM_WEBHOOK_BASE: ${TELEGRAM_WEBHOOK_BASE:?TELEGRAM_WEBHOOK_BASE is required}
+      TELEGRAM_WEBHOOK_SECRET_PATH: ${TELEGRAM_WEBHOOK_SECRET_PATH:?TELEGRAM_WEBHOOK_SECRET_PATH is required}
+      TELEGRAM_WEBHOOK_SECRET_TOKEN: ${TELEGRAM_WEBHOOK_SECRET_TOKEN:?TELEGRAM_WEBHOOK_SECRET_TOKEN is required}
+      TESLA_CLIENT_ID: ${TESLA_CLIENT_ID:?TESLA_CLIENT_ID is required}
+      TESLA_CLIENT_SECRET: ${TESLA_CLIENT_SECRET:?TESLA_CLIENT_SECRET is required}
+      TESLA_AUDIENCE: ${TESLA_AUDIENCE:-https://fleet-api.prd.eu.vn.cloud.tesla.com}
+      TESLA_REDIRECT_URI: ${TESLA_REDIRECT_URI:?TESLA_REDIRECT_URI is required}
+      TESLA_API_BASE_URL: https://vehicle-command:8443
+      TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME: ${TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME:?TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME is required}
+      TESLA_FLEET_TELEMETRY_SERVER_PORT: ${TESLA_FLEET_TELEMETRY_SERVER_PORT:-11111}
+      LETS_ENCRYPT_CERTIFICATE: ${LETS_ENCRYPT_CERTIFICATE:?LETS_ENCRYPT_CERTIFICATE is required}
+      TESLA_PUBLIC_KEY_BASE64: ${TESLA_PUBLIC_KEY_BASE64:?TESLA_PUBLIC_KEY_BASE64 is required}
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-FleetTelemetry_V}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${API_PORT:-3001}:3001"
+    networks:
+      - sentryguard
+
+  webapp:
+    image: ghcr.io/abarghoud/sentryguard-webapp:latest
+    container_name: sentryguard-webapp
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL: ${NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL:-}
+      NEXT_PUBLIC_ROLLBAR_CLIENT_TOKEN: ${NEXT_PUBLIC_ROLLBAR_CLIENT_TOKEN:-}
+      NEXT_PUBLIC_DISCORD_URL: ${NEXT_PUBLIC_DISCORD_URL:-}
+    ports:
+      - "${WEBAPP_PORT:-3000}:3000"
+    networks:
+      - sentryguard
+
+volumes:
+  postgres_data:
+
+networks:
+  sentryguard:
+    driver: bridge
