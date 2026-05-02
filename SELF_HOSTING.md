@@ -55,6 +55,7 @@ Complete guide to deploy SentryGuard on your own server (Synology NAS, VPS, etc.
 ```
 
 **Services:**
+
 - **webapp**: Next.js frontend (internal port 3000)
 - **api**: NestJS backend (internal port 3001)
 - **postgres**: PostgreSQL database
@@ -80,12 +81,12 @@ The official Tesla images (`tesla/vehicle-command`, `tesla/fleet-telemetry`) pre
 
 ### Images used
 
-| Image | Description |
-|-------|-------------|
+| Image                                          | Description                                                               |
+| ---------------------------------------------- | ------------------------------------------------------------------------- |
 | `abarghoud/sentryguard-fleet-telemetry:latest` | Fleet Telemetry with base64 decoding and automatic certificate generation |
-| `abarghoud/sentryguard-vehicle-command:latest` | Vehicle Command Proxy with base64 decoding and simplified configuration |
-| `ghcr.io/abarghoud/sentryguard-api:latest` | NestJS API (pre-built) |
-| `ghcr.io/abarghoud/sentryguard-webapp:latest` | Next.js Webapp (pre-built) |
+| `abarghoud/sentryguard-vehicle-command:latest` | Vehicle Command Proxy with base64 decoding and simplified configuration   |
+| `ghcr.io/abarghoud/sentryguard-api:latest`     | NestJS API (pre-built)                                                    |
+| `ghcr.io/abarghoud/sentryguard-webapp:latest`  | Next.js Webapp (pre-built)                                                |
 
 ### How they work
 
@@ -112,10 +113,10 @@ This approach allows passing all configuration via environment variables without
 
 If you prefer not to manage PostgreSQL and Kafka yourself, you can use free cloud services instead of the Docker containers:
 
-| Service | Alternative | Free tier |
-|---------|-------------|-----------|
-| PostgreSQL | [Neon](https://neon.tech) or [Supabase](https://supabase.com) | 500 MB |
-| Kafka | [Confluent Cloud](https://confluent.cloud) | 30 partitions |
+| Service    | Alternative                                                   | Free tier     |
+| ---------- | ------------------------------------------------------------- | ------------- |
+| PostgreSQL | [Neon](https://neon.tech) or [Supabase](https://supabase.com) | 500 MB        |
+| Kafka      | [Confluent Cloud](https://confluent.cloud)                    | 30 partitions |
 
 **PostgreSQL (Neon example):**
 
@@ -162,17 +163,18 @@ In `config.json`, replace the `kafka` section with SASL authentication:
 
 Create these DNS records pointing to your server:
 
-| Record | Type | Target |
-|--------|------|--------|
-| `yourdomain.com` | A | Your server IP |
-| `api.yourdomain.com` | A | Your server IP |
-| `fleet-telemetry.yourdomain.com` | A | Your server IP |
+| Record                           | Type | Target         |
+| -------------------------------- | ---- | -------------- |
+| `yourdomain.com`                 | A    | Your server IP |
+| `api.yourdomain.com`             | A    | Your server IP |
+| `fleet-telemetry.yourdomain.com` | A    | Your server IP |
 
 > **Important**: If you use Cloudflare, set `fleet-telemetry.yourdomain.com` to **DNS only** (grey cloud). Cloudflare's proxy does not handle TLS connections on custom ports.
 
 ### 4.2 Reverse Proxy
 
 You need a reverse proxy to terminate SSL for the webapp and API. Any of these will work:
+
 - **Nginx Proxy Manager** (easiest for NAS users)
 - **Caddy** (automatic HTTPS with Let's Encrypt)
 - **Nginx** (manual configuration)
@@ -180,22 +182,24 @@ You need a reverse proxy to terminate SSL for the webapp and API. Any of these w
 
 Configure three proxy hosts:
 
-| Subdomain | Upstream | Port | Notes |
-|-----------|-----------|------|-------|
-| `yourdomain.com` | `sentryguard-webapp` (or host:3020) | 3000 | Webapp |
-| `api.yourdomain.com` | `sentryguard-api` (or host:3021) | 3001 | API |
-| `fleet-telemetry.yourdomain.com` | Direct (port 11111) | 8443 | No reverse proxy — Tesla connects directly |
+| Subdomain                        | Upstream                            | Port | Notes                                      |
+| -------------------------------- | ----------------------------------- | ---- | ------------------------------------------ |
+| `yourdomain.com`                 | `sentryguard-webapp` (or host:3020) | 3000 | Webapp                                     |
+| `api.yourdomain.com`             | `sentryguard-api` (or host:3021)    | 3001 | API                                        |
+| `fleet-telemetry.yourdomain.com` | Direct (port 11111)                 | 8443 | No reverse proxy — Tesla connects directly |
 
 > **Fleet telemetry**: Tesla connects to port 11111 with mutual TLS. Do NOT proxy this through your reverse proxy — expose port 11111 directly on your firewall/router and map it to the `sentryguard-fleet-telemetry` container.
 
 ### 4.3 SSL Certificates
 
 For the webapp and API:
+
 - Use Let's Encrypt (free, auto-renewing) or any valid SSL certificate
 - If behind Cloudflare, use Cloudflare Origin certificates with "Full (strict)" SSL mode
 
 For fleet-telemetry:
-- The `generate-certs.sh` script generates self-signed CA + server certificates
+
+- Self-signed CA + server certificates are generated manually — see [Section 7](#7-generate-certificates) for the step-by-step commands
 - These are used internally between Tesla and your server — no public CA needed
 
 ---
@@ -208,13 +212,13 @@ KRaft (Kafka Raft) is Kafka's built-in quorum mode that eliminates the need for 
 
 ### Why KRaft?
 
-| Aspect | Zookeeper | KRaft |
-|--------|-----------|-------|
-| Components | 2 (Kafka + Zookeeper) | 1 (Kafka only) |
-| Configuration | Complex | Simplified |
-| Resources | More RAM/CPU | Fewer resources |
-| Single-node deployment | Not supported | Supported |
-| Operational overhead | Higher | Lower |
+| Aspect                 | Zookeeper             | KRaft           |
+| ---------------------- | --------------------- | --------------- |
+| Components             | 2 (Kafka + Zookeeper) | 1 (Kafka only)  |
+| Configuration          | Complex               | Simplified      |
+| Resources              | More RAM/CPU          | Fewer resources |
+| Single-node deployment | Not supported         | Supported       |
+| Operational overhead   | Higher                | Lower           |
 
 ### Configuration in SentryGuard
 
@@ -264,9 +268,31 @@ If this command returns a list of API versions, Kafka is running correctly.
    - North America: `https://fleet-api.prd.na.vn.cloud.tesla.com`
    - Asia Pacific: `https://fleet-api.prd.cn.vn.cloud.tesla.com`
 
-### 6.2 Register as a Fleet API Partner
+### 6.2 Make the Public Key Accessible
 
-After creating your application, register it as a partner. Tesla requires registering your domain in each region where your users have vehicles — you need a separate partner account per region.
+> **⚠️ Do this before registering as a Fleet API partner.** When Tesla processes the partner registration request, it immediately fetches your public key to verify your domain. The API must be deployed and running first.
+
+The Tesla well-known public key must be accessible at:
+
+```
+https://api.yourdomain.com/.well-known/appspecific/com.tesla.3p.public-key.pem
+```
+
+This endpoint serves the **public part** of the EC key pair you will generate in [Section 7.2](#72-generate-the-tesla-command-key-pair). The API serves it automatically from the `TESLA_PUBLIC_KEY_BASE64` environment variable. 
+
+Since `api.yourdomain.com` already points to the API container via your reverse proxy, no additional configuration is needed — the endpoint is available out of the box once the API is deployed (see [Section 8](#8-deploy-with-docker-compose)).
+
+You can verify it's working before proceeding:
+
+```bash
+curl https://api.yourdomain.com/.well-known/appspecific/com.tesla.3p.public-key.pem
+```
+
+It should return your PEM-encoded public key. Only then proceed to the next step.
+
+### 6.3 Register as a Fleet API Partner
+
+After your API is deployed and the public key is accessible, register your application as a partner. Tesla requires registering your domain in each region where your users have vehicles.
 
 ```bash
 # Get a client_credentials token first (use your region-specific audience)
@@ -280,109 +306,85 @@ curl -X POST https://auth.tesla.com/oauth2/v3/token \
 curl -X POST "https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/partner_accounts" \
   -H "Authorization: Bearer YOUR_CLIENT_CREDENTIALS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"domain":"yourdomain.com"}'
+  -d '{"domain":"api.yourdomain.com"}'
 
 # Europe, Middle East, Africa
 curl -X POST "https://fleet-api.prd.eu.vn.cloud.tesla.com/api/1/partner_accounts" \
   -H "Authorization: Bearer YOUR_CLIENT_CREDENTIALS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"domain":"yourdomain.com"}'
+  -d '{"domain":"api.yourdomain.com"}'
 
 # China (requires a separate account on tesla.cn)
 curl -X POST "https://fleet-api.prd.cn.vn.cloud.tesla.cn/api/1/partner_accounts" \
   -H "Authorization: Bearer YOUR_CLIENT_CREDENTIALS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"domain":"yourdomain.com"}'
+  -d '{"domain":"api.yourdomain.com"}'
 ```
 
 > **Note:** Register only in the regions where your users have vehicles. If all your users are in one region, you only need to register with that region's endpoint.
 
-### 6.3 Upload Public Key to Your Domain
-
-The Tesla well-known public key must be accessible at:
-```
-https://yourdomain.com/.well-known/appspecific/com.tesla.3p.public-key.pem
-```
-
-The API serves this key from the `TESLA_PUBLIC_KEY_BASE64` environment variable at the same path. You must configure your reverse proxy to forward requests to `/.well-known/` to the API container.
-
-#### Nginx Proxy Manager (NPM)
-
-Add a **Custom Location** to your webapp proxy host:
-
-| Field | Value |
-|-------|-------|
-| Location path | `/.well-known/appspecific/` |
-| Proxy pass | `http://<API_HOST>:3021` |
-| Headers | See below |
-
-Add these headers in the **Advanced** tab:
-
-```nginx
-proxy_set_header Host $host;
-proxy_set_header X-Real-IP $remote_addr;
-proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-proxy_set_header X-Forwarded-Proto $scheme;
-```
 
 ---
 
 ## 7. Generate Certificates
 
-You need `openssl` installed. Create the `fleet-telemetry/certs/` directory and run each step below.
+You need three types of certificates:
 
-### 7.1 Generate the CA Certificate
+1. **Public TLS certificate** (Let's Encrypt) — for `fleet-telemetry`. Tesla vehicles connect to this service from the internet and validate the certificate chain. **Self-signed certificates will not work for telemetry.**
+2. **Internal TLS certificate** (Self-signed or reused) — for `vehicle-command`. This service is used internally by the API. While it requires TLS to start, it can use a self-signed certificate since the API is configured to skip verification for internal calls.
+3. **EC key pair** — for vehicle command authentication (this one is always self-generated).
+
+---
+
+### 7.1 Get a TLS Certificate (Let's Encrypt)
+
+Use [Certbot](https://certbot.eff.org/) to get free certificates for your `fleet-telemetry.yourdomain.com` domain. This is required for telemetry to work.
+
+```bash
+# Get a certificate (standalone mode)
+sudo certbot certonly --standalone -d fleet-telemetry.yourdomain.com
+
+# Certificates are saved to:
+# /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/fullchain.pem
+# /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/privkey.pem
+```
+
+> **Note:** You can reuse these same files for `vehicle-command` by encoding them into the `VEHICLE_COMMAND_TLS_*` variables. Even if the domain doesn't match, the API will accept them for internal communication.
+
+
+Set up auto-renewal (Let's Encrypt certificates expire every 90 days):
+
+```bash
+sudo certbot renew --dry-run
+```
+
+> **Note:** If `fleet-telemetry` and `vehicle-command` share the same subdomain, you can reuse the same certificate for both.
+
+---
+
+### 7.2 Generate the Tesla Command Key Pair
+
+This EC key pair is used to authenticate commands sent to Tesla vehicles. Unlike the TLS certificate, it does not need to come from a public CA — it is your application's identity key.
 
 ```bash
 mkdir -p fleet-telemetry/certs
 cd fleet-telemetry/certs
 
-openssl ecparam -name prime256v1 -genkey -noout -out ca.key
-openssl req -x509 -nodes -new -key ca.key \
-  -subj "/CN=SentryGuard Fleet Telemetry CA" \
-  -out ca.crt \
-  -sha256 -days 3650 \
-  -addext "basicConstraints=critical,CA:TRUE" \
-  -addext "keyUsage=critical,keyCertSign,cRLSign"
-```
-
-### 7.2 Generate the Server Certificate (signed by CA)
-
-Replace `fleet-telemetry.yourdomain.com` with your actual fleet-telemetry hostname:
-
-```bash
-FLEET_HOSTNAME=fleet-telemetry.yourdomain.com
-
-openssl ecparam -name prime256v1 -genkey -noout -out tls.key
-
-openssl req -new -key tls.key \
-  -subj "/CN=${FLEET_HOSTNAME}" \
-  -out tls.csr
-
-openssl x509 -req -in tls.csr \
-  -CA ca.crt \
-  -CAkey ca.key \
-  -CAcreateserial \
-  -out tls.crt \
-  -sha256 -days 3650 \
-  -extfile <(printf "extendedKeyUsage=serverAuth\nkeyUsage=digitalSignature,keyAgreement\nsubjectAltName=DNS:${FLEET_HOSTNAME}")
-
-rm -f tls.csr ca.srl
-```
-
-### 7.3 Generate the Tesla Command Key Pair
-
-```bash
+# Generate the private key (used by vehicle-command to sign commands)
 openssl ecparam -name prime256v1 -genkey -noout -out private-key.pem
+
+# Extract the public key (served at /.well-known/ and registered on developer.tesla.com)
 openssl ec -in private-key.pem -pubout -out public-key.pem
 ```
 
-### 7.4 Generate the Fleet Telemetry Config
+---
 
-Create the `config.json` file for fleet-telemetry:
+### 7.3 Generate the Fleet Telemetry Config
+
+Create the `config.json` file for fleet-telemetry. The cert paths reference the files decoded by the container's entrypoint from your base64 env vars:
 
 ```bash
-cat > config.json << 'EOF'
+cat > fleet-telemetry/config.json << 'EOF'
 {
   "port": 8443,
   "kafka": {
@@ -393,7 +395,6 @@ cat > config.json << 'EOF'
     "level": "info"
   },
   "server": {
-    "ca_cert": "/etc/fleet-telemetry/certs/test-vehicles-ca.crt",
     "server_cert": "/etc/fleet-telemetry/certs/fullchain.pem",
     "server_key": "/etc/fleet-telemetry/certs/privkey.pem"
   },
@@ -404,42 +405,47 @@ cat > config.json << 'EOF'
 EOF
 ```
 
-### 7.5 Get the Base64 Environment Variable Values
+---
 
-Encode each file to base64 (Linux/macOS):
+### 7.4 Encode Everything to Base64
 
+**Linux:**
 ```bash
 # Fleet Telemetry
-echo "FLEET_TELEMETRY_CONFIG_B64=$(base64 -w 0 config.json)"
-echo "FLEET_TELEMETRY_SERVER_CERT_B64=$(base64 -w 0 tls.crt)"
-echo "FLEET_TELEMETRY_SERVER_KEY_B64=$(base64 -w 0 tls.key)"
-echo "FLEET_TELEMETRY_CA_FILE_B64=$(base64 -w 0 ca.crt)"
+echo "FLEET_TELEMETRY_CONFIG_B64=$(base64 -w 0 fleet-telemetry/config.json)"
+echo "FLEET_TELEMETRY_SERVER_CERT_B64=$(base64 -w 0 /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/fullchain.pem)"
+echo "FLEET_TELEMETRY_SERVER_KEY_B64=$(base64 -w 0 /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/privkey.pem)"
 
-# Vehicle Command Proxy
-echo "VEHICLE_COMMAND_TLS_KEY_B64=$(base64 -w 0 tls.key)"
-echo "VEHICLE_COMMAND_TLS_CERT_B64=$(base64 -w 0 tls.crt)"
-echo "VEHICLE_COMMAND_PRIVATE_KEY_B64=$(base64 -w 0 private-key.pem)"
+# Vehicle Command Proxy (reuses the same TLS cert)
+echo "VEHICLE_COMMAND_TLS_CERT_B64=$(base64 -w 0 /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/fullchain.pem)"
+echo "VEHICLE_COMMAND_TLS_KEY_B64=$(base64 -w 0 /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/privkey.pem)"
+echo "VEHICLE_COMMAND_PRIVATE_KEY_B64=$(base64 -w 0 fleet-telemetry/certs/private-key.pem)"
 
-# API (legacy variables)
-echo "LETS_ENCRYPT_CERTIFICATE=$(base64 -w 0 ca.crt)"
-echo "TESLA_PUBLIC_KEY_BASE64=$(base64 -w 0 public-key.pem)"
+# API
+echo "LETS_ENCRYPT_CERTIFICATE=$(base64 -w 0 /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/fullchain.pem)"
+echo "TESLA_PUBLIC_KEY_BASE64=$(base64 -w 0 fleet-telemetry/certs/public-key.pem)"
 ```
 
-Save these values — you'll need them in your `.env` file.
+**macOS** (replace `-w 0` with `| tr -d '\n'`):
+```bash
+echo "FLEET_TELEMETRY_CONFIG_B64=$(base64 fleet-telemetry/config.json | tr -d '\n')"
+# etc.
+```
 
-> **Important**: Register `public-key.pem` at [developer.tesla.com](https://developer.tesla.com) and serve it at `https://yourdomain.com/.well-known/appspecific/com.tesla.3p.public-key.pem` (the webapp proxies this path automatically).
+Save these values in your `.env` file.
 
-### 7.6 Certificate Files Summary
+---
+
+### 7.5 Certificate Files Summary
 
 | File | Purpose | Environment Variable |
-|------|---------|---------------------|
-| `ca.key` | Fleet Telemetry CA private key (**keep secret**) | — |
-| `ca.crt` | Fleet Telemetry CA certificate | `FLEET_TELEMETRY_CA_FILE_B64`, `LETS_ENCRYPT_CERTIFICATE` |
-| `tls.key` | Fleet Telemetry server private key | `FLEET_TELEMETRY_SERVER_KEY_B64`, `VEHICLE_COMMAND_TLS_KEY_B64` |
-| `tls.crt` | Fleet Telemetry server certificate (signed by CA) | `FLEET_TELEMETRY_SERVER_CERT_B64`, `VEHICLE_COMMAND_TLS_CERT_B64` |
-| `config.json` | Fleet Telemetry configuration | `FLEET_TELEMETRY_CONFIG_B64` |
+| ---- | ------- | -------------------- |
+| `fullchain.pem` (Let's Encrypt) | TLS certificate for fleet-telemetry + vehicle-command | `FLEET_TELEMETRY_SERVER_CERT_B64`, `VEHICLE_COMMAND_TLS_CERT_B64`, `LETS_ENCRYPT_CERTIFICATE` |
+| `privkey.pem` (Let's Encrypt) | TLS private key | `FLEET_TELEMETRY_SERVER_KEY_B64`, `VEHICLE_COMMAND_TLS_KEY_B64` |
 | `private-key.pem` | Tesla vehicle command private key (**keep secret**) | `VEHICLE_COMMAND_PRIVATE_KEY_B64` |
 | `public-key.pem` | Tesla vehicle command public key | `TESLA_PUBLIC_KEY_BASE64` |
+| `config.json` | Fleet Telemetry configuration | `FLEET_TELEMETRY_CONFIG_B64` |
+
 
 ---
 
@@ -516,6 +522,7 @@ docker logs sentryguard-api --tail 50 | grep -i "telemetry\|configur\|error"
 ```
 
 When you enable telemetry for a vehicle, you should see:
+
 ```
 ✅ Telemetry configured for VIN: XXXXXXX
 ```
@@ -552,47 +559,47 @@ docker exec sentryguard-kafka kafka-topics --bootstrap-server localhost:9092 \
 
 ### Required
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `DATABASE_PASSWORD` | PostgreSQL password (generate with `openssl rand -base64 24`) | Random string |
-| `ENCRYPTION_KEY` | Token encryption key (min 32 chars) | Random 32+ char string |
-| `JWT_SECRET` | JWT signing secret (min 32 chars) | Random 32+ char string |
-| `JWT_OAUTH_STATE_SECRET` | OAuth state signing secret (min 32 chars) | Random 32+ char string |
-| `TELEGRAM_BOT_TOKEN` | Telegram bot token from @BotFather | `123456:ABC-DEF...` |
-| `TELEGRAM_WEBHOOK_BASE` | API public URL for Telegram webhooks | `https://api.yourdomain.com` |
-| `TELEGRAM_WEBHOOK_SECRET_PATH` | Random URL path (min 16 chars) | Random string |
-| `TELEGRAM_WEBHOOK_SECRET_TOKEN` | Webhook verification token (min 24 chars) | Random string |
-| `TESLA_CLIENT_ID` | Tesla Developer Client ID | From developer.tesla.com |
-| `TESLA_CLIENT_SECRET` | Tesla Developer Client Secret | From developer.tesla.com |
-| `TESLA_REDIRECT_URI` | OAuth callback URL | `https://api.yourdomain.com/callback/auth` |
-| `TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME` | Fleet telemetry hostname (no protocol) | `fleet-telemetry.yourdomain.com` |
-| `LETS_ENCRYPT_CERTIFICATE` | Base64 of fleet-telemetry CA cert | Output from `generate-certs.sh` |
-| `TESLA_PUBLIC_KEY_BASE64` | Base64 of Tesla public key | Output from `generate-certs.sh` |
-| `WEBAPP_URL` | Webapp public URL (for CORS + redirects) | `https://yourdomain.com` |
-| `CORS_ALLOWED_ORIGINS` | Additional CORS origins (comma-separated) | `https://yourdomain.com,https://api.yourdomain.com` |
-| `NEXT_PUBLIC_API_URL` | API URL for webapp client-side calls (runtime) | `https://api.yourdomain.com` |
-| `NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL` | Tesla virtual key pairing URL (runtime) | `https://tesla.com/_ak/yourdomain.com` |
-| `NEXT_PUBLIC_ROLLBAR_CLIENT_TOKEN` | Rollbar client-side error tracking token (runtime) | — |
-| `NEXT_PUBLIC_DISCORD_URL` | Discord invite URL (runtime) | `https://discord.gg/your-invite` |
+| Variable                                | Description                                                   | Example                                             |
+| --------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------- |
+| `DATABASE_PASSWORD`                     | PostgreSQL password (generate with `openssl rand -base64 24`) | Random string                                       |
+| `ENCRYPTION_KEY`                        | Token encryption key (min 32 chars)                           | Random 32+ char string                              |
+| `JWT_SECRET`                            | JWT signing secret (min 32 chars)                             | Random 32+ char string                              |
+| `JWT_OAUTH_STATE_SECRET`                | OAuth state signing secret (min 32 chars)                     | Random 32+ char string                              |
+| `TELEGRAM_BOT_TOKEN`                    | Telegram bot token from @BotFather                            | `123456:ABC-DEF...`                                 |
+| `TELEGRAM_WEBHOOK_BASE`                 | API public URL for Telegram webhooks                          | `https://api.yourdomain.com`                        |
+| `TELEGRAM_WEBHOOK_SECRET_PATH`          | Random URL path (min 16 chars)                                | Random string                                       |
+| `TELEGRAM_WEBHOOK_SECRET_TOKEN`         | Webhook verification token (min 24 chars)                     | Random string                                       |
+| `TESLA_CLIENT_ID`                       | Tesla Developer Client ID                                     | From developer.tesla.com                            |
+| `TESLA_CLIENT_SECRET`                   | Tesla Developer Client Secret                                 | From developer.tesla.com                            |
+| `TESLA_REDIRECT_URI`                    | OAuth callback URL                                            | `https://api.yourdomain.com/callback/auth`          |
+| `TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME` | Fleet telemetry hostname (no protocol)                        | `fleet-telemetry.yourdomain.com`                    |
+| `LETS_ENCRYPT_CERTIFICATE`              | Base64 of fleet-telemetry CA cert                             | Output from `generate-certs.sh`                     |
+| `TESLA_PUBLIC_KEY_BASE64`               | Base64 of Tesla public key                                    | Output from `generate-certs.sh`                     |
+| `WEBAPP_URL`                            | Webapp public URL (for CORS + redirects)                      | `https://yourdomain.com`                            |
+| `CORS_ALLOWED_ORIGINS`                  | Additional CORS origins (comma-separated)                     | `https://yourdomain.com,https://api.yourdomain.com` |
+| `NEXT_PUBLIC_API_URL`                   | API URL for webapp client-side calls (runtime)                | `https://api.yourdomain.com`                        |
+| `NEXT_PUBLIC_VIRTUAL_KEY_PAIRING_URL`   | Tesla virtual key pairing URL (runtime)                       | `https://tesla.com/_ak/yourdomain.com`              |
+| `NEXT_PUBLIC_ROLLBAR_CLIENT_TOKEN`      | Rollbar client-side error tracking token (runtime)            | —                                                   |
+| `NEXT_PUBLIC_DISCORD_URL`               | Discord invite URL (runtime)                                  | `https://discord.gg/your-invite`                    |
 
 ### Optional
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DATABASE_USER` | `sentryguard` | PostgreSQL user |
-| `DATABASE_NAME` | `sentryguard` | PostgreSQL database name |
-| `DATABASE_SSL` | `false` | Enable SSL for DB connection |
-| `DATABASE_RUN_MIGRATIONS` | `true` | Run migrations on startup |
-| `TESLA_AUDIENCE` | `https://fleet-api.prd.eu.vn.cloud.tesla.com` | Tesla API audience (region) |
-| `TESLA_FLEET_TELEMETRY_SERVER_PORT` | `11111` | Fleet telemetry external port |
-| `KAFKA_TOPIC` | `FleetTelemetry_V` | Kafka topic for telemetry |
-| `LOG_LEVEL` | `info` | Logging level (`debug`, `info`, `warn`, `error`) |
-| `API_PORT` | `3021` | Host port for API |
-| `WEBAPP_PORT` | `3020` | Host port for webapp |
-| `FLEET_TELEMETRY_PORT` | `11111` | Host port for fleet-telemetry |
-| `TESLA_KEY_NAME` | `sentryguard` | Name for the virtual key registration |
-| `SENTRY_MODE_INTERVAL_SECONDS` | `30` | Sentry mode telemetry interval |
-| `BREAK_IN_MONITORING_INTERVAL_SECONDS` | `30` | Break-in monitoring interval |
+| Variable                               | Default                                       | Description                                      |
+| -------------------------------------- | --------------------------------------------- | ------------------------------------------------ |
+| `DATABASE_USER`                        | `sentryguard`                                 | PostgreSQL user                                  |
+| `DATABASE_NAME`                        | `sentryguard`                                 | PostgreSQL database name                         |
+| `DATABASE_SSL`                         | `false`                                       | Enable SSL for DB connection                     |
+| `DATABASE_RUN_MIGRATIONS`              | `true`                                        | Run migrations on startup                        |
+| `TESLA_AUDIENCE`                       | `https://fleet-api.prd.eu.vn.cloud.tesla.com` | Tesla API audience (region)                      |
+| `TESLA_FLEET_TELEMETRY_SERVER_PORT`    | `11111`                                       | Fleet telemetry external port                    |
+| `KAFKA_TOPIC`                          | `FleetTelemetry_V`                            | Kafka topic for telemetry                        |
+| `LOG_LEVEL`                            | `info`                                        | Logging level (`debug`, `info`, `warn`, `error`) |
+| `API_PORT`                             | `3021`                                        | Host port for API                                |
+| `WEBAPP_PORT`                          | `3020`                                        | Host port for webapp                             |
+| `FLEET_TELEMETRY_PORT`                 | `11111`                                       | Host port for fleet-telemetry                    |
+| `TESLA_KEY_NAME`                       | `sentryguard`                                 | Name for the virtual key registration            |
+| `SENTRY_MODE_INTERVAL_SECONDS`         | `30`                                          | Sentry mode telemetry interval                   |
+| `BREAK_IN_MONITORING_INTERVAL_SECONDS` | `30`                                          | Break-in monitoring interval                     |
 
 ---
 
@@ -640,6 +647,7 @@ docker logs sentryguard-api 2>&1 | grep -i "migration\|error"
 ### Vehicle configuration returns "Configuration skipped"
 
 Possible reasons:
+
 - `missing_key`: Virtual key not yet paired — click "Pair Virtual Key" in the webapp
 - `unsupported_hardware`: Pre-2018 Model S/X don't support telemetry
 - `unsupported_firmware`: Vehicle firmware needs updating
@@ -648,6 +656,7 @@ Possible reasons:
 ### Port conflicts on Synology
 
 Synology NAS often uses port 443. The docker-compose maps:
+
 - `3021:3001` (API)
 - `3020:3000` (webapp)
 - `11111:8443` (fleet-telemetry)

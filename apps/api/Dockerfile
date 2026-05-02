@@ -33,7 +33,7 @@ ENV WAITLIST_ENABLED=false
 
 COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/node_modules ./dist/node_modules
-COPY --from=builder /app/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY --from=builder /app/apps/api/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
     find ./dist/node_modules -type d -name '.cache' -exec rm -rf {} + 2>/dev/null; \

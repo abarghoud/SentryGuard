@@ -2,6 +2,8 @@ name: Build & Push Docker Images
 
 on:
   push:
+    branches:
+      - main
   workflow_dispatch:
 
 env:
@@ -61,7 +63,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          push: true
+          push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
