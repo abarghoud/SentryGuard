@@ -567,9 +567,10 @@ docker exec sentryguard-kafka kafka-topics --bootstrap-server localhost:9092 \
 | `JWT_SECRET`                            | JWT signing secret (min 32 chars)                             | Random 32+ char string                              |
 | `JWT_OAUTH_STATE_SECRET`                | OAuth state signing secret (min 32 chars)                     | Random 32+ char string                              |
 | `TELEGRAM_BOT_TOKEN`                    | Telegram bot token from @BotFather                            | `123456:ABC-DEF...`                                 |
-| `TELEGRAM_WEBHOOK_BASE`                 | API public URL for Telegram webhooks                          | `https://api.yourdomain.com`                        |
-| `TELEGRAM_WEBHOOK_SECRET_PATH`          | Random URL path (min 16 chars)                                | Random string                                       |
-| `TELEGRAM_WEBHOOK_SECRET_TOKEN`         | Webhook verification token (min 24 chars)                     | Random string                                       |
+| `TELEGRAM_MODE`                         | Bot mode (`webhook` or `polling`)                             | `webhook`                                           |
+| `TELEGRAM_WEBHOOK_BASE`                 | API public URL (required for `webhook` mode)                  | `https://api.yourdomain.com`                        |
+| `TELEGRAM_WEBHOOK_SECRET_PATH`          | Random URL path (required for `webhook` mode, min 16 chars)   | Random string                                       |
+| `TELEGRAM_WEBHOOK_SECRET_TOKEN`         | Verification token (required for `webhook` mode, min 24 chars)| Random string                                       |
 | `TESLA_CLIENT_ID`                       | Tesla Developer Client ID                                     | From developer.tesla.com                            |
 | `TESLA_CLIENT_SECRET`                   | Tesla Developer Client Secret                                 | From developer.tesla.com                            |
 | `TESLA_REDIRECT_URI`                    | OAuth callback URL                                            | `https://api.yourdomain.com/callback/auth`          |
