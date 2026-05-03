@@ -16,7 +16,7 @@ FROM dependencies AS builder
 
 COPY . .
 
-RUN npx nx build api
+RUN NX_DAEMON=false npx nx build api
 RUN npx nx copy-workspace-modules api
 RUN npx nx prune-lockfile api
 
