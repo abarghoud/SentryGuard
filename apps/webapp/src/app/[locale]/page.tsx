@@ -5,7 +5,9 @@ import PublicLayout from '@/components/PublicLayout';
 import AuthRedirect from '@/components/AuthRedirect';
 import TeslaLoginButton from '@/components/TeslaLoginButton';
 import SessionExpiredBanner from '@/components/SessionExpiredBanner';
-import Image from 'next/image';
+import LocalizedImage from '@/components/LocalizedImage';
+import ComparisonItem from '@/components/home/ComparisonItem';
+import StepItem from '@/components/home/StepItem';
 
 export const dynamicParams = false;
 
@@ -51,6 +53,8 @@ export async function generateMetadata({
   };
 }
 
+
+
 export default async function HomePage({ params }: HomePageProps) {
   const { locale } = await params;
   const t = getTranslation(locale);
@@ -83,17 +87,23 @@ export default async function HomePage({ params }: HomePageProps) {
     >
       <AuthRedirect />
 
-      {/* Hero Section Split */}
-      <div className="container mx-auto px-6 py-12 md:py-20 lg:py-24">
+      <div className="container mx-auto px-6 pt-6 pb-12 md:pt-10 md:pb-20 lg:pt-12 lg:pb-24">
         <SessionExpiredBanner />
         
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div className="text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-50 text-red-600 text-sm font-semibold mb-6 border border-red-100 shadow-sm">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+              {t('Detects break-ins even with Sentry Mode OFF')}
+            </div>
             <h2 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-red-500 via-red-600 to-red-700 text-transparent bg-clip-text p-1 leading-tight">
-              {t('Never miss a door ding again.')}
+              {t('The missing security alerts for your Tesla.')}
             </h2>
             <p className="text-xl md:text-2xl text-gray-700 mb-8">
-              {t('Get instant Telegram alerts the second your Tesla detects a threat. Zero battery drain.')}
+              {t('Get a Telegram notification the second Sentry Mode records a threat, or when someone pulls your door handle—even if you disabled Sentry Mode to save battery.')}
             </p>
             <div className="mb-8 flex flex-col items-start">
                <TeslaLoginButton />
@@ -104,92 +114,108 @@ export default async function HomePage({ params }: HomePageProps) {
             </div>
           </div>
           <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-gray-100">
-            <Image src="/images/hero-alert.png" alt="Telegram Sentry Alert" width={600} height={600} className="w-full h-auto object-cover transform hover:scale-105 transition-transform duration-700" />
+            <LocalizedImage baseSrc="/images/hero-alert" locale={locale} alt="Telegram Sentry Alert" width={600} height={600} priority fetchPriority="high" className="w-full h-auto object-cover transform hover:scale-105 transition-transform duration-700" />
           </div>
         </div>
       </div>
 
-      {/* The Problem / Solution Section */}
-      <div className="bg-gray-50 py-16 md:py-24 border-y border-gray-200">
+      <div className="bg-gray-50 py-16 md:py-24 border-y border-gray-200 overflow-hidden">
         <div className="container mx-auto px-6">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h3 className="text-3xl md:text-4xl font-bold mb-4">{t('The Tesla App is not enough.')}</h3>
+          <div className="text-center max-w-3xl mx-auto mb-16 md:mb-24">
+            <h3 className="text-3xl md:text-4xl font-bold mb-4">{t('Two critical features the Tesla App is missing.')}</h3>
             <p className="text-lg text-gray-600">
-              {t("The official app only alerts you for direct threats like alarms. For everything else—like door dings or scratches—you're left in the dark until you check your car.")}
+              {t('The official app leaves gaps in your security. We fill them with instant Telegram alerts.')}
             </p>
           </div>
           
-          <div className="grid md:grid-cols-2 gap-12 items-center max-w-5xl mx-auto">
-            <div className="order-2 md:order-1 relative rounded-2xl overflow-hidden shadow-xl border border-gray-100 bg-white">
-               <Image src="/images/door-ding.png" alt="Door ding comparison" width={600} height={600} className="w-full h-auto object-cover" />
-            </div>
-            <div className="order-1 md:order-2 space-y-10">
-              <div className="flex gap-4">
-                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <span className="text-red-600 text-xl">❌</span>
-                </div>
+          <div className="flex flex-col gap-20 md:gap-32 max-w-6xl mx-auto">
+            
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              <div className="order-2 md:order-1 relative rounded-2xl overflow-hidden shadow-xl border border-gray-100 bg-white">
+                 <LocalizedImage baseSrc="/images/door-ding" locale={locale} alt="Door ding comparison" width={600} height={600} className="w-full h-auto object-cover" />
+              </div>
+              <div className="order-1 md:order-2 space-y-8">
                 <div>
-                  <h4 className="text-xl font-semibold mb-2">{t('Without SentryGuard')}</h4>
-                  <p className="text-gray-600 leading-relaxed">{t('A shopping cart hits your car. The alarm doesn\'t trigger. The Tesla app stays silent. You find out too late.')}</p>
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-sm font-semibold mb-4 border border-blue-100">
+                    {t('Requires Sentry Mode ON')}
+                  </div>
+                  <h4 className="text-3xl font-bold mb-4">{t('1. Sentry Mode Alerts')}</h4>
+                  <p className="text-lg text-gray-600">{t('Get notified instantly for door dings, scratches, and parking lot accidents.')}</p>
+                </div>
+
+                <div className="space-y-6">
+                  <ComparisonItem 
+                    isPositive={false} 
+                    title={t('Tesla App')} 
+                    description={t('Stays silent for minor impacts. You only discover the damage when you get back to your car.')} 
+                  />
+                  <ComparisonItem 
+                    isPositive={true} 
+                    title={t('SentryGuard')} 
+                    description={t('Instantly pushes a Telegram alert the moment Sentry Mode triggers, so you can react immediately.')} 
+                  />
                 </div>
               </div>
-              <div className="flex gap-4">
-                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                  <span className="text-green-600 text-xl">✅</span>
-                </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              <div className="order-1 md:order-1 space-y-8">
                 <div>
-                  <h4 className="text-xl font-semibold mb-2">{t('With SentryGuard')}</h4>
-                  <p className="text-gray-600 leading-relaxed">{t('Sentry Mode records the event. SentryGuard instantly pushes a Telegram alert to your phone. You can react immediately.')}</p>
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-purple-50 text-purple-600 text-sm font-semibold mb-4 border border-purple-100">
+                    {t('Works with Sentry Mode OFF')}
+                  </div>
+                  <h4 className="text-3xl font-bold mb-4">{t('2. Break-in Detection')}</h4>
+                  <p className="text-lg text-gray-600">{t('Alerts you if someone pulls your door handle, even when you\'re saving battery.')}</p>
+                </div>
+
+                <div className="space-y-6">
+                  <ComparisonItem 
+                    isPositive={false} 
+                    title={t('Tesla App')} 
+                    description={t('If Sentry Mode is off to save battery at home or at night, you get zero notifications if someone tries to break in.')} 
+                  />
+                  <ComparisonItem 
+                    isPositive={true} 
+                    title={t('SentryGuard')} 
+                    description={t('Uses advanced telemetry to detect handle pulls and alert you instantly, even when Sentry Mode is disabled.')} 
+                  />
                 </div>
               </div>
+              <div className="order-2 md:order-2 relative rounded-2xl overflow-hidden shadow-xl border border-gray-100 bg-white">
+                 <LocalizedImage baseSrc="/images/hero-alert" locale={locale} alt="Break-in alert comparison" width={600} height={600} className="w-full h-auto object-cover" />
+              </div>
             </div>
+
           </div>
         </div>
       </div>
 
-      {/* How it works 3 steps */}
       <div className="container mx-auto px-6 py-20 md:py-24">
         <div className="text-center mb-16">
           <h3 className="text-3xl md:text-4xl font-bold mb-4">{t('How it works')}</h3>
         </div>
         
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto relative">
-          {/* Connecting line for desktop */}
           <div className="hidden md:block absolute top-10 left-[16%] right-[16%] h-1 bg-gradient-to-r from-red-100 via-red-300 to-red-100 -z-10 rounded-full"></div>
           
-          <div className="bg-white rounded-xl p-8 text-center relative hover:-translate-y-2 transition-transform duration-300">
-            <div className="w-20 h-20 bg-white border-4 border-red-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-md text-3xl">
-              🚗
-            </div>
-            <h4 className="text-xl font-semibold mb-3">{t('1. Connect your Tesla')}</h4>
-            <p className="text-gray-600">
-              {t('Securely link your vehicle using official Tesla OAuth. We never see your password.')}
-            </p>
-          </div>
-          
-          <div className="bg-white rounded-xl p-8 text-center relative hover:-translate-y-2 transition-transform duration-300">
-            <div className="w-20 h-20 bg-white border-4 border-red-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-md text-3xl">
-              ⚡
-            </div>
-            <h4 className="text-xl font-semibold mb-3">{t('2. Smart Telemetry')}</h4>
-            <p className="text-gray-600">
-              {t('Our servers listen to the official telemetry stream. Zero polling means absolutely zero battery drain.')}
-            </p>
-          </div>
-          
-          <div className="bg-white rounded-xl p-8 text-center relative hover:-translate-y-2 transition-transform duration-300">
-            <div className="w-20 h-20 bg-white border-4 border-red-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-md text-3xl">
-              📱
-            </div>
-            <h4 className="text-xl font-semibold mb-3">{t('3. Instant Alerts')}</h4>
-            <p className="text-gray-600">
-              {t('Connect our Telegram bot and receive push notifications the exact second Sentry Mode is triggered.')}
-            </p>
-          </div>
+          <StepItem 
+            icon="🚗" 
+            title={t('1. Connect your Tesla')} 
+            description={t('Securely link your vehicle using official Tesla OAuth. We never see your password.')} 
+          />
+          <StepItem 
+            icon="⚡" 
+            title={t('2. Smart Telemetry')} 
+            description={t('Our servers listen to the official telemetry stream. Zero polling means absolutely zero battery drain.')} 
+          />
+          <StepItem 
+            icon="📱" 
+            title={t('3. Instant Alerts')} 
+            description={t('Connect our Telegram bot and receive push notifications the exact second Sentry Mode is triggered.')} 
+          />
         </div>
       </div>
 
-      {/* Support section - simplified and positive */}
       <div className="container mx-auto px-6 py-12 border-t border-gray-100">
         <div className="max-w-3xl mx-auto text-center">
           <h3 className="text-2xl font-semibold mb-4 text-gray-700">
