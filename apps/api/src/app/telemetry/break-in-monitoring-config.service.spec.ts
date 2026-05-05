@@ -55,10 +55,14 @@ describe('The BreakInMonitoringConfigService class', () => {
       it('should patch to add CenterDisplay with interval', async () => {
         const result = await service.toggleBreakInMonitoring(vin, userId, true);
 
+        const expectedInterval = parseInt(process.env.BREAK_IN_MONITORING_INTERVAL_SECONDS ?? String(TELEMETRY_CONFIG.DEFAULT_BREAK_IN_MONITORING_INTERVAL), 10);
         expect(mockTelemetryConfigService.patchTelemetryConfig).toHaveBeenCalledWith(
           vin,
           userId,
-          { CenterDisplay: { interval_seconds: parseInt(process.env.BREAK_IN_MONITORING_INTERVAL_SECONDS ?? String(TELEMETRY_CONFIG.DEFAULT_BREAK_IN_MONITORING_INTERVAL), 10) } },
+          {
+            CenterDisplay: { interval_seconds: expectedInterval },
+            ChargePortLatch: { interval_seconds: expectedInterval }
+          },
           []
         );
         expect(vehicle.break_in_monitoring_enabled).toBe(true);

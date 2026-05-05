@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { TelegramService } from '../../telegram/telegram.service';
 import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
@@ -6,26 +6,60 @@ import { TelemetryEventHandler } from '../../telemetry/interfaces/telemetry-even
 import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
 
+import { ChargePortLatchTrackerService } from './charge-port-latch-tracker.service';
+
 @Injectable()
 export class BreakInAlertHandlerService implements TelemetryEventHandler {
+  private readonly logger = new Logger(BreakInAlertHandlerService.name);
+
   constructor(
     private readonly telegramService: TelegramService,
     private readonly keyboardBuilder: TelegramKeyboardBuilderService,
-    private readonly alertNotifier: VehicleAlertNotifierService
+    private readonly alertNotifier: VehicleAlertNotifierService,
+    private readonly chargeTracker: ChargePortLatchTrackerService
   ) { }
 
-  async handle(telemetryMessage: TelemetryMessage): Promise<void> {
+  public async handle(telemetryMessage: TelemetryMessage): Promise<void> {
+    this.trackChargePortEvents(telemetryMessage);
+
     if (!telemetryMessage.validateContainsCenterDisplay()) {
       return;
     }
 
     if (telemetryMessage.isCenterDisplayLocked()) {
+      this.scheduleAlertVerification(telemetryMessage);
+    }
+  }
+
+  private trackChargePortEvents(telemetryMessage: TelemetryMessage): void {
+    if (telemetryMessage.data.some(d => d.key === 'ChargePortLatch')) {
+      const eventTime = new Date(telemetryMessage.createdAt).getTime();
+      this.chargeTracker.trackLatchEvent(telemetryMessage.vin, eventTime);
+    }
+  }
+
+  private scheduleAlertVerification(telemetryMessage: TelemetryMessage): void {
+    setTimeout(async () => {
+      await this.verifyAndDispatchAlert(telemetryMessage);
+    }, 3000);
+  }
+
+  private async verifyAndDispatchAlert(telemetryMessage: TelemetryMessage): Promise<void> {
+    try {
+      const eventTime = new Date(telemetryMessage.createdAt).getTime();
+      if (this.chargeTracker.hasLatchEventAround(telemetryMessage.vin, eventTime)) {
+        this.logger.log(`[False Positive Prevented] Suppressing break-in alert for VIN ${telemetryMessage.vin} due to correlated ChargePortLatch event.`);
+        return;
+      }
+
       await this.alertNotifier.dispatch({
         telemetryMessage,
         alertName: 'BREAK_IN_ALERT',
         latencyLabel: 'BREAK_IN_LATENCY',
         telegramNotifier: this.telegramNotifier
       });
+    } catch (error) {
+      this.logger.error('Failed to dispatch delayed break-in alert:', error);
     }
   }
 
