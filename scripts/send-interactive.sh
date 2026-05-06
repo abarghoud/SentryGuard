@@ -66,9 +66,41 @@ echo " 15) DisplayStateSentry      # 👁️ Sentry"
 echo " 16) DisplayStateDog         # 🐶 Dog"
 echo " 17) DisplayStateEntertainment # 🎮 Entertainment"
 echo ""
+echo "Special Scenarios:"
+echo " 18) False Positive Charge Port # ⚡ Simulates CenterDisplay=Lock followed by ChargePortLatch=Disengaged"
+echo ""
 
 # Ask for state
-read -p "Choose state (1-17, or Enter for alert): " CHOICE
+read -p "Choose state (1-18, or Enter for alert): " CHOICE
+
+if [ "$CHOICE" = "18" ]; then
+    echo ""
+    echo "📤 Sending Scenario: False Positive Charge Port..."
+    echo "   VIN: $VIN"
+    
+    # 1. Send CenterDisplay=Lock
+    echo "   Step 1: Sending CenterDisplay = DisplayStateLock"
+    printf '{"vin":"%s","createdAt":"%s","isResend":false,"data":[{"key":"CenterDisplay","value":{"stringValue":"DisplayStateLock"}}]}' \
+      "$VIN" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" | \
+    $DOCKER_COMPOSE_CMD exec -T kafka kafka-console-producer \
+      --bootstrap-server localhost:9092 \
+      --topic TeslaLogger_V
+      
+    echo "   Waiting 1 second to simulate telemetry lag..."
+    sleep 1
+    
+    # 2. Send ChargePortLatch=Disengaged
+    echo "   Step 2: Sending ChargePortLatch = ChargePortLatchDisengaged"
+    printf '{"vin":"%s","createdAt":"%s","isResend":false,"data":[{"key":"ChargePortLatch","value":{"chargePortLatchValue":"ChargePortLatchDisengaged"}}]}' \
+      "$VIN" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" | \
+    $DOCKER_COMPOSE_CMD exec -T kafka kafka-console-producer \
+      --bootstrap-server localhost:9092 \
+      --topic TeslaLogger_V
+      
+    echo ""
+    echo "✅ Scenario sent successfully! The Break-in alert should NOT be dispatched."
+    exit 0
+fi
 
 # Set defaults for SentryMode
 KEY="SentryMode"
