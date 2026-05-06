@@ -16,7 +16,7 @@ FROM dependencies AS builder
 
 COPY . .
 
-RUN npx nx build webapp
+RUN NX_DAEMON=false npx nx build webapp
 
 FROM node:22-alpine AS runner
 

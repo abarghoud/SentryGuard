@@ -35,7 +35,7 @@ export class User {
   expires_at!: Date;
 
   @Column({ type: 'timestamp', nullable: true })
-  token_revoked_at?: Date;
+  token_revoked_at?: Date | null;
 
   @Column({ type: 'timestamp', nullable: true })
   refresh_token_expires_at?: Date | null;
