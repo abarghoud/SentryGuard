@@ -7,6 +7,8 @@ import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
 import { OffensiveResponseService } from '../services/offensive-response.service';
 
+import { ChargePortLatchTrackerService } from './charge-port-latch-tracker.service';
+
 @Injectable()
 export class BreakInAlertHandlerService implements TelemetryEventHandler {
   private readonly logger = new Logger(BreakInAlertHandlerService.name);
@@ -15,15 +17,44 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
     private readonly telegramService: TelegramService,
     private readonly keyboardBuilder: TelegramKeyboardBuilderService,
     private readonly alertNotifier: VehicleAlertNotifierService,
+    private readonly chargeTracker: ChargePortLatchTrackerService
+    private readonly alertNotifier: VehicleAlertNotifierService,
     private readonly offensiveResponseService: OffensiveResponseService,
   ) { }
 
-  async handle(telemetryMessage: TelemetryMessage): Promise<void> {
+  public async handle(telemetryMessage: TelemetryMessage): Promise<void> {
+    this.trackChargePortEvents(telemetryMessage);
+
     if (!telemetryMessage.validateContainsCenterDisplay()) {
       return;
     }
 
     if (telemetryMessage.isCenterDisplayLocked()) {
+      this.scheduleAlertVerification(telemetryMessage);
+    }
+  }
+
+  private trackChargePortEvents(telemetryMessage: TelemetryMessage): void {
+    if (telemetryMessage.data.some(d => d.key === 'ChargePortLatch')) {
+      const eventTime = new Date(telemetryMessage.createdAt).getTime();
+      this.chargeTracker.trackLatchEvent(telemetryMessage.vin, eventTime);
+    }
+  }
+
+  private scheduleAlertVerification(telemetryMessage: TelemetryMessage): void {
+    setTimeout(async () => {
+      await this.verifyAndDispatchAlert(telemetryMessage);
+    }, 3000);
+  }
+
+  private async verifyAndDispatchAlert(telemetryMessage: TelemetryMessage): Promise<void> {
+    try {
+      const eventTime = new Date(telemetryMessage.createdAt).getTime();
+      if (this.chargeTracker.hasLatchEventAround(telemetryMessage.vin, eventTime)) {
+        this.logger.log(`[False Positive Prevented] Suppressing break-in alert for VIN ${telemetryMessage.vin} due to correlated ChargePortLatch event.`);
+        return;
+      }
+
       await this.alertNotifier.dispatch({
         telemetryMessage,
         alertName: 'BREAK_IN_ALERT',
@@ -34,6 +65,8 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
       this.offensiveResponseService.handleOffensiveResponse(telemetryMessage.vin).catch((error: unknown) => {
         this.logger.warn(`[OFFENSIVE] Failed to execute offensive response for VIN ${telemetryMessage.vin}`, error);
       });
+    } catch (error) {
+      this.logger.error('Failed to dispatch delayed break-in alert:', error);
     }
   }
 

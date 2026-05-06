@@ -36,6 +36,7 @@ export class BreakInMonitoringConfigService {
           10
         );
         fieldsToUpsert['CenterDisplay'] = { interval_seconds: breakInIntervalSeconds };
+        fieldsToUpsert['ChargePortLatch'] = { interval_seconds: breakInIntervalSeconds };
       } else {
         fieldsToDelete.push('CenterDisplay');
       }
