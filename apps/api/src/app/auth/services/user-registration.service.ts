@@ -100,7 +100,7 @@ export class UserRegistrationService {
     const jwtData = await this.generateJwtToken(userId, user.email || '');
     user.jwt_token = jwtData.token;
     user.jwt_expires_at = tokens.expiresAt;
-    user.token_revoked_at = undefined;
+    user.token_revoked_at = null;
 
     const now = new Date();
     user.refresh_token_updated_at = now;
@@ -150,7 +150,7 @@ export class UserRegistrationService {
       jwt_token: jwtData.token,
       jwt_expires_at: tokens.expiresAt,
       preferred_language: userLocale,
-      token_revoked_at: undefined,
+      token_revoked_at: null,
       refresh_token_updated_at: now,
       refresh_token_expires_at: refreshTokenExpiresAt,
     });

@@ -111,6 +111,14 @@ describe('The UserRegistrationService class', () => {
           })
         );
       });
+
+      it('should reset token_revoked_at to null', () => {
+        expect(mockUserRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({
+            token_revoked_at: null,
+          })
+        );
+      });
     });
 
     describe('When creating a new user', () => {
@@ -137,6 +145,14 @@ describe('The UserRegistrationService class', () => {
         expect(mockUserRepository.create).toHaveBeenCalledWith(
           expect.objectContaining({
             preferred_language: 'fr',
+          })
+        );
+      });
+
+      it('should initialize token_revoked_at to null', () => {
+        expect(mockUserRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            token_revoked_at: null,
           })
         );
       });
