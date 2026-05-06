@@ -17,8 +17,7 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
     private readonly telegramService: TelegramService,
     private readonly keyboardBuilder: TelegramKeyboardBuilderService,
     private readonly alertNotifier: VehicleAlertNotifierService,
-    private readonly chargeTracker: ChargePortLatchTrackerService
-    private readonly alertNotifier: VehicleAlertNotifierService,
+    private readonly chargeTracker: ChargePortLatchTrackerService,
     private readonly offensiveResponseService: OffensiveResponseService,
   ) { }
 
