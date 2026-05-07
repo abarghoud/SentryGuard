@@ -11,6 +11,7 @@ import {
 @Injectable()
 export class AccessTokenService {
   private readonly logger = new Logger(AccessTokenService.name);
+  private refreshPromises = new Map<string, Promise<string | null>>();
 
   constructor(
     @InjectRepository(User)
@@ -19,6 +20,23 @@ export class AccessTokenService {
   ) {}
 
   async getAccessTokenForUserId(userId: string): Promise<string | null> {
+    const existingPromise = this.refreshPromises.get(userId);
+    if (existingPromise) {
+      this.logger.debug(`[ACCESS_TOKEN] Waiting for ongoing refresh for user ${userId}`);
+      return existingPromise;
+    }
+
+    const tokenPromise = this.getTokenWithRefreshLock(userId);
+    this.refreshPromises.set(userId, tokenPromise);
+
+    try {
+      return await tokenPromise;
+    } finally {
+      this.refreshPromises.delete(userId);
+    }
+  }
+
+  private async getTokenWithRefreshLock(userId: string): Promise<string | null> {
     const user = await this.userRepository.findOne({ where: { userId } });
 
     if (!user) {

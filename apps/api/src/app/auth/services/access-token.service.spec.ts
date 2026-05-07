@@ -169,5 +169,52 @@ describe('The AccessTokenService class', () => {
         expect(result).toBeNull();
       });
     });
+
+    describe('When concurrent requests for the same user with expired token', () => {
+      const fakeUserId = 'concurrent-user-id';
+      const fakeDecryptedToken = 'decrypted-concurrent-token';
+
+      it('should only call refresh once and return the same token to all callers', async () => {
+        const expiredUser = {
+          userId: fakeUserId,
+          access_token: 'encrypted-expired-token',
+          expires_at: new Date(Date.now() - 3600000),
+        } as User;
+
+        const refreshedUser = {
+          userId: fakeUserId,
+          access_token: 'encrypted-new-token',
+          expires_at: new Date(Date.now() + 3600000),
+        } as User;
+
+        let refreshResolve: (result: RefreshResult) => void;
+        const refreshPromise = new Promise<RefreshResult>((resolve) => {
+          refreshResolve = resolve;
+        });
+
+        mockUserRepository.findOne
+          .mockResolvedValueOnce(expiredUser)
+          .mockResolvedValueOnce(refreshedUser);
+
+        mockTeslaTokenRefreshService.refreshTokenForUser.mockReturnValue(
+          refreshPromise
+        );
+
+        mockedDecrypt.mockReturnValue(fakeDecryptedToken);
+
+        const promise1 = service.getAccessTokenForUserId(fakeUserId);
+        const promise2 = service.getAccessTokenForUserId(fakeUserId);
+
+        refreshResolve!(RefreshResult.Success);
+
+        const [result1, result2] = await Promise.all([promise1, promise2]);
+
+        expect(result1).toBe(fakeDecryptedToken);
+        expect(result2).toBe(fakeDecryptedToken);
+        expect(
+          mockTeslaTokenRefreshService.refreshTokenForUser
+        ).toHaveBeenCalledTimes(1);
+      });
+    });
   });
 });
