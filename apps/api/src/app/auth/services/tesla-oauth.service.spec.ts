@@ -149,6 +149,29 @@ describe('The TeslaOAuthService class', () => {
       it('should include the signed state', () => {
         expect(result.state).toBe(fakeStateJwt);
       });
+
+      it('should include only base scopes', () => {
+        expect(result.url).toContain('openid+vehicle_device_data+offline_access+user_data');
+      });
+    });
+
+    describe('When called with missing scopes', () => {
+      let result: { url: string; state: string };
+
+      beforeEach(() => {
+        result = service.generateScopeChangeUrl('en', ['vehicle_cmds', 'another_scope']);
+      });
+
+      it('should include prompt_missing_scopes=true', () => {
+        expect(result.url).toContain('prompt_missing_scopes=true');
+      });
+
+      it('should include the missing scopes along with base scopes', () => {
+        expect(result.url).toContain('openid');
+        expect(result.url).toContain('vehicle_device_data');
+        expect(result.url).toContain('vehicle_cmds');
+        expect(result.url).toContain('another_scope');
+      });
     });
 
     describe('When TESLA_CLIENT_ID is not defined', () => {

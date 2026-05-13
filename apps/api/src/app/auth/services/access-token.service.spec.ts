@@ -8,6 +8,10 @@ import {
 } from './tesla-token-refresh.service';
 import { mock, MockProxy } from 'jest-mock-extended';
 
+jest.mock('jsonwebtoken');
+import { decode } from 'jsonwebtoken';
+const mockedDecode = decode as jest.MockedFunction<typeof decode>;
+
 jest.mock('../../../common/utils/crypto.util');
 import { decrypt } from '../../../common/utils/crypto.util';
 const mockedDecrypt = decrypt as jest.MockedFunction<typeof decrypt>;
@@ -44,6 +48,7 @@ describe('The AccessTokenService class', () => {
 
     jest.clearAllMocks();
     mockedDecrypt.mockClear();
+    mockedDecode.mockClear();
     mockUserRepository.findOne.mockResolvedValue(null);
   });
 
@@ -167,6 +172,52 @@ describe('The AccessTokenService class', () => {
 
       it('should return null', () => {
         expect(result).toBeNull();
+      });
+    });
+  });
+
+  describe('The hasVehicleCommandsScope() method', () => {
+    const fakeUserId = 'user-123';
+    const fakeToken = 'fake-decrypted-token';
+
+    beforeEach(() => {
+      mockUserRepository.findOne.mockResolvedValue({
+        userId: fakeUserId,
+        access_token: 'encrypted-token',
+        expires_at: new Date(Date.now() + 3600000),
+      } as User);
+      mockedDecrypt.mockReturnValue(fakeToken);
+    });
+
+    describe('When the token is null', () => {
+      it('should return false', async () => {
+        mockUserRepository.findOne.mockResolvedValue(null);
+        const result = await service.hasVehicleCommandsScope(fakeUserId);
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('When the decoded token does not have scp property', () => {
+      it('should return false', async () => {
+        mockedDecode.mockReturnValue({ some: 'data' });
+        const result = await service.hasVehicleCommandsScope(fakeUserId);
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('When the decoded token has scp property without vehicle_cmds', () => {
+      it('should return false', async () => {
+        mockedDecode.mockReturnValue({ scp: ['openid', 'offline_access'] });
+        const result = await service.hasVehicleCommandsScope(fakeUserId);
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('When the decoded token has scp property with vehicle_cmds', () => {
+      it('should return true', async () => {
+        mockedDecode.mockReturnValue({ scp: ['openid', 'vehicle_cmds', 'offline_access'] });
+        const result = await service.hasVehicleCommandsScope(fakeUserId);
+        expect(result).toBe(true);
       });
     });
   });

@@ -20,7 +20,7 @@ export class TeslaTokenRefreshSchedulerService {
   constructor(
     private readonly teslaTokenRefreshService: TeslaTokenRefreshService,
     private readonly distributedLockService: DistributedLockService
-  ) {}
+  ) { }
 
   @Cron(TESLA_TOKEN_REFRESH_CRON_EXPRESSION)
   public async refreshExpiringTokens(): Promise<void> {

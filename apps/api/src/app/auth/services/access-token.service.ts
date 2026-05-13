@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { decode } from 'jsonwebtoken';
 import { Repository } from 'typeorm';
 import { User } from '../../../entities/user.entity';
 import { decrypt } from '../../../common/utils/crypto.util';
@@ -52,6 +53,22 @@ export class AccessTokenService {
     }
 
     return this.decryptAccessTokenSafely(user);
+  }
+
+  async hasVehicleCommandsScope(userId: string): Promise<boolean> {
+    const token = await this.getAccessTokenForUserId(userId);
+
+    if (!token) {
+      return false;
+    }
+
+    const decodedToken = decode(token) as Record<string, unknown> | null;
+
+    if (!decodedToken || !Array.isArray(decodedToken.scp)) {
+      return false;
+    }
+
+    return decodedToken.scp.includes('vehicle_cmds');
   }
 
   private decryptAccessTokenSafely(user: User): string | null {

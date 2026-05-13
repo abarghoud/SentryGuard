@@ -97,6 +97,12 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
 
     const state = this.createSignedState(userLocale);
 
+    const baseScopes = ['openid', 'vehicle_device_data', 'offline_access', 'user_data'];
+    const allScopes = new Set(baseScopes);
+    if (missingScopes) {
+      missingScopes.forEach(missingScope => allScopes.add(missingScope));
+    }
+
     const params = new URLSearchParams({
       client_id: clientId,
       locale: normalizeTeslaLocale(userLocale),
@@ -104,7 +110,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
       redirect_uri: this.redirectUri,
       response_type: 'code',
       show_keypair_step: 'true',
-      scope: 'openid vehicle_device_data offline_access user_data',
+      scope: Array.from(allScopes).join(' '),
       state: state,
     });
 

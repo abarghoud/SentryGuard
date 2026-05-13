@@ -1,6 +1,7 @@
 import { Controller, Get, Inject, Logger, UseGuards, Headers, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
+import { AccessTokenService } from './services/access-token.service';
 import type { OAuthProviderRequirements } from './interfaces/oauth-provider.requirements';
 import { oauthProviderRequirementsSymbol } from './interfaces/oauth-provider.requirements';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -15,6 +16,7 @@ export class AuthController {
 
   constructor(
     private readonly authService: AuthService,
+    private readonly accessTokenService: AccessTokenService,
     @Inject(oauthProviderRequirementsSymbol)
     private readonly oauthProvider: OAuthProviderRequirements
   ) {}
@@ -136,6 +138,25 @@ export class AuthController {
       userId: user.userId,
       email: user.email,
       message: 'Token is valid',
+    };
+  }
+
+  @Throttle(ThrottleOptions.authenticatedRead())
+  @Get('vehicle-commands-authorized')
+  @UseGuards(JwtAuthGuard)
+  async getVehicleCommandsAuthorization(@CurrentUser() user: User): Promise<{
+    authorized: boolean;
+  }> {
+    this.logger.log(
+      `Checking vehicle commands authorization for user: ${user.userId}`
+    );
+
+    const authorized = await this.accessTokenService.hasVehicleCommandsScope(
+      user.userId
+    );
+
+    return {
+      authorized,
     };
   }
 
