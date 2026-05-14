@@ -43,7 +43,8 @@ export class TelegramKeyboardBuilderService {
           { text: i18n.t('menuButtonStatus', { lng }) },
           { text: i18n.t(muteButtonKey, { lng }) },
         ], [
-          { text: i18n.t('menuButtonOffensive', { lng }) },
+          { text: i18n.t('menuButtonSentry', { lng }) },
+          { text: i18n.t('menuButtonBreakIn', { lng }) },
         ]],
         resize_keyboard: true,
       },
@@ -51,26 +52,14 @@ export class TelegramKeyboardBuilderService {
   }
 
   buildVehicleSelectionKeyboard(vehicles: Vehicle[], prefix: string): TelegramMessageOptions {
-    const shortPrefix = prefix === 'offensive' ? 'o_sl' : prefix;
     const rows = vehicles.map((vehicle) => [{
       text: vehicle.display_name || vehicle.vin,
-      callback_data: `${shortPrefix}:${vehicle.id}`,
+      callback_data: `o_sl:${prefix}:${vehicle.id}`,
     }]);
 
     return {
       keyboard: {
         inline_keyboard: rows,
-      },
-    };
-  }
-
-  buildOffensiveResponseKeyboard(vehicleId: string, lng: 'en' | 'fr'): TelegramMessageOptions {
-    return {
-      keyboard: {
-        inline_keyboard: [
-          [{ text: i18n.t('offensiveSentry', { lng }), callback_data: `o_type:sentry:${vehicleId}` }],
-          [{ text: i18n.t('offensiveBreakIn', { lng }), callback_data: `o_type:break_in:${vehicleId}` }],
-        ],
       },
     };
   }

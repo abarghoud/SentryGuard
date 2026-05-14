@@ -22,7 +22,8 @@ describe('The TelegramOffensiveResponseService class', () => {
   const fakeUserId = 'user-123';
 
   let service: TelegramOffensiveResponseService;
-  let hearsHandler: (ctx: Context) => Promise<void>;
+  let hearsSentryHandler: (ctx: Context) => Promise<void>;
+  let hearsBreakInHandler: (ctx: Context) => Promise<void>;
   let selectHandler: (ctx: Context) => Promise<void>;
   let setSentryHandler: (ctx: Context) => Promise<void>;
   let setBreakInHandler: (ctx: Context) => Promise<void>;
@@ -77,7 +78,13 @@ describe('The TelegramOffensiveResponseService class', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    mockBotService.registerHears.mockImplementation((_, handler) => { hearsHandler = handler; });
+    mockBotService.registerHears.mockImplementation((_, handler) => {
+      if (!hearsSentryHandler) {
+        hearsSentryHandler = handler;
+      } else {
+        hearsBreakInHandler = handler;
+      }
+    });
     mockBotService.registerAction.mockImplementation((trigger, handler) => {
       if (typeof trigger === 'string') {
         if (trigger === 'o_sl:vehicle-1') selectHandler = handler;
@@ -90,7 +97,7 @@ describe('The TelegramOffensiveResponseService class', () => {
     });
     mockContextService.getUserLanguageFromChatId.mockResolvedValue('en');
     mockKeyboardBuilderService.buildMainMenuKeyboard.mockReturnValue({});
-    mockKeyboardBuilderService.buildOffensiveResponseKeyboard.mockReturnValue({});
+    mockKeyboardBuilderService.buildOffensiveTypeKeyboard.mockReturnValue({});
     mockKeyboardBuilderService.buildDurationKeyboard.mockReturnValue({});
     mockKeyboardBuilderService.buildActiveSentryKeyboard.mockReturnValue({});
     mockVehicleRepository.save.mockImplementation(async (v) => v);
@@ -116,12 +123,12 @@ describe('The TelegramOffensiveResponseService class', () => {
 
   describe('The onModuleInit() method', () => {
     it('should register hears and action handlers', () => {
-      expect(mockBotService.registerHears).toHaveBeenCalledTimes(1);
-      expect(mockBotService.registerAction).toHaveBeenCalledTimes(9);
+      expect(mockBotService.registerHears).toHaveBeenCalledTimes(2);
+      expect(mockBotService.registerAction).toHaveBeenCalledTimes(8);
     });
   });
 
-  describe('When the offensive button is pressed', () => {
+  describe('When the Sentry button is pressed', () => {
     describe('When user has no linked config', () => {
       beforeEach(() => {
         mockTelegramConfigRepository.findOne.mockResolvedValue(null);
@@ -129,7 +136,7 @@ describe('The TelegramOffensiveResponseService class', () => {
 
       it('should reply with no account linked message', async () => {
         const ctx = buildCtx();
-        await hearsHandler(ctx);
+        await hearsSentryHandler(ctx);
         expect(ctx.reply).toHaveBeenCalledWith('No account linked', undefined);
       });
     });
@@ -142,7 +149,7 @@ describe('The TelegramOffensiveResponseService class', () => {
 
       it('should reply with no vehicles message', async () => {
         const ctx = buildCtx();
-        await hearsHandler(ctx);
+        await hearsSentryHandler(ctx);
         expect(ctx.reply).toHaveBeenCalledWith('offensiveNoVehicles', undefined);
       });
     });
@@ -153,11 +160,13 @@ describe('The TelegramOffensiveResponseService class', () => {
         mockVehicleRepository.find.mockResolvedValue([fakeVehicle]);
       });
 
-      it('should show response options directly', async () => {
+      it('should show sentry type options directly', async () => {
         const ctx = buildCtx();
-        await hearsHandler(ctx);
-        expect(mockKeyboardBuilderService.buildOffensiveResponseKeyboard).toHaveBeenCalledWith(
+        await hearsSentryHandler(ctx);
+        expect(mockKeyboardBuilderService.buildOffensiveTypeKeyboard).toHaveBeenCalledWith(
           fakeVehicle.id,
+          'sentry',
+          fakeVehicle.sentry_offensive_response,
           'en',
         );
       });
@@ -171,12 +180,12 @@ describe('The TelegramOffensiveResponseService class', () => {
         mockVehicleRepository.find.mockResolvedValue([fakeVehicle, secondVehicle]);
       });
 
-      it('should show vehicle selection keyboard', async () => {
+      it('should show vehicle selection keyboard with sentry prefix', async () => {
         const ctx = buildCtx();
-        await hearsHandler(ctx);
+        await hearsSentryHandler(ctx);
         expect(mockKeyboardBuilderService.buildVehicleSelectionKeyboard).toHaveBeenCalledWith(
           [fakeVehicle, secondVehicle],
-          'offensive',
+          'sentry',
         );
       });
     });
@@ -190,12 +199,14 @@ describe('The TelegramOffensiveResponseService class', () => {
         mockContextService.getUserLanguageFromChatId.mockResolvedValue('en');
       });
 
-      it('should show response options for that vehicle', async () => {
-        const ctx = buildCtx(fakeChatId, ['o_sl:vehicle-1', 'vehicle-1']);
+      it('should show type options for that vehicle', async () => {
+        const ctx = buildCtx(fakeChatId, ['o_sl:sentry:vehicle-1', 'sentry', 'vehicle-1']);
         await selectHandler(ctx);
 
-        expect(mockKeyboardBuilderService.buildOffensiveResponseKeyboard).toHaveBeenCalledWith(
+        expect(mockKeyboardBuilderService.buildOffensiveTypeKeyboard).toHaveBeenCalledWith(
           fakeVehicle.id,
+          'sentry',
+          fakeVehicle.sentry_offensive_response,
           'en',
         );
       });

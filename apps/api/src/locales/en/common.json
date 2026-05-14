@@ -58,6 +58,8 @@
   "configStatusTelemetryInactive": "❌ Telemetry inactive",
   "botUpdateV1": "🆕 <b>SentryGuard has been updated!</b>\n\nYou can now manage your alert preferences directly from the menu below.\n\n• <b>📊 My status</b> — View your configuration\n• <b>🔕 Mute alerts</b> — Temporarily silence notifications",
   "menuButtonOffensive": "🚨 Response",
+  "menuButtonSentry": "🔒 Sentry",
+  "menuButtonBreakIn": "🚨 Break-In",
   "offensiveSentry": "🔒 Sentry Mode",
   "offensiveBreakIn": "🚨 Break-In",
   "offensiveNoVehicles": "🚫 No vehicles registered yet. Enable monitoring first.",

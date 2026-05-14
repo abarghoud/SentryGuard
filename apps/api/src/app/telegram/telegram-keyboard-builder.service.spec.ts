@@ -91,30 +91,14 @@ describe('The TelegramKeyboardBuilderService class', () => {
   });
 
   describe('The buildMainMenuKeyboard() method', () => {
-    it('should have a third row with the offensive button', () => {
+    it('should have two rows with sentry and break-in buttons', () => {
       const result = service.buildMainMenuKeyboard('en');
 
       expect(result.keyboard).toBeDefined();
       const keyboard = result.keyboard?.keyboard as Array<Array<{ text: string }>>;
       expect(keyboard).toHaveLength(2);
-      expect(keyboard[1]).toHaveLength(1);
-    });
-  });
-
-  describe('The buildOffensiveResponseKeyboard() method', () => {
-    it('should return keyboard with two buttons: Sentry and Break-In', () => {
-      const result = service.buildOffensiveResponseKeyboard('vehicle-1', 'en');
-
-      expect(result.keyboard).toBeDefined();
-      const inlineKeyboard = result.keyboard?.inline_keyboard;
-
-      expect(inlineKeyboard).toHaveLength(2);
-
-      expect(inlineKeyboard?.[0]?.[0]?.callback_data).toBe('o_type:sentry:vehicle-1');
-      expect(inlineKeyboard?.[0]?.[0]?.text).toContain('Sentry');
-
-      expect(inlineKeyboard?.[1]?.[0]?.callback_data).toBe('o_type:break_in:vehicle-1');
-      expect(inlineKeyboard?.[1]?.[0]?.text).toContain('Break-In');
+      expect(keyboard[0]).toHaveLength(2);
+      expect(keyboard[1]).toHaveLength(2);
     });
   });
 

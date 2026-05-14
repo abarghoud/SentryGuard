@@ -35,14 +35,21 @@ export class TelegramOffensiveResponseService implements OnModuleInit {
 
     this.botService.registerHears(
       [
-        i18n.t('menuButtonOffensive', { lng: 'en' }),
-        i18n.t('menuButtonOffensive', { lng: 'fr' }),
+        i18n.t('menuButtonSentry', { lng: 'en' }),
+        i18n.t('menuButtonSentry', { lng: 'fr' }),
       ],
-      withChatId((ctx, chatId) => this.handleOffensiveButton(ctx, chatId)),
+      withChatId((ctx, chatId) => this.handleOffensiveButton(ctx, chatId, 'sentry')),
     );
 
-    this.botService.registerAction(/^o_sl:(.+)$/, withChatId((ctx, chatId) => this.handleVehicleSelection(ctx, chatId)));
-    this.botService.registerAction(/^o_type:(sentry|break_in):(.+)$/, withChatId((ctx, chatId) => this.handleTypeSelection(ctx, chatId)));
+    this.botService.registerHears(
+      [
+        i18n.t('menuButtonBreakIn', { lng: 'en' }),
+        i18n.t('menuButtonBreakIn', { lng: 'fr' }),
+      ],
+      withChatId((ctx, chatId) => this.handleOffensiveButton(ctx, chatId, 'break_in')),
+    );
+
+    this.botService.registerAction(/^o_sl:(sentry|break_in):(.+)$/, withChatId((ctx, chatId) => this.handleVehicleSelection(ctx, chatId)));
     this.botService.registerAction(/^o_ss:(.+):(.+)$/, withChatId((ctx, chatId) => this.handleSetSentryResponse(ctx, chatId)));
     this.botService.registerAction(/^o_sb:(.+):(.+)$/, withChatId((ctx, chatId) => this.handleSetBreakInResponse(ctx, chatId)));
     this.botService.registerAction(/^o_ts:(.+)$/, withChatId((ctx, chatId) => this.handleTestSentryResponse(ctx, chatId)));
@@ -52,7 +59,7 @@ export class TelegramOffensiveResponseService implements OnModuleInit {
     this.botService.registerAction(/^od_prolong:(.+)$/, withChatId((ctx, chatId) => this.handleProlongDuration(ctx, chatId)));
   }
 
-  private async handleOffensiveButton(ctx: Context, chatId: string): Promise<void> {
+  private async handleOffensiveButton(ctx: Context, chatId: string, alertType: 'sentry' | 'break_in'): Promise<void> {
     const lng = await this.contextService.getUserLanguageFromChatId(chatId);
     const config = await this.findLinkedConfig(chatId);
 
@@ -69,37 +76,14 @@ export class TelegramOffensiveResponseService implements OnModuleInit {
     }
 
     if (vehicles.length === 1) {
-      await this.showResponseOptions(ctx, lng, vehicles[0]);
+      await this.showTypeOptions(ctx, lng, vehicles[0], alertType);
       return;
     }
 
-    await this.safeReply(ctx, i18n.t('offensiveSelectVehicle', { lng }), this.keyboardBuilderService.buildVehicleSelectionKeyboard(vehicles, 'offensive'));
+    await this.safeReply(ctx, i18n.t('offensiveSelectVehicle', { lng }), this.keyboardBuilderService.buildVehicleSelectionKeyboard(vehicles, alertType));
   }
 
   private async handleVehicleSelection(ctx: Context, chatId: string): Promise<void> {
-    const match = (ctx as unknown as { match: string[] }).match;
-    const vehicleId = match?.[1];
-    const lng = await this.contextService.getUserLanguageFromChatId(chatId);
-    const config = await this.findLinkedConfig(chatId);
-
-    if (!config || !vehicleId) {
-      await ctx.answerCbQuery();
-      return;
-    }
-
-    const vehicle = await this.vehicleRepository.findOne({ where: { id: vehicleId, userId: config.userId } });
-
-    if (!vehicle) {
-      await ctx.answerCbQuery();
-      return;
-    }
-
-    await ctx.answerCbQuery();
-    await ctx.deleteMessage();
-    await this.showResponseOptions(ctx, lng, vehicle);
-  }
-
-  private async handleTypeSelection(ctx: Context, chatId: string): Promise<void> {
     const match = (ctx as unknown as { match: string[] }).match;
     const alertType = match?.[1] as 'sentry' | 'break_in';
     const vehicleId = match?.[2];
@@ -118,13 +102,29 @@ export class TelegramOffensiveResponseService implements OnModuleInit {
       return;
     }
 
-    const currentValue = alertType === 'sentry' ? vehicle.sentry_offensive_response : vehicle.break_in_offensive_response;
-    const keyboard = this.keyboardBuilderService.buildOffensiveTypeKeyboard(vehicleId, alertType, currentValue, lng);
-    const label = alertType === 'sentry' ? 'Sentry' : 'Break-In';
-
     await ctx.answerCbQuery();
     await ctx.deleteMessage();
-    await this.safeReply(ctx, i18n.t('offensiveChooseResponse', { lng, vehicle: vehicle.display_name || vehicle.vin }) + `\n<b>${label}</b>`, keyboard);
+    await this.showTypeOptions(ctx, lng, vehicle, alertType);
+  }
+
+  private async showTypeOptions(ctx: Context, lng: 'en' | 'fr', vehicle: Vehicle, alertType: 'sentry' | 'break_in'): Promise<void> {
+    const vehicleName = vehicle.display_name || vehicle.vin;
+
+    if (alertType === 'sentry' && vehicle.sentry_offensive_response === OffensiveResponse.HONK && vehicle.sentry_offensive_response_until) {
+      const remaining = vehicle.sentry_offensive_response_until.getTime() - Date.now();
+
+      if (remaining > 0) {
+        const remainingLabel = this.formatDuration(Math.ceil(remaining / 60000), lng);
+        const keyboard = this.keyboardBuilderService.buildActiveSentryKeyboard(vehicle.id, lng);
+        await this.safeReply(ctx, i18n.t('offensiveExpiresIn', { lng, vehicle: vehicleName, time: remainingLabel }), keyboard);
+        return;
+      }
+    }
+
+    const currentValue = alertType === 'sentry' ? vehicle.sentry_offensive_response : vehicle.break_in_offensive_response;
+    const keyboard = this.keyboardBuilderService.buildOffensiveTypeKeyboard(vehicle.id, alertType, currentValue, lng);
+    const label = alertType === 'sentry' ? 'Sentry' : 'Break-In';
+    await this.safeReply(ctx, i18n.t('offensiveChooseResponse', { lng, vehicle: vehicleName }) + `\n<b>${label}</b>`, keyboard);
   }
 
   private async handleSetSentryResponse(ctx: Context, chatId: string): Promise<void> {
@@ -310,24 +310,6 @@ export class TelegramOffensiveResponseService implements OnModuleInit {
     } catch (error: unknown) {
       this.logger.error(`[OFFENSIVE] Test request failed for VIN ${vehicle.vin}`, error);
     }
-  }
-
-  private async showResponseOptions(ctx: Context, lng: 'en' | 'fr', vehicle: Vehicle): Promise<void> {
-    const vehicleName = vehicle.display_name || vehicle.vin;
-
-    if (vehicle.sentry_offensive_response === OffensiveResponse.HONK && vehicle.sentry_offensive_response_until) {
-      const remaining = vehicle.sentry_offensive_response_until.getTime() - Date.now();
-
-      if (remaining > 0) {
-        const remainingLabel = this.formatDuration(Math.ceil(remaining / 60000), lng);
-        const keyboard = this.keyboardBuilderService.buildActiveSentryKeyboard(vehicle.id, lng);
-        await this.safeReply(ctx, i18n.t('offensiveExpiresIn', { lng, vehicle: vehicleName, time: remainingLabel }), keyboard);
-        return;
-      }
-    }
-
-    const keyboard = this.keyboardBuilderService.buildOffensiveResponseKeyboard(vehicle.id, lng);
-    await this.safeReply(ctx, i18n.t('offensiveChooseResponse', { lng, vehicle: vehicleName }), keyboard);
   }
 
   private getResponseLabel(response: OffensiveResponse, lng: 'en' | 'fr'): string {
