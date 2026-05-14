@@ -34,6 +34,7 @@ export class VehicleOffensiveResponseService {
     userId: string,
     vin: string,
     dto: UpdateOffensiveResponseDto,
+    skipNotification = false,
   ): Promise<UpdateOffensiveResponseResult> {
     const vehicle = await this.vehicleRepository.findOne({
       where: { userId, vin },
@@ -46,7 +47,7 @@ export class VehicleOffensiveResponseService {
     if (dto.sentry_offensive_response) {
       vehicle.sentry_offensive_response = dto.sentry_offensive_response as OffensiveResponse;
 
-      if (dto.sentry_offensive_response === OffensiveResponse.HONK && dto.sentry_offensive_response_duration_minutes) {
+if (dto.sentry_offensive_response === OffensiveResponse.HONK && dto.sentry_offensive_response_duration_minutes && !skipNotification) {
         vehicle.sentry_offensive_response_until = new Date(Date.now() + dto.sentry_offensive_response_duration_minutes * 60 * 1000);
       } else if (dto.sentry_offensive_response === OffensiveResponse.DISABLED) {
         vehicle.sentry_offensive_response_until = null;
@@ -80,11 +81,12 @@ export class VehicleOffensiveResponseService {
     userId: string,
     vin: string,
     durationMinutes: number,
+    skipNotification = false,
   ): Promise<UpdateOffensiveResponseResult> {
     return this.updateOffensiveResponse(userId, vin, {
       sentry_offensive_response: OffensiveResponse.HONK,
       sentry_offensive_response_duration_minutes: durationMinutes,
-    });
+    }, skipNotification);
   }
 
   async disableSentryOffensive(

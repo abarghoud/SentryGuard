@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
 import { Vehicle } from '../../entities/vehicle.entity';
 import { TelegramBotService } from '../telegram/telegram-bot.service';
+import { UserLanguageService } from '../user/user-language.service';
 import i18n from '../../i18n';
 
 @Injectable()
@@ -14,13 +15,14 @@ export class OffensiveNotificationService {
     @InjectRepository(TelegramConfig)
     private readonly telegramConfigRepository: Repository<TelegramConfig>,
     private readonly telegramBotService: TelegramBotService,
+    private readonly userLanguageService: UserLanguageService,
   ) {}
 
   async notifyActivated(vehicle: Vehicle, durationMinutes: number): Promise<void> {
     const config = await this.findLinkedConfig(vehicle.userId);
     if (!config) return;
 
-    const lng = config.language === 'fr' ? 'fr' : 'en';
+    const lng = await this.userLanguageService.getUserLanguage(config.userId);
     const vehicleName = vehicle.display_name || vehicle.vin;
     const durationLabel = this.formatDuration(durationMinutes, lng);
 
@@ -33,7 +35,7 @@ export class OffensiveNotificationService {
     const config = await this.findLinkedConfig(vehicle.userId);
     if (!config) return;
 
-    const lng = config.language === 'fr' ? 'fr' : 'en';
+    const lng = await this.userLanguageService.getUserLanguage(config.userId);
     const vehicleName = vehicle.display_name || vehicle.vin;
 
     const message = i18n.t('offensiveDeactivatedAuto', { lng, vehicle: vehicleName });

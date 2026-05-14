@@ -12,6 +12,7 @@ import { DistributedLockService } from '../../common/services/distributed-lock.s
 import { AuthModule } from '../auth/auth.module';
 import { ConsentModule } from '../consent/consent.module';
 import { TelegramModule } from '../telegram/telegram.module';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { TelegramModule } from '../telegram/telegram.module';
     AuthModule,
     ConsentModule,
     forwardRef(() => TelegramModule),
+    UserModule,
   ],
   controllers: [OffensiveResponseController],
   providers: [

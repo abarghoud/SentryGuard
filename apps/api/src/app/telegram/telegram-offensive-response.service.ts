@@ -200,7 +200,7 @@ export class TelegramOffensiveResponseService implements OnModuleInit {
       return;
     }
 
-    const result = await this.vehicleOffensiveResponseService.setSentryOffensiveWithDuration(config.userId, vehicle.vin, durationMinutes);
+    const result = await this.vehicleOffensiveResponseService.setSentryOffensiveWithDuration(config.userId, vehicle.vin, durationMinutes, true);
 
     if (!result.success) {
       await ctx.answerCbQuery({ text: i18n.t('offensiveError', { lng }), show_alert: true });
