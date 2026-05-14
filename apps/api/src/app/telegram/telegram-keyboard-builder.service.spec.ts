@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
-import { Vehicle } from '../../entities/vehicle.entity';
 import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
 
 type TelegramKeyboard = {
@@ -103,25 +102,43 @@ describe('The TelegramKeyboardBuilderService class', () => {
   });
 
   describe('The buildOffensiveResponseKeyboard() method', () => {
-    it('should return four option rows with callback data containing vehicleId', () => {
-      const result = service.buildOffensiveResponseKeyboard('vehicle-1', OffensiveResponse.DISABLED, 'en');
+    it('should return keyboard with sentry section, break-in section, and test button', () => {
+      const result = service.buildOffensiveResponseKeyboard('vehicle-1', OffensiveResponse.DISABLED, OffensiveResponse.HONK, 'en');
 
       expect(result.keyboard).toBeDefined();
       const inlineKeyboard = result.keyboard?.inline_keyboard;
-      expect(inlineKeyboard).toHaveLength(5);
-      expect(inlineKeyboard?.[0]?.[0]?.callback_data).toBe(`o_s:vehicle-1:${OffensiveResponse.DISABLED}`);
-      expect(inlineKeyboard?.[1]?.[0]?.callback_data).toBe(`o_s:vehicle-1:${OffensiveResponse.FLASH}`);
-      expect(inlineKeyboard?.[2]?.[0]?.callback_data).toBe(`o_s:vehicle-1:${OffensiveResponse.HONK}`);
-      expect(inlineKeyboard?.[3]?.[0]?.callback_data).toBe(`o_s:vehicle-1:${OffensiveResponse.FLASH_AND_HONK}`);
-      expect(inlineKeyboard?.[4]?.[0]?.callback_data).toBe(`o_t:vehicle-1`);
+
+      expect(inlineKeyboard).toHaveLength(7);
+
+      expect(inlineKeyboard?.[0]?.[0]?.callback_data).toBe('o_none:vehicle-1');
+      expect(inlineKeyboard?.[0]?.[0]?.text).toContain('Sentry');
+
+      expect(inlineKeyboard?.[1]?.[0]?.callback_data).toBe(`o_ss:vehicle-1:${OffensiveResponse.DISABLED}`);
+      expect(inlineKeyboard?.[2]?.[0]?.callback_data).toBe(`o_ss:vehicle-1:${OffensiveResponse.HONK}`);
+
+      expect(inlineKeyboard?.[3]?.[0]?.callback_data).toBe('o_none:vehicle-1');
+      expect(inlineKeyboard?.[3]?.[0]?.text).toContain('Break-In');
+
+      expect(inlineKeyboard?.[4]?.[0]?.callback_data).toBe(`o_sb:vehicle-1:${OffensiveResponse.DISABLED}`);
+      expect(inlineKeyboard?.[5]?.[0]?.callback_data).toBe(`o_sb:vehicle-1:${OffensiveResponse.HONK}`);
+
+      expect(inlineKeyboard?.[6]?.[0]?.callback_data).toBe('o_t:vehicle-1');
     });
 
-    it('should prefix the current response with checkmark', () => {
-      const result = service.buildOffensiveResponseKeyboard('vehicle-1', OffensiveResponse.FLASH, 'en');
+    it('should prefix the current sentry response with checkmark', () => {
+      const result = service.buildOffensiveResponseKeyboard('vehicle-1', OffensiveResponse.HONK, OffensiveResponse.DISABLED, 'en');
       const inlineKeyboard = result.keyboard?.inline_keyboard;
 
-      expect(inlineKeyboard?.[0]?.[0]?.text).not.toContain('✅');
-      expect(inlineKeyboard?.[1]?.[0]?.text).toContain('✅');
+      expect(inlineKeyboard?.[1]?.[0]?.text).not.toContain('✅');
+      expect(inlineKeyboard?.[2]?.[0]?.text).toContain('✅');
+    });
+
+    it('should prefix the current break-in response with checkmark', () => {
+      const result = service.buildOffensiveResponseKeyboard('vehicle-1', OffensiveResponse.DISABLED, OffensiveResponse.HONK, 'en');
+      const inlineKeyboard = result.keyboard?.inline_keyboard;
+
+      expect(inlineKeyboard?.[4]?.[0]?.text).not.toContain('✅');
+      expect(inlineKeyboard?.[5]?.[0]?.text).toContain('✅');
     });
   });
 });

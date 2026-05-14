@@ -64,24 +64,63 @@ export class TelegramKeyboardBuilderService {
     };
   }
 
-  buildOffensiveResponseKeyboard(vehicleId: string, currentResponse: OffensiveResponse, lng: 'en' | 'fr'): TelegramMessageOptions {
+  buildOffensiveResponseKeyboard(vehicleId: string, sentryResponse: OffensiveResponse, breakInResponse: OffensiveResponse, lng: 'en' | 'fr'): TelegramMessageOptions {
     const options: Array<{ key: OffensiveResponse; label: string }> = [
       { key: OffensiveResponse.DISABLED, label: i18n.t('offensiveDisabled', { lng }) },
-      { key: OffensiveResponse.FLASH, label: i18n.t('offensiveFlash', { lng }) },
       { key: OffensiveResponse.HONK, label: i18n.t('offensiveHonk', { lng }) },
-      { key: OffensiveResponse.FLASH_AND_HONK, label: i18n.t('offensiveFlashAndHonk', { lng }) },
     ];
 
-    const keyboard = options.map(({ key, label }) => {
-      const prefix = key === currentResponse ? '✅ ' : '';
-      return [{ text: `${prefix}${label}`, callback_data: `o_s:${vehicleId}:${key}` }];
+    const sentryRows = options.map(({ key, label }) => {
+      const prefix = key === sentryResponse ? '✅ ' : '';
+      return [{ text: `${prefix}${label}`, callback_data: `o_ss:${vehicleId}:${key}` }];
     });
+    sentryRows.unshift([{ text: `🔒 Sentry Mode`, callback_data: `o_none:${vehicleId}` }]);
 
-    keyboard.push([{ text: i18n.t('offensiveTest', { lng }), callback_data: `o_t:${vehicleId}` }]);
+    const breakInRows = options.map(({ key, label }) => {
+      const prefix = key === breakInResponse ? '✅ ' : '';
+      return [{ text: `${prefix}${label}`, callback_data: `o_sb:${vehicleId}:${key}` }];
+    });
+    breakInRows.unshift([{ text: `🚨 Break-In`, callback_data: `o_none:${vehicleId}` }]);
 
     return {
       keyboard: {
-        inline_keyboard: keyboard,
+        inline_keyboard: [
+          ...sentryRows,
+          ...breakInRows,
+          [{ text: i18n.t('offensiveTest', { lng }), callback_data: `o_t:${vehicleId}` }],
+        ],
+      },
+    };
+  }
+
+  buildDurationKeyboard(vehicleId: string, lng: 'en' | 'fr'): TelegramMessageOptions {
+    return {
+      keyboard: {
+        inline_keyboard: [
+          [{ text: i18n.t('offensiveChooseDuration', { lng }) }],
+          [
+            { text: i18n.t('offensiveDuration30m', { lng }), callback_data: `od30:${vehicleId}` },
+            { text: i18n.t('offensiveDuration1h', { lng }), callback_data: `od60:${vehicleId}` },
+            { text: i18n.t('offensiveDuration2h', { lng }), callback_data: `od120:${vehicleId}` },
+          ],
+          [
+            { text: i18n.t('offensiveDuration4h', { lng }), callback_data: `od240:${vehicleId}` },
+            { text: i18n.t('offensiveDuration8h', { lng }), callback_data: `od480:${vehicleId}` },
+            { text: i18n.t('offensiveDuration24h', { lng }), callback_data: `od1440:${vehicleId}` },
+          ],
+          [{ text: '❌', callback_data: `od_cancel:${vehicleId}` }],
+        ],
+      },
+    };
+  }
+
+  buildActiveSentryKeyboard(vehicleId: string, lng: 'en' | 'fr'): TelegramMessageOptions {
+    return {
+      keyboard: {
+        inline_keyboard: [
+          [{ text: i18n.t('offensiveProlong', { lng }), callback_data: `od_prolong:${vehicleId}` }],
+          [{ text: i18n.t('offensiveCancel', { lng }), callback_data: `o_ss:${vehicleId}:${OffensiveResponse.DISABLED}` }],
+        ],
       },
     };
   }
