@@ -82,5 +82,6 @@ export interface TeslaVehicleWithStatus extends TeslaVehicle {
   sentry_mode_monitoring_enabled: boolean;
   key_paired: boolean;
   break_in_monitoring_enabled?: boolean;
-  offensive_response?: string;
+  sentry_offensive_response?: string;
+  break_in_offensive_response?: string;
 }

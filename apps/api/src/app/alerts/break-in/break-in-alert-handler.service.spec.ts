@@ -23,7 +23,7 @@ describe('The BreakInAlertHandlerService class', () => {
     mockAlertNotifier = mock<VehicleAlertNotifierService>();
     mockChargeTracker = mock<ChargePortLatchTrackerService>();
     mockOffensiveResponseService = mock<OffensiveResponseService>();
-    mockOffensiveResponseService.handleOffensiveResponse.mockResolvedValue(undefined);
+    mockOffensiveResponseService.handleBreakInOffensiveResponse.mockResolvedValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -158,7 +158,7 @@ describe('The BreakInAlertHandlerService class', () => {
         jest.advanceTimersByTime(3000);
         await Promise.resolve();
 
-        expect(mockOffensiveResponseService.handleOffensiveResponse).toHaveBeenCalledWith('123');
+        expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).toHaveBeenCalledWith('123');
       });
 
       it('should construct and send telegram message when notifier callback is invoked', async () => {

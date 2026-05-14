@@ -15,7 +15,7 @@ export class OffensiveResponseService {
     private readonly teslaVehicleCommandService: TeslaVehicleCommandService,
   ) {}
 
-  async handleOffensiveResponse(vin: string): Promise<void> {
+  async handleSentryOffensiveResponse(vin: string): Promise<void> {
     const vehicle = await this.findVehicleByVin(vin);
 
     if (!vehicle) {
@@ -23,13 +23,34 @@ export class OffensiveResponseService {
       return;
     }
 
-    if (vehicle.offensive_response === OffensiveResponse.DISABLED) {
-      this.logger.debug(`[OFFENSIVE] Offensive response disabled for VIN ${vin}`);
+    if (vehicle.sentry_offensive_response === OffensiveResponse.DISABLED) {
+      this.logger.debug(`[OFFENSIVE] Sentry offensive response disabled for VIN ${vin}`);
       return;
     }
 
-    if (!vehicle.sentry_mode_monitoring_enabled && !vehicle.break_in_monitoring_enabled) {
-      this.logger.debug(`[OFFENSIVE] No monitoring enabled for VIN ${vin}`);
+    if (!vehicle.sentry_mode_monitoring_enabled) {
+      this.logger.debug(`[OFFENSIVE] Sentry mode monitoring not enabled for VIN ${vin}`);
+      return;
+    }
+
+    await this.executeOffensiveResponse(vehicle);
+  }
+
+  async handleBreakInOffensiveResponse(vin: string): Promise<void> {
+    const vehicle = await this.findVehicleByVin(vin);
+
+    if (!vehicle) {
+      this.logger.debug(`[OFFENSIVE] No vehicle found for VIN ${vin}`);
+      return;
+    }
+
+    if (vehicle.break_in_offensive_response === OffensiveResponse.DISABLED) {
+      this.logger.debug(`[OFFENSIVE] Break-in offensive response disabled for VIN ${vin}`);
+      return;
+    }
+
+    if (!vehicle.break_in_monitoring_enabled) {
+      this.logger.debug(`[OFFENSIVE] Break-in monitoring not enabled for VIN ${vin}`);
       return;
     }
 
@@ -41,36 +62,8 @@ export class OffensiveResponseService {
   }
 
   private async executeOffensiveResponse(vehicle: Vehicle): Promise<void> {
-    const { vin, userId, offensive_response } = vehicle;
+    const { vin, userId } = vehicle;
 
-    const commandPromises: Promise<void>[] = [];
-
-    if (offensive_response === OffensiveResponse.FLASH || offensive_response === OffensiveResponse.FLASH_AND_HONK) {
-      commandPromises.push(this.flashLights(vin, userId));
-    }
-
-    if (offensive_response === OffensiveResponse.HONK || offensive_response === OffensiveResponse.FLASH_AND_HONK) {
-      commandPromises.push(this.honkHorn(vin, userId));
-    }
-
-    await Promise.allSettled(commandPromises);
-  }
-
-  private async flashLights(vin: string, userId: string): Promise<void> {
-    try {
-      const result = await this.teslaVehicleCommandService.flashLights(vin, userId);
-
-      if (result.success) {
-        this.logger.log(`[OFFENSIVE] Flash lights triggered for VIN ${vin}`);
-      } else {
-        this.logger.warn(`[OFFENSIVE] Flash lights failed for VIN ${vin}: ${result.message}`);
-      }
-    } catch (error: unknown) {
-      this.logger.error(`[OFFENSIVE] Error triggering flash lights for VIN ${vin}`, error);
-    }
-  }
-
-  private async honkHorn(vin: string, userId: string): Promise<void> {
     try {
       const result = await this.teslaVehicleCommandService.honkHorn(vin, userId);
 

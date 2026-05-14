@@ -19,8 +19,9 @@ describe('The OffensiveResponseService class', () => {
     userId: 'user-1',
     vin: '5YJ3E1EA123456789',
     sentry_mode_monitoring_enabled: true,
-    break_in_monitoring_enabled: false,
-    offensive_response: OffensiveResponse.DISABLED,
+    break_in_monitoring_enabled: true,
+    sentry_offensive_response: OffensiveResponse.DISABLED,
+    break_in_offensive_response: OffensiveResponse.DISABLED,
     display_name: 'Model 3',
     created_at: new Date(),
     updated_at: new Date(),
@@ -42,118 +43,124 @@ describe('The OffensiveResponseService class', () => {
     jest.clearAllMocks();
   });
 
-  describe('The handleOffensiveResponse() method', () => {
+  describe('The handleSentryOffensiveResponse() method', () => {
     describe('When no vehicle is found for the VIN', () => {
       beforeEach(() => {
         mockVehicleRepository.findOne.mockResolvedValue(null);
       });
 
       it('should not trigger any command', async () => {
-        await service.handleOffensiveResponse('UNKNOWN_VIN');
+        await service.handleSentryOffensiveResponse('UNKNOWN_VIN');
 
-        expect(mockTeslaVehicleCommandService.flashLights).not.toHaveBeenCalled();
         expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
       });
     });
 
-    describe('When offensive response is DISABLED', () => {
+    describe('When sentry offensive response is DISABLED', () => {
       beforeEach(() => {
         mockVehicleRepository.findOne.mockResolvedValue({
           ...fakeVehicle,
-          offensive_response: OffensiveResponse.DISABLED,
+          sentry_offensive_response: OffensiveResponse.DISABLED,
         });
       });
 
       it('should not trigger any command', async () => {
-        await service.handleOffensiveResponse('5YJ3E1EA123456789');
+        await service.handleSentryOffensiveResponse('5YJ3E1EA123456789');
 
-        expect(mockTeslaVehicleCommandService.flashLights).not.toHaveBeenCalled();
         expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
       });
     });
 
-    describe('When offensive response is FLASH', () => {
+    describe('When sentry mode monitoring is not enabled', () => {
       beforeEach(() => {
         mockVehicleRepository.findOne.mockResolvedValue({
           ...fakeVehicle,
-          offensive_response: OffensiveResponse.FLASH,
+          sentry_mode_monitoring_enabled: false,
+          sentry_offensive_response: OffensiveResponse.HONK,
         });
-        mockTeslaVehicleCommandService.flashLights.mockResolvedValue({ success: true });
       });
 
-      it('should trigger flash lights only', async () => {
-        await service.handleOffensiveResponse('5YJ3E1EA123456789');
+      it('should not trigger any command', async () => {
+        await service.handleSentryOffensiveResponse('5YJ3E1EA123456789');
 
-        expect(mockTeslaVehicleCommandService.flashLights).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1');
         expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
       });
     });
 
-    describe('When offensive response is HONK', () => {
+    describe('When sentry offensive response is HONK', () => {
       beforeEach(() => {
         mockVehicleRepository.findOne.mockResolvedValue({
           ...fakeVehicle,
-          offensive_response: OffensiveResponse.HONK,
+          sentry_offensive_response: OffensiveResponse.HONK,
+        });
+        mockTeslaVehicleCommandService.honkHorn.mockResolvedValue({ success: true });
+      });
+
+      it('should trigger honk horn', async () => {
+        await service.handleSentryOffensiveResponse('5YJ3E1EA123456789');
+
+        expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1');
+      });
+    });
+  });
+
+  describe('The handleBreakInOffensiveResponse() method', () => {
+    describe('When no vehicle is found for the VIN', () => {
+      beforeEach(() => {
+        mockVehicleRepository.findOne.mockResolvedValue(null);
+      });
+
+      it('should not trigger any command', async () => {
+        await service.handleBreakInOffensiveResponse('UNKNOWN_VIN');
+
+        expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When break-in offensive response is DISABLED', () => {
+      beforeEach(() => {
+        mockVehicleRepository.findOne.mockResolvedValue({
+          ...fakeVehicle,
+          break_in_offensive_response: OffensiveResponse.DISABLED,
+        });
+      });
+
+      it('should not trigger any command', async () => {
+        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789');
+
+        expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When break-in monitoring is not enabled', () => {
+      beforeEach(() => {
+        mockVehicleRepository.findOne.mockResolvedValue({
+          ...fakeVehicle,
+          break_in_monitoring_enabled: false,
+          break_in_offensive_response: OffensiveResponse.HONK,
+        });
+      });
+
+      it('should not trigger any command', async () => {
+        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789');
+
+        expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When break-in offensive response is HONK', () => {
+      beforeEach(() => {
+        mockVehicleRepository.findOne.mockResolvedValue({
+          ...fakeVehicle,
+          break_in_offensive_response: OffensiveResponse.HONK,
         });
         mockTeslaVehicleCommandService.honkHorn.mockResolvedValue({ success: true });
       });
 
       it('should trigger honk horn only', async () => {
-        await service.handleOffensiveResponse('5YJ3E1EA123456789');
+        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789');
 
         expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1');
-        expect(mockTeslaVehicleCommandService.flashLights).not.toHaveBeenCalled();
-      });
-    });
-
-    describe('When offensive response is FLASH_AND_HONK', () => {
-      beforeEach(() => {
-        mockVehicleRepository.findOne.mockResolvedValue({
-          ...fakeVehicle,
-          offensive_response: OffensiveResponse.FLASH_AND_HONK,
-        });
-        mockTeslaVehicleCommandService.flashLights.mockResolvedValue({ success: true });
-        mockTeslaVehicleCommandService.honkHorn.mockResolvedValue({ success: true });
-      });
-
-      it('should trigger both flash lights and honk horn', async () => {
-        await service.handleOffensiveResponse('5YJ3E1EA123456789');
-
-        expect(mockTeslaVehicleCommandService.flashLights).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1');
-        expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1');
-      });
-    });
-
-    describe('When monitoring is not enabled', () => {
-      beforeEach(() => {
-        mockVehicleRepository.findOne.mockResolvedValue({
-          ...fakeVehicle,
-          sentry_mode_monitoring_enabled: false,
-          break_in_monitoring_enabled: false,
-          offensive_response: OffensiveResponse.FLASH,
-        });
-      });
-
-      it('should not trigger any command', async () => {
-        await service.handleOffensiveResponse('5YJ3E1EA123456789');
-
-        expect(mockTeslaVehicleCommandService.flashLights).not.toHaveBeenCalled();
-      });
-    });
-
-    describe('When flash lights command fails', () => {
-      beforeEach(() => {
-        mockVehicleRepository.findOne.mockResolvedValue({
-          ...fakeVehicle,
-          offensive_response: OffensiveResponse.FLASH,
-        });
-        mockTeslaVehicleCommandService.flashLights.mockResolvedValue({ success: false, message: 'Token expired' });
-      });
-
-      it('should log the failure and not throw', async () => {
-        await service.handleOffensiveResponse('5YJ3E1EA123456789');
-
-        expect(mockTeslaVehicleCommandService.flashLights).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1');
       });
     });
   });

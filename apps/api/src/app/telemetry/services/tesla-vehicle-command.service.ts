@@ -22,10 +22,6 @@ export class TeslaVehicleCommandService {
     private readonly accessTokenService: AccessTokenService,
   ) {}
 
-  async flashLights(vin: string, userId: string): Promise<TeslaCommandResponse> {
-    return this.sendVehicleCommand(vin, userId, 'flash_lights');
-  }
-
   async honkHorn(vin: string, userId: string): Promise<TeslaCommandResponse> {
     return this.sendVehicleCommand(vin, userId, 'honk_horn');
   }
