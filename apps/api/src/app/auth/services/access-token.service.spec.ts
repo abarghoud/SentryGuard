@@ -170,11 +170,12 @@ describe('The AccessTokenService class', () => {
       });
     });
 
-    describe('When concurrent requests for the same user with expired token', () => {
-      const fakeUserId = 'concurrent-user-id';
-      const fakeDecryptedToken = 'decrypted-concurrent-token';
+    describe('When the token is expired and refresh returns AlreadyRefreshed', () => {
+      const fakeUserId = 'expired-user-id';
+      const fakeDecryptedToken = 'decrypted-new-token';
+      let result: string | null;
 
-      it('should only call refresh once and return the same token to all callers', async () => {
+      beforeEach(async () => {
         const expiredUser = {
           userId: fakeUserId,
           access_token: 'encrypted-expired-token',
@@ -187,33 +188,20 @@ describe('The AccessTokenService class', () => {
           expires_at: new Date(Date.now() + 3600000),
         } as User;
 
-        let refreshResolve: (result: RefreshResult) => void;
-        const refreshPromise = new Promise<RefreshResult>((resolve) => {
-          refreshResolve = resolve;
-        });
-
         mockUserRepository.findOne
           .mockResolvedValueOnce(expiredUser)
           .mockResolvedValueOnce(refreshedUser);
 
-        mockTeslaTokenRefreshService.refreshTokenForUser.mockReturnValue(
-          refreshPromise
+        mockTeslaTokenRefreshService.refreshTokenForUser.mockResolvedValue(
+          RefreshResult.AlreadyRefreshed
         );
-
         mockedDecrypt.mockReturnValue(fakeDecryptedToken);
 
-        const promise1 = service.getAccessTokenForUserId(fakeUserId);
-        const promise2 = service.getAccessTokenForUserId(fakeUserId);
+        result = await service.getAccessTokenForUserId(fakeUserId);
+      });
 
-        refreshResolve!(RefreshResult.Success);
-
-        const [result1, result2] = await Promise.all([promise1, promise2]);
-
-        expect(result1).toBe(fakeDecryptedToken);
-        expect(result2).toBe(fakeDecryptedToken);
-        expect(
-          mockTeslaTokenRefreshService.refreshTokenForUser
-        ).toHaveBeenCalledTimes(1);
+      it('should return the refreshed decrypted token', () => {
+        expect(result).toBe(fakeDecryptedToken);
       });
     });
   });
