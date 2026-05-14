@@ -155,8 +155,6 @@ export class TelemetryConfigService {
           vin: teslaVehicle.vin,
           display_name: teslaVehicle.display_name ?? teslaVehicle.vin,
           sentry_mode_monitoring_enabled: isTelemetryConfigured,
-          sentry_offensive_response: 'DISABLED',
-          break_in_offensive_response: 'DISABLED',
         },
         { conflictPaths: ['userId', 'vin'], skipUpdateIfNoValuesChanged: true }
       );
