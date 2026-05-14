@@ -115,8 +115,9 @@ export class TelegramOffensiveResponseService implements OnModuleInit {
 
       if (remaining > 0) {
         const remainingLabel = this.formatDuration(Math.ceil(remaining / 60000), lng);
+        const expiresKey = alertType === 'sentry' ? 'offensiveExpiresInSentry' : 'offensiveExpiresIn';
         const keyboard = this.keyboardBuilderService.buildActiveSentryKeyboard(vehicle.id, lng);
-        await this.safeReply(ctx, i18n.t('offensiveExpiresIn', { lng, vehicle: vehicleName, time: remainingLabel }), keyboard);
+        await this.safeReply(ctx, i18n.t(expiresKey, { lng, vehicle: vehicleName, time: remainingLabel }), keyboard);
         return;
       }
     }
@@ -214,7 +215,7 @@ export class TelegramOffensiveResponseService implements OnModuleInit {
 
     await ctx.answerCbQuery();
     await ctx.deleteMessage();
-    await this.safeReply(ctx, i18n.t('offensiveActivatedFor', { lng, vehicle: vehicleName, duration: durationLabel }), this.keyboardBuilderService.buildMainMenuKeyboard(lng, config.muted_until));
+    await this.safeReply(ctx, i18n.t('offensiveActivatedForSentry', { lng, vehicle: vehicleName, duration: durationLabel }), this.keyboardBuilderService.buildMainMenuKeyboard(lng, config.muted_until));
   }
 
   private async handleCancelDuration(ctx: Context, chatId: string): Promise<void> {
@@ -246,7 +247,7 @@ export class TelegramOffensiveResponseService implements OnModuleInit {
 
     await ctx.answerCbQuery();
     await ctx.deleteMessage();
-    await this.safeReply(ctx, i18n.t('offensiveDisabled', { lng, vehicle: vehicleName }), this.keyboardBuilderService.buildMainMenuKeyboard(lng, config.muted_until));
+    await this.safeReply(ctx, i18n.t('offensiveDisabledMsgSentry', { lng, vehicle: vehicleName }), this.keyboardBuilderService.buildMainMenuKeyboard(lng, config.muted_until));
   }
 
   private async handleProlongDuration(ctx: Context, chatId: string): Promise<void> {

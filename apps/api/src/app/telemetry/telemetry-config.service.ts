@@ -109,6 +109,7 @@ export class TelemetryConfigService {
             break_in_monitoring_enabled: dbVehicle?.break_in_monitoring_enabled ?? false,
             sentry_offensive_response: dbVehicle?.sentry_offensive_response ?? 'DISABLED',
             break_in_offensive_response: dbVehicle?.break_in_offensive_response ?? 'DISABLED',
+            sentry_offensive_response_until: dbVehicle?.sentry_offensive_response_until?.toISOString() ?? null,
             key_paired: keyPaired,
           };
         });
@@ -120,6 +121,7 @@ export class TelemetryConfigService {
         break_in_monitoring_enabled: false,
         sentry_offensive_response: 'DISABLED',
         break_in_offensive_response: 'DISABLED',
+        sentry_offensive_response_until: null,
         key_paired: false,
       }));
     } catch (error: unknown) {

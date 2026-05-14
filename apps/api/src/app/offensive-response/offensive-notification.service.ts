@@ -26,7 +26,7 @@ export class OffensiveNotificationService {
     const vehicleName = vehicle.display_name || vehicle.vin;
     const durationLabel = this.formatDuration(durationMinutes, lng);
 
-    const message = i18n.t('offensiveActivatedFor', { lng, vehicle: vehicleName, duration: durationLabel });
+    const message = i18n.t('offensiveActivatedForSentry', { lng, vehicle: vehicleName, duration: durationLabel });
 
     await this.telegramBotService.sendMessage(config.chat_id, message);
   }
@@ -38,7 +38,7 @@ export class OffensiveNotificationService {
     const lng = await this.userLanguageService.getUserLanguage(config.userId);
     const vehicleName = vehicle.display_name || vehicle.vin;
 
-    const message = i18n.t('offensiveDeactivatedAuto', { lng, vehicle: vehicleName });
+    const message = i18n.t('offensiveDeactivatedAutoSentry', { lng, vehicle: vehicleName });
 
     await this.telegramBotService.sendMessage(config.chat_id, message);
   }

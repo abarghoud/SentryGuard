@@ -79,10 +79,14 @@
   "offensiveDuration8h": "8h",
   "offensiveDuration24h": "24h",
   "offensiveActivatedFor": "📯 <b>{{vehicle}}</b>\n\nHorn activated for {{duration}}",
+  "offensiveActivatedForSentry": "🔒 <b>{{vehicle}}</b>\n\nSentry horn activated for {{duration}}",
   "offensiveDeactivatedAuto": "⏱️ <b>{{vehicle}}</b>\n\nHorn auto-deactivated",
+  "offensiveDeactivatedAutoSentry": "⏱️ <b>{{vehicle}}</b>\n\nSentry horn auto-deactivated",
   "offensiveExpiresIn": "📯 <b>{{vehicle}}</b>\n\nHorn active — expires in {{time}}",
+  "offensiveExpiresInSentry": "🔒 <b>{{vehicle}}</b>\n\nSentry horn active — expires in {{time}}",
   "offensiveProlong": "⏱️ Prolong",
   "offensiveCancel": "❌ Cancel",
   "offensiveError": "❌ Error updating offensive response",
-  "offensiveDisabledMsg": "📯 <b>{{vehicle}}</b>\n\nHorn deactivated"
+  "offensiveDisabledMsg": "📯 <b>{{vehicle}}</b>\n\nHorn deactivated",
+  "offensiveDisabledMsgSentry": "🔒 <b>{{vehicle}}</b>\n\nSentry horn deactivated"
 }

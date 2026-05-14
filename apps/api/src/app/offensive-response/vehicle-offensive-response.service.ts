@@ -47,7 +47,7 @@ export class VehicleOffensiveResponseService {
     if (dto.sentry_offensive_response) {
       vehicle.sentry_offensive_response = dto.sentry_offensive_response as OffensiveResponse;
 
-if (dto.sentry_offensive_response === OffensiveResponse.HONK && dto.sentry_offensive_response_duration_minutes && !skipNotification) {
+      if (dto.sentry_offensive_response === OffensiveResponse.HONK && dto.sentry_offensive_response_duration_minutes) {
         vehicle.sentry_offensive_response_until = new Date(Date.now() + dto.sentry_offensive_response_duration_minutes * 60 * 1000);
       } else if (dto.sentry_offensive_response === OffensiveResponse.DISABLED) {
         vehicle.sentry_offensive_response_until = null;
@@ -61,7 +61,7 @@ if (dto.sentry_offensive_response === OffensiveResponse.HONK && dto.sentry_offen
     await this.vehicleRepository.save(vehicle);
     this.logger.log(`Offensive response updated for ${vin}: sentry=${vehicle.sentry_offensive_response}, until=${vehicle.sentry_offensive_response_until?.toISOString() ?? 'null'}, break_in=${vehicle.break_in_offensive_response}`);
 
-    if (dto.sentry_offensive_response === OffensiveResponse.HONK && dto.sentry_offensive_response_duration_minutes) {
+    if (!skipNotification && dto.sentry_offensive_response === OffensiveResponse.HONK && dto.sentry_offensive_response_duration_minutes) {
       try {
         await this.notificationService.notifyActivated(vehicle, dto.sentry_offensive_response_duration_minutes);
       } catch {

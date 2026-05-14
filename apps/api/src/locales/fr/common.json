@@ -79,10 +79,14 @@
   "offensiveDuration8h": "8h",
   "offensiveDuration24h": "24h",
   "offensiveActivatedFor": "📯 <b>{{vehicle}}</b>\n\nKlaxon activé pour {{duration}}",
+  "offensiveActivatedForSentry": "🔒 <b>{{vehicle}}</b>\n\nKlaxon Sentinelle activé pour {{duration}}",
   "offensiveDeactivatedAuto": "⏱️ <b>{{vehicle}}</b>\n\nKlaxon désactivé automatiquement",
+  "offensiveDeactivatedAutoSentry": "⏱️ <b>{{vehicle}}</b>\n\nKlaxon Sentinelle désactivé automatiquement",
   "offensiveExpiresIn": "📯 <b>{{vehicle}}</b>\n\nKlaxon actif — expire dans {{time}}",
+  "offensiveExpiresInSentry": "🔒 <b>{{vehicle}}</b>\n\nKlaxon Sentinelle actif — expire dans {{time}}",
   "offensiveProlong": "⏱️ Prolonger",
   "offensiveCancel": "❌ Annuler",
   "offensiveError": "❌ Erreur lors de la mise à jour",
-  "offensiveDisabledMsg": "📯 <b>{{vehicle}}</b>\n\nKlaxon désactivé"
+  "offensiveDisabledMsg": "📯 <b>{{vehicle}}</b>\n\nKlaxon désactivé",
+  "offensiveDisabledMsgSentry": "🔒 <b>{{vehicle}}</b>\n\nKlaxon Sentinelle désactivé"
 }
