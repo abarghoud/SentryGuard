@@ -37,7 +37,17 @@ export class Vehicle {
     enum: OffensiveResponse,
     default: OffensiveResponse.DISABLED,
   })
-  offensive_response!: OffensiveResponse;
+  sentry_offensive_response!: OffensiveResponse;
+
+  @Column({ type: 'timestamp', nullable: true })
+  sentry_offensive_response_until?: Date | null;
+
+  @Column({
+    type: 'enum',
+    enum: OffensiveResponse,
+    default: OffensiveResponse.DISABLED,
+  })
+  break_in_offensive_response!: OffensiveResponse;
 
   @CreateDateColumn()
   created_at!: Date;

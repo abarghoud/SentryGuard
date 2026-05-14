@@ -13,7 +13,7 @@ import { SentryAlertHandlerService } from './alerts/sentry/sentry-alert-handler.
 import { BreakInAlertHandlerService } from './alerts/break-in/break-in-alert-handler.service';
 import { ChargePortLatchTrackerService } from './alerts/break-in/charge-port-latch-tracker.service';
 import { VehicleAlertNotifierService } from './alerts/common/vehicle-alert-notifier.service';
-import { OffensiveResponseService } from './alerts/services/offensive-response.service';
+import { OffensiveResponseModule } from './offensive-response/offensive-response.module';
 import { TelemetryEventHandlerSymbol } from './telemetry/interfaces/telemetry-event-handler.interface';
 import { kafkaMessageHandler } from './messaging/kafka/interfaces/message-handler.interface';
 import { AuthModule } from './auth/auth.module';
@@ -49,6 +49,7 @@ import { RetryManager } from './shared/retry-manager.service';
     RedirectModule,
     TeslaPublicKeyModule,
     OnboardingModule,
+    OffensiveResponseModule,
     ThrottlerModule.forRoot([getThrottleConfig()]),
   ],
   controllers: [AppController],

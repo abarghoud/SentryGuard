@@ -7,7 +7,6 @@ import { AccessTokenService } from '../auth/services/access-token.service';
 import { AuthService } from '../auth/auth.service';
 import { TeslaPartnerAuthService } from '../auth/tesla-partner-auth.service';
 import { Vehicle } from '../../entities/vehicle.entity';
-import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
 import {
   DeleteTelemetryConfigResponse,
   ConfigureTelemetryResult,
@@ -108,7 +107,8 @@ export class TelemetryConfigService {
             ...teslaVehicle,
             sentry_mode_monitoring_enabled: dbVehicle?.sentry_mode_monitoring_enabled ?? false,
             break_in_monitoring_enabled: dbVehicle?.break_in_monitoring_enabled ?? false,
-            offensive_response: dbVehicle?.offensive_response ?? 'DISABLED',
+            sentry_offensive_response: dbVehicle?.sentry_offensive_response ?? 'DISABLED',
+            break_in_offensive_response: dbVehicle?.break_in_offensive_response ?? 'DISABLED',
             key_paired: keyPaired,
           };
         });
@@ -118,7 +118,8 @@ export class TelemetryConfigService {
         ...vehicle,
         sentry_mode_monitoring_enabled: false,
         break_in_monitoring_enabled: false,
-        offensive_response: 'DISABLED',
+        sentry_offensive_response: 'DISABLED',
+        break_in_offensive_response: 'DISABLED',
         key_paired: false,
       }));
     } catch (error: unknown) {
@@ -210,26 +211,6 @@ export class TelemetryConfigService {
       this.logger.error(`Error patching telemetry config for ${vin}:`, extractErrorDetails(error));
       return null;
     }
-  }
-
-  async updateVehicleOffensiveResponse(
-    userId: string,
-    vin: string,
-    offensiveResponse: string
-  ): Promise<{ success: boolean; offensive_response: string }> {
-    const vehicle = await this.vehicleRepository.findOne({
-      where: { userId, vin },
-    });
-
-    if (!vehicle) {
-      return { success: false, offensive_response: offensiveResponse };
-    }
-
-    vehicle.offensive_response = offensiveResponse as OffensiveResponse;
-    await this.vehicleRepository.save(vehicle);
-    this.logger.log(`✅ Offensive response updated for ${vin}: ${offensiveResponse}`);
-
-    return { success: true, offensive_response: vehicle.offensive_response };
   }
 
   async updateVehicleTelemetryStatus(
