@@ -15,11 +15,11 @@ export class AlertsOffensiveResponseService {
     private readonly teslaVehicleCommandService: TeslaVehicleCommandService,
   ) {}
 
-  async handleSentryOffensiveResponse(vin: string): Promise<void> {
-    const vehicle = await this.findVehicleByVin(vin);
+  async handleSentryOffensiveResponse(vin: string, userId: string): Promise<void> {
+    const vehicle = await this.findVehicleByVin(vin, userId);
 
     if (!vehicle) {
-      this.logger.debug(`[OFFENSIVE] No vehicle found for VIN ${vin}`);
+      this.logger.debug(`[OFFENSIVE] No vehicle found for VIN ${vin} and userId ${userId}`);
       return;
     }
 
@@ -36,29 +36,29 @@ export class AlertsOffensiveResponseService {
     await this.executeOffensiveResponse(vehicle);
   }
 
-  async handleBreakInOffensiveResponse(vin: string): Promise<void> {
-    const vehicle = await this.findVehicleByVin(vin);
+  async handleBreakInOffensiveResponse(vin: string, userId: string): Promise<void> {
+    const vehicle = await this.findVehicleByVin(vin, userId);
 
     if (!vehicle) {
-      this.logger.debug(`[OFFENSIVE] No vehicle found for VIN ${vin}`);
+      this.logger.debug(`[OFFENSIVE] No vehicle found for VIN ${vin} and userId ${userId}`);
       return;
     }
 
     if (vehicle.break_in_offensive_response === OffensiveResponse.DISABLED) {
-      this.logger.debug(`[OFFENSIVE] Break-in offensive response disabled for VIN ${vin}`);
+      this.logger.debug(`[OFFENSIVE] Break-in offensive response disabled for VIN ${vin} and userId ${userId}`);
       return;
     }
 
     if (!vehicle.break_in_monitoring_enabled) {
-      this.logger.debug(`[OFFENSIVE] Break-in monitoring not enabled for VIN ${vin}`);
+      this.logger.debug(`[OFFENSIVE] Break-in monitoring not enabled for VIN ${vin} and userId ${userId}`);
       return;
     }
 
     await this.executeOffensiveResponse(vehicle);
   }
 
-  private async findVehicleByVin(vin: string): Promise<Vehicle | null> {
-    return this.vehicleRepository.findOne({ where: { vin } });
+  private async findVehicleByVin(vin: string, userId: string): Promise<Vehicle | null> {
+    return this.vehicleRepository.findOne({ where: { vin, userId } });
   }
 
   private async executeOffensiveResponse(vehicle: Vehicle): Promise<void> {

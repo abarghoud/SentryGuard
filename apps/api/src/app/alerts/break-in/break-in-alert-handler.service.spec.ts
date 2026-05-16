@@ -135,6 +135,7 @@ describe('The BreakInAlertHandlerService class', () => {
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
         jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
         mockChargeTracker.hasLatchEventAround.mockReturnValue(false);
+        mockAlertNotifier.dispatch.mockResolvedValue({ userIds: ['user-1'] });
       });
 
       it('should delay the verification by 3 seconds to account for telemetry lag, then dispatch the alert via alertNotifier', async () => {
@@ -153,12 +154,12 @@ describe('The BreakInAlertHandlerService class', () => {
         }));
       });
 
-      it('should trigger offensive response for the VIN', async () => {
+      it('should trigger offensive response for the VIN and first userId', async () => {
         await service.handle(message);
         jest.advanceTimersByTime(3000);
         await Promise.resolve();
 
-        expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).toHaveBeenCalledWith('123');
+        expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).toHaveBeenCalledWith('123', 'user-1');
       });
 
       it('should construct and send telegram message when notifier callback is invoked', async () => {

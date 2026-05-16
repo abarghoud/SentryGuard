@@ -106,7 +106,7 @@ export class VehicleOffensiveResponseConfigService {
       return;
     }
 
-    await this.offensiveResponseService.handleSentryOffensiveResponse(vin);
+    await this.offensiveResponseService.handleSentryOffensiveResponse(vin, userId);
   }
 
   async testBreakInOffensiveResponse(userId: string, vin: string): Promise<void> {
@@ -117,6 +117,6 @@ export class VehicleOffensiveResponseConfigService {
       return;
     }
 
-    await this.offensiveResponseService.handleBreakInOffensiveResponse(vin);
+    await this.offensiveResponseService.handleBreakInOffensiveResponse(vin, userId);
   }
 }

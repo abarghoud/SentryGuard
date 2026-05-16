@@ -44,13 +44,13 @@ describe('The AlertsOffensiveResponseService class', () => {
   });
 
   describe('The handleSentryOffensiveResponse() method', () => {
-    describe('When no vehicle is found for the VIN', () => {
+    describe('When no vehicle is found for the VIN and userId', () => {
       beforeEach(() => {
         mockVehicleRepository.findOne.mockResolvedValue(null);
       });
 
       it('should not trigger any command', async () => {
-        await service.handleSentryOffensiveResponse('UNKNOWN_VIN');
+        await service.handleSentryOffensiveResponse('UNKNOWN_VIN', 'user-1');
 
         expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
       });
@@ -65,7 +65,7 @@ describe('The AlertsOffensiveResponseService class', () => {
       });
 
       it('should not trigger any command', async () => {
-        await service.handleSentryOffensiveResponse('5YJ3E1EA123456789');
+        await service.handleSentryOffensiveResponse('5YJ3E1EA123456789', 'user-1');
 
         expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
       });
@@ -81,7 +81,7 @@ describe('The AlertsOffensiveResponseService class', () => {
       });
 
       it('should not trigger any command', async () => {
-        await service.handleSentryOffensiveResponse('5YJ3E1EA123456789');
+        await service.handleSentryOffensiveResponse('5YJ3E1EA123456789', 'user-1');
 
         expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
       });
@@ -97,7 +97,7 @@ describe('The AlertsOffensiveResponseService class', () => {
       });
 
       it('should trigger honk horn', async () => {
-        await service.handleSentryOffensiveResponse('5YJ3E1EA123456789');
+        await service.handleSentryOffensiveResponse('5YJ3E1EA123456789', 'user-1');
 
         expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1');
       });
@@ -105,13 +105,13 @@ describe('The AlertsOffensiveResponseService class', () => {
   });
 
   describe('The handleBreakInOffensiveResponse() method', () => {
-    describe('When no vehicle is found for the VIN', () => {
+    describe('When no vehicle is found for the VIN and userId', () => {
       beforeEach(() => {
         mockVehicleRepository.findOne.mockResolvedValue(null);
       });
 
       it('should not trigger any command', async () => {
-        await service.handleBreakInOffensiveResponse('UNKNOWN_VIN');
+        await service.handleBreakInOffensiveResponse('UNKNOWN_VIN', 'user-1');
 
         expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
       });
@@ -126,7 +126,7 @@ describe('The AlertsOffensiveResponseService class', () => {
       });
 
       it('should not trigger any command', async () => {
-        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789');
+        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', 'user-1');
 
         expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
       });
@@ -142,7 +142,7 @@ describe('The AlertsOffensiveResponseService class', () => {
       });
 
       it('should not trigger any command', async () => {
-        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789');
+        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', 'user-1');
 
         expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
       });
@@ -158,7 +158,7 @@ describe('The AlertsOffensiveResponseService class', () => {
       });
 
       it('should trigger honk horn only', async () => {
-        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789');
+        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', 'user-1');
 
         expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1');
       });

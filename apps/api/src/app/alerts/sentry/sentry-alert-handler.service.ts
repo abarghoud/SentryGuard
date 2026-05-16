@@ -27,16 +27,19 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
     const sentryMode = telemetryMessage.getSentryModeState();
 
     if (sentryMode === SentryModeState.Aware) {
-      await this.alertNotifier.dispatch({
+      const { userIds } = await this.alertNotifier.dispatch({
         telemetryMessage,
         alertName: 'SENTRY_ALERT',
         latencyLabel: 'SENTRY_LATENCY',
         telegramNotifier: this.telegramNotifier,
       });
 
-this.offensiveResponseService.handleSentryOffensiveResponse(telemetryMessage.vin).catch((error: unknown) => {
-      this.logger.warn(`[OFFENSIVE] Failed to execute offensive response for VIN ${telemetryMessage.vin}`, error);
-      });
+      const userId = userIds[0];
+      if (userId) {
+        this.offensiveResponseService.handleSentryOffensiveResponse(telemetryMessage.vin, userId).catch((error: unknown) => {
+          this.logger.warn(`[OFFENSIVE] Failed to execute offensive response for VIN ${telemetryMessage.vin} and userId ${userId}`, error);
+        });
+      }
     }
   }
 
