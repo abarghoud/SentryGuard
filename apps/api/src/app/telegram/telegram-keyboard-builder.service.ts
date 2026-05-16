@@ -92,12 +92,10 @@ export class TelegramKeyboardBuilderService {
           [
             { text: i18n.t('offensiveDuration30m', { lng }), callback_data: `od30:${vehicleId}` },
             { text: i18n.t('offensiveDuration1h', { lng }), callback_data: `od60:${vehicleId}` },
-          ],
-          [
             { text: i18n.t('offensiveDuration2h', { lng }), callback_data: `od120:${vehicleId}` },
-            { text: i18n.t('offensiveDuration4h', { lng }), callback_data: `od240:${vehicleId}` },
           ],
           [
+            { text: i18n.t('offensiveDuration4h', { lng }), callback_data: `od240:${vehicleId}` },
             { text: i18n.t('offensiveDuration8h', { lng }), callback_data: `od480:${vehicleId}` },
             { text: i18n.t('offensiveDuration24h', { lng }), callback_data: `od1440:${vehicleId}` },
           ],
@@ -143,12 +141,10 @@ export class TelegramKeyboardBuilderService {
       [
         { text: '30 min', callback_data: 'mute:30' },
         { text: '1h', callback_data: 'mute:60' },
-      ],
-      [
         { text: '2h', callback_data: 'mute:120' },
-        { text: '4h', callback_data: 'mute:240' },
       ],
       [
+        { text: '4h', callback_data: 'mute:240' },
         { text: '8h', callback_data: 'mute:480' },
         { text: '24h', callback_data: 'mute:1440' },
       ],
