@@ -43,12 +43,13 @@ describe('The OffensiveResponseController class', () => {
 
         const result = await controller.updateOffensiveResponse('VIN123', mockUser, {
           sentry_offensive_response: OffensiveResponse.HONK,
+          sentry_offensive_response_duration_minutes: 60,
         });
 
         expect(mockService.updateOffensiveResponse).toHaveBeenCalledWith(
           'test-user-id',
           'VIN123',
-          { sentry_offensive_response: OffensiveResponse.HONK },
+          { sentry_offensive_response: OffensiveResponse.HONK, sentry_offensive_response_duration_minutes: 60 },
         );
         expect(result).toStrictEqual({
           success: true,
@@ -69,12 +70,13 @@ describe('The OffensiveResponseController class', () => {
         await controller.updateOffensiveResponse('VIN123', mockUser, {
           sentry_offensive_response: OffensiveResponse.HONK,
           break_in_offensive_response: OffensiveResponse.HONK,
+          sentry_offensive_response_duration_minutes: 60,
         });
 
         expect(mockService.updateOffensiveResponse).toHaveBeenCalledWith(
           'test-user-id',
           'VIN123',
-          { sentry_offensive_response: OffensiveResponse.HONK, break_in_offensive_response: OffensiveResponse.HONK },
+          { sentry_offensive_response: OffensiveResponse.HONK, break_in_offensive_response: OffensiveResponse.HONK, sentry_offensive_response_duration_minutes: 60 },
         );
       });
     });
@@ -113,6 +115,14 @@ describe('The OffensiveResponseController class', () => {
       it('should throw BadRequestException when neither field is provided', async () => {
         await expect(
           controller.updateOffensiveResponse('VIN123', mockUser, {}),
+        ).rejects.toThrow(BadRequestException);
+      });
+
+      it('should throw BadRequestException when HONK is provided without duration_minutes', async () => {
+        await expect(
+          controller.updateOffensiveResponse('VIN123', mockUser, {
+            sentry_offensive_response: OffensiveResponse.HONK,
+          }),
         ).rejects.toThrow(BadRequestException);
       });
 

@@ -53,6 +53,12 @@ export class OffensiveResponseController {
       );
     }
 
+    if (body.sentry_offensive_response === OffensiveResponse.HONK && !body.sentry_offensive_response_duration_minutes) {
+      throw new BadRequestException(
+        'sentry_offensive_response_duration_minutes is required when sentry_offensive_response is HONK'
+      );
+    }
+
     if (body.sentry_offensive_response_duration_minutes !== undefined) {
       if (body.sentry_offensive_response !== OffensiveResponse.HONK) {
         throw new BadRequestException(
