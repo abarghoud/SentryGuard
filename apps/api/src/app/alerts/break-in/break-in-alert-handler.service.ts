@@ -61,12 +61,9 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
         telegramNotifier: this.telegramNotifier,
       });
 
-      const userId = userIds[0];
-      if (userId) {
-        this.offensiveResponseService.handleBreakInOffensiveResponse(telemetryMessage.vin, userId).catch((error: unknown) => {
-          this.logger.warn(`[OFFENSIVE] Failed to execute offensive response for VIN ${telemetryMessage.vin} and userId ${userId}`, error);
-        });
-      }
+      this.offensiveResponseService.handleBreakInOffensiveResponse(telemetryMessage.vin, userIds).catch((error: unknown) => {
+        this.logger.warn(`[OFFENSIVE] Failed to execute offensive response for VIN ${telemetryMessage.vin}`, error);
+      });
     } catch (error) {
       this.logger.error('Failed to dispatch delayed break-in alert:', error);
     }

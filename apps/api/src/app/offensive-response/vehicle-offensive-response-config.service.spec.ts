@@ -178,7 +178,7 @@ describe('The VehicleOffensiveResponseConfigService class', () => {
         await service.testSentryOffensiveResponse('user-1', 'VIN123');
 
         expect(mockVehicleRepository.findOne).toHaveBeenCalledWith({ where: { userId: 'user-1', vin: 'VIN123' } });
-        expect(mockOffensiveResponseService.handleSentryOffensiveResponse).toHaveBeenCalledWith('VIN123', 'user-1');
+        expect(mockOffensiveResponseService.handleSentryOffensiveResponse).toHaveBeenCalledWith('VIN123', ['user-1']);
       });
     });
 
@@ -206,7 +206,7 @@ describe('The VehicleOffensiveResponseConfigService class', () => {
         await service.testBreakInOffensiveResponse('user-1', 'VIN123');
 
         expect(mockVehicleRepository.findOne).toHaveBeenCalledWith({ where: { userId: 'user-1', vin: 'VIN123' } });
-        expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).toHaveBeenCalledWith('VIN123', 'user-1');
+        expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).toHaveBeenCalledWith('VIN123', ['user-1']);
       });
     });
 

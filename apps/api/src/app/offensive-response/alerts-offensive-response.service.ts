@@ -15,46 +15,50 @@ export class AlertsOffensiveResponseService {
     private readonly teslaVehicleCommandService: TeslaVehicleCommandService,
   ) {}
 
-  async handleSentryOffensiveResponse(vin: string, userId: string): Promise<void> {
-    const vehicle = await this.findVehicleByVin(vin, userId);
+  async handleSentryOffensiveResponse(vin: string, userIds: string[]): Promise<void> {
+    for (const userId of userIds) {
+      const vehicle = await this.findVehicleByVin(vin, userId);
 
-    if (!vehicle) {
-      this.logger.debug(`[OFFENSIVE] No vehicle found for VIN ${vin} and userId ${userId}`);
+      if (!vehicle) {
+        continue;
+      }
+
+      if (vehicle.sentry_offensive_response === OffensiveResponse.DISABLED) {
+        continue;
+      }
+
+      if (!vehicle.sentry_mode_monitoring_enabled) {
+        continue;
+      }
+
+      await this.executeOffensiveResponse(vehicle);
       return;
     }
 
-    if (vehicle.sentry_offensive_response === OffensiveResponse.DISABLED) {
-      this.logger.debug(`[OFFENSIVE] Sentry offensive response disabled for VIN ${vin}`);
-      return;
-    }
-
-    if (!vehicle.sentry_mode_monitoring_enabled) {
-      this.logger.debug(`[OFFENSIVE] Sentry mode monitoring not enabled for VIN ${vin}`);
-      return;
-    }
-
-    await this.executeOffensiveResponse(vehicle);
+    this.logger.debug(`[OFFENSIVE] No eligible user found for sentry offensive response on VIN ${vin}`);
   }
 
-  async handleBreakInOffensiveResponse(vin: string, userId: string): Promise<void> {
-    const vehicle = await this.findVehicleByVin(vin, userId);
+  async handleBreakInOffensiveResponse(vin: string, userIds: string[]): Promise<void> {
+    for (const userId of userIds) {
+      const vehicle = await this.findVehicleByVin(vin, userId);
 
-    if (!vehicle) {
-      this.logger.debug(`[OFFENSIVE] No vehicle found for VIN ${vin} and userId ${userId}`);
+      if (!vehicle) {
+        continue;
+      }
+
+      if (vehicle.break_in_offensive_response === OffensiveResponse.DISABLED) {
+        continue;
+      }
+
+      if (!vehicle.break_in_monitoring_enabled) {
+        continue;
+      }
+
+      await this.executeOffensiveResponse(vehicle);
       return;
     }
 
-    if (vehicle.break_in_offensive_response === OffensiveResponse.DISABLED) {
-      this.logger.debug(`[OFFENSIVE] Break-in offensive response disabled for VIN ${vin} and userId ${userId}`);
-      return;
-    }
-
-    if (!vehicle.break_in_monitoring_enabled) {
-      this.logger.debug(`[OFFENSIVE] Break-in monitoring not enabled for VIN ${vin} and userId ${userId}`);
-      return;
-    }
-
-    await this.executeOffensiveResponse(vehicle);
+    this.logger.debug(`[OFFENSIVE] No eligible user found for break-in offensive response on VIN ${vin}`);
   }
 
   private async findVehicleByVin(vin: string, userId: string): Promise<Vehicle | null> {

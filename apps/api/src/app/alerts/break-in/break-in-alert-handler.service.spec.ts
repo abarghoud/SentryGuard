@@ -154,12 +154,12 @@ describe('The BreakInAlertHandlerService class', () => {
         }));
       });
 
-      it('should trigger offensive response for the VIN and first userId', async () => {
+      it('should trigger offensive response for the VIN with userIds', async () => {
         await service.handle(message);
         jest.advanceTimersByTime(3000);
         await Promise.resolve();
 
-        expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).toHaveBeenCalledWith('123', 'user-1');
+        expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).toHaveBeenCalledWith('123', ['user-1']);
       });
 
       it('should construct and send telegram message when notifier callback is invoked', async () => {

@@ -132,10 +132,10 @@ describe('The SentryAlertHandlerService class', () => {
         }));
       });
 
-      it('should trigger offensive response for the VIN and first userId', async () => {
+      it('should trigger offensive response for the VIN with userIds', async () => {
         await service.handle(baseTelemetryMessage);
 
-        expect(mockOffensiveResponseService.handleSentryOffensiveResponse).toHaveBeenCalledWith('TEST_VIN_123', 'user-1');
+        expect(mockOffensiveResponseService.handleSentryOffensiveResponse).toHaveBeenCalledWith('TEST_VIN_123', ['user-1']);
       });
 
       it('should construct and send telegram message when notifier callback is invoked', async () => {

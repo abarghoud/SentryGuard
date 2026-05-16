@@ -304,9 +304,9 @@ export class TelegramOffensiveResponseService implements OnModuleInit {
 
     try {
       if (alertType === 'sentry') {
-        await this.offensiveResponseService.handleSentryOffensiveResponse(vehicle.vin, vehicle.userId);
+        await this.offensiveResponseService.handleSentryOffensiveResponse(vehicle.vin, [vehicle.userId]);
       } else {
-        await this.offensiveResponseService.handleBreakInOffensiveResponse(vehicle.vin, vehicle.userId);
+        await this.offensiveResponseService.handleBreakInOffensiveResponse(vehicle.vin, [vehicle.userId]);
       }
     } catch (error: unknown) {
       this.logger.error(`[OFFENSIVE] Test request failed for VIN ${vehicle.vin}`, error);
