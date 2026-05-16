@@ -3,8 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Vehicle } from '../../entities/vehicle.entity';
 import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
-import { OffensiveResponseService } from '../alerts/services/offensive-response.service';
-import { OffensiveNotificationService } from './offensive-notification.service';
+import { AlertsOffensiveResponseService } from '../offensive-response/alerts-offensive-response.service';
+import { OffensiveTelegramNotificationService } from './offensive-telegram-notification.service';
 
 export interface UpdateOffensiveResponseDto {
   sentry_offensive_response?: string;
@@ -20,14 +20,14 @@ export interface UpdateOffensiveResponseResult {
 }
 
 @Injectable()
-export class VehicleOffensiveResponseService {
-  private readonly logger = new Logger(VehicleOffensiveResponseService.name);
+export class VehicleOffensiveResponseConfigService {
+  private readonly logger = new Logger(VehicleOffensiveResponseConfigService.name);
 
   constructor(
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>,
-    private readonly offensiveResponseService: OffensiveResponseService,
-    private readonly notificationService: OffensiveNotificationService,
+    private readonly offensiveResponseService: AlertsOffensiveResponseService,
+    private readonly notificationService: OffensiveTelegramNotificationService,
   ) {}
 
   async updateOffensiveResponse(

@@ -6,8 +6,8 @@ import { TelegramOffensiveResponseService } from './telegram-offensive-response.
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
 import { TelegramContextService } from './telegram-context.service';
-import { OffensiveResponseService } from '../alerts/services/offensive-response.service';
-import { VehicleOffensiveResponseService } from '../offensive-response/vehicle-offensive-response.service';
+import { AlertsOffensiveResponseService } from '../offensive-response/alerts-offensive-response.service';
+import { VehicleOffensiveResponseConfigService } from '../offensive-response/vehicle-offensive-response-config.service';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
 import { Vehicle } from '../../entities/vehicle.entity';
 import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
@@ -23,7 +23,6 @@ describe('The TelegramOffensiveResponseService class', () => {
 
   let service: TelegramOffensiveResponseService;
   let hearsSentryHandler: (ctx: Context) => Promise<void>;
-  let hearsBreakInHandler: (ctx: Context) => Promise<void>;
   let selectHandler: (ctx: Context) => Promise<void>;
   let setSentryHandler: (ctx: Context) => Promise<void>;
   let setBreakInHandler: (ctx: Context) => Promise<void>;
@@ -39,8 +38,8 @@ describe('The TelegramOffensiveResponseService class', () => {
   const mockBotService: MockProxy<TelegramBotService> = mock<TelegramBotService>();
   const mockKeyboardBuilderService: MockProxy<TelegramKeyboardBuilderService> = mock<TelegramKeyboardBuilderService>();
   const mockContextService: MockProxy<TelegramContextService> = mock<TelegramContextService>();
-  const mockOffensiveResponseService: MockProxy<OffensiveResponseService> = mock<OffensiveResponseService>();
-  const mockVehicleOffensiveResponseService: MockProxy<VehicleOffensiveResponseService> = mock<VehicleOffensiveResponseService>();
+  const mockOffensiveResponseService: MockProxy<AlertsOffensiveResponseService> = mock<AlertsOffensiveResponseService>();
+  const mockVehicleOffensiveResponseConfigService: MockProxy<VehicleOffensiveResponseConfigService> = mock<VehicleOffensiveResponseConfigService>();
 
   const fakeVehicle: Vehicle = {
     id: 'vehicle-1',
@@ -57,13 +56,14 @@ describe('The TelegramOffensiveResponseService class', () => {
   };
 
   const fakeConfig: TelegramConfig = {
+    bot_ui_version: 0, user: undefined,
     id: 'config-1',
     userId: fakeUserId,
     chat_id: fakeChatId,
     link_token: 'token',
     status: TelegramLinkStatus.LINKED,
     created_at: new Date(),
-    updated_at: new Date(),
+    updated_at: new Date()
   };
 
   const buildCtx = (chatId = fakeChatId, match?: string[]): Context =>
@@ -81,8 +81,6 @@ describe('The TelegramOffensiveResponseService class', () => {
     mockBotService.registerHears.mockImplementation((_, handler) => {
       if (!hearsSentryHandler) {
         hearsSentryHandler = handler;
-      } else {
-        hearsBreakInHandler = handler;
       }
     });
     mockBotService.registerAction.mockImplementation((trigger, handler) => {
@@ -101,8 +99,8 @@ describe('The TelegramOffensiveResponseService class', () => {
     mockKeyboardBuilderService.buildDurationKeyboard.mockReturnValue({});
     mockKeyboardBuilderService.buildActiveSentryKeyboard.mockReturnValue({});
     mockVehicleRepository.save.mockImplementation(async (v) => v);
-    mockVehicleOffensiveResponseService.setSentryOffensiveWithDuration.mockResolvedValue({ success: true, sentry_offensive_response: OffensiveResponse.HONK });
-    mockVehicleOffensiveResponseService.disableSentryOffensive.mockResolvedValue({ success: true, sentry_offensive_response: OffensiveResponse.DISABLED });
+    mockVehicleOffensiveResponseConfigService.setSentryOffensiveWithDuration.mockResolvedValue({ success: true, sentry_offensive_response: OffensiveResponse.HONK });
+    mockVehicleOffensiveResponseConfigService.disableSentryOffensive.mockResolvedValue({ success: true, sentry_offensive_response: OffensiveResponse.DISABLED });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -112,8 +110,8 @@ describe('The TelegramOffensiveResponseService class', () => {
         { provide: TelegramBotService, useValue: mockBotService },
         { provide: TelegramKeyboardBuilderService, useValue: mockKeyboardBuilderService },
         { provide: TelegramContextService, useValue: mockContextService },
-        { provide: OffensiveResponseService, useValue: mockOffensiveResponseService },
-        { provide: VehicleOffensiveResponseService, useValue: mockVehicleOffensiveResponseService },
+        { provide: AlertsOffensiveResponseService, useValue: mockOffensiveResponseService },
+        { provide: VehicleOffensiveResponseConfigService, useValue: mockVehicleOffensiveResponseConfigService },
       ],
     }).compile();
 

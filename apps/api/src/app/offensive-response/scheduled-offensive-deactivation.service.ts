@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
 import { Vehicle } from '../../entities/vehicle.entity';
 import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
-import { OffensiveNotificationService } from './offensive-notification.service';
+import { OffensiveTelegramNotificationService } from './offensive-telegram-notification.service';
 import { DistributedLockService } from '../../common/services/distributed-lock.service';
 import { OFFENSIVE_DEACTIVATION_CRON_EXPRESSION } from '../../config/offensive-deactivation-cron.config';
 import { SchedulerLockKey } from '../../config/scheduler-lock-key.config';
@@ -16,7 +16,7 @@ export class ScheduledOffensiveDeactivationService {
   constructor(
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>,
-    private readonly notificationService: OffensiveNotificationService,
+    private readonly notificationService: OffensiveTelegramNotificationService,
     private readonly distributedLockService: DistributedLockService,
   ) {}
 

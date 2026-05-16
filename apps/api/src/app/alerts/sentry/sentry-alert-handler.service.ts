@@ -5,7 +5,7 @@ import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard
 import { TelemetryEventHandler } from '../../telemetry/interfaces/telemetry-event-handler.interface';
 import { SentryModeState, TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
-import { OffensiveResponseService } from '../services/offensive-response.service';
+import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-offensive-response.service';
 
 @Injectable()
 export class SentryAlertHandlerService implements TelemetryEventHandler {
@@ -15,7 +15,7 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
     private readonly telegramService: TelegramService,
     private readonly keyboardBuilder: TelegramKeyboardBuilderService,
     private readonly alertNotifier: VehicleAlertNotifierService,
-    private readonly offensiveResponseService: OffensiveResponseService,
+    private readonly offensiveResponseService: AlertsOffensiveResponseService,
   ) { }
 
   async handle(telemetryMessage: TelemetryMessage): Promise<void> {

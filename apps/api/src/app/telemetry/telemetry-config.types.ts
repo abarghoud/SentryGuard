@@ -57,7 +57,7 @@ export type SkippedVehicleReason =
   | 'max_configs'
   | string;
 
-export type SkippedVehiclesMap = Partial<Record<SkippedVehicleReason, string[]>>;
+type SkippedVehiclesMap = Partial<Record<SkippedVehicleReason, string[]>>;
 
 export interface FleetTelemetryConfigResponse {
   skipped_vehicles?: SkippedVehiclesMap;

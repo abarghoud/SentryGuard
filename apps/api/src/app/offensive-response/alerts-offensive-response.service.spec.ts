@@ -1,13 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { mock, MockProxy } from 'jest-mock-extended';
-import { OffensiveResponseService } from './offensive-response.service';
-import { TeslaVehicleCommandService } from '../../telemetry/services/tesla-vehicle-command.service';
-import { Vehicle } from '../../../entities/vehicle.entity';
-import { OffensiveResponse } from '../enums/offensive-response.enum';
+import { AlertsOffensiveResponseService } from './alerts-offensive-response.service';
+import { TeslaVehicleCommandService } from '../telemetry/services/tesla-vehicle-command.service';
+import { Vehicle } from '../../entities/vehicle.entity';
+import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
 
-describe('The OffensiveResponseService class', () => {
-  let service: OffensiveResponseService;
+describe('The AlertsOffensiveResponseService class', () => {
+  let service: AlertsOffensiveResponseService;
 
   const mockVehicleRepository = {
     findOne: jest.fn(),
@@ -33,13 +33,13 @@ describe('The OffensiveResponseService class', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        OffensiveResponseService,
+        AlertsOffensiveResponseService,
         { provide: getRepositoryToken(Vehicle), useValue: mockVehicleRepository },
         { provide: TeslaVehicleCommandService, useValue: mockTeslaVehicleCommandService },
       ],
     }).compile();
 
-    service = module.get<OffensiveResponseService>(OffensiveResponseService);
+    service = module.get<AlertsOffensiveResponseService>(AlertsOffensiveResponseService);
     jest.clearAllMocks();
   });
 

@@ -1,13 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Vehicle } from '../../../entities/vehicle.entity';
-import { OffensiveResponse } from '../enums/offensive-response.enum';
-import { TeslaVehicleCommandService } from '../../telemetry/services/tesla-vehicle-command.service';
+import { Vehicle } from '../../entities/vehicle.entity';
+import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
+import { TeslaVehicleCommandService } from '../telemetry/services/tesla-vehicle-command.service';
 
 @Injectable()
-export class OffensiveResponseService {
-  private readonly logger = new Logger(OffensiveResponseService.name);
+export class AlertsOffensiveResponseService {
+  private readonly logger = new Logger(AlertsOffensiveResponseService.name);
 
   constructor(
     @InjectRepository(Vehicle)

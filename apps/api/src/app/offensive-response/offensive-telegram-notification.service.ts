@@ -8,7 +8,7 @@ import { UserLanguageService } from '../user/user-language.service';
 import i18n from '../../i18n';
 
 @Injectable()
-export class OffensiveNotificationService {
+export class OffensiveTelegramNotificationService {
   constructor(
     @InjectRepository(TelegramConfig)
     private readonly telegramConfigRepository: Repository<TelegramConfig>,

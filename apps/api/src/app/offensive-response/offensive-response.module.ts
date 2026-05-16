@@ -3,11 +3,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Vehicle } from '../../entities/vehicle.entity';
 import { TelegramConfig } from '../../entities/telegram-config.entity';
 import { OffensiveResponseController } from './offensive-response.controller';
-import { VehicleOffensiveResponseService } from './vehicle-offensive-response.service';
-import { OffensiveResponseService } from '../alerts/services/offensive-response.service';
+import { VehicleOffensiveResponseConfigService } from './vehicle-offensive-response-config.service';
+import { AlertsOffensiveResponseService } from '../offensive-response/alerts-offensive-response.service';
 import { TeslaVehicleCommandService } from '../telemetry/services/tesla-vehicle-command.service';
 import { ScheduledOffensiveDeactivationService } from './scheduled-offensive-deactivation.service';
-import { OffensiveNotificationService } from './offensive-notification.service';
+import { OffensiveTelegramNotificationService } from './offensive-telegram-notification.service';
 import { DistributedLockService } from '../../common/services/distributed-lock.service';
 import { AuthModule } from '../auth/auth.module';
 import { ConsentModule } from '../consent/consent.module';
@@ -24,13 +24,13 @@ import { UserModule } from '../user/user.module';
   ],
   controllers: [OffensiveResponseController],
   providers: [
-    VehicleOffensiveResponseService,
-    OffensiveResponseService,
+    VehicleOffensiveResponseConfigService,
+    AlertsOffensiveResponseService,
     TeslaVehicleCommandService,
     ScheduledOffensiveDeactivationService,
-    OffensiveNotificationService,
+    OffensiveTelegramNotificationService,
     DistributedLockService,
   ],
-  exports: [VehicleOffensiveResponseService, OffensiveResponseService],
+  exports: [VehicleOffensiveResponseConfigService, AlertsOffensiveResponseService],
 })
 export class OffensiveResponseModule {}

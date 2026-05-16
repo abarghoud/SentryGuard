@@ -1,24 +1,24 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { mock, MockProxy } from 'jest-mock-extended';
-import { VehicleOffensiveResponseService } from './vehicle-offensive-response.service';
-import { OffensiveResponseService } from '../alerts/services/offensive-response.service';
-import { OffensiveNotificationService } from './offensive-notification.service';
+import { VehicleOffensiveResponseConfigService } from './vehicle-offensive-response-config.service';
+import { AlertsOffensiveResponseService } from '../offensive-response/alerts-offensive-response.service';
+import { OffensiveTelegramNotificationService } from './offensive-telegram-notification.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Vehicle } from '../../entities/vehicle.entity';
 import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
 
-describe('The VehicleOffensiveResponseService class', () => {
-  let service: VehicleOffensiveResponseService;
-  let mockOffensiveResponseService: MockProxy<OffensiveResponseService>;
-  let mockNotificationService: MockProxy<OffensiveNotificationService>;
+describe('The VehicleOffensiveResponseConfigService class', () => {
+  let service: VehicleOffensiveResponseConfigService;
+  let mockOffensiveResponseService: MockProxy<AlertsOffensiveResponseService>;
+  let mockNotificationService: MockProxy<OffensiveTelegramNotificationService>;
   let mockVehicleRepository: {
     findOne: jest.Mock;
     save: jest.Mock;
   };
 
   beforeEach(async () => {
-    mockOffensiveResponseService = mock<OffensiveResponseService>();
-    mockNotificationService = mock<OffensiveNotificationService>();
+    mockOffensiveResponseService = mock<AlertsOffensiveResponseService>();
+    mockNotificationService = mock<OffensiveTelegramNotificationService>();
     mockVehicleRepository = {
       findOne: jest.fn(),
       save: jest.fn(),
@@ -26,23 +26,23 @@ describe('The VehicleOffensiveResponseService class', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        VehicleOffensiveResponseService,
+        VehicleOffensiveResponseConfigService,
         {
           provide: getRepositoryToken(Vehicle),
           useValue: mockVehicleRepository,
         },
         {
-          provide: OffensiveResponseService,
+          provide: AlertsOffensiveResponseService,
           useValue: mockOffensiveResponseService,
         },
         {
-          provide: OffensiveNotificationService,
+          provide: OffensiveTelegramNotificationService,
           useValue: mockNotificationService,
         },
       ],
     }).compile();
 
-    service = module.get<VehicleOffensiveResponseService>(VehicleOffensiveResponseService);
+    service = module.get<VehicleOffensiveResponseConfigService>(VehicleOffensiveResponseConfigService);
   });
 
   describe('The updateOffensiveResponse() method', () => {

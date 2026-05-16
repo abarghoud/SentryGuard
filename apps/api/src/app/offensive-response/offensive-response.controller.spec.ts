@@ -2,25 +2,25 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { OffensiveResponseController } from './offensive-response.controller';
-import { VehicleOffensiveResponseService } from './vehicle-offensive-response.service';
+import { VehicleOffensiveResponseConfigService } from './vehicle-offensive-response-config.service';
 import { ConsentGuard } from '../../common/guards/consent.guard';
 import { User } from '../../entities/user.entity';
 import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
 
 describe('The OffensiveResponseController class', () => {
   let controller: OffensiveResponseController;
-  let mockService: MockProxy<VehicleOffensiveResponseService>;
+  let mockService: MockProxy<VehicleOffensiveResponseConfigService>;
 
   const mockUser = { userId: 'test-user-id' } as User;
 
   beforeEach(async () => {
-    mockService = mock<VehicleOffensiveResponseService>();
+    mockService = mock<VehicleOffensiveResponseConfigService>();
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [OffensiveResponseController],
       providers: [
         {
-          provide: VehicleOffensiveResponseService,
+          provide: VehicleOffensiveResponseConfigService,
           useValue: mockService,
         },
       ],
@@ -66,7 +66,7 @@ describe('The OffensiveResponseController class', () => {
           break_in_offensive_response: OffensiveResponse.HONK,
         });
 
-        const result = await controller.updateOffensiveResponse('VIN123', mockUser, {
+        await controller.updateOffensiveResponse('VIN123', mockUser, {
           sentry_offensive_response: OffensiveResponse.HONK,
           break_in_offensive_response: OffensiveResponse.HONK,
         });

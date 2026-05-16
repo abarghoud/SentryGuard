@@ -4,7 +4,7 @@ import { BreakInAlertHandlerService } from './break-in-alert-handler.service';
 import { TelegramService } from '../../telegram/telegram.service';
 import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
-import { OffensiveResponseService } from '../services/offensive-response.service';
+import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-offensive-response.service';
 import { TelemetryMessage, TelemetryDatum } from '../../telemetry/models/telemetry-message.model';
 import { ChargePortLatchTrackerService } from './charge-port-latch-tracker.service';
 
@@ -15,14 +15,14 @@ describe('The BreakInAlertHandlerService class', () => {
   let mockKeyboardBuilder: MockProxy<TelegramKeyboardBuilderService>;
   let mockAlertNotifier: MockProxy<VehicleAlertNotifierService>;
   let mockChargeTracker: MockProxy<ChargePortLatchTrackerService>;
-  let mockOffensiveResponseService: MockProxy<OffensiveResponseService>;
+  let mockOffensiveResponseService: MockProxy<AlertsOffensiveResponseService>;
 
   beforeEach(async () => {
     mockTelegramService = mock<TelegramService>();
     mockKeyboardBuilder = mock<TelegramKeyboardBuilderService>();
     mockAlertNotifier = mock<VehicleAlertNotifierService>();
     mockChargeTracker = mock<ChargePortLatchTrackerService>();
-    mockOffensiveResponseService = mock<OffensiveResponseService>();
+    mockOffensiveResponseService = mock<AlertsOffensiveResponseService>();
     mockOffensiveResponseService.handleBreakInOffensiveResponse.mockResolvedValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
@@ -32,7 +32,7 @@ describe('The BreakInAlertHandlerService class', () => {
         { provide: TelegramKeyboardBuilderService, useValue: mockKeyboardBuilder },
         { provide: VehicleAlertNotifierService, useValue: mockAlertNotifier },
         { provide: ChargePortLatchTrackerService, useValue: mockChargeTracker },
-        { provide: OffensiveResponseService, useValue: mockOffensiveResponseService },
+        { provide: AlertsOffensiveResponseService, useValue: mockOffensiveResponseService },
       ],
     }).compile();
 

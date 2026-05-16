@@ -5,7 +5,7 @@ import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard
 import { TelemetryEventHandler } from '../../telemetry/interfaces/telemetry-event-handler.interface';
 import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
-import { OffensiveResponseService } from '../services/offensive-response.service';
+import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-offensive-response.service';
 
 import { ChargePortLatchTrackerService } from './charge-port-latch-tracker.service';
 
@@ -18,7 +18,7 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
     private readonly keyboardBuilder: TelegramKeyboardBuilderService,
     private readonly alertNotifier: VehicleAlertNotifierService,
     private readonly chargeTracker: ChargePortLatchTrackerService,
-    private readonly offensiveResponseService: OffensiveResponseService,
+    private readonly offensiveResponseService: AlertsOffensiveResponseService,
   ) { }
 
   public async handle(telemetryMessage: TelemetryMessage): Promise<void> {

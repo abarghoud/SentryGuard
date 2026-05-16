@@ -6,8 +6,8 @@ import i18n from '../../i18n';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
 import { Vehicle } from '../../entities/vehicle.entity';
 import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
-import { OffensiveResponseService } from '../alerts/services/offensive-response.service';
-import { VehicleOffensiveResponseService } from '../offensive-response/vehicle-offensive-response.service';
+import { AlertsOffensiveResponseService } from '../offensive-response/alerts-offensive-response.service';
+import { VehicleOffensiveResponseConfigService } from '../offensive-response/vehicle-offensive-response-config.service';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
 import { TelegramContextService } from './telegram-context.service';
@@ -26,8 +26,8 @@ export class TelegramOffensiveResponseService implements OnModuleInit {
     private readonly botService: TelegramBotService,
     private readonly keyboardBuilderService: TelegramKeyboardBuilderService,
     private readonly contextService: TelegramContextService,
-    private readonly offensiveResponseService: OffensiveResponseService,
-    private readonly vehicleOffensiveResponseService: VehicleOffensiveResponseService,
+    private readonly offensiveResponseService: AlertsOffensiveResponseService,
+    private readonly vehicleOffensiveResponseConfigService: VehicleOffensiveResponseConfigService,
   ) {}
 
   onModuleInit(): void {
@@ -201,7 +201,7 @@ export class TelegramOffensiveResponseService implements OnModuleInit {
       return;
     }
 
-    const result = await this.vehicleOffensiveResponseService.setSentryOffensiveWithDuration(config.userId, vehicle.vin, durationMinutes, true);
+    const result = await this.vehicleOffensiveResponseConfigService.setSentryOffensiveWithDuration(config.userId, vehicle.vin, durationMinutes, true);
 
     if (!result.success) {
       await this.answerCbQuery(ctx, i18n.t('offensiveError', { lng }), true);
@@ -236,7 +236,7 @@ export class TelegramOffensiveResponseService implements OnModuleInit {
       return;
     }
 
-    const result = await this.vehicleOffensiveResponseService.disableSentryOffensive(config.userId, vehicle.vin);
+    const result = await this.vehicleOffensiveResponseConfigService.disableSentryOffensive(config.userId, vehicle.vin);
 
     if (!result.success) {
       await this.answerCbQuery(ctx, i18n.t('offensiveError', { lng }), true);

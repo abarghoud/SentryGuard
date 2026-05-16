@@ -15,7 +15,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { User } from '../../entities/user.entity';
 import { ThrottleOptions } from '../../config/throttle.config';
 import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
-import { VehicleOffensiveResponseService } from './vehicle-offensive-response.service';
+import { VehicleOffensiveResponseConfigService } from './vehicle-offensive-response-config.service';
 
 @Controller('offensive-response')
 @UseGuards(JwtAuthGuard, ConsentGuard)
@@ -23,7 +23,7 @@ export class OffensiveResponseController {
   private readonly logger = new Logger(OffensiveResponseController.name);
 
   constructor(
-    private readonly vehicleOffensiveResponseService: VehicleOffensiveResponseService,
+    private readonly vehicleOffensiveResponseConfigService: VehicleOffensiveResponseConfigService,
   ) {}
 
   @Throttle(ThrottleOptions.authenticatedWrite())
@@ -72,7 +72,7 @@ export class OffensiveResponseController {
     this.logger.log(
       `Updating offensive response for VIN: ${vin} (user: ${userId})`
     );
-    return await this.vehicleOffensiveResponseService.updateOffensiveResponse(
+    return await this.vehicleOffensiveResponseConfigService.updateOffensiveResponse(
       userId,
       vin,
       body,
@@ -87,7 +87,7 @@ export class OffensiveResponseController {
   ) {
     const userId = user.userId;
     this.logger.log(`Testing sentry offensive response for VIN: ${vin} (user: ${userId})`);
-    await this.vehicleOffensiveResponseService.testSentryOffensiveResponse(vin);
+    await this.vehicleOffensiveResponseConfigService.testSentryOffensiveResponse(vin);
     return { message: `Sentry offensive response test triggered for VIN: ${vin}` };
   }
 
@@ -99,7 +99,7 @@ export class OffensiveResponseController {
   ) {
     const userId = user.userId;
     this.logger.log(`Testing break-in offensive response for VIN: ${vin} (user: ${userId})`);
-    await this.vehicleOffensiveResponseService.testBreakInOffensiveResponse(vin);
+    await this.vehicleOffensiveResponseConfigService.testBreakInOffensiveResponse(vin);
     return { message: `Break-in offensive response test triggered for VIN: ${vin}` };
   }
 }
