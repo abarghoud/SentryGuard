@@ -3,7 +3,7 @@ import { Vehicle, TelemetryConfigResult, GenericActionResponse } from '../domain
 import { ApiClientRequirements } from '../../../core/api/api-client';
 
 export class VehicleApiRepository implements VehicleRepositoryRequirements {
-  constructor(private client: ApiClientRequirements) {}
+  constructor(private client: ApiClientRequirements) { }
 
   async getVehicles(): Promise<Vehicle[]> {
     try {
@@ -43,12 +43,6 @@ export class VehicleApiRepository implements VehicleRepositoryRequirements {
       body: JSON.stringify({
         break_in_offensive_response,
       }),
-    });
-  }
-
-  async testBreakInOffensiveResponse(vin: string): Promise<GenericActionResponse> {
-    return this.client.request<GenericActionResponse>(`/offensive-response/${vin}/test-break-in`, {
-      method: 'POST',
     });
   }
 }

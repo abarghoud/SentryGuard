@@ -21,8 +21,7 @@ export class VehicleOffensiveResponseConfigService {
   constructor(
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>,
-    private readonly offensiveResponseService: AlertsOffensiveResponseService,
-  ) {}
+  ) { }
 
   async updateOffensiveResponse(
     userId: string,
@@ -48,16 +47,5 @@ export class VehicleOffensiveResponseConfigService {
       success: true,
       break_in_offensive_response: vehicle.break_in_offensive_response,
     };
-  }
-
-  async testBreakInOffensiveResponse(userId: string, vin: string): Promise<void> {
-    const vehicle = await this.vehicleRepository.findOne({ where: { userId, vin } });
-
-    if (!vehicle) {
-      this.logger.warn(`[OFFENSIVE] Test break-in: no vehicle found for user ${userId} and VIN ${vin}`);
-      return;
-    }
-
-    await this.offensiveResponseService.handleBreakInOffensiveResponse(vin, [userId]);
   }
 }

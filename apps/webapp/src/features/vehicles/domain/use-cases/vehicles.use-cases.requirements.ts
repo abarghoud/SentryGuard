@@ -23,7 +23,3 @@ export interface ToggleBreakInMonitoringRequirements {
 export interface UpdateOffensiveResponseRequirements {
   execute(vin: string, breakInResponse?: string): Promise<GenericActionResponse>;
 }
-
-export interface TestOffensiveResponseRequirements {
-  execute(vin: string): Promise<GenericActionResponse>;
-}

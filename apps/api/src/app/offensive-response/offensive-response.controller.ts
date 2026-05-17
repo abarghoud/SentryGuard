@@ -1,7 +1,6 @@
 import {
   Controller,
   Patch,
-  Post,
   Param,
   Body,
   Logger,
@@ -24,7 +23,7 @@ export class OffensiveResponseController {
 
   constructor(
     private readonly vehicleOffensiveResponseConfigService: VehicleOffensiveResponseConfigService,
-  ) {}
+  ) { }
 
   @Throttle(ThrottleOptions.authenticatedWrite())
   @Patch(':vin')
@@ -56,17 +55,5 @@ export class OffensiveResponseController {
       vin,
       body,
     );
-  }
-
-  @Throttle(ThrottleOptions.authenticatedWrite())
-  @Post(':vin/test-break-in')
-  async testBreakInOffensiveResponse(
-    @Param('vin') vin: string,
-    @CurrentUser() user: User,
-  ) {
-    const userId = user.userId;
-    this.logger.log(`Testing break-in offensive response for VIN: ${vin} (user: ${userId})`);
-    await this.vehicleOffensiveResponseConfigService.testBreakInOffensiveResponse(userId, vin);
-    return { message: `Break-in offensive response test triggered for VIN: ${vin}` };
   }
 }

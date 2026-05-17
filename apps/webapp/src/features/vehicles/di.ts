@@ -7,7 +7,6 @@ import {
   DeleteTelemetryConfigUseCase,
   ToggleBreakInMonitoringUseCase,
   UpdateOffensiveResponseUseCase,
-  TestBreakInOffensiveResponseUseCase,
 } from './domain/use-cases/vehicles.use-cases';
 
 import { createUseVehiclesQuery } from './presentation/queries/use-vehicles-query';
@@ -20,7 +19,6 @@ export const checkTelemetryConfigUseCase = new CheckTelemetryConfigUseCase(vehic
 export const deleteTelemetryConfigUseCase = new DeleteTelemetryConfigUseCase(vehicleRepository);
 export const toggleBreakInMonitoringUseCase = new ToggleBreakInMonitoringUseCase(vehicleRepository);
 export const updateOffensiveResponseUseCase = new UpdateOffensiveResponseUseCase(vehicleRepository);
-export const testBreakInOffensiveResponseUseCase = new TestBreakInOffensiveResponseUseCase(vehicleRepository);
 
 export const useVehiclesQuery = createUseVehiclesQuery({
   getVehiclesUseCase,
@@ -28,6 +26,4 @@ export const useVehiclesQuery = createUseVehiclesQuery({
   deleteTelemetryConfigUseCase,
   toggleBreakInMonitoringUseCase,
   updateOffensiveResponseUseCase,
-  testOffensiveResponseUseCase: testBreakInOffensiveResponseUseCase,
-  testBreakInOffensiveResponseUseCase,
 });
