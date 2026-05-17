@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Vehicle } from '../../entities/vehicle.entity';
 import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
-import { AlertsOffensiveResponseService } from '../offensive-response/alerts-offensive-response.service';
 
 export interface UpdateOffensiveResponseDto {
   break_in_offensive_response?: string;
