@@ -6,10 +6,11 @@ import {
   CheckTelemetryConfigRequirements,
   DeleteTelemetryConfigRequirements,
   ToggleBreakInMonitoringRequirements,
+  UpdateOffensiveResponseRequirements,
 } from './vehicles.use-cases.requirements';
 
 export class GetVehiclesUseCase implements GetVehiclesRequirements {
-  constructor(private repository: VehicleRepositoryRequirements) {}
+  constructor(private repository: VehicleRepositoryRequirements) { }
 
   async execute(): Promise<Vehicle[]> {
     return this.repository.getVehicles();
@@ -17,7 +18,7 @@ export class GetVehiclesUseCase implements GetVehiclesRequirements {
 }
 
 export class ConfigureTelemetryUseCase implements ConfigureTelemetryRequirements {
-  constructor(private repository: VehicleRepositoryRequirements) {}
+  constructor(private repository: VehicleRepositoryRequirements) { }
 
   async execute(vin: string): Promise<TelemetryConfigResult> {
     if (!vin) throw new Error('VIN is required');
@@ -26,7 +27,7 @@ export class ConfigureTelemetryUseCase implements ConfigureTelemetryRequirements
 }
 
 export class CheckTelemetryConfigUseCase implements CheckTelemetryConfigRequirements {
-  constructor(private repository: VehicleRepositoryRequirements) {}
+  constructor(private repository: VehicleRepositoryRequirements) { }
 
   async execute(vin: string): Promise<TelemetryConfigResult> {
     if (!vin) throw new Error('VIN is required');
@@ -35,7 +36,7 @@ export class CheckTelemetryConfigUseCase implements CheckTelemetryConfigRequirem
 }
 
 export class DeleteTelemetryConfigUseCase implements DeleteTelemetryConfigRequirements {
-  constructor(private repository: VehicleRepositoryRequirements) {}
+  constructor(private repository: VehicleRepositoryRequirements) { }
 
   async execute(vin: string): Promise<GenericActionResponse> {
     if (!vin) throw new Error('VIN is required');
@@ -44,10 +45,19 @@ export class DeleteTelemetryConfigUseCase implements DeleteTelemetryConfigRequir
 }
 
 export class ToggleBreakInMonitoringUseCase implements ToggleBreakInMonitoringRequirements {
-  constructor(private repository: VehicleRepositoryRequirements) {}
+  constructor(private repository: VehicleRepositoryRequirements) { }
 
   async execute(vin: string, enable: boolean): Promise<GenericActionResponse> {
     if (!vin) throw new Error('VIN is required');
     return this.repository.toggleBreakInMonitoring(vin, enable);
+  }
+}
+
+export class UpdateOffensiveResponseUseCase implements UpdateOffensiveResponseRequirements {
+  constructor(private repository: VehicleRepositoryRequirements) { }
+
+  async execute(vin: string, breakInResponse?: string): Promise<GenericActionResponse> {
+    if (!vin) throw new Error('VIN is required');
+    return this.repository.updateOffensiveResponse(vin, breakInResponse);
   }
 }

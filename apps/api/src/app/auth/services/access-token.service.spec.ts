@@ -169,5 +169,40 @@ describe('The AccessTokenService class', () => {
         expect(result).toBeNull();
       });
     });
+
+    describe('When the token is expired and refresh returns AlreadyRefreshed', () => {
+      const fakeUserId = 'expired-user-id';
+      const fakeDecryptedToken = 'decrypted-new-token';
+      let result: string | null;
+
+      beforeEach(async () => {
+        const expiredUser = {
+          userId: fakeUserId,
+          access_token: 'encrypted-expired-token',
+          expires_at: new Date(Date.now() - 3600000),
+        } as User;
+
+        const refreshedUser = {
+          userId: fakeUserId,
+          access_token: 'encrypted-new-token',
+          expires_at: new Date(Date.now() + 3600000),
+        } as User;
+
+        mockUserRepository.findOne
+          .mockResolvedValueOnce(expiredUser)
+          .mockResolvedValueOnce(refreshedUser);
+
+        mockTeslaTokenRefreshService.refreshTokenForUser.mockResolvedValue(
+          RefreshResult.AlreadyRefreshed
+        );
+        mockedDecrypt.mockReturnValue(fakeDecryptedToken);
+
+        result = await service.getAccessTokenForUserId(fakeUserId);
+      });
+
+      it('should return the refreshed decrypted token', () => {
+        expect(result).toBe(fakeDecryptedToken);
+      });
+    });
   });
 });

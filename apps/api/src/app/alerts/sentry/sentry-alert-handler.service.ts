@@ -13,7 +13,7 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
   constructor(
     private readonly telegramService: TelegramService,
     private readonly keyboardBuilder: TelegramKeyboardBuilderService,
-    private readonly alertNotifier: VehicleAlertNotifierService
+    private readonly alertNotifier: VehicleAlertNotifierService,
   ) { }
 
   async handle(telemetryMessage: TelemetryMessage): Promise<void> {
@@ -29,7 +29,7 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
         telemetryMessage,
         alertName: 'SENTRY_ALERT',
         latencyLabel: 'SENTRY_LATENCY',
-        telegramNotifier: this.telegramNotifier
+        telegramNotifier: this.telegramNotifier,
       });
     }
   }
