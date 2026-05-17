@@ -26,18 +26,6 @@ export function VehiclesContainer() {
       onConfigureTelemetry={async (vin) => configureTelemetryMutation.mutateAsync(vin)}
       onDeleteTelemetry={async (vin) => deleteTelemetryMutation.mutateAsync(vin)}
       onToggleBreakInMonitoring={async (vin, enable) => toggleBreakInMutation.mutateAsync({ vin, enable })}
-      onToggleSentryOffensive={async (vin, enabled, durationMinutes) => {
-        try {
-          if (enabled) {
-            await updateOffensiveResponseMutation.mutateAsync({ vin, sentryResponse: 'HONK', sentryDuration: durationMinutes });
-          } else {
-            await updateOffensiveResponseMutation.mutateAsync({ vin, sentryResponse: 'DISABLED' });
-          }
-          return true;
-        } catch {
-          return false;
-        }
-      }}
       onToggleBreakInOffensive={async (vin, enabled) => {
         try {
           if (enabled) {

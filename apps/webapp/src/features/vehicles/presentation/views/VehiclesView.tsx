@@ -16,7 +16,6 @@ export interface VehiclesViewProps {
   }>;
   onDeleteTelemetry: (vin: string) => Promise<boolean>;
   onToggleBreakInMonitoring: (vin: string, enable: boolean) => Promise<boolean>;
-  onToggleSentryOffensive: (vin: string, enabled: boolean, durationMinutes?: number) => Promise<boolean>;
   onToggleBreakInOffensive: (vin: string, enabled: boolean) => Promise<boolean>;
 }
 
@@ -29,7 +28,6 @@ export function VehiclesView({
   onConfigureTelemetry,
   onDeleteTelemetry,
   onToggleBreakInMonitoring,
-  onToggleSentryOffensive,
   onToggleBreakInOffensive,
 }: VehiclesViewProps) {
   const { t } = useTranslation('common');
@@ -232,10 +230,9 @@ export function VehiclesView({
               vehicle={vehicle}
               isBetaTester={isBetaTester}
               onToggleTelemetry={onConfigureTelemetry}
-              onToggleBreakInMonitoring={onToggleBreakInMonitoring}
-              onDeleteTelemetry={onDeleteTelemetry}
-              onToggleSentryOffensive={onToggleSentryOffensive}
-              onToggleBreakInOffensive={onToggleBreakInOffensive}
+onToggleBreakInMonitoring={onToggleBreakInMonitoring}
+               onDeleteTelemetry={onDeleteTelemetry}
+               onToggleBreakInOffensive={onToggleBreakInOffensive}
             />
           ))}
         </div>

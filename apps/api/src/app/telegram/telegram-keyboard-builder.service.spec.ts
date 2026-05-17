@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
-import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
 
 type TelegramKeyboard = {
   inline_keyboard: Array<Array<{ text: string; url: string }>>;
@@ -91,42 +90,13 @@ describe('The TelegramKeyboardBuilderService class', () => {
   });
 
   describe('The buildMainMenuKeyboard() method', () => {
-    it('should have two rows with sentry and break-in buttons', () => {
+    it('should have one row with status and mute buttons', () => {
       const result = service.buildMainMenuKeyboard('en');
 
       expect(result.keyboard).toBeDefined();
       const keyboard = result.keyboard?.keyboard as Array<Array<{ text: string }>>;
-      expect(keyboard).toHaveLength(2);
+      expect(keyboard).toHaveLength(1);
       expect(keyboard[0]).toHaveLength(2);
-      expect(keyboard[1]).toHaveLength(2);
-    });
-  });
-
-  describe('The buildOffensiveTypeKeyboard() method', () => {
-    it('should return sentry options with checkmark on current value', () => {
-      const result = service.buildOffensiveTypeKeyboard('vehicle-1', 'sentry', OffensiveResponse.DISABLED, 'en');
-
-      expect(result.keyboard).toBeDefined();
-      const inlineKeyboard = result.keyboard?.inline_keyboard;
-
-      expect(inlineKeyboard).toHaveLength(3);
-      expect(inlineKeyboard?.[0]?.[0]?.callback_data).toBe(`o_ss:vehicle-1:${OffensiveResponse.DISABLED}`);
-      expect(inlineKeyboard?.[0]?.[0]?.text).toContain('✅');
-      expect(inlineKeyboard?.[1]?.[0]?.callback_data).toBe(`o_ss:vehicle-1:${OffensiveResponse.HONK}`);
-      expect(inlineKeyboard?.[2]?.[0]?.callback_data).toBe('o_ts:vehicle-1');
-    });
-
-    it('should return break-in options with checkmark on current value', () => {
-      const result = service.buildOffensiveTypeKeyboard('vehicle-1', 'break_in', OffensiveResponse.HONK, 'en');
-
-      expect(result.keyboard).toBeDefined();
-      const inlineKeyboard = result.keyboard?.inline_keyboard;
-
-      expect(inlineKeyboard).toHaveLength(3);
-      expect(inlineKeyboard?.[0]?.[0]?.callback_data).toBe(`o_sb:vehicle-1:${OffensiveResponse.DISABLED}`);
-      expect(inlineKeyboard?.[1]?.[0]?.callback_data).toBe(`o_sb:vehicle-1:${OffensiveResponse.HONK}`);
-      expect(inlineKeyboard?.[1]?.[0]?.text).toContain('✅');
-      expect(inlineKeyboard?.[2]?.[0]?.callback_data).toBe('o_tb:vehicle-1');
     });
   });
 });

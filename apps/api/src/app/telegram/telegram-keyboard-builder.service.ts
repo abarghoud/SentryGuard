@@ -1,7 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import i18n from '../../i18n';
-import { Vehicle } from '../../entities/vehicle.entity';
-import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
 import { TelegramMessageOptions } from './telegram.types';
 
 @Injectable()
@@ -42,76 +40,8 @@ export class TelegramKeyboardBuilderService {
         keyboard: [[
           { text: i18n.t('menuButtonStatus', { lng }) },
           { text: i18n.t(muteButtonKey, { lng }) },
-        ], [
-          { text: i18n.t('menuButtonSentry', { lng }) },
-          { text: i18n.t('menuButtonBreakIn', { lng }) },
         ]],
         resize_keyboard: true,
-      },
-    };
-  }
-
-  buildVehicleSelectionKeyboard(vehicles: Vehicle[], prefix: string): TelegramMessageOptions {
-    const rows = vehicles.map((vehicle) => [{
-      text: vehicle.display_name || vehicle.vin,
-      callback_data: `o_sl:${prefix}:${vehicle.id}`,
-    }]);
-
-    return {
-      keyboard: {
-        inline_keyboard: rows,
-      },
-    };
-  }
-
-  buildOffensiveTypeKeyboard(vehicleId: string, alertType: 'sentry' | 'break_in', currentValue: OffensiveResponse, lng: 'en' | 'fr'): TelegramMessageOptions {
-    const options: Array<{ key: OffensiveResponse; label: string }> = [
-      { key: OffensiveResponse.DISABLED, label: i18n.t('offensiveDisabled', { lng }) },
-      { key: OffensiveResponse.HONK, label: i18n.t('offensiveHonk', { lng }) },
-    ];
-
-    const prefix = alertType === 'sentry' ? 'o_ss' : 'o_sb';
-    const rows = options.map(({ key, label }) => {
-      const check = key === currentValue ? '✅ ' : '';
-      return [{ text: `${check}${label}`, callback_data: `${prefix}:${vehicleId}:${key}` }];
-    });
-
-    rows.push([{ text: i18n.t('offensiveTest', { lng }), callback_data: `o_t${alertType === 'sentry' ? 's' : 'b'}:${vehicleId}` }]);
-
-    return {
-      keyboard: {
-        inline_keyboard: rows,
-      },
-    };
-  }
-
-  buildDurationKeyboard(vehicleId: string, lng: 'en' | 'fr'): TelegramMessageOptions {
-    return {
-      keyboard: {
-        inline_keyboard: [
-          [
-            { text: i18n.t('offensiveDuration30m', { lng }), callback_data: `od30:${vehicleId}` },
-            { text: i18n.t('offensiveDuration1h', { lng }), callback_data: `od60:${vehicleId}` },
-            { text: i18n.t('offensiveDuration2h', { lng }), callback_data: `od120:${vehicleId}` },
-          ],
-          [
-            { text: i18n.t('offensiveDuration4h', { lng }), callback_data: `od240:${vehicleId}` },
-            { text: i18n.t('offensiveDuration8h', { lng }), callback_data: `od480:${vehicleId}` },
-            { text: i18n.t('offensiveDuration24h', { lng }), callback_data: `od1440:${vehicleId}` },
-          ],
-          [{ text: '❌', callback_data: `od_cancel:${vehicleId}` }],
-        ],
-      },
-    };
-  }
-
-  buildActiveSentryKeyboard(vehicleId: string, lng: 'en' | 'fr'): TelegramMessageOptions {
-    return {
-      keyboard: {
-        inline_keyboard: [
-          [{ text: i18n.t('offensiveProlong', { lng }), callback_data: `od_prolong:${vehicleId}` }],
-          [{ text: i18n.t('offensiveCancel', { lng }), callback_data: `o_ss:${vehicleId}:${OffensiveResponse.DISABLED}` }],
-        ],
       },
     };
   }

@@ -12,7 +12,6 @@ import { TelegramStatusService } from './telegram-status.service';
 import { TelegramBotUpdateService } from './telegram-bot-update.service';
 import { TelegramConfigService } from './telegram-config.service';
 import { TelegramFailureHandlerService } from './handlers/telegram-failure-handler.service';
-import { TelegramOffensiveResponseService } from './telegram-offensive-response.service';
 import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import { RetryManager } from '../shared/retry-manager.service';
 import { telegramRetryManager } from './telegram-retry-manager.token';
@@ -46,7 +45,6 @@ import { OffensiveResponseModule } from '../offensive-response/offensive-respons
     TelegramBotUpdateService,
     TelegramConfigService,
     TelegramFailureHandlerService,
-    TelegramOffensiveResponseService,
     {
       provide: telegramFailureHandler,
       useClass: TelegramFailureHandlerService,

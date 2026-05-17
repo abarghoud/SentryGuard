@@ -17,7 +17,6 @@ export interface VehiclesQueryDependencies {
   toggleBreakInMonitoringUseCase: ToggleBreakInMonitoringRequirements;
   updateOffensiveResponseUseCase: UpdateOffensiveResponseRequirements;
   testOffensiveResponseUseCase: TestOffensiveResponseRequirements;
-  testSentryOffensiveResponseUseCase: TestOffensiveResponseRequirements;
   testBreakInOffensiveResponseUseCase: TestOffensiveResponseRequirements;
 }
 
@@ -83,19 +82,13 @@ export const createUseVehiclesQuery = (deps: VehiclesQueryDependencies) => () =>
   });
 
   const updateOffensiveResponseMutation = useMutation({
-    mutationFn: async ({ vin, sentryResponse, breakInResponse, sentryDuration }: { vin: string; sentryResponse?: string; breakInResponse?: string; sentryDuration?: number }) => {
-      const result = await deps.updateOffensiveResponseUseCase.execute(vin, sentryResponse, breakInResponse, sentryDuration);
+    mutationFn: async ({ vin, breakInResponse }: { vin: string; breakInResponse?: string }) => {
+      const result = await deps.updateOffensiveResponseUseCase.execute(vin, breakInResponse);
       if (!result.success) throw new Error(result.message);
       return result;
     },
     onSuccess: () => {
       return queryClient.invalidateQueries({ queryKey: ['vehicles'] });
-    },
-  });
-
-  const testSentryOffensiveResponseMutation = useMutation({
-    mutationFn: async (vin: string) => {
-      return deps.testSentryOffensiveResponseUseCase.execute(vin);
     },
   });
 
@@ -111,7 +104,6 @@ export const createUseVehiclesQuery = (deps: VehiclesQueryDependencies) => () =>
     deleteTelemetryMutation,
     toggleBreakInMutation,
     updateOffensiveResponseMutation,
-    testSentryOffensiveResponseMutation,
     testBreakInOffensiveResponseMutation,
   };
 };

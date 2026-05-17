@@ -5,7 +5,6 @@ import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard
 import { TelemetryEventHandler } from '../../telemetry/interfaces/telemetry-event-handler.interface';
 import { SentryModeState, TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
-import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-offensive-response.service';
 
 @Injectable()
 export class SentryAlertHandlerService implements TelemetryEventHandler {
@@ -15,7 +14,6 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
     private readonly telegramService: TelegramService,
     private readonly keyboardBuilder: TelegramKeyboardBuilderService,
     private readonly alertNotifier: VehicleAlertNotifierService,
-    private readonly offensiveResponseService: AlertsOffensiveResponseService,
   ) { }
 
   async handle(telemetryMessage: TelemetryMessage): Promise<void> {
@@ -27,15 +25,11 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
     const sentryMode = telemetryMessage.getSentryModeState();
 
     if (sentryMode === SentryModeState.Aware) {
-      const { userIds } = await this.alertNotifier.dispatch({
+      await this.alertNotifier.dispatch({
         telemetryMessage,
         alertName: 'SENTRY_ALERT',
         latencyLabel: 'SENTRY_LATENCY',
         telegramNotifier: this.telegramNotifier,
-      });
-
-      this.offensiveResponseService.handleSentryOffensiveResponse(telemetryMessage.vin, userIds).catch((error: unknown) => {
-        this.logger.warn(`[OFFENSIVE] Failed to execute offensive response for VIN ${telemetryMessage.vin}`, error);
       });
     }
   }

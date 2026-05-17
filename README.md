@@ -56,7 +56,7 @@ SentryGuard is a comprehensive security monitoring solution for Tesla vehicles. 
 - 📱 **Telegram Integration** - Instant alerts via deep linking (no manual chatId setup)
 - 🚗 **Multi-Vehicle Support** - Monitor all your Tesla vehicles
 - 📊 **Real-time Telemetry** - Track Sentry Mode and break-in events, receive instant Telegram notifications when security events occur
-- 🚨 **Offensive Response** - Automatically honk the horn when a Sentry or break-in alert is triggered, configurable separately per alert type and per vehicle (with timed activation for Sentry), via webapp or Telegram
+- 🚨 **Break-in Offensive Response** - Automatically honk the horn when a break-in alert is triggered, configurable per vehicle via webapp or Telegram
 - 🌐 **SEO-Friendly WebApp** - Next.js with server-side rendering
 - 🔒 **Secure by Design** - Encrypted token storage, secure communication
 - 🎨 **Modern UI** - Responsive interface with Tailwind CSS
@@ -113,14 +113,13 @@ This is an Nx monorepo containing:
 
 - When Sentry Mode or a break-in is detected, you'll receive an instant Telegram notification
 
-### 5. Configure Offensive Response
+### 5. Configure Break-in Offensive Response
 
-Choose what happens when an alert is triggered, separately for each type:
+Choose what happens when a break-in alert is triggered:
 
-- **🔒 Sentry Mode** — Disabled / Honk (with duration: 30min, 1h, 2h, 4h, 8h, 24h)
 - **🚨 Break-In** — Disabled / Honk
 
-Configure per vehicle from the **Vehicles page** (webapp toggle with countdown) or via **Telegram** buttons (🔒 Sentinelle / 🚨 Effraction).
+Configure per vehicle from the **Vehicles page** (webapp toggle) or via **Telegram** button.
 
 ## 🔧 Development
 
@@ -173,8 +172,8 @@ SentryGuard/
 │   │   │   ├── app/
 │   │   │   │   ├── auth/       # Tesla OAuth
 │   │   │   │   ├── telemetry/  # Vehicle telemetry & commands
-│   │   │   │   ├── alerts/     # Alert handlers & offensive response
-│   │   │   │   ├── offensive-response/ # Offensive response logic & notifications
+│   │   │   │   ├── alerts/     # Alert handlers & break-in offensive response
+│   │   │   │   ├── offensive-response/ # Offensive response API endpoints & config
 │   │   │   │   └── telegram/   # Telegram bot
 │   │   │   ├── entities/       # TypeORM entities
 │   │   │   ├── config/         # Configuration
@@ -206,8 +205,7 @@ SentryGuard/
 
 - Vehicle details (VIN, model, name)
 - Telemetry configuration status
-- Offensive response per vehicle and alert type (Sentry: Disabled / Honk with duration, Break-In: Disabled / Honk)
-- Auto-deactivation timer for Sentry horn
+- Break-in offensive response per vehicle (Disabled / Honk)
 
 ### Telegram Configs
 

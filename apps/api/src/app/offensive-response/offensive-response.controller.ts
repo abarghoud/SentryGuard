@@ -31,47 +31,20 @@ export class OffensiveResponseController {
   async updateOffensiveResponse(
     @Param('vin') vin: string,
     @CurrentUser() user: User,
-    @Body() body: { sentry_offensive_response?: string; break_in_offensive_response?: string; sentry_offensive_response_duration_minutes?: number },
+    @Body() body: { break_in_offensive_response?: string },
   ) {
-    if (!body.sentry_offensive_response && !body.break_in_offensive_response) {
+    if (!body.break_in_offensive_response) {
       throw new BadRequestException(
-        'At least one of sentry_offensive_response or break_in_offensive_response must be provided'
+        'break_in_offensive_response must be provided'
       );
     }
 
     const validResponses = Object.values(OffensiveResponse);
 
-    if (body.sentry_offensive_response && !validResponses.includes(body.sentry_offensive_response as OffensiveResponse)) {
-      throw new BadRequestException(
-        `Invalid sentry_offensive_response value. Must be one of: ${validResponses.join(', ')}`
-      );
-    }
-
-    if (body.break_in_offensive_response && !validResponses.includes(body.break_in_offensive_response as OffensiveResponse)) {
+    if (!validResponses.includes(body.break_in_offensive_response as OffensiveResponse)) {
       throw new BadRequestException(
         `Invalid break_in_offensive_response value. Must be one of: ${validResponses.join(', ')}`
       );
-    }
-
-    if (body.sentry_offensive_response === OffensiveResponse.HONK && !body.sentry_offensive_response_duration_minutes) {
-      throw new BadRequestException(
-        'sentry_offensive_response_duration_minutes is required when sentry_offensive_response is HONK'
-      );
-    }
-
-    if (body.sentry_offensive_response_duration_minutes !== undefined) {
-      if (body.sentry_offensive_response !== OffensiveResponse.HONK) {
-        throw new BadRequestException(
-          'sentry_offensive_response_duration_minutes can only be provided when sentry_offensive_response is HONK'
-        );
-      }
-
-      const MAX_DURATION_MINUTES = 24 * 60;
-      if (body.sentry_offensive_response_duration_minutes < 1 || body.sentry_offensive_response_duration_minutes > MAX_DURATION_MINUTES) {
-        throw new BadRequestException(
-          `sentry_offensive_response_duration_minutes must be between 1 and ${MAX_DURATION_MINUTES}`
-        );
-      }
     }
 
     const userId = user.userId;
@@ -83,18 +56,6 @@ export class OffensiveResponseController {
       vin,
       body,
     );
-  }
-
-  @Throttle(ThrottleOptions.authenticatedWrite())
-  @Post(':vin/test-sentry')
-  async testSentryOffensiveResponse(
-    @Param('vin') vin: string,
-    @CurrentUser() user: User,
-  ) {
-    const userId = user.userId;
-    this.logger.log(`Testing sentry offensive response for VIN: ${vin} (user: ${userId})`);
-    await this.vehicleOffensiveResponseConfigService.testSentryOffensiveResponse(userId, vin);
-    return { message: `Sentry offensive response test triggered for VIN: ${vin}` };
   }
 
   @Throttle(ThrottleOptions.authenticatedWrite())

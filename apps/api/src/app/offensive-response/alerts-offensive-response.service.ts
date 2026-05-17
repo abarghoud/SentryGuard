@@ -15,36 +15,6 @@ export class AlertsOffensiveResponseService {
     private readonly teslaVehicleCommandService: TeslaVehicleCommandService,
   ) {}
 
-  async handleSentryOffensiveResponse(vin: string, userIds: string[]): Promise<void> {
-    for (const userId of userIds) {
-      const vehicle = await this.findVehicleByVin(vin, userId);
-
-      if (!vehicle) {
-        continue;
-      }
-
-      if (vehicle.sentry_offensive_response === OffensiveResponse.DISABLED) {
-        continue;
-      }
-
-      if (vehicle.sentry_offensive_response_until && new Date() > vehicle.sentry_offensive_response_until) {
-        this.logger.debug(`[OFFENSIVE] Sentry offensive response expired for VIN ${vin} and userId ${userId}`);
-        continue;
-      }
-
-      if (!vehicle.sentry_mode_monitoring_enabled) {
-        continue;
-      }
-
-      const success = await this.executeOffensiveResponse(vehicle);
-      if (success) {
-        return;
-      }
-    }
-
-    this.logger.debug(`[OFFENSIVE] No eligible user found for sentry offensive response on VIN ${vin}`);
-  }
-
   async handleBreakInOffensiveResponse(vin: string, userIds: string[]): Promise<void> {
     for (const userId of userIds) {
       const vehicle = await this.findVehicleByVin(vin, userId);

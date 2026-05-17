@@ -5,7 +5,7 @@ import { SentryAlertHandlerService } from './sentry-alert-handler.service';
 import { TelegramService } from '../../telegram/telegram.service';
 import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
-import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-offensive-response.service';
+
 import { TelemetryMessage, SentryModeState } from '../../telemetry/models/telemetry-message.model';
 
 describe('The SentryAlertHandlerService class', () => {
@@ -14,14 +14,10 @@ describe('The SentryAlertHandlerService class', () => {
   let mockTelegramService: MockProxy<TelegramService>;
   let mockKeyboardBuilder: MockProxy<TelegramKeyboardBuilderService>;
   let mockAlertNotifier: MockProxy<VehicleAlertNotifierService>;
-  let mockOffensiveResponseService: MockProxy<AlertsOffensiveResponseService>;
-
   beforeEach(async () => {
     mockTelegramService = mock<TelegramService>();
     mockKeyboardBuilder = mock<TelegramKeyboardBuilderService>();
     mockAlertNotifier = mock<VehicleAlertNotifierService>();
-    mockOffensiveResponseService = mock<AlertsOffensiveResponseService>();
-    mockOffensiveResponseService.handleSentryOffensiveResponse.mockResolvedValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -29,7 +25,6 @@ describe('The SentryAlertHandlerService class', () => {
         { provide: TelegramService, useValue: mockTelegramService },
         { provide: TelegramKeyboardBuilderService, useValue: mockKeyboardBuilder },
         { provide: VehicleAlertNotifierService, useValue: mockAlertNotifier },
-        { provide: AlertsOffensiveResponseService, useValue: mockOffensiveResponseService },
       ]
     }).compile();
 
@@ -130,12 +125,6 @@ describe('The SentryAlertHandlerService class', () => {
           latencyLabel: 'SENTRY_LATENCY',
           telegramNotifier: expect.any(Function)
         }));
-      });
-
-      it('should trigger offensive response for the VIN with userIds', async () => {
-        await service.handle(baseTelemetryMessage);
-
-        expect(mockOffensiveResponseService.handleSentryOffensiveResponse).toHaveBeenCalledWith('TEST_VIN_123', ['user-1']);
       });
 
       it('should construct and send telegram message when notifier callback is invoked', async () => {

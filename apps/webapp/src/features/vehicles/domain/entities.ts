@@ -5,8 +5,6 @@ export interface Vehicle {
   model?: string;
   sentry_mode_monitoring_enabled: boolean;
   break_in_monitoring_enabled?: boolean;
-  sentry_offensive_response?: string;
-  sentry_offensive_response_until?: string | null;
   break_in_offensive_response?: string;
   key_paired?: boolean;
   created_at: string;
