@@ -11,6 +11,7 @@ export function VehiclesContainer() {
     configureTelemetryMutation,
     deleteTelemetryMutation,
     toggleBreakInMutation,
+    updateOffensiveResponseMutation,
   } = useVehiclesQuery();
 
   const { data: vehicles = [], isLoading, isFetching, error, refetch } = query;
@@ -25,6 +26,18 @@ export function VehiclesContainer() {
       onConfigureTelemetry={async (vin) => configureTelemetryMutation.mutateAsync(vin)}
       onDeleteTelemetry={async (vin) => deleteTelemetryMutation.mutateAsync(vin)}
       onToggleBreakInMonitoring={async (vin, enable) => toggleBreakInMutation.mutateAsync({ vin, enable })}
+      onToggleBreakInOffensive={async (vin, enabled) => {
+        try {
+          if (enabled) {
+            await updateOffensiveResponseMutation.mutateAsync({ vin, breakInResponse: 'HONK' });
+          } else {
+            await updateOffensiveResponseMutation.mutateAsync({ vin, breakInResponse: 'DISABLED' });
+          }
+          return true;
+        } catch {
+          return false;
+        }
+      }}
     />
   );
 }

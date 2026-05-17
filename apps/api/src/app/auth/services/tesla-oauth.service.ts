@@ -76,7 +76,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
       redirect_uri: this.redirectUri,
       response_type: 'code',
       show_keypair_step: 'true',
-      scope: 'openid vehicle_device_data offline_access user_data',
+      scope: 'openid vehicle_device_data vehicle_cmds offline_access user_data',
       state: state,
     });
 
@@ -104,7 +104,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
       redirect_uri: this.redirectUri,
       response_type: 'code',
       show_keypair_step: 'true',
-      scope: 'openid vehicle_device_data offline_access user_data',
+      scope: 'openid vehicle_device_data vehicle_cmds offline_access user_data',
       state: state,
     });
 
@@ -205,6 +205,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
     const requiredScopes = [
       'openid',
       'vehicle_device_data',
+      'vehicle_cmds',
       'offline_access',
       'user_data',
     ];

@@ -28,7 +28,7 @@ export class VehicleAlertNotifierService {
     private readonly vehicleRepository: Repository<Vehicle>
   ) {}
 
-  async dispatch(config: AlertDispatchConfig): Promise<void> {
+  async dispatch(config: AlertDispatchConfig): Promise<{ userIds: string[] }> {
     const handlerStartTime = Date.now();
     const { telemetryMessage: message, alertName, latencyLabel, telegramNotifier } = config;
 
@@ -36,7 +36,7 @@ export class VehicleAlertNotifierService {
       const vehicles = await this.findVehiclesByVin(message.vin, message.correlationId);
 
       if (vehicles.length === 0) {
-        return;
+        return { userIds: [] };
       }
 
       const userIds = this.extractUniqueUserIds(vehicles);
@@ -50,6 +50,8 @@ export class VehicleAlertNotifierService {
       this.logNotificationResults(results, message.vin, alertName, message.correlationId);
 
       this.logAlertLatency(message, handlerStartTime, latencyLabel);
+
+      return { userIds };
     } catch (error) {
       this.logger.error(`Error in ${alertName}:`, error);
       throw error;

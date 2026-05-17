@@ -107,6 +107,7 @@ export class TelemetryConfigService {
             ...teslaVehicle,
             sentry_mode_monitoring_enabled: dbVehicle?.sentry_mode_monitoring_enabled ?? false,
             break_in_monitoring_enabled: dbVehicle?.break_in_monitoring_enabled ?? false,
+            break_in_offensive_response: dbVehicle?.break_in_offensive_response ?? 'DISABLED',
             key_paired: keyPaired,
           };
         });
@@ -116,6 +117,7 @@ export class TelemetryConfigService {
         ...vehicle,
         sentry_mode_monitoring_enabled: false,
         break_in_monitoring_enabled: false,
+        break_in_offensive_response: 'DISABLED',
         key_paired: false,
       }));
     } catch (error: unknown) {
