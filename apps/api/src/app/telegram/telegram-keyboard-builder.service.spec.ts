@@ -88,4 +88,15 @@ describe('The TelegramKeyboardBuilderService class', () => {
       });
     });
   });
+
+  describe('The buildMainMenuKeyboard() method', () => {
+    it('should have one row with status and mute buttons', () => {
+      const result = service.buildMainMenuKeyboard('en');
+
+      expect(result.keyboard).toBeDefined();
+      const keyboard = result.keyboard?.keyboard as Array<Array<{ text: string }>>;
+      expect(keyboard).toHaveLength(1);
+      expect(keyboard[0]).toHaveLength(2);
+    });
+  });
 });

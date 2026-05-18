@@ -212,6 +212,7 @@ describe('The TeslaOAuthService class', () => {
           scp: [
             'openid',
             'vehicle_device_data',
+            'vehicle_cmds',
             'offline_access',
             'user_data',
           ],
@@ -264,6 +265,7 @@ describe('The TeslaOAuthService class', () => {
           scp: [
             'openid',
             'vehicle_device_data',
+            'vehicle_cmds',
             'offline_access',
             'user_data',
           ],
@@ -312,7 +314,7 @@ describe('The TeslaOAuthService class', () => {
         await expect(
           service.authenticateWithCode('test-code', validState)
         ).rejects.toThrow(
-          'Missing required permissions: vehicle_device_data, offline_access, user_data'
+          'Missing required permissions: vehicle_device_data, vehicle_cmds, offline_access, user_data'
         );
       });
     });

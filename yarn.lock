@@ -4687,26 +4687,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/websockets@npm:^11.1.19":
-  version: 11.1.19
-  resolution: "@nestjs/websockets@npm:11.1.19"
-  dependencies:
-    iterare: "npm:1.2.1"
-    object-hash: "npm:3.0.0"
-    tslib: "npm:2.8.1"
-  peerDependencies:
-    "@nestjs/common": ^11.0.0
-    "@nestjs/core": ^11.0.0
-    "@nestjs/platform-socket.io": ^11.0.0
-    reflect-metadata: ^0.1.12 || ^0.2.0
-    rxjs: ^7.1.0
-  peerDependenciesMeta:
-    "@nestjs/platform-socket.io":
-      optional: true
-  checksum: 10c0/3a6eb3c41e7af3143b6429e779c5d73c93685e6d84719433e4d0beb09e0df15c66e5a8ae3ee621934699e23a905309adc8c475286051959628f1f43b29fc696a
-  languageName: node
-  linkType: hard
-
 "@next/env@npm:16.2.6":
   version: 16.2.6
   resolution: "@next/env@npm:16.2.6"
@@ -7034,7 +7014,6 @@ __metadata:
     "@nestjs/testing": "npm:^11.1.6"
     "@nestjs/throttler": "npm:^6.4.0"
     "@nestjs/typeorm": "npm:^11.0.0"
-    "@nestjs/websockets": "npm:^11.1.19"
     "@nx/eslint": "npm:22.4.5"
     "@nx/eslint-plugin": "npm:22.4.5"
     "@nx/jest": "npm:22.4.5"
@@ -17361,7 +17340,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"object-hash@npm:3.0.0, object-hash@npm:^3.0.0":
+"object-hash@npm:^3.0.0":
   version: 3.0.0
   resolution: "object-hash@npm:3.0.0"
   checksum: 10c0/a06844537107b960c1c8b96cd2ac8592a265186bfa0f6ccafe0d34eabdb526f6fa81da1f37c43df7ed13b12a4ae3457a16071603bcd39d8beddb5f08c37b0f47

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TelegramService } from './telegram.service';
 import { TelegramBotService } from './telegram-bot.service';
@@ -21,6 +21,8 @@ import { Vehicle } from '../../entities/vehicle.entity';
 import { AuthModule } from '../auth/auth.module';
 import { ConsentModule } from '../consent/consent.module';
 import { UserModule } from '../user/user.module';
+import { TelemetryModule } from '../telemetry/telemetry.module';
+import { OffensiveResponseModule } from '../offensive-response/offensive-response.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { UserModule } from '../user/user.module';
     AuthModule,
     ConsentModule,
     UserModule,
+    TelemetryModule,
+    forwardRef(() => OffensiveResponseModule),
   ],
   controllers: [TelegramController, TelegramWebhookController],
   providers: [

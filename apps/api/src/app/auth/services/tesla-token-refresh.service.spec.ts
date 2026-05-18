@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { IsNull, And, Or, MoreThan, LessThanOrEqual } from 'typeorm';
+import { IsNull, And, Or, MoreThan, LessThanOrEqual, DataSource } from 'typeorm';
 import {
   TeslaTokenRefreshService,
   RefreshResult,
@@ -16,19 +16,20 @@ import { encrypt, decrypt } from '../../../common/utils/crypto.util';
 const mockedEncrypt = encrypt as jest.MockedFunction<typeof encrypt>;
 const mockedDecrypt = decrypt as jest.MockedFunction<typeof decrypt>;
 
-const mockQueryBuilder = {
-  update: jest.fn().mockReturnThis(),
-  set: jest.fn().mockReturnThis(),
-  where: jest.fn().mockReturnThis(),
-  andWhere: jest.fn().mockReturnThis(),
-  execute: jest.fn(),
+const mockEntityManager = {
+  findOne: jest.fn(),
+  update: jest.fn(),
+};
+
+const mockDataSource = {
+  transaction: jest.fn((cb) => cb(mockEntityManager)),
 };
 
 const mockUserRepository = {
   find: jest.fn(),
   findOne: jest.fn(),
   update: jest.fn(),
-  createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+  createQueryBuilder: jest.fn(),
 };
 
 describe('The TeslaTokenRefreshService class', () => {
@@ -46,6 +47,14 @@ describe('The TeslaTokenRefreshService class', () => {
     },
   };
 
+  const fakeUser = {
+    userId: fakeUserId,
+    token_revoked_at: undefined,
+    refresh_token: 'encrypted-token',
+    refresh_token_expires_at: null,
+    refresh_token_updated_at: null,
+  } as User;
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -54,12 +63,18 @@ describe('The TeslaTokenRefreshService class', () => {
           provide: getRepositoryToken(User),
           useValue: mockUserRepository,
         },
+        {
+          provide: DataSource,
+          useValue: mockDataSource,
+        },
       ],
     }).compile();
 
     service = module.get<TeslaTokenRefreshService>(TeslaTokenRefreshService);
 
     jest.clearAllMocks();
+
+    mockDataSource.transaction.mockImplementation((cb) => cb(mockEntityManager));
 
     process.env.TESLA_CLIENT_ID = 'test-client-id';
 
@@ -141,7 +156,7 @@ describe('The TeslaTokenRefreshService class', () => {
       let result: RefreshResult;
 
       beforeEach(async () => {
-        mockUserRepository.findOne.mockResolvedValue(null);
+        mockEntityManager.findOne.mockResolvedValue(null);
 
         result = await service.refreshTokenForUser(fakeUserId);
       });
@@ -149,17 +164,26 @@ describe('The TeslaTokenRefreshService class', () => {
       it('should return TransientFailure', () => {
         expect(result).toBe(RefreshResult.TransientFailure);
       });
+
+      it('should acquire a pessimistic write lock on the user row', () => {
+        expect(mockEntityManager.findOne).toHaveBeenCalledWith(
+          User,
+          {
+            where: { userId: fakeUserId },
+            lock: { mode: 'pessimistic_write' },
+          }
+        );
+      });
     });
 
     describe('When user tokens are revoked', () => {
       let result: RefreshResult;
 
       beforeEach(async () => {
-        mockUserRepository.findOne.mockResolvedValue({
-          userId: fakeUserId,
+        mockEntityManager.findOne.mockResolvedValue({
+          ...fakeUser,
           token_revoked_at: new Date(),
-          refresh_token: 'encrypted-token',
-        } as User);
+        });
 
         result = await service.refreshTokenForUser(fakeUserId);
       });
@@ -176,12 +200,10 @@ describe('The TeslaTokenRefreshService class', () => {
         const pastDate = new Date();
         pastDate.setDate(pastDate.getDate() - 1);
 
-        mockUserRepository.findOne.mockResolvedValue({
-          userId: fakeUserId,
-          token_revoked_at: undefined,
-          refresh_token: 'encrypted-token',
+        mockEntityManager.findOne.mockResolvedValue({
+          ...fakeUser,
           refresh_token_expires_at: pastDate,
-        } as User);
+        });
 
         result = await service.refreshTokenForUser(fakeUserId);
       });
@@ -195,13 +217,7 @@ describe('The TeslaTokenRefreshService class', () => {
       let result: RefreshResult;
 
       beforeEach(async () => {
-        mockUserRepository.findOne.mockResolvedValue({
-          userId: fakeUserId,
-          token_revoked_at: undefined,
-          refresh_token: 'encrypted-token',
-          refresh_token_expires_at: null,
-          refresh_token_updated_at: null,
-        } as User);
+        mockEntityManager.findOne.mockResolvedValue(fakeUser);
 
         mockedDecrypt.mockImplementation(() => {
           throw new Error('Decryption failed');
@@ -221,13 +237,7 @@ describe('The TeslaTokenRefreshService class', () => {
       beforeEach(async () => {
         delete process.env.TESLA_CLIENT_ID;
 
-        mockUserRepository.findOne.mockResolvedValue({
-          userId: fakeUserId,
-          token_revoked_at: undefined,
-          refresh_token: 'encrypted-token',
-          refresh_token_expires_at: null,
-          refresh_token_updated_at: null,
-        } as User);
+        mockEntityManager.findOne.mockResolvedValue(fakeUser);
 
         result = await service.refreshTokenForUser(fakeUserId);
       });
@@ -241,19 +251,13 @@ describe('The TeslaTokenRefreshService class', () => {
       let result: RefreshResult;
 
       beforeEach(async () => {
-        mockUserRepository.findOne.mockResolvedValue({
-          userId: fakeUserId,
-          token_revoked_at: undefined,
-          refresh_token: 'encrypted-token',
-          refresh_token_expires_at: null,
-          refresh_token_updated_at: null,
-        } as User);
+        mockEntityManager.findOne.mockResolvedValue(fakeUser);
 
         const axiosError = {
           response: { status: 401, data: { error: 'login_required' } },
         };
         mockedAxios.post.mockRejectedValue(axiosError);
-        mockUserRepository.update.mockResolvedValue({ affected: 1 });
+        mockEntityManager.update.mockResolvedValue({ affected: 1 });
 
         result = await service.refreshTokenForUser(fakeUserId);
       });
@@ -262,12 +266,16 @@ describe('The TeslaTokenRefreshService class', () => {
         expect(result).toBe(RefreshResult.AuthenticationExpired);
       });
 
-      it('should invalidate user tokens including JWT data', () => {
-        expect(mockUserRepository.update).toHaveBeenCalledWith(fakeUserId, {
-          token_revoked_at: expect.any(Date),
-          jwt_token: null,
-          jwt_expires_at: null,
-        });
+      it('should invalidate user tokens including JWT data via transaction manager', () => {
+        expect(mockEntityManager.update).toHaveBeenCalledWith(
+          User,
+          { userId: fakeUserId },
+          {
+            token_revoked_at: expect.any(Date),
+            jwt_token: null,
+            jwt_expires_at: null,
+          }
+        );
       });
     });
 
@@ -275,19 +283,13 @@ describe('The TeslaTokenRefreshService class', () => {
       let result: RefreshResult;
 
       beforeEach(async () => {
-        mockUserRepository.findOne.mockResolvedValue({
-          userId: fakeUserId,
-          token_revoked_at: undefined,
-          refresh_token: 'encrypted-token',
-          refresh_token_expires_at: null,
-          refresh_token_updated_at: null,
-        } as User);
+        mockEntityManager.findOne.mockResolvedValue(fakeUser);
 
         const axiosError = {
           response: { status: 400, data: { error: 'invalid_grant' } },
         };
         mockedAxios.post.mockRejectedValue(axiosError);
-        mockUserRepository.update.mockResolvedValue({ affected: 1 });
+        mockEntityManager.update.mockResolvedValue({ affected: 1 });
 
         result = await service.refreshTokenForUser(fakeUserId);
       });
@@ -301,13 +303,7 @@ describe('The TeslaTokenRefreshService class', () => {
       let result: RefreshResult;
 
       beforeEach(async () => {
-        mockUserRepository.findOne.mockResolvedValue({
-          userId: fakeUserId,
-          token_revoked_at: undefined,
-          refresh_token: 'encrypted-token',
-          refresh_token_expires_at: null,
-          refresh_token_updated_at: null,
-        } as User);
+        mockEntityManager.findOne.mockResolvedValue(fakeUser);
 
         const axiosError = {
           response: { status: 400, data: { error: 'bad_request' } },
@@ -322,7 +318,7 @@ describe('The TeslaTokenRefreshService class', () => {
       });
 
       it('should not invalidate user tokens', () => {
-        expect(mockUserRepository.update).not.toHaveBeenCalled();
+        expect(mockEntityManager.update).not.toHaveBeenCalled();
       });
     });
 
@@ -330,13 +326,7 @@ describe('The TeslaTokenRefreshService class', () => {
       let result: RefreshResult;
 
       beforeEach(async () => {
-        mockUserRepository.findOne.mockResolvedValue({
-          userId: fakeUserId,
-          token_revoked_at: undefined,
-          refresh_token: 'encrypted-token',
-          refresh_token_expires_at: null,
-          refresh_token_updated_at: null,
-        } as User);
+        mockEntityManager.findOne.mockResolvedValue(fakeUser);
 
         const axiosError = {
           response: { status: 500, data: { error: 'server_error' } },
@@ -351,7 +341,7 @@ describe('The TeslaTokenRefreshService class', () => {
       });
 
       it('should not invalidate user tokens', () => {
-        expect(mockUserRepository.update).not.toHaveBeenCalled();
+        expect(mockEntityManager.update).not.toHaveBeenCalled();
       });
     });
 
@@ -359,13 +349,7 @@ describe('The TeslaTokenRefreshService class', () => {
       let result: RefreshResult;
 
       beforeEach(async () => {
-        mockUserRepository.findOne.mockResolvedValue({
-          userId: fakeUserId,
-          token_revoked_at: undefined,
-          refresh_token: 'encrypted-token',
-          refresh_token_expires_at: null,
-          refresh_token_updated_at: null,
-        } as User);
+        mockEntityManager.findOne.mockResolvedValue(fakeUser);
 
         mockedAxios.post.mockRejectedValue(new Error('Network error'));
 
@@ -377,20 +361,13 @@ describe('The TeslaTokenRefreshService class', () => {
       });
     });
 
-    describe('When refresh succeeds and persist succeeds', () => {
+    describe('When refresh succeeds', () => {
       let result: RefreshResult;
 
       beforeEach(async () => {
-        mockUserRepository.findOne.mockResolvedValue({
-          userId: fakeUserId,
-          token_revoked_at: undefined,
-          refresh_token: 'encrypted-token',
-          refresh_token_expires_at: null,
-          refresh_token_updated_at: null,
-        } as User);
-
+        mockEntityManager.findOne.mockResolvedValue(fakeUser);
         mockedAxios.post.mockResolvedValue(fakeTeslaResponse);
-        mockQueryBuilder.execute.mockResolvedValue({ affected: 1 });
+        mockEntityManager.update.mockResolvedValue({ affected: 1 });
 
         result = await service.refreshTokenForUser(fakeUserId);
       });
@@ -414,64 +391,31 @@ describe('The TeslaTokenRefreshService class', () => {
         expect(mockedEncrypt).toHaveBeenCalledWith('new-refresh-token');
       });
 
-      it('should use IS NULL condition for optimistic locking', () => {
-        expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-          'refresh_token_updated_at IS NULL'
+      it('should persist refreshed tokens via transaction manager', () => {
+        expect(mockEntityManager.update).toHaveBeenCalledWith(
+          User,
+          { userId: fakeUserId },
+          expect.objectContaining({
+            access_token: fakeEncryptedAccessToken,
+            refresh_token: fakeEncryptedAccessToken,
+            refresh_token_updated_at: expect.any(Date),
+            refresh_token_expires_at: expect.any(Date),
+          })
         );
       });
     });
 
-    describe('When user has a previous refresh_token_updated_at', () => {
+    describe('When transaction fails', () => {
       let result: RefreshResult;
-      const previousUpdatedAt = new Date('2025-01-01');
 
       beforeEach(async () => {
-        mockUserRepository.findOne.mockResolvedValue({
-          userId: fakeUserId,
-          token_revoked_at: undefined,
-          refresh_token: 'encrypted-token',
-          refresh_token_expires_at: null,
-          refresh_token_updated_at: previousUpdatedAt,
-        } as User);
-
-        mockedAxios.post.mockResolvedValue(fakeTeslaResponse);
-        mockQueryBuilder.execute.mockResolvedValue({ affected: 1 });
+        mockDataSource.transaction.mockRejectedValue(new Error('DB connection lost'));
 
         result = await service.refreshTokenForUser(fakeUserId);
       });
 
-      it('should return Success', () => {
-        expect(result).toBe(RefreshResult.Success);
-      });
-
-      it('should use equality condition for optimistic locking', () => {
-        expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-          'refresh_token_updated_at = :previousUpdatedAt',
-          { previousUpdatedAt }
-        );
-      });
-    });
-
-    describe('When concurrent refresh is detected', () => {
-      let result: RefreshResult;
-
-      beforeEach(async () => {
-        mockUserRepository.findOne.mockResolvedValue({
-          userId: fakeUserId,
-          token_revoked_at: undefined,
-          refresh_token: 'encrypted-token',
-          refresh_token_expires_at: null,
-          refresh_token_updated_at: null,
-        } as User);
-
-        mockedAxios.post.mockResolvedValue(fakeTeslaResponse);
-        mockQueryBuilder.execute.mockResolvedValue({ affected: 0 });
-
-        result = await service.refreshTokenForUser(fakeUserId);
-      });
-
-      it('should return AlreadyRefreshed', () => {
-        expect(result).toBe(RefreshResult.AlreadyRefreshed);
+      it('should return TransientFailure', () => {
+        expect(result).toBe(RefreshResult.TransientFailure);
       });
     });
   });

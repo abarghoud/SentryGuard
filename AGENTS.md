@@ -97,14 +97,15 @@ apps/api/src/
 │   ├── telemetry/          # Vehicle telemetry processing
 │   ├── telegram/           # Telegram bot integration
 │   ├── messaging/kafka/    # Kafka consumer (KafkaService)
-│   ├── alerts/             # Sentry alert handlers
+│   ├── alerts/             # Alert handlers & break-in offensive response
+│   ├── offensive-response/ # Offensive response API endpoints & config
 │   ├── onboarding/         # User onboarding
 │   ├── waitlist/           # Waitlist management
 │   ├── consent/            # User consent
 │   ├── user/               # User management
 │   └── shared/             # Shared module
 ├── entities/               # TypeORM entities (user, vehicle, telegram-config, user-consent, waitlist)
-├── config/                 # Centralized configs (throttle, database, pino, oci-logging, cron)
+├── config/                 # Centralized configs (throttle, database, pino, oci-logging)
 ├── common/                 # Exceptions, guards, interceptors, services, utils
 └── migrations/
 ```

@@ -19,3 +19,7 @@ export interface DeleteTelemetryConfigRequirements {
 export interface ToggleBreakInMonitoringRequirements {
   execute(vin: string, enable: boolean): Promise<GenericActionResponse>;
 }
+
+export interface UpdateOffensiveResponseRequirements {
+  execute(vin: string, breakInResponse?: string): Promise<GenericActionResponse>;
+}

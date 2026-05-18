@@ -6,6 +6,7 @@ import {
   ConfigureTelemetryRequirements,
   DeleteTelemetryConfigRequirements,
   ToggleBreakInMonitoringRequirements,
+  UpdateOffensiveResponseRequirements,
 } from '../../domain/use-cases/vehicles.use-cases.requirements';
 
 export interface VehiclesQueryDependencies {
@@ -13,6 +14,7 @@ export interface VehiclesQueryDependencies {
   configureTelemetryUseCase: ConfigureTelemetryRequirements;
   deleteTelemetryConfigUseCase: DeleteTelemetryConfigRequirements;
   toggleBreakInMonitoringUseCase: ToggleBreakInMonitoringRequirements;
+  updateOffensiveResponseUseCase: UpdateOffensiveResponseRequirements;
 }
 
 export const createUseVehiclesQuery = (deps: VehiclesQueryDependencies) => () => {
@@ -76,10 +78,22 @@ export const createUseVehiclesQuery = (deps: VehiclesQueryDependencies) => () =>
     },
   });
 
+  const updateOffensiveResponseMutation = useMutation({
+    mutationFn: async ({ vin, breakInResponse }: { vin: string; breakInResponse?: string }) => {
+      const result = await deps.updateOffensiveResponseUseCase.execute(vin, breakInResponse);
+      if (!result.success) throw new Error(result.message);
+      return result;
+    },
+    onSuccess: () => {
+      return queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+    },
+  });
+
   return {
     query,
     configureTelemetryMutation,
     deleteTelemetryMutation,
     toggleBreakInMutation,
+    updateOffensiveResponseMutation,
   };
 };

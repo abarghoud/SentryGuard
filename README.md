@@ -56,6 +56,7 @@ SentryGuard is a comprehensive security monitoring solution for Tesla vehicles. 
 - 📱 **Telegram Integration** - Instant alerts via deep linking (no manual chatId setup)
 - 🚗 **Multi-Vehicle Support** - Monitor all your Tesla vehicles
 - 📊 **Real-time Telemetry** - Track Sentry Mode and break-in events, receive instant Telegram notifications when security events occur
+- 🚨 **Break-in Offensive Response** - Automatically honk the horn when a break-in alert is triggered, configurable per vehicle via webapp or Telegram
 - 🌐 **SEO-Friendly WebApp** - Next.js with server-side rendering
 - 🔒 **Secure by Design** - Encrypted token storage, secure communication
 - 🎨 **Modern UI** - Responsive interface with Tailwind CSS
@@ -112,6 +113,14 @@ This is an Nx monorepo containing:
 
 - When Sentry Mode or a break-in is detected, you'll receive an instant Telegram notification
 
+### 5. Configure Break-in Offensive Response
+
+Choose what happens when a break-in alert is triggered:
+
+- **🚨 Break-In** — Disabled / Honk
+
+Configure per vehicle from the **Vehicles page** (webapp toggle) or via **Telegram** button.
+
 ## 🔧 Development
 
 ### Run the API
@@ -163,10 +172,12 @@ SentryGuard/
 │   │   │   ├── app/
 │   │   │   │   ├── auth/       # Tesla OAuth
 │   │   │   │   ├── telemetry/  # Vehicle telemetry & commands
-│   │   │   │   ├── alerts/     # Alert handlers
+│   │   │   │   ├── alerts/     # Alert handlers & break-in offensive response
+│   │   │   │   ├── offensive-response/ # Offensive response API endpoints & config
 │   │   │   │   └── telegram/   # Telegram bot
 │   │   │   ├── entities/       # TypeORM entities
 │   │   │   ├── config/         # Configuration
+│   │   │   ├── migrations/     # Database migrations
 │   │   │   └── common/         # Shared utilities
 │   │   └── env.example
 │   │
@@ -194,6 +205,7 @@ SentryGuard/
 
 - Vehicle details (VIN, model, name)
 - Telemetry configuration status
+- Break-in offensive response per vehicle (Disabled / Honk)
 
 ### Telegram Configs
 

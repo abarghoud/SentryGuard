@@ -4,6 +4,7 @@ import { BreakInAlertHandlerService } from './break-in-alert-handler.service';
 import { TelegramService } from '../../telegram/telegram.service';
 import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
+import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-offensive-response.service';
 import { TelemetryMessage, TelemetryDatum } from '../../telemetry/models/telemetry-message.model';
 import { ChargePortLatchTrackerService } from './charge-port-latch-tracker.service';
 
@@ -14,12 +15,15 @@ describe('The BreakInAlertHandlerService class', () => {
   let mockKeyboardBuilder: MockProxy<TelegramKeyboardBuilderService>;
   let mockAlertNotifier: MockProxy<VehicleAlertNotifierService>;
   let mockChargeTracker: MockProxy<ChargePortLatchTrackerService>;
+  let mockOffensiveResponseService: MockProxy<AlertsOffensiveResponseService>;
 
   beforeEach(async () => {
     mockTelegramService = mock<TelegramService>();
     mockKeyboardBuilder = mock<TelegramKeyboardBuilderService>();
     mockAlertNotifier = mock<VehicleAlertNotifierService>();
     mockChargeTracker = mock<ChargePortLatchTrackerService>();
+    mockOffensiveResponseService = mock<AlertsOffensiveResponseService>();
+    mockOffensiveResponseService.handleBreakInOffensiveResponse.mockResolvedValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -28,6 +32,7 @@ describe('The BreakInAlertHandlerService class', () => {
         { provide: TelegramKeyboardBuilderService, useValue: mockKeyboardBuilder },
         { provide: VehicleAlertNotifierService, useValue: mockAlertNotifier },
         { provide: ChargePortLatchTrackerService, useValue: mockChargeTracker },
+        { provide: AlertsOffensiveResponseService, useValue: mockOffensiveResponseService },
       ],
     }).compile();
 
@@ -130,6 +135,7 @@ describe('The BreakInAlertHandlerService class', () => {
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
         jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
         mockChargeTracker.hasLatchEventAround.mockReturnValue(false);
+        mockAlertNotifier.dispatch.mockResolvedValue({ userIds: ['user-1'] });
       });
 
       it('should delay the verification by 3 seconds to account for telemetry lag, then dispatch the alert via alertNotifier', async () => {
@@ -146,6 +152,14 @@ describe('The BreakInAlertHandlerService class', () => {
           latencyLabel: 'BREAK_IN_LATENCY',
           telegramNotifier: expect.any(Function),
         }));
+      });
+
+      it('should trigger offensive response for the VIN with userIds', async () => {
+        await service.handle(message);
+        jest.advanceTimersByTime(3000);
+        await Promise.resolve();
+
+        expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).toHaveBeenCalledWith('123', ['user-1']);
       });
 
       it('should construct and send telegram message when notifier callback is invoked', async () => {

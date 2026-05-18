@@ -5,6 +5,7 @@ import { SentryAlertHandlerService } from './sentry-alert-handler.service';
 import { TelegramService } from '../../telegram/telegram.service';
 import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
+
 import { TelemetryMessage, SentryModeState } from '../../telemetry/models/telemetry-message.model';
 
 describe('The SentryAlertHandlerService class', () => {
@@ -13,7 +14,6 @@ describe('The SentryAlertHandlerService class', () => {
   let mockTelegramService: MockProxy<TelegramService>;
   let mockKeyboardBuilder: MockProxy<TelegramKeyboardBuilderService>;
   let mockAlertNotifier: MockProxy<VehicleAlertNotifierService>;
-
   beforeEach(async () => {
     mockTelegramService = mock<TelegramService>();
     mockKeyboardBuilder = mock<TelegramKeyboardBuilderService>();
@@ -113,6 +113,7 @@ describe('The SentryAlertHandlerService class', () => {
           vin: 'TEST_VIN_123',
           isResend: false
         });
+        mockAlertNotifier.dispatch.mockResolvedValue({ userIds: ['user-1'] });
       });
 
       it('should dispatch alert via alertNotifier', async () => {

@@ -1,13 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { TelemetryConfigService } from './telemetry-config.service';
-import { ConfigureTelemetryResult, TelemetryConfig } from './telemetry-config.types';
-import { TELEMETRY_CONFIG, ERROR_MESSAGES } from './telemetry-config.constants';
-import { extractErrorDetails } from './telemetry-config.helpers';
+import { ConfigureTelemetryResult } from './telemetry-config.types';
+import { TELEMETRY_CONFIG } from './telemetry-config.constants';
 
 @Injectable()
 export class SentryModeConfigService {
-  private readonly logger = new Logger(SentryModeConfigService.name);
-
   constructor(
     private readonly telemetryConfigService: TelemetryConfigService
   ) {}

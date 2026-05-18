@@ -32,8 +32,6 @@ export class ConsentGuard implements CanActivate {
         );
       }
 
-      request.consentStatus = consentStatus;
-
       return true;
     } catch (error) {
       if (error instanceof ForbiddenException) {
