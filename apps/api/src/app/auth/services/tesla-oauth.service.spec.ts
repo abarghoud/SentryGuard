@@ -5,6 +5,7 @@ import { TeslaOAuthService } from './tesla-oauth.service';
 import { OAuthAuthenticationResult } from '../interfaces/oauth-provider.requirements';
 import axios from 'axios';
 import { decode } from 'jsonwebtoken';
+import { TeslaScopes } from '@sentryguard/beta-domain';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -23,7 +24,7 @@ const mockAxiosInstance = {
   post: jest.fn(),
 };
 
-mockedAxios.create = jest.fn().mockReturnValue(mockAxiosInstance as any);
+mockedAxios.create = jest.fn().mockReturnValue(mockAxiosInstance);
 
 describe('The TeslaOAuthService class', () => {
   let service: TeslaOAuthService;
@@ -151,7 +152,7 @@ describe('The TeslaOAuthService class', () => {
       });
 
       it('should include only base scopes', () => {
-        expect(result.url).toContain('openid+vehicle_device_data+offline_access+user_data');
+        expect(result.url).toContain(`${TeslaScopes.OPENID}+${TeslaScopes.VEHICLE_DEVICE_DATA}+${TeslaScopes.OFFLINE_ACCESS}+${TeslaScopes.USER_DATA}`);
       });
     });
 
@@ -159,7 +160,7 @@ describe('The TeslaOAuthService class', () => {
       let result: { url: string; state: string };
 
       beforeEach(() => {
-        result = service.generateScopeChangeUrl('en', ['vehicle_cmds', 'another_scope']);
+        result = service.generateScopeChangeUrl('en', [TeslaScopes.VEHICLE_CMDS, 'another_scope']);
       });
 
       it('should include prompt_missing_scopes=true', () => {
@@ -167,9 +168,9 @@ describe('The TeslaOAuthService class', () => {
       });
 
       it('should include the missing scopes along with base scopes', () => {
-        expect(result.url).toContain('openid');
-        expect(result.url).toContain('vehicle_device_data');
-        expect(result.url).toContain('vehicle_cmds');
+        expect(result.url).toContain(TeslaScopes.OPENID);
+        expect(result.url).toContain(TeslaScopes.VEHICLE_DEVICE_DATA);
+        expect(result.url).toContain(TeslaScopes.VEHICLE_CMDS);
         expect(result.url).toContain('another_scope');
       });
     });
@@ -210,13 +211,13 @@ describe('The TeslaOAuthService class', () => {
         mockedAxios.post.mockResolvedValueOnce(mockTokenResponse);
         mockedDecode.mockReturnValueOnce({
           scp: [
-            'openid',
-            'vehicle_device_data',
-            'vehicle_cmds',
-            'offline_access',
-            'user_data',
+            TeslaScopes.OPENID,
+            TeslaScopes.VEHICLE_DEVICE_DATA,
+            TeslaScopes.VEHICLE_CMDS,
+            TeslaScopes.OFFLINE_ACCESS,
+            TeslaScopes.USER_DATA,
           ],
-        } as any);
+        });
         mockAxiosInstance.get.mockResolvedValueOnce({
           data: { response: mockProfile },
         });
@@ -263,13 +264,13 @@ describe('The TeslaOAuthService class', () => {
         });
         mockedDecode.mockReturnValueOnce({
           scp: [
-            'openid',
-            'vehicle_device_data',
-            'vehicle_cmds',
-            'offline_access',
-            'user_data',
+            TeslaScopes.OPENID,
+            TeslaScopes.VEHICLE_DEVICE_DATA,
+            TeslaScopes.VEHICLE_CMDS,
+            TeslaScopes.OFFLINE_ACCESS,
+            TeslaScopes.USER_DATA,
           ],
-        } as any);
+        });
         mockAxiosInstance.get.mockRejectedValueOnce(
           new Error('Profile API Error')
         );
@@ -306,15 +307,15 @@ describe('The TeslaOAuthService class', () => {
           },
         });
         mockedDecode.mockReturnValueOnce({
-          scp: ['openid'],
-        } as any);
+          scp: [TeslaScopes.OPENID],
+        });
       });
 
       it('should throw MissingPermissionsException', async () => {
         await expect(
           service.authenticateWithCode('test-code', validState)
         ).rejects.toThrow(
-          'Missing required permissions: vehicle_device_data, vehicle_cmds, offline_access, user_data'
+          `Missing required permissions: ${TeslaScopes.VEHICLE_DEVICE_DATA}, ${TeslaScopes.OFFLINE_ACCESS}, ${TeslaScopes.USER_DATA}`
         );
       });
     });

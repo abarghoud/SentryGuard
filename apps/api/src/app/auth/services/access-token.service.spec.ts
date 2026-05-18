@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { TeslaScopes } from '@sentryguard/beta-domain';
 import { AccessTokenService } from './access-token.service';
 import { User } from '../../../entities/user.entity';
 import {
@@ -242,7 +243,7 @@ describe('The AccessTokenService class', () => {
 
     describe('When the decoded token has scp property without vehicle_cmds', () => {
       it('should return false', async () => {
-        mockedDecode.mockReturnValue({ scp: ['openid', 'offline_access'] });
+        mockedDecode.mockReturnValue({ scp: [TeslaScopes.OPENID, TeslaScopes.OFFLINE_ACCESS] });
         const result = await service.hasVehicleCommandsScope(fakeUserId);
         expect(result).toBe(false);
       });
@@ -250,7 +251,7 @@ describe('The AccessTokenService class', () => {
 
     describe('When the decoded token has scp property with vehicle_cmds', () => {
       it('should return true', async () => {
-        mockedDecode.mockReturnValue({ scp: ['openid', 'vehicle_cmds', 'offline_access'] });
+        mockedDecode.mockReturnValue({ scp: [TeslaScopes.OPENID, TeslaScopes.VEHICLE_CMDS, TeslaScopes.OFFLINE_ACCESS] });
         const result = await service.hasVehicleCommandsScope(fakeUserId);
         expect(result).toBe(true);
       });

@@ -9,6 +9,7 @@ import { CurrentUser } from './current-user.decorator';
 import { User } from '../../entities/user.entity';
 import { extractPreferredLanguage } from '../../common/utils/language.util';
 import { ThrottleOptions } from '../../config/throttle.config';
+import { TeslaScopes } from '@sentryguard/beta-domain';
 
 @Controller('auth')
 export class AuthController {
@@ -19,7 +20,7 @@ export class AuthController {
     private readonly accessTokenService: AccessTokenService,
     @Inject(oauthProviderRequirementsSymbol)
     private readonly oauthProvider: OAuthProviderRequirements
-  ) {}
+  ) { }
 
   @Throttle(ThrottleOptions.publicSensitive())
   @Get('tesla/login')
@@ -49,7 +50,7 @@ export class AuthController {
 
     this.logger.log(`New Tesla OAuth scope change request with locale: ${userLocale}${missingScopes ? ` (missing: ${missingScopes.join(', ')})` : ''}`);
 
-    const { url, state } = this.oauthProvider.generateScopeChangeUrl(userLocale, missingScopes);
+    const { url, state } = this.oauthProvider.generateScopeChangeUrl(userLocale, missingScopes as TeslaScopes[]);
 
     return {
       url,

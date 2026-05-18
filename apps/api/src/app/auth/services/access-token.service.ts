@@ -8,6 +8,7 @@ import {
   TeslaTokenRefreshService,
   RefreshResult,
 } from './tesla-token-refresh.service';
+import { TeslaScopes } from '@sentryguard/beta-domain';
 
 @Injectable()
 export class AccessTokenService {
@@ -17,7 +18,7 @@ export class AccessTokenService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly teslaTokenRefreshService: TeslaTokenRefreshService
-  ) {}
+  ) { }
 
   async getAccessTokenForUserId(userId: string): Promise<string | null> {
     const user = await this.userRepository.findOne({ where: { userId } });
@@ -68,7 +69,7 @@ export class AccessTokenService {
       return false;
     }
 
-    return decodedToken.scp.includes('vehicle_cmds');
+    return decodedToken.scp.includes(TeslaScopes.VEHICLE_CMDS);
   }
 
   private decryptAccessTokenSafely(user: User): string | null {

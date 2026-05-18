@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { ApiClient } from '../../../../core/api/api-client';
+import { TeslaScopes } from '@sentryguard/beta-domain';
 
 const apiClient = new ApiClient();
 
@@ -9,7 +10,7 @@ export function useVehicleCommandsAuthorization() {
     queryFn: async () => {
       return apiClient.request<{ authorized: boolean }>('/auth/vehicle-commands-authorized');
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -17,7 +18,7 @@ export function useRequestVehicleCommandsScope() {
   return useMutation({
     mutationFn: async () => {
       return apiClient.request<{ url: string; state: string; message: string }>(
-        '/auth/tesla/scope-change?missing=vehicle_cmds'
+        `/auth/tesla/scope-change?missing=${TeslaScopes.VEHICLE_CMDS}`
       );
     },
     onSuccess: (data) => {
