@@ -408,5 +408,11 @@
   "If Sentry Mode is off to save battery at home or at night, you get zero notifications if someone tries to break in.": "If Sentry Mode is off to save battery at home or at night, you get zero notifications if someone tries to break in.",
   "Uses advanced telemetry to detect handle pulls and alert you instantly, even when Sentry Mode is disabled.": "Uses advanced telemetry to detect handle pulls and alert you instantly, even when Sentry Mode is disabled.",
   "The missing security alerts for your Tesla.": "The missing security alerts for your Tesla.",
-  "Get a Telegram notification the second Sentry Mode records a threat, or when someone pulls your door handle—even if you disabled Sentry Mode to save battery.": "Get a Telegram notification the second Sentry Mode records a threat, or when someone pulls your door handle—even if you disabled Sentry Mode to save battery."
+  "Get a Telegram notification the second Sentry Mode records a threat, or when someone pulls your door handle—even if you disabled Sentry Mode to save battery.": "Get a Telegram notification the second Sentry Mode records a threat, or when someone pulls your door handle—even if you disabled Sentry Mode to save battery.",
+  "Unlock commands": "Unlock commands",
+  "Authorize SentryGuard to interact with your vehicle.": "Authorize SentryGuard to interact with your vehicle.",
+  "Authorize": "Authorize",
+  "offensiveResponseLockedTitle": "Offensive Response Locked",
+  "offensiveResponseLockedDescription": "Using the horn and headlights requires additional authorization.",
+  "offensiveResponseLockedButton": "Unlock alarm"
 }

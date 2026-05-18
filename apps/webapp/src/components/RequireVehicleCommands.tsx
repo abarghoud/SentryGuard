@@ -35,8 +35,8 @@ export default function RequireVehicleCommands({
 
   if (!isAuthorized) {
     return (
-      <div className="relative group rounded-md overflow-hidden">
-        <div className="opacity-40 blur-[1px] pointer-events-none select-none transition-all duration-300">
+      <div className="relative group rounded-md overflow-hidden min-h-[160px] flex flex-col justify-center">
+        <div className="opacity-40 blur-[2px] pointer-events-none select-none transition-all duration-300">
           {children}
         </div>
 
