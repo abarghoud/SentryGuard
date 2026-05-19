@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Vehicle } from '../../entities/vehicle.entity';
 import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
+import { AccessTokenService } from '../auth/services/access-token.service';
 
 export interface UpdateOffensiveResponseDto {
   break_in_offensive_response?: string;
@@ -20,6 +21,7 @@ export class VehicleOffensiveResponseConfigService {
   constructor(
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>,
+    private readonly accessTokenService: AccessTokenService,
   ) { }
 
   async updateOffensiveResponse(
@@ -33,6 +35,18 @@ export class VehicleOffensiveResponseConfigService {
 
     if (!vehicle) {
       return { success: false };
+    }
+
+    if (
+      dto.break_in_offensive_response &&
+      dto.break_in_offensive_response !== OffensiveResponse.DISABLED
+    ) {
+      const hasScope = await this.accessTokenService.hasVehicleCommandsScope(userId);
+      if (!hasScope) {
+        throw new ForbiddenException(
+          'vehicle_cmds scope is required to enable offensive responses'
+        );
+      }
     }
 
     if (dto.break_in_offensive_response) {

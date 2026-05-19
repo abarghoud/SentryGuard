@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
+import { TeslaScopes } from '@sentryguard/beta-domain';
 
 export interface PartnerTokenResponse {
   access_token: string;
@@ -40,7 +41,7 @@ export class TeslaPartnerAuthService {
           client_id: clientId,
           client_secret: clientSecret,
           audience: audience,
-          scope: 'openid offline_access user_data vehicle_cmds vehicle_device_data',
+          scope: `${TeslaScopes.OPENID} ${TeslaScopes.OFFLINE_ACCESS} ${TeslaScopes.USER_DATA} ${TeslaScopes.VEHICLE_CMDS} ${TeslaScopes.VEHICLE_DEVICE_DATA}`,
         }),
         {
           headers: {

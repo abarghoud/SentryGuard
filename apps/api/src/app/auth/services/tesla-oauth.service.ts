@@ -9,6 +9,7 @@ import axios from 'axios';
 import * as crypto from 'crypto';
 import * as https from 'https';
 import { decode } from 'jsonwebtoken';
+import { TeslaScopes } from '@sentryguard/beta-domain';
 import { normalizeTeslaLocale } from '../../../common/utils/language.util';
 import { MissingPermissionsException } from '../../../common/exceptions/missing-permissions.exception';
 import {
@@ -76,7 +77,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
       redirect_uri: this.redirectUri,
       response_type: 'code',
       show_keypair_step: 'true',
-      scope: 'openid vehicle_device_data vehicle_cmds offline_access user_data',
+      scope: `${TeslaScopes.OPENID} ${TeslaScopes.VEHICLE_DEVICE_DATA} ${TeslaScopes.OFFLINE_ACCESS} ${TeslaScopes.USER_DATA}`,
       state: state,
     });
 
@@ -88,7 +89,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
 
   generateScopeChangeUrl(
     userLocale: 'en' | 'fr' = 'en',
-    missingScopes?: string[]
+    missingScopes?: TeslaScopes[]
   ): { url: string; state: string } {
     const clientId = process.env.TESLA_CLIENT_ID;
     if (!clientId) {
@@ -97,6 +98,17 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
 
     const state = this.createSignedState(userLocale);
 
+    const baseScopes = [
+      TeslaScopes.OPENID,
+      TeslaScopes.VEHICLE_DEVICE_DATA,
+      TeslaScopes.OFFLINE_ACCESS,
+      TeslaScopes.USER_DATA,
+    ];
+    const allScopes = new Set(baseScopes);
+    if (missingScopes) {
+      missingScopes.forEach(missingScope => allScopes.add(missingScope));
+    }
+
     const params = new URLSearchParams({
       client_id: clientId,
       locale: normalizeTeslaLocale(userLocale),
@@ -104,7 +116,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
       redirect_uri: this.redirectUri,
       response_type: 'code',
       show_keypair_step: 'true',
-      scope: 'openid vehicle_device_data vehicle_cmds offline_access user_data',
+      scope: Array.from(allScopes).join(' '),
       state: state,
     });
 
@@ -203,11 +215,10 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
     }
 
     const requiredScopes = [
-      'openid',
-      'vehicle_device_data',
-      'vehicle_cmds',
-      'offline_access',
-      'user_data',
+      TeslaScopes.OPENID,
+      TeslaScopes.VEHICLE_DEVICE_DATA,
+      TeslaScopes.OFFLINE_ACCESS,
+      TeslaScopes.USER_DATA,
     ];
     const tokenScopes = decodedToken.scp as string[];
     const missingScopes = requiredScopes.filter(

@@ -407,5 +407,11 @@
   "If Sentry Mode is off to save battery at home or at night, you get zero notifications if someone tries to break in.": "Si le mode Sentinelle est coupé à la maison ou la nuit pour économiser la batterie, vous n'avez aucune notification en cas de tentative d'effraction.",
   "Uses advanced telemetry to detect handle pulls and alert you instantly, even when Sentry Mode is disabled.": "Utilise la télémétrie avancée pour détecter si on tire sur la poignée et vous alerter instantanément, même quand Sentinelle est désactivé.",
   "The missing security alerts for your Tesla.": "Les alertes de sécurité qu'il manque à votre Tesla.",
-  "Get a Telegram notification the second Sentry Mode records a threat, or when someone pulls your door handle—even if you disabled Sentry Mode to save battery.": "Recevez une notification Telegram à la seconde où le mode Sentinelle enregistre une menace, ou si quelqu'un tire sur votre poignée—même si le mode Sentinelle est coupé pour économiser la batterie."
+  "Get a Telegram notification the second Sentry Mode records a threat, or when someone pulls your door handle—even if you disabled Sentry Mode to save battery.": "Recevez une notification Telegram à la seconde où le mode Sentinelle enregistre une menace, ou si quelqu'un tire sur votre poignée—même si le mode Sentinelle est coupé pour économiser la batterie.",
+  "Unlock commands": "Déverrouiller les commandes",
+  "Authorize SentryGuard to interact with your vehicle.": "Autorisez SentryGuard à interagir avec votre véhicule.",
+  "Authorize": "Autoriser",
+  "offensiveResponseLockedTitle": "Réponse Offensive verrouillée",
+  "offensiveResponseLockedDescription": "L'utilisation du klaxon nécessite une autorisation supplémentaire.",
+  "offensiveResponseLockedButton": "Déverrouiller l'alarme"
 }

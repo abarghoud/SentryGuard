@@ -32,6 +32,13 @@ export class TeslaVehicleCommandService {
     command: string,
   ): Promise<TeslaCommandResponse> {
     try {
+      const hasScope = await this.accessTokenService.hasVehicleCommandsScope(userId);
+
+      if (!hasScope) {
+        this.logger.warn(`[VEHICLE_COMMAND] User ${userId} lacks vehicle_cmds scope`);
+        return { success: false, message: 'Missing vehicle_cmds scope' };
+      }
+
       const accessToken = await this.accessTokenService.getAccessTokenForUserId(userId);
 
       if (!accessToken) {

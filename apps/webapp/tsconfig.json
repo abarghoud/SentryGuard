@@ -36,10 +36,10 @@
     "src/**/*.test.tsx",
     "src/test-setup.d.ts"
   ],
-  "exclude": [
-    "out-tsc",
-    "dist",
-    "node_modules",
-    ".next"
+  "exclude": ["out-tsc", "dist", "node_modules", ".next"],
+  "references": [
+    {
+      "path": "../../libs/beta/domain"
+    }
   ]
 }
