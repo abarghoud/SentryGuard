@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { AccessTokenService } from './services/access-token.service';
 import { oauthProviderRequirementsSymbol } from './interfaces/oauth-provider.requirements';
 import { User } from '../../entities/user.entity';
 
@@ -10,6 +11,10 @@ describe('The AuthController class', () => {
   const mockAuthService = {
     validateJwtToken: jest.fn(),
     revokeJwtToken: jest.fn(),
+  };
+
+  const mockAccessTokenService = {
+    hasVehicleCommandsScope: jest.fn(),
   };
 
   const mockOAuthProvider = {
@@ -24,6 +29,10 @@ describe('The AuthController class', () => {
         {
           provide: AuthService,
           useValue: mockAuthService,
+        },
+        {
+          provide: AccessTokenService,
+          useValue: mockAccessTokenService,
         },
         {
           provide: oauthProviderRequirementsSymbol,
@@ -173,6 +182,34 @@ describe('The AuthController class', () => {
       expect(result.success).toBe(true);
       expect(result.profile.userId).toBe('test-user-id');
       expect(result.profile.email).toBeUndefined();
+    });
+  });
+
+  describe('The getVehicleCommandsAuthorization() method', () => {
+    it('should return true when the user has authorization', async () => {
+      const mockUser = {
+        userId: 'test-user-id',
+      } as User;
+
+      mockAccessTokenService.hasVehicleCommandsScope.mockResolvedValue(true);
+
+      const result = await controller.getVehicleCommandsAuthorization(mockUser);
+
+      expect(result.authorized).toBe(true);
+      expect(mockAccessTokenService.hasVehicleCommandsScope).toHaveBeenCalledWith('test-user-id');
+    });
+
+    it('should return false when the user does not have authorization', async () => {
+      const mockUser = {
+        userId: 'test-user-id',
+      } as User;
+
+      mockAccessTokenService.hasVehicleCommandsScope.mockResolvedValue(false);
+
+      const result = await controller.getVehicleCommandsAuthorization(mockUser);
+
+      expect(result.authorized).toBe(false);
+      expect(mockAccessTokenService.hasVehicleCommandsScope).toHaveBeenCalledWith('test-user-id');
     });
   });
 });

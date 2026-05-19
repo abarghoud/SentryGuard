@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { decode } from 'jsonwebtoken';
 import { Repository } from 'typeorm';
 import { User } from '../../../entities/user.entity';
 import { decrypt } from '../../../common/utils/crypto.util';
@@ -7,6 +8,7 @@ import {
   TeslaTokenRefreshService,
   RefreshResult,
 } from './tesla-token-refresh.service';
+import { TeslaScopes } from '@sentryguard/beta-domain';
 
 @Injectable()
 export class AccessTokenService {
@@ -16,7 +18,7 @@ export class AccessTokenService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly teslaTokenRefreshService: TeslaTokenRefreshService
-  ) {}
+  ) { }
 
   async getAccessTokenForUserId(userId: string): Promise<string | null> {
     const user = await this.userRepository.findOne({ where: { userId } });
@@ -52,6 +54,22 @@ export class AccessTokenService {
     }
 
     return this.decryptAccessTokenSafely(user);
+  }
+
+  async hasVehicleCommandsScope(userId: string): Promise<boolean> {
+    const token = await this.getAccessTokenForUserId(userId);
+
+    if (!token) {
+      return false;
+    }
+
+    const decodedToken = decode(token) as Record<string, unknown> | null;
+
+    if (!decodedToken || !Array.isArray(decodedToken.scp)) {
+      return false;
+    }
+
+    return decodedToken.scp.includes(TeslaScopes.VEHICLE_CMDS);
   }
 
   private decryptAccessTokenSafely(user: User): string | null {

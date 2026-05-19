@@ -1,6 +1,7 @@
 import { Controller, Get, Inject, Logger, UseGuards, Headers, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
+import { AccessTokenService } from './services/access-token.service';
 import type { OAuthProviderRequirements } from './interfaces/oauth-provider.requirements';
 import { oauthProviderRequirementsSymbol } from './interfaces/oauth-provider.requirements';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -8,6 +9,7 @@ import { CurrentUser } from './current-user.decorator';
 import { User } from '../../entities/user.entity';
 import { extractPreferredLanguage } from '../../common/utils/language.util';
 import { ThrottleOptions } from '../../config/throttle.config';
+import { TeslaScopes } from '@sentryguard/beta-domain';
 
 @Controller('auth')
 export class AuthController {
@@ -15,9 +17,10 @@ export class AuthController {
 
   constructor(
     private readonly authService: AuthService,
+    private readonly accessTokenService: AccessTokenService,
     @Inject(oauthProviderRequirementsSymbol)
     private readonly oauthProvider: OAuthProviderRequirements
-  ) {}
+  ) { }
 
   @Throttle(ThrottleOptions.publicSensitive())
   @Get('tesla/login')
@@ -47,7 +50,7 @@ export class AuthController {
 
     this.logger.log(`New Tesla OAuth scope change request with locale: ${userLocale}${missingScopes ? ` (missing: ${missingScopes.join(', ')})` : ''}`);
 
-    const { url, state } = this.oauthProvider.generateScopeChangeUrl(userLocale, missingScopes);
+    const { url, state } = this.oauthProvider.generateScopeChangeUrl(userLocale, missingScopes as TeslaScopes[]);
 
     return {
       url,
@@ -136,6 +139,25 @@ export class AuthController {
       userId: user.userId,
       email: user.email,
       message: 'Token is valid',
+    };
+  }
+
+  @Throttle(ThrottleOptions.authenticatedRead())
+  @Get('vehicle-commands-authorized')
+  @UseGuards(JwtAuthGuard)
+  async getVehicleCommandsAuthorization(@CurrentUser() user: User): Promise<{
+    authorized: boolean;
+  }> {
+    this.logger.log(
+      `Checking vehicle commands authorization for user: ${user.userId}`
+    );
+
+    const authorized = await this.accessTokenService.hasVehicleCommandsScope(
+      user.userId
+    );
+
+    return {
+      authorized,
     };
   }
 

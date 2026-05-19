@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type Vehicle } from '../features/vehicles/domain/entities';
 import Spinner from './Spinner';
+import RequireVehicleCommands from './RequireVehicleCommands';
 
 function BreakInOffensiveToggle({
   isOn,
@@ -293,12 +294,18 @@ export default function VehicleCard({
             </button>
 
           {vehicle.break_in_monitoring_enabled && (
-            <BreakInOffensiveToggle
-              isOn={isBreakInOffensiveOn}
-              isDisabled={isUpdatingBreakInOffensive}
-              onToggle={handleToggleBreakInOffensive}
-              tooltipText={t('offensiveResponseInfo')}
-            />
+            <RequireVehicleCommands
+              title={t('offensiveResponseLockedTitle')}
+              description={t('offensiveResponseLockedDescription')}
+              buttonLabel={t('offensiveResponseLockedButton')}
+            >
+              <BreakInOffensiveToggle
+                isOn={isBreakInOffensiveOn}
+                isDisabled={isUpdatingBreakInOffensive}
+                onToggle={handleToggleBreakInOffensive}
+                tooltipText={t('offensiveResponseInfo')}
+              />
+            </RequireVehicleCommands>
           )}
         </div>
       )}
