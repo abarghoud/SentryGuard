@@ -86,7 +86,7 @@ describe('The TeslaTokenRefreshService class', () => {
 
         expect(mockUserRepository.find).toHaveBeenCalledWith(
           expect.objectContaining({
-            select: ['userId'],
+            select: { userId: true },
           })
         );
       });

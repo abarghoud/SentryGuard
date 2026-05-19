@@ -47,7 +47,9 @@ export class TeslaTokenRefreshService {
         refresh_token_expires_at: Or(expiringWithinBuffer, notYetSet),
         token_revoked_at: IsNull(),
       },
-      select: ['userId'],
+      select: {
+        userId: true
+      },
     });
   }
 
