@@ -66,7 +66,7 @@ describe('The VehicleAlertNotifierService class', () => {
 
       expect(mockVehicleRepository.find).toHaveBeenCalledWith({
         where: { vin: 'TEST_VIN_123' },
-        select: ['userId', 'display_name'],
+        select: { userId: true, display_name: true },
       });
     });
 

@@ -50,7 +50,7 @@ describe('UserLanguageService', () => {
       expect(result).toBe('fr');
       expect(userRepository.findOne).toHaveBeenCalledWith({
         where: { userId: 'test-user-id' },
-        select: ['preferred_language'],
+        select: { preferred_language: true },
       });
     });
 

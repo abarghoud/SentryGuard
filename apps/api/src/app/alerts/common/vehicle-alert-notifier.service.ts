@@ -26,7 +26,7 @@ export class VehicleAlertNotifierService {
     private readonly kafkaLogContextService: KafkaLogContextService,
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>
-  ) { }
+  ) {}
 
   async dispatch(config: AlertDispatchConfig): Promise<{ userIds: string[] }> {
     const handlerStartTime = Date.now();
@@ -62,7 +62,10 @@ export class VehicleAlertNotifierService {
     const dbStart = Date.now();
     const vehicles = await this.vehicleRepository.find({
       where: { vin },
-      select: ['userId', 'display_name'],
+      select: {
+        userId: true,
+        display_name: true
+      },
     });
     const dbTime = Date.now() - dbStart;
 

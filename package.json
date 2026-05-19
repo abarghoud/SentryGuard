@@ -52,7 +52,7 @@
     "@nestjs/platform-ws": "^11.1.6",
     "@nestjs/schedule": "^6.0.1",
     "@nestjs/throttler": "^6.4.0",
-    "@nestjs/typeorm": "^11.0.0",
+    "@nestjs/typeorm": "^11.0.1",
     "@rollbar/react": "^1.0.0",
     "@types/google-protobuf": "^3.15.12",
     "axios": "1.15.2",
@@ -82,7 +82,7 @@
     "rollbar": "^2.26.5",
     "rxjs": "^7.8.2",
     "telegraf": "^4.16.3",
-    "typeorm": "^0.3.27"
+    "typeorm": "^1.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.8.0",

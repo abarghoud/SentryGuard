@@ -38,7 +38,9 @@ export class OnboardingService {
   async completeOnboarding(userId: string): Promise<{ success: boolean }> {
     const user = await this.userRepository.findOne({
       where: { userId },
-      relations: ['telegramConfig'],
+      relations: {
+        telegramConfig: true
+      },
     });
 
     if (!user) {

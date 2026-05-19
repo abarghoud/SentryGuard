@@ -15,7 +15,9 @@ export class UserLanguageService {
     const dbStart = Date.now();
     const user = await this.userRepository.findOne({
       where: { userId },
-      select: ['preferred_language'],
+      select: {
+        preferred_language: true
+      },
     });
     const dbTime = Date.now() - dbStart;
 
