@@ -5,6 +5,8 @@ import { AlertsOffensiveResponseService } from '../offensive-response/alerts-off
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Vehicle } from '../../entities/vehicle.entity';
 import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
+import { AccessTokenService } from '../auth/services/access-token.service';
+import { ForbiddenException } from '@nestjs/common';
 
 describe('The VehicleOffensiveResponseConfigService class', () => {
   let service: VehicleOffensiveResponseConfigService;
@@ -13,6 +15,7 @@ describe('The VehicleOffensiveResponseConfigService class', () => {
     findOne: jest.Mock;
     save: jest.Mock;
   };
+  let mockAccessTokenService: MockProxy<AccessTokenService>;
 
   beforeEach(async () => {
     mockOffensiveResponseService = mock<AlertsOffensiveResponseService>();
@@ -20,6 +23,7 @@ describe('The VehicleOffensiveResponseConfigService class', () => {
       findOne: jest.fn(),
       save: jest.fn(),
     };
+    mockAccessTokenService = mock<AccessTokenService>();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -27,6 +31,10 @@ describe('The VehicleOffensiveResponseConfigService class', () => {
         {
           provide: getRepositoryToken(Vehicle),
           useValue: mockVehicleRepository,
+        },
+        {
+          provide: AccessTokenService,
+          useValue: mockAccessTokenService,
         },
         {
           provide: AlertsOffensiveResponseService,
@@ -49,6 +57,7 @@ describe('The VehicleOffensiveResponseConfigService class', () => {
       beforeEach(async () => {
         mockVehicleRepository.findOne.mockResolvedValue(fakeVehicle);
         mockVehicleRepository.save.mockImplementation(async (v) => v);
+        mockAccessTokenService.hasVehicleCommandsScope.mockResolvedValue(true);
 
         await service.updateOffensiveResponse('user-1', 'VIN123', {
           break_in_offensive_response: OffensiveResponse.HONK,
@@ -61,6 +70,28 @@ describe('The VehicleOffensiveResponseConfigService class', () => {
 
       it('should save the vehicle', () => {
         expect(mockVehicleRepository.save).toHaveBeenCalledWith(fakeVehicle);
+      });
+    });
+
+    describe('When user lacks vehicle_cmds scope', () => {
+      const fakeVehicle = {
+        userId: 'user-1',
+        vin: 'VIN123',
+        break_in_offensive_response: OffensiveResponse.DISABLED,
+      } as Vehicle;
+
+      beforeEach(() => {
+        mockVehicleRepository.findOne.mockResolvedValue(fakeVehicle);
+        mockAccessTokenService.hasVehicleCommandsScope.mockResolvedValue(false);
+      });
+
+      it('should throw ForbiddenException', async () => {
+        await expect(
+          service.updateOffensiveResponse('user-1', 'VIN123', {
+            break_in_offensive_response: OffensiveResponse.HONK,
+          })
+        ).rejects.toThrow(ForbiddenException);
+        expect(mockVehicleRepository.save).not.toHaveBeenCalled();
       });
     });
 

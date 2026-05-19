@@ -27,6 +27,7 @@ describe('The TeslaVehicleCommandService class', () => {
   describe('The honkHorn() method', () => {
     describe('When no access token is available', () => {
       beforeEach(() => {
+        mockAccessTokenService.hasVehicleCommandsScope.mockResolvedValue(true);
         mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue(null);
       });
 
@@ -39,6 +40,7 @@ describe('The TeslaVehicleCommandService class', () => {
 
     describe('When access token is available', () => {
       beforeEach(() => {
+        mockAccessTokenService.hasVehicleCommandsScope.mockResolvedValue(true);
         mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('valid-token');
         jest.spyOn((service as any).teslaApi, 'post').mockResolvedValue({ data: { response: true } });
       });
@@ -48,6 +50,20 @@ describe('The TeslaVehicleCommandService class', () => {
 
         expect(mockAccessTokenService.getAccessTokenForUserId).toHaveBeenCalledWith('user-1');
         expect(result.success).toBe(true);
+      });
+    });
+
+    describe('When user lacks vehicle_cmds scope', () => {
+      beforeEach(() => {
+        mockAccessTokenService.hasVehicleCommandsScope.mockResolvedValue(false);
+      });
+
+      it('should return failure response', async () => {
+        const result = await service.honkHorn('TESTVIN1234567890', 'user-1');
+
+        expect(result.success).toBe(false);
+        expect(result.message).toBe('Missing vehicle_cmds scope');
+        expect(mockAccessTokenService.getAccessTokenForUserId).not.toHaveBeenCalled();
       });
     });
   });
