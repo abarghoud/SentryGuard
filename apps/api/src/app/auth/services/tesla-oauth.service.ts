@@ -77,7 +77,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
       redirect_uri: this.redirectUri,
       response_type: 'code',
       show_keypair_step: 'true',
-      scope: `${TeslaScopes.OPENID} ${TeslaScopes.VEHICLE_DEVICE_DATA} ${TeslaScopes.OFFLINE_ACCESS} ${TeslaScopes.USER_DATA}`,
+      scope: `${TeslaScopes.OPENID} ${TeslaScopes.VEHICLE_DEVICE_DATA} ${TeslaScopes.VEHICLE_CMDS} ${TeslaScopes.OFFLINE_ACCESS} ${TeslaScopes.USER_DATA}`,
       state: state,
     });
 
