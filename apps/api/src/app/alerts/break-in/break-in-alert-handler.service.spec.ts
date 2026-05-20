@@ -5,7 +5,7 @@ import { TelegramService } from '../../telegram/telegram.service';
 import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
 import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-offensive-response.service';
-import { TelemetryMessage, TelemetryDatum } from '../../telemetry/models/telemetry-message.model';
+import { TelemetryMessage, TelemetryDatum, TelemetryValue } from '../../telemetry/models/telemetry-message.model';
 import { ChargePortLatchTrackerService } from './charge-port-latch-tracker.service';
 
 describe('The BreakInAlertHandlerService class', () => {
@@ -52,14 +52,20 @@ describe('The BreakInAlertHandlerService class', () => {
         message = new TelemetryMessage();
         message.vin = '123';
         message.createdAt = new Date('2026-05-05T20:00:00Z').toISOString();
-        message.data = [{ key: 'ChargePortLatch' } as TelemetryDatum];
+
+        const datum = new TelemetryDatum();
+        datum.key = 'ChargePortLatch';
+        datum.value = new TelemetryValue();
+        datum.value.chargePortLatchValue = 'ChargePortLatchDisengaged';
+        message.data = [datum];
+
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(false);
       });
 
       it('should track the latch event in the charge tracker', async () => {
         await service.handle(message);
         const expectedTime = new Date(message.createdAt).getTime();
-        expect(mockChargeTracker.trackLatchEvent).toHaveBeenCalledWith('123', expectedTime);
+        expect(mockChargeTracker.trackLatchEvent).toHaveBeenCalledWith('123', expectedTime, 'ChargePortLatchDisengaged');
       });
     });
 

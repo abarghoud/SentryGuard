@@ -7,11 +7,12 @@ export class ChargePortLatchTrackerService {
 
   private recentEvents = new Map<string, number[]>();
 
-  trackLatchEvent(vin: string, timestamp: number): void {
-    const events = this.recentEvents.get(vin) || [];
-    events.push(timestamp);
-
-    this.recentEvents.set(vin, events.filter(t => timestamp - t < this.CLEANUP_MS));
+  trackLatchEvent(vin: string, timestamp: number, state: string | undefined): void {
+    if (state === 'ChargePortLatchDisengaged') {
+      const events = this.recentEvents.get(vin) || [];
+      events.push(timestamp);
+      this.recentEvents.set(vin, events.filter(t => timestamp - t < this.CLEANUP_MS));
+    }
   }
 
   hasLatchEventAround(vin: string, eventTimestamp: number): boolean {

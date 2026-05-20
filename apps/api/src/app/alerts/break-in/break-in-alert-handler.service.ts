@@ -34,9 +34,10 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
   }
 
   private trackChargePortEvents(telemetryMessage: TelemetryMessage): void {
-    if (telemetryMessage.data.some(d => d.key === 'ChargePortLatch')) {
+    const latchDatum = telemetryMessage.data.find(d => d.key === 'ChargePortLatch');
+    if (latchDatum) {
       const eventTime = new Date(telemetryMessage.createdAt).getTime();
-      this.chargeTracker.trackLatchEvent(telemetryMessage.vin, eventTime);
+      this.chargeTracker.trackLatchEvent(telemetryMessage.vin, eventTime, latchDatum.value.chargePortLatchValue);
     }
   }
 
