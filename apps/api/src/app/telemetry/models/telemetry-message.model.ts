@@ -33,6 +33,10 @@ export class TelemetryValue {
   @IsOptional()
   @IsString()
   displayStateValue?: string;
+
+  @IsOptional()
+  @IsString()
+  chargePortLatchValue?: string;
 }
 
 export class TelemetryDatum {
