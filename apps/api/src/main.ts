@@ -19,6 +19,8 @@ async function bootstrap() {
       webappUrl,
       'http://localhost:4200',
       'http://localhost:3000',
+      'http://localhost:8081',
+      'http://localhost:19006',
       ...additionalOrigins,
     ])
   );

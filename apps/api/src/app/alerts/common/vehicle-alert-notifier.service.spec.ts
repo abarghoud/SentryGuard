@@ -7,6 +7,9 @@ import { UserLanguageService } from '../../user/user-language.service';
 import { KafkaLogContextService } from '../../../common/services/kafka-log-context.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
 import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
+import { AlertsService } from '../alerts.service';
+import { NotificationsService } from '../../notifications/notifications.service';
+import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
 
 describe('The VehicleAlertNotifierService class', () => {
   let service: VehicleAlertNotifierService;
@@ -14,17 +17,25 @@ describe('The VehicleAlertNotifierService class', () => {
   let mockUserLanguageService: MockProxy<UserLanguageService>;
   let mockKafkaLogContextService: MockProxy<KafkaLogContextService>;
   let mockVehicleRepository: MockProxy<Repository<Vehicle>>;
+  let mockAlertsService: MockProxy<AlertsService>;
+  let mockNotificationsService: MockProxy<NotificationsService>;
 
   beforeEach(async () => {
     mockUserLanguageService = mock<UserLanguageService>();
     mockKafkaLogContextService = mock<KafkaLogContextService>();
     mockVehicleRepository = mock<Repository<Vehicle>>();
+    mockAlertsService = mock<AlertsService>();
+    mockNotificationsService = mock<NotificationsService>();
+    mockNotificationsService.shouldSendTelegram.mockResolvedValue(true);
+    mockNotificationsService.sendPushAlert.mockResolvedValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         VehicleAlertNotifierService,
         { provide: UserLanguageService, useValue: mockUserLanguageService },
         { provide: KafkaLogContextService, useValue: mockKafkaLogContextService },
+        { provide: AlertsService, useValue: mockAlertsService },
+        { provide: NotificationsService, useValue: mockNotificationsService },
         { provide: getRepositoryToken(Vehicle), useValue: mockVehicleRepository },
       ],
     }).compile();
@@ -54,8 +65,12 @@ describe('The VehicleAlertNotifierService class', () => {
       config = {
         telemetryMessage,
         alertName: 'TEST_ALERT',
+        alertTitle: 'Test alert',
         latencyLabel: 'TEST_LATENCY',
+        message: 'Test message',
+        severity: AlertEventSeverity.Critical,
         telegramNotifier: mockTelegramNotifier,
+        type: AlertEventType.BreakIn,
       };
     });
 

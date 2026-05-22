@@ -72,4 +72,13 @@ export class User {
 
   @OneToMany('UserConsent', 'user')
   consents!: any[];
+
+  @OneToOne('NotificationPreferences', 'user')
+  notificationPreferences!: any;
+
+  @OneToMany('PushDeviceToken', 'user')
+  pushDeviceTokens!: any[];
+
+  @OneToMany('AlertEvent', 'user')
+  alertEvents!: any[];
 }

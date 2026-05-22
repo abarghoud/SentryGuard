@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "SentryGuard",
+    "slug": "sentryguard",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "sentryguard",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "icon": "./assets/icon.png",
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sentryguard.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#07110f",
+        "foregroundImage": "./assets/adaptive-icon.png"
+      },
+      "package": "com.sentryguard.mobile",
+      "edgeToEdgeEnabled": true,
+      "permissions": ["POST_NOTIFICATIONS"]
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.ico"
+    },
+    "plugins": [
+      "expo-notifications",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#07110f",
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain"
+        }
+      ]
+    ]
+  }
+}

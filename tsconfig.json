@@ -11,6 +11,9 @@
     },
     {
       "path": "./libs/beta/domain"
+    },
+    {
+      "path": "./apps/mobile"
     }
   ]
 }

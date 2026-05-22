@@ -145,7 +145,7 @@ export class TelemetryConfigService {
       );
       telemetryConfigsMap.set(teslaVehicle.vin, telemetryConfig);
 
-      const isTelemetryConfigured = telemetryConfig?.config !== null && telemetryConfig?.config !== undefined;
+      const isTelemetryConfigured = this.isSentryModeConfigured(telemetryConfig);
 
       await this.vehicleRepository.upsert(
         {
@@ -167,6 +167,10 @@ export class TelemetryConfigService {
       where: { userId },
       order: { created_at: 'ASC' },
     });
+  }
+
+  private isSentryModeConfigured(telemetryConfig: TelemetryConfig | null): boolean {
+    return telemetryConfig?.config?.fields?.SentryMode !== undefined;
   }
 
   async patchTelemetryConfig(

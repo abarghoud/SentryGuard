@@ -14,6 +14,8 @@ import { BreakInAlertHandlerService } from './alerts/break-in/break-in-alert-han
 import { ChargePortLatchTrackerService } from './alerts/break-in/charge-port-latch-tracker.service';
 import { VehicleAlertNotifierService } from './alerts/common/vehicle-alert-notifier.service';
 import { OffensiveResponseModule } from './offensive-response/offensive-response.module';
+import { AlertsModule } from './alerts/alerts.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { TelemetryEventHandlerSymbol } from './telemetry/interfaces/telemetry-event-handler.interface';
 import { kafkaMessageHandler } from './messaging/kafka/interfaces/message-handler.interface';
 import { AuthModule } from './auth/auth.module';
@@ -33,13 +35,16 @@ import { getThrottleConfig } from '../config/throttle.config';
 import { getPinoConfig } from '../config/pino.config';
 import { Vehicle } from '../entities/vehicle.entity';
 import { User } from '../entities/user.entity';
+import { NotificationPreferences } from '../entities/notification-preferences.entity';
+import { PushDeviceToken } from '../entities/push-device-token.entity';
+import { AlertEvent } from '../entities/alert-event.entity';
 import { RetryManager } from './shared/retry-manager.service';
 
 @Module({
   imports: [
     LoggerModule.forRoot(getPinoConfig()),
     TypeOrmModule.forRoot(getDatabaseConfig()),
-    TypeOrmModule.forFeature([Vehicle, User]),
+    TypeOrmModule.forFeature([Vehicle, User, NotificationPreferences, PushDeviceToken, AlertEvent]),
     ScheduleModule.forRoot(),
     AuthModule,
     TelemetryModule,
@@ -50,6 +55,8 @@ import { RetryManager } from './shared/retry-manager.service';
     TeslaPublicKeyModule,
     OnboardingModule,
     OffensiveResponseModule,
+    AlertsModule,
+    NotificationsModule,
     ThrottlerModule.forRoot([getThrottleConfig()]),
   ],
   controllers: [AppController],

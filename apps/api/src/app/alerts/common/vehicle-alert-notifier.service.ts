@@ -7,12 +7,19 @@ import { UserLanguageService } from '../../user/user-language.service';
 import { KafkaLogContextService } from '../../../common/services/kafka-log-context.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
 import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
+import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
+import { AlertsService } from '../alerts.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 
 export interface AlertDispatchConfig {
   telemetryMessage: TelemetryMessage;
   alertName: string;
+  alertTitle: string;
   latencyLabel: string;
+  message: string;
+  severity: AlertEventSeverity;
   telegramNotifier: (userId: string, alertInfo: { vin: string; display_name?: string }, userLanguage: 'en' | 'fr') => Promise<void>;
+  type: AlertEventType;
 }
 
 @Injectable()
@@ -24,6 +31,8 @@ export class VehicleAlertNotifierService {
   constructor(
     private readonly userLanguageService: UserLanguageService,
     private readonly kafkaLogContextService: KafkaLogContextService,
+    private readonly alertsService: AlertsService,
+    private readonly notificationsService: NotificationsService,
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>
   ) {}
@@ -46,7 +55,8 @@ export class VehicleAlertNotifierService {
 
       this.logMultiUserNotification(message.vin, userIds.length);
 
-      const results = await this.notifyAllUsers(userIds, alertInfo, telegramNotifier, message.correlationId, alertName);
+      await this.recordAlerts(userIds, alertInfo, config);
+      const results = await this.notifyAllUsers(userIds, alertInfo, telegramNotifier, message.correlationId, alertName, config);
       this.logNotificationResults(results, message.vin, alertName, message.correlationId);
 
       this.logAlertLatency(message, handlerStartTime, latencyLabel);
@@ -101,10 +111,11 @@ export class VehicleAlertNotifierService {
     alertInfo: { vin: string; display_name?: string },
     telegramNotifier: AlertDispatchConfig['telegramNotifier'],
     correlationId?: string,
-    alertName?: string
+    alertName?: string,
+    config?: AlertDispatchConfig
   ): Promise<Array<{ success: boolean; userId: string; error?: unknown }>> {
     const notificationPromises = userIds.map(userId =>
-      this.notifyUser(userId, alertInfo, telegramNotifier, correlationId, alertName)
+      this.notifyUser(userId, alertInfo, telegramNotifier, correlationId, alertName, config)
     );
 
     return Promise.all(notificationPromises);
@@ -115,13 +126,19 @@ export class VehicleAlertNotifierService {
     alertInfo: { vin: string; display_name?: string },
     telegramNotifier: AlertDispatchConfig['telegramNotifier'],
     correlationId?: string,
-    alertName?: string
+    alertName?: string,
+    config?: AlertDispatchConfig
   ): Promise<{ success: boolean; userId: string; error?: unknown }> {
     try {
       const userLanguage = await this.userLanguageService.getUserLanguage(userId);
 
       const telegramStart = Date.now();
-      await telegramNotifier(userId, alertInfo, userLanguage);
+      if (!config || await this.notificationsService.shouldSendTelegram(userId, config.severity)) {
+        await telegramNotifier(userId, alertInfo, userLanguage);
+      }
+      if (config) {
+        await this.notificationsService.sendPushAlert(userId, config.alertTitle, config.message, config.severity);
+      }
       const telegramTime = Date.now() - telegramStart;
 
       if (telegramTime > VehicleAlertNotifierService.TELEGRAM_SLOW_THRESHOLD_MS) {
@@ -170,5 +187,11 @@ export class VehicleAlertNotifierService {
         this.logger.log(`[${latencyLabel}] CorrelationId: ${telemetryMessage.correlationId} - Total: ${endToEndLatency}ms (Handler: ${handlerProcessingTime}ms) ✅`);
       }
     }
+  }
+
+  private async recordAlerts(userIds: string[], alertInfo: { vin: string; display_name?: string }, config: AlertDispatchConfig): Promise<void> {
+    await Promise.all(userIds.map((userId) =>
+      this.alertsService.record(userId, alertInfo.vin, config.type, config.severity, config.alertTitle, config.message, alertInfo.display_name)
+    ));
   }
 }

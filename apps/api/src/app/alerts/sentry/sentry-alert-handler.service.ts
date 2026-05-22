@@ -5,6 +5,7 @@ import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard
 import { TelemetryEventHandler } from '../../telemetry/interfaces/telemetry-event-handler.interface';
 import { SentryModeState, TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
+import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
 
 @Injectable()
 export class SentryAlertHandlerService implements TelemetryEventHandler {
@@ -28,8 +29,12 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
       await this.alertNotifier.dispatch({
         telemetryMessage,
         alertName: 'SENTRY_ALERT',
+        alertTitle: 'Alerte Sentinelle',
         latencyLabel: 'SENTRY_LATENCY',
+        message: 'Un événement Sentinelle a été détecté.',
+        severity: AlertEventSeverity.Warning,
         telegramNotifier: this.telegramNotifier,
+        type: AlertEventType.Sentry,
       });
     }
   }

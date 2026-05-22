@@ -54,6 +54,10 @@ test-output
 .next
 out
 
+# Expo local state
+.expo
+apps/*/.expo
+
 # Environment variables
 .env
 .env.local

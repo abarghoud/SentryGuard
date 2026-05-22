@@ -80,14 +80,14 @@ describe('The BreakInMonitoringConfigService class', () => {
         mockTelemetryConfigService.patchTelemetryConfig.mockResolvedValue({ success: true });
       });
 
-      it('should patch to delete CenterDisplay', async () => {
+      it('should patch to delete break-in telemetry fields', async () => {
         const result = await service.toggleBreakInMonitoring(vin, userId, false);
 
         expect(mockTelemetryConfigService.patchTelemetryConfig).toHaveBeenCalledWith(
           vin,
           userId,
           {},
-          ['CenterDisplay']
+          ['CenterDisplay', 'ChargePortLatch']
         );
         expect(vehicle.break_in_monitoring_enabled).toBe(false);
         expect(mockVehicleRepository.save).toHaveBeenCalledWith(vehicle);

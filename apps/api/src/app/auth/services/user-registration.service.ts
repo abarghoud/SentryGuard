@@ -99,7 +99,7 @@ export class UserRegistrationService {
 
     const jwtData = await this.generateJwtToken(userId, user.email || '');
     user.jwt_token = jwtData.token;
-    user.jwt_expires_at = tokens.expiresAt;
+    user.jwt_expires_at = jwtData.expiresAt;
     user.token_revoked_at = null;
 
     const now = new Date();
@@ -148,7 +148,7 @@ export class UserRegistrationService {
       refresh_token: encryptedRefreshToken,
       expires_at: tokens.expiresAt,
       jwt_token: jwtData.token,
-      jwt_expires_at: tokens.expiresAt,
+      jwt_expires_at: jwtData.expiresAt,
       preferred_language: userLocale,
       token_revoked_at: null,
       refresh_token_updated_at: now,

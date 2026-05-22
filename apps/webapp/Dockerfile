@@ -8,6 +8,7 @@ FROM base AS dependencies
 COPY package.json yarn.lock .yarnrc.yml ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/webapp/package.json ./apps/webapp/
+COPY apps/mobile/package.json ./apps/mobile/
 COPY libs/beta/domain/package.json ./libs/beta/domain/
 
 RUN yarn install --immutable

@@ -9,6 +9,11 @@ describe('The JwtStrategy class', () => {
 
   const fakeUserId = 'user-123';
   const fakePayload: JwtPayload = { sub: fakeUserId, email: 'test@example.com' };
+  const fakeRequest = {
+    headers: {
+      authorization: 'Bearer valid-token',
+    },
+  };
   const fakeUser = {
     userId: fakeUserId,
     email: 'test@example.com',
@@ -30,7 +35,7 @@ describe('The JwtStrategy class', () => {
 
       beforeEach(() => {
         mockUserRepository.findOne.mockResolvedValue(null);
-        act = () => strategy.validate(fakePayload);
+        act = () => strategy.validate(fakeRequest, fakePayload);
       });
 
       it('should throw UnauthorizedException', async () => {
@@ -44,7 +49,7 @@ describe('The JwtStrategy class', () => {
 
       beforeEach(() => {
         mockUserRepository.findOne.mockResolvedValue({ ...fakeUser, jwt_token: null });
-        act = () => strategy.validate(fakePayload);
+        act = () => strategy.validate(fakeRequest, fakePayload);
       });
 
       it('should throw UnauthorizedException', async () => {
@@ -58,7 +63,21 @@ describe('The JwtStrategy class', () => {
 
       beforeEach(() => {
         mockUserRepository.findOne.mockResolvedValue({ ...fakeUser, jwt_expires_at: new Date(Date.now() - 1000) });
-        act = () => strategy.validate(fakePayload);
+        act = () => strategy.validate(fakeRequest, fakePayload);
+      });
+
+      it('should throw UnauthorizedException', async () => {
+        await expect(act()).rejects.toThrow(expectedError);
+      });
+    });
+
+    describe('When bearer token is not the current token', () => {
+      const expectedError = 'Token expired or invalid';
+      let act: () => Promise<User>;
+
+      beforeEach(() => {
+        mockUserRepository.findOne.mockResolvedValue({ ...fakeUser, jwt_token: 'new-token' });
+        act = () => strategy.validate(fakeRequest, fakePayload);
       });
 
       it('should throw UnauthorizedException', async () => {
@@ -71,7 +90,7 @@ describe('The JwtStrategy class', () => {
 
       beforeEach(async () => {
         mockUserRepository.findOne.mockResolvedValue(fakeUser);
-        result = await strategy.validate(fakePayload);
+        result = await strategy.validate(fakeRequest, fakePayload);
       });
 
       it('should return the user', () => {

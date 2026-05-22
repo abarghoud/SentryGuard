@@ -31,9 +31,9 @@ export class AuthService {
   async exchangeCodeForTokens(
     code: string,
     state: string
-  ): Promise<{ jwt: string; userId: string }> {
+  ): Promise<{ jwt: string; mobileRedirectUri?: string; userId: string }> {
     try {
-      const { tokens, profile, userLocale } =
+      const { tokens, profile, userLocale, mobileRedirectUri } =
         await this.oauthProvider.authenticateWithCode(code, state);
       const userId =
         await this.userRegistrationService.createOrUpdateUser(
@@ -47,7 +47,7 @@ export class AuthService {
       });
       const jwt = savedUser?.jwt_token || '';
 
-      return { jwt, userId };
+      return { jwt, mobileRedirectUri, userId };
     } catch (error: unknown) {
       if (
         error instanceof MissingPermissionsException ||
@@ -97,6 +97,38 @@ export class AuthService {
     }
   }
 
+  async getRefreshableJwtUser(jwt: string): Promise<User | null> {
+    try {
+      const payload = await this.jwtService.verifyAsync(jwt, { ignoreExpiration: true });
+      const user = await this.userRepository.findOne({ where: { userId: payload.sub } });
+
+      if (!user || user.jwt_token !== jwt || !this.hasRefreshableSession(user)) {
+        return null;
+      }
+
+      return user;
+    } catch (error) {
+      this.logger.error(`Failed to read refreshable JWT token:`, error);
+      return null;
+    }
+  }
+
+  async refreshJwtSession(userId: string): Promise<{ jwt: string; jwt_expires_at: Date } | null> {
+    const user = await this.userRepository.findOne({ where: { userId } });
+
+    if (!user || !this.hasRefreshableSession(user)) {
+      return null;
+    }
+
+    const jwtData = await this.generateJwtToken(user.userId, user.email || '');
+    user.jwt_token = jwtData.token;
+    user.jwt_expires_at = jwtData.expiresAt;
+    user.token_revoked_at = null;
+    await this.userRepository.save(user);
+
+    return { jwt: jwtData.token, jwt_expires_at: jwtData.expiresAt };
+  }
+
   async revokeJwtToken(userId: string): Promise<void> {
     const user = await this.userRepository.findOne({ where: { userId } });
 
@@ -127,5 +159,37 @@ export class AuthService {
     this.logger.warn(
       `All tokens invalidated for user ${userId} due to Tesla token revocation`
     );
+  }
+
+  private hasRefreshableSession(user: User): boolean {
+    if (user.token_revoked_at || !user.refresh_token) {
+      return false;
+    }
+
+    return !user.refresh_token_expires_at || new Date() < user.refresh_token_expires_at;
+  }
+
+  private async generateJwtToken(userId: string, email: string): Promise<{ token: string; expiresAt: Date }> {
+    const token = await this.jwtService.signAsync({ sub: userId, email });
+    return { token, expiresAt: this.resolveJwtExpiresAt() };
+  }
+
+  private resolveJwtExpiresAt(): Date {
+    const expiresAt = new Date();
+    const match = (process.env.JWT_EXPIRATION || '30d').match(/^(\d+)([dhm])$/);
+
+    if (!match) {
+      expiresAt.setDate(expiresAt.getDate() + 30);
+      return expiresAt;
+    }
+
+    this.applyJwtExpiry(expiresAt, parseInt(match[1], 10), match[2]);
+    return expiresAt;
+  }
+
+  private applyJwtExpiry(expiresAt: Date, value: number, unit: string): void {
+    if (unit === 'd') expiresAt.setDate(expiresAt.getDate() + value);
+    if (unit === 'h') expiresAt.setHours(expiresAt.getHours() + value);
+    if (unit === 'm') expiresAt.setMinutes(expiresAt.getMinutes() + value);
   }
 }

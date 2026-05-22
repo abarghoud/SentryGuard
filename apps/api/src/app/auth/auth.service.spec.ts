@@ -21,6 +21,7 @@ describe('The AuthService class', () => {
   };
 
   const mockJwtService = {
+    signAsync: jest.fn(),
     verifyAsync: jest.fn(),
   };
 
@@ -55,6 +56,7 @@ describe('The AuthService class', () => {
     jest.clearAllMocks();
     mockUserRepository.findOne.mockResolvedValue(null);
     mockUserRepository.save.mockImplementation((user) => Promise.resolve(user));
+    mockJwtService.signAsync.mockResolvedValue('refreshed-jwt');
   });
 
   describe('The exchangeCodeForTokens() method', () => {
@@ -309,6 +311,84 @@ describe('The AuthService class', () => {
 
       it('should not call save', () => {
         expect(mockUserRepository.save).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('The getRefreshableJwtUser() method', () => {
+    describe('When the JWT is expired but refreshable', () => {
+      const fakeUser = {
+        userId: 'user-123',
+        jwt_token: 'expired-jwt',
+        refresh_token: 'refresh-token',
+        refresh_token_expires_at: new Date(Date.now() + 3600000),
+        token_revoked_at: null,
+      } as User;
+
+      let result: User | null;
+
+      beforeEach(async () => {
+        mockJwtService.verifyAsync.mockResolvedValue({ sub: 'user-123' });
+        mockUserRepository.findOne.mockResolvedValue(fakeUser);
+
+        result = await service.getRefreshableJwtUser('expired-jwt');
+      });
+
+      it('should return the user', () => {
+        expect(result).toBe(fakeUser);
+      });
+    });
+
+    describe('When the refresh token is expired', () => {
+      let result: User | null;
+
+      beforeEach(async () => {
+        mockJwtService.verifyAsync.mockResolvedValue({ sub: 'user-123' });
+        mockUserRepository.findOne.mockResolvedValue({
+          userId: 'user-123',
+          jwt_token: 'expired-jwt',
+          refresh_token: 'refresh-token',
+          refresh_token_expires_at: new Date(Date.now() - 3600000),
+        } as User);
+
+        result = await service.getRefreshableJwtUser('expired-jwt');
+      });
+
+      it('should return null', () => {
+        expect(result).toBeNull();
+      });
+    });
+  });
+
+  describe('The refreshJwtSession() method', () => {
+    describe('When the user has a refreshable session', () => {
+      const fakeUser = {
+        userId: 'user-123',
+        email: 'test@example.com',
+        refresh_token: 'refresh-token',
+        refresh_token_expires_at: new Date(Date.now() + 3600000),
+        token_revoked_at: null,
+      } as User;
+
+      let result: { jwt: string; jwt_expires_at: Date } | null;
+
+      beforeEach(async () => {
+        mockUserRepository.findOne.mockResolvedValue(fakeUser);
+
+        result = await service.refreshJwtSession('user-123');
+      });
+
+      it('should return a refreshed JWT', () => {
+        expect(result?.jwt).toBe('refreshed-jwt');
+      });
+
+      it('should save the refreshed JWT', () => {
+        expect(mockUserRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({
+            jwt_token: 'refreshed-jwt',
+            jwt_expires_at: expect.any(Date),
+          })
+        );
       });
     });
   });

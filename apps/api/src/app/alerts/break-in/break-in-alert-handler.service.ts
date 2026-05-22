@@ -6,6 +6,7 @@ import { TelemetryEventHandler } from '../../telemetry/interfaces/telemetry-even
 import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
 import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-offensive-response.service';
+import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
 
 import { ChargePortLatchTrackerService } from './charge-port-latch-tracker.service';
 
@@ -58,8 +59,12 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
       const { userIds } = await this.alertNotifier.dispatch({
         telemetryMessage,
         alertName: 'BREAK_IN_ALERT',
+        alertTitle: 'Alerte intrusion',
         latencyLabel: 'BREAK_IN_LATENCY',
+        message: 'Une tentative d’intrusion a été détectée.',
+        severity: AlertEventSeverity.Critical,
         telegramNotifier: this.telegramNotifier,
+        type: AlertEventType.BreakIn,
       });
 
       this.offensiveResponseService.handleBreakInOffensiveResponse(telemetryMessage.vin, userIds).catch((error: unknown) => {
