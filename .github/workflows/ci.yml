@@ -40,6 +40,6 @@ jobs:
       - name: Test
         run: yarn nx run-many -t test --skip-nx-cache
 
-      # Build all projects
+      # Build all projects (mobile excluded — requires Android SDK/EAS)
       - name: Build
-        run: yarn nx run-many -t build
+        run: yarn nx run-many -t build --projects=!mobile
