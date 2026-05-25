@@ -59,14 +59,20 @@ export class NotificationsService {
     return preferences.telegram_enabled && this.allowsSeverity(preferences, severity);
   }
 
-  public async sendPushAlert(userId: string, title: string, body: string, severity: AlertEventSeverity): Promise<void> {
+  public async sendPushAlert(
+    userId: string,
+    title: string,
+    body: string,
+    severity: AlertEventSeverity,
+    userLanguage: 'en' | 'fr'
+  ): Promise<void> {
     const preferences = await this.findOrCreatePreferences(userId);
     if (!preferences.push_enabled || !this.allowsSeverity(preferences, severity)) {
       return;
     }
 
     const devices = await this.pushDeviceTokenRepository.find({ where: { userId, enabled: true } });
-    await Promise.all(devices.map((device) => this.sendExpoPush(device, title, body, severity, preferences.critical_alerts_enabled)));
+    await Promise.all(devices.map((device) => this.sendExpoPush(device, title, body, severity, preferences.critical_alerts_enabled, userId, userLanguage)));
   }
 
   private async findOrCreatePreferences(userId: string): Promise<NotificationPreferences> {
@@ -100,10 +106,18 @@ export class NotificationsService {
     return !preferences.critical_only || severity === AlertEventSeverity.Critical;
   }
 
-  private async sendExpoPush(device: PushDeviceToken, title: string, body: string, severity: AlertEventSeverity, criticalAlertsEnabled: boolean): Promise<void> {
+  private async sendExpoPush(
+    device: PushDeviceToken,
+    title: string,
+    body: string,
+    severity: AlertEventSeverity,
+    criticalAlertsEnabled: boolean,
+    userId: string,
+    userLanguage: 'en' | 'fr'
+  ): Promise<void> {
     try {
       const response = await fetch('https://exp.host/--/api/v2/push/send', {
-        body: JSON.stringify(this.buildExpoPushBody(device.token, title, body, severity, criticalAlertsEnabled)),
+        body: JSON.stringify(this.buildExpoPushBody(device.token, title, body, severity, criticalAlertsEnabled, userId, userLanguage)),
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         method: 'POST',
       });
@@ -114,18 +128,32 @@ export class NotificationsService {
     }
   }
 
-  private buildExpoPushBody(token: string, title: string, body: string, severity: AlertEventSeverity, criticalAlertsEnabled: boolean): object {
+  private buildExpoPushBody(
+    token: string,
+    title: string,
+    body: string,
+    severity: AlertEventSeverity,
+    criticalAlertsEnabled: boolean,
+    userId: string,
+    userLanguage: 'en' | 'fr'
+  ): object {
     const isCriticalAlert = criticalAlertsEnabled && severity === AlertEventSeverity.Critical;
+    const channelId = isCriticalAlert ? 'sentryguard-critical-alerts-v5' : 'sentryguard-alerts';
 
     return {
       body,
-      channelId: isCriticalAlert ? 'sentryguard-critical-alerts' : 'sentryguard-alerts',
-      data: { criticalAlertsEnabled, severity },
+      channelId,
+      data: { channelId, criticalAlertsEnabled, isCriticalAlert, severity, teslaRedirectUrl: this.buildTeslaRedirectUrl(userId, userLanguage) },
       priority: isCriticalAlert || severity === AlertEventSeverity.Critical ? 'high' : 'default',
       sound: isCriticalAlert ? { critical: true, name: 'default', volume: 1 } : 'default',
       title,
       to: token,
     };
+  }
+
+  private buildTeslaRedirectUrl(userId: string, userLanguage: 'en' | 'fr'): string {
+    const baseUrl = process.env.TELEGRAM_WEBHOOK_BASE || 'http://localhost:3000';
+    return `${baseUrl}/redirect/tesla-app?userId=${encodeURIComponent(userId)}&lang=${userLanguage}`;
   }
 
   private async handleExpoPushResponse(device: PushDeviceToken, response: Response): Promise<void> {

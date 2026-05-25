@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import type { JSX } from 'react';
@@ -67,8 +68,16 @@ function SessionQueryBoundary(): JSX.Element {
     const onAlertNotification = (): void => {
       void queryClient.invalidateQueries({ queryKey: ['alerts'] });
     };
+    const onAlertNotificationResponse = (response: Notifications.NotificationResponse): void => {
+      void handleAlertNotificationResponse(response, queryClient);
+    };
     const receivedSubscription = Notifications.addNotificationReceivedListener(onAlertNotification);
-    const responseSubscription = Notifications.addNotificationResponseReceivedListener(onAlertNotification);
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener(onAlertNotificationResponse);
+    const lastResponse = Notifications.getLastNotificationResponse();
+
+    if (lastResponse) {
+      void handleAlertNotificationResponse(lastResponse, queryClient);
+    }
 
     return () => {
       receivedSubscription.remove();
@@ -87,4 +96,27 @@ function SessionQueryBoundary(): JSX.Element {
   }, [queryClient]);
 
   return <MobileShell />;
+}
+
+async function handleAlertNotificationResponse(
+  response: Notifications.NotificationResponse,
+  queryClient: QueryClient
+): Promise<void> {
+  void queryClient.invalidateQueries({ queryKey: ['alerts'] });
+
+  if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) {
+    return;
+  }
+
+  const teslaRedirectUrl = resolveTeslaRedirectUrl(response.notification.request.content.data);
+  if (!teslaRedirectUrl) {
+    return;
+  }
+
+  Notifications.clearLastNotificationResponse();
+  await Linking.openURL(teslaRedirectUrl);
+}
+
+function resolveTeslaRedirectUrl(data: Record<string, unknown>): string | null {
+  return typeof data.teslaRedirectUrl === 'string' ? data.teslaRedirectUrl : null;
 }
