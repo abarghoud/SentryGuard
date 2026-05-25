@@ -20,7 +20,10 @@
       },
       "package": "com.sentryguard.mobile",
       "edgeToEdgeEnabled": true,
-      "permissions": ["POST_NOTIFICATIONS"]
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "bundler": "metro",

@@ -39,25 +39,25 @@ export async function requestExpoPushToken(): Promise<string | null> {
     return null;
   }
 
+  const permissions = await Notifications.getPermissionsAsync();
+  const requestedPermissions = permissions.granted
+    ? permissions
+    : await Notifications.requestPermissionsAsync();
+  const finalStatus = requestedPermissions.status;
+
+  if (finalStatus !== 'granted') {
+    return null;
+  }
+
   try {
-    const permissions = await Notifications.getPermissionsAsync();
-    const requestedPermissions = permissions.granted
-      ? permissions
-      : await Notifications.requestPermissionsAsync();
-    const finalStatus = requestedPermissions.status;
-
-    if (finalStatus !== 'granted') {
-      return null;
-    }
-
     const projectId = getEasProjectId();
     const expoToken = projectId
       ? await Notifications.getExpoPushTokenAsync({ projectId })
       : await Notifications.getExpoPushTokenAsync();
 
     return expoToken.data;
-  } catch {
-    return null;
+  } catch (error) {
+    throw new Error(resolvePushTokenErrorMessage(error));
   }
 }
 
@@ -73,4 +73,12 @@ function getEasProjectId(): string | undefined {
 
 function isExpoExtra(extra: unknown): extra is { eas?: { projectId?: string } } {
   return typeof extra === 'object' && extra !== null && 'eas' in extra;
+}
+
+function resolvePushTokenErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
 }

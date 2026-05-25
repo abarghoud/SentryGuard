@@ -74,6 +74,7 @@ error.log
 *.pem
 *.key
 *.cert
+apps/mobile/google-services.json
 
 # Fleet Telemetry certs (generated, never commit)
 fleet-telemetry/certs/

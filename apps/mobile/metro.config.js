@@ -1,4 +1,4 @@
-const { getDefaultConfig } = require('@expo/metro-config');
+const { getDefaultConfig } = require('expo/metro-config');
 const { withNxMetro } = require('@nx/expo');
 const { mergeConfig } = require('metro-config');
 

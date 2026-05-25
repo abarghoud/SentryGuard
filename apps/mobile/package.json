@@ -3,7 +3,6 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
-    "@expo/metro-config": "~54.0.9",
     "@nx/detox": "*",
     "@nx/devkit": "*",
     "@nx/eslint": "*",
@@ -18,7 +17,7 @@
     "expo-constants": "~18.0.13",
     "expo-device": "~8.0.10",
     "expo-linking": "~8.0.8",
-    "expo-notifications": "~0.29.14",
+    "expo-notifications": "~0.32.17",
     "expo-secure-store": "~15.0.7",
     "expo-splash-screen": "~31.0.11",
     "expo-status-bar": "~3.0.8",
@@ -44,19 +43,29 @@
   "devDependencies": {
     "@expo/cli": "~54.0.16",
     "@testing-library/react-native": "~13.2.0",
-    "@types/react": "^19.1.0",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "~19.1.10",
+    "@types/react-dom": "~19.1.7",
     "@types/react-refresh": "^0.14.7",
     "@types/react-test-renderer": "^19.1.0",
     "babel-preset-expo": "~54.0.7",
-    "eas-cli": "^19.0.8",
     "jest-expo": "~54.0.13",
     "react-refresh": "^0.14.2",
     "react-test-renderer": "^19.1.0"
   },
   "scripts": {
-    "eas-build-post-install": "cd ../.. && node tools/scripts/eas-build-post-install.mjs . apps/mobile",
     "android": "expo run:android",
+    "eas:build:preview": "sh -c 'set -a && . ./.env.local && set +a && NODE_ENV=production npx eas-cli build -p android --profile preview'",
+    "eas:build:preview:local": "sh -c 'set -a && . ./.env.local && set +a && NODE_ENV=production npx eas-cli build -p android --profile preview --local'",
     "ios": "expo run:ios"
+  },
+  "expo": {
+    "doctor": {
+      "appConfigFieldsNotSyncedCheck": {
+        "enabled": false
+      },
+      "reactNativeDirectoryCheck": {
+        "enabled": false
+      }
+    }
   }
 }
