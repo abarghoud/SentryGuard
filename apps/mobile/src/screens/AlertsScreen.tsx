@@ -1,11 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { JSX } from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ThemeColors, useThemeColors } from '../core/theme';
-import { AlertEventSeverity, getAlerts, type AlertEvent } from '../services/api/alerts-api';
+import { AlertEventSeverity, clearAlerts as clearAlertsApi, getAlerts, type AlertEvent } from '../services/api/alerts-api';
 
 enum AlertFilter {
   All = 'all',
@@ -13,25 +13,76 @@ enum AlertFilter {
   Warning = 'warning',
 }
 
-export function AlertsScreen(): JSX.Element {
+interface AlertsScreenProps {
+  isActive: boolean;
+}
+
+export function AlertsScreen({ isActive }: AlertsScreenProps): JSX.Element {
   const { i18n, t } = useTranslation();
+  const queryClient = useQueryClient();
   const [activeFilter, setActiveFilter] = useState(AlertFilter.All);
+  const [isClearingAlerts, setIsClearingAlerts] = useState(false);
+  const refetchAlertsRef = useRef<() => Promise<unknown>>(async () => undefined);
+  const wasActiveRef = useRef(false);
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const alertsQuery = useQuery({
     queryFn: getAlerts,
     queryKey: ['alerts'],
+    refetchInterval: 30000,
   });
+  const alerts = alertsQuery.data ?? [];
+  const hasClearableAlerts = alerts.length > 0;
   const filteredAlerts = useMemo(
-    () => filterAlerts(alertsQuery.data ?? [], activeFilter),
-    [activeFilter, alertsQuery.data]
+    () => filterAlerts(alerts, activeFilter),
+    [activeFilter, alerts]
   );
 
+  useEffect(() => {
+    refetchAlertsRef.current = alertsQuery.refetch;
+  }, [alertsQuery.refetch]);
+
+  useEffect(() => {
+    if (isActive && !wasActiveRef.current) {
+      void refetchAlertsRef.current();
+    }
+
+    wasActiveRef.current = isActive;
+  }, [isActive]);
+
+  const clearAlerts = async (): Promise<void> => {
+    setIsClearingAlerts(true);
+
+    try {
+      await clearAlertsApi();
+      queryClient.setQueryData(['alerts'], []);
+    } finally {
+      setIsClearingAlerts(false);
+    }
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={alertsQuery.isFetching} onRefresh={() => void alertsQuery.refetch()} />}
+      style={styles.container}
+    >
       <View style={styles.header}>
-        <Text style={styles.kicker}>{t('alerts.kicker')}</Text>
-        <Text style={styles.title}>{t('alerts.title')}</Text>
+        <View style={styles.titleRow}>
+          <View style={styles.titleCopy}>
+            <Text style={styles.kicker}>{t('alerts.kicker')}</Text>
+            <Text style={styles.title}>{t('alerts.title')}</Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            disabled={!hasClearableAlerts || isClearingAlerts}
+            hitSlop={10}
+            onPress={() => void clearAlerts()}
+            style={[styles.clearButton, !hasClearableAlerts || isClearingAlerts ? styles.disabledClearButton : null]}
+          >
+            <Text style={[styles.clearButtonText, !hasClearableAlerts || isClearingAlerts ? styles.disabledClearButtonText : null]}>{t('alerts.clear')}</Text>
+          </Pressable>
+        </View>
         <Text style={styles.subtitle}>{t('alerts.subtitle')}</Text>
       </View>
 
@@ -160,11 +211,30 @@ function createStyles(colors: ThemeColors) {
     fontSize: 17,
     fontWeight: '900',
   },
+  clearButton: {
+    alignItems: 'center',
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  clearButtonText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '900',
+  },
   container: {
     flex: 1,
   },
   content: {
     paddingBottom: 20,
+  },
+  disabledClearButton: {
+    opacity: 0.45,
+  },
+  disabledClearButtonText: {
+    color: colors.muted,
   },
   filterButton: {
     alignItems: 'center',
@@ -224,6 +294,16 @@ function createStyles(colors: ThemeColors) {
     color: colors.text,
     fontSize: 32,
     fontWeight: '900',
+  },
+  titleCopy: {
+    flex: 1,
+    gap: 6,
+  },
+  titleRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
   },
   });
 }

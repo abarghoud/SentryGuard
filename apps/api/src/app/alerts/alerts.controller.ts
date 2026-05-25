@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -16,5 +16,12 @@ export class AlertsController {
   @Get()
   public async listAlerts(@CurrentUser() user: User): Promise<AlertEventDto[]> {
     return await this.alertsService.listForUser(user.userId);
+  }
+
+  @Throttle(ThrottleOptions.authenticatedWrite())
+  @Delete()
+  public async clearAlerts(@CurrentUser() user: User): Promise<{ success: boolean }> {
+    await this.alertsService.clearForUser(user.userId);
+    return { success: true };
   }
 }

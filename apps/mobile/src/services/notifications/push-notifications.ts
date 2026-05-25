@@ -5,12 +5,14 @@ import { Platform } from 'react-native';
 import { i18n } from '../../core/i18n';
 
 const notificationChannelId = 'sentryguard-alerts';
-const criticalNotificationChannelId = 'sentryguard-critical-alerts';
+const criticalNotificationChannelId = 'sentryguard-critical-alerts-v2';
 
 export function configurePushNotifications(): void {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       priority: Notifications.AndroidNotificationPriority.HIGH,
+      shouldShowBanner: true,
+      shouldShowList: true,
       shouldPlaySound: true,
       shouldSetBadge: true,
       shouldShowAlert: true,
@@ -28,7 +30,9 @@ export function configurePushNotifications(): void {
       bypassDnd: true,
       importance: Notifications.AndroidImportance.MAX,
       lightColor: '#ef4444',
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       name: i18n.t('notifications.criticalChannelName'),
+      sound: 'default',
       vibrationPattern: [0, 250, 150, 250, 150, 500],
     });
   }

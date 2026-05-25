@@ -24,3 +24,7 @@ export interface AlertEvent {
 export function getAlerts(): Promise<AlertEvent[]> {
   return requestApi<AlertEvent[]>('/alerts');
 }
+
+export function clearAlerts(): Promise<{ success: boolean }> {
+  return requestApi<{ success: boolean }>('/alerts', { method: 'DELETE' });
+}

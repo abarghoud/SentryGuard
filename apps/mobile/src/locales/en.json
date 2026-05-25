@@ -1,5 +1,6 @@
 {
   "alerts.empty": "No alerts yet.",
+  "alerts.clear": "Clear",
   "alerts.error": "Unable to load alerts.",
   "alerts.filter.all": "All",
   "alerts.filter.critical": "Critical",

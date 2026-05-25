@@ -178,7 +178,7 @@ function MainScreen({
             />
           </View>
           <View style={staticStyles.page}>
-            <AlertsScreen />
+            <AlertsScreen isActive={activeTab === AppTab.Alerts} />
           </View>
           <View style={staticStyles.page}>
             <SettingsScreen onLogout={onLogout} />

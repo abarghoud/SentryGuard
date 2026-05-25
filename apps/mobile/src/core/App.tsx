@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import type { JSX } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { AppState, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { MobileShell } from './MobileShell';
@@ -61,6 +62,29 @@ function SessionQueryBoundary(): JSX.Element {
       queryClient.clear();
     }
   }), [queryClient]);
+
+  useEffect(() => {
+    const onAlertNotification = (): void => {
+      void queryClient.invalidateQueries({ queryKey: ['alerts'] });
+    };
+    const receivedSubscription = Notifications.addNotificationReceivedListener(onAlertNotification);
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener(onAlertNotification);
+
+    return () => {
+      receivedSubscription.remove();
+      responseSubscription.remove();
+    };
+  }, [queryClient]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void queryClient.invalidateQueries({ queryKey: ['alerts'] });
+      }
+    });
+
+    return () => subscription.remove();
+  }, [queryClient]);
 
   return <MobileShell />;
 }
