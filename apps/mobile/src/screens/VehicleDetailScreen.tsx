@@ -113,44 +113,46 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.topBar}>
-        <Pressable accessibilityRole="button" style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backButtonText}>{t('common.back')}</Text>
-        </Pressable>
-        <View style={[styles.statusBadge, isProtected ? styles.safeBadge : styles.warningBadge]}>
-          <Text style={styles.statusText}>{isProtected ? t('common.protected') : t('common.toConfigure')}</Text>
+        <View style={styles.topBar}>
+          <Pressable accessibilityRole="button" style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.backButtonText}>{t('common.back')}</Text>
+          </Pressable>
+          <View style={[styles.statusBadge, isProtected ? styles.safeBadge : styles.warningBadge]}>
+            <Text style={styles.statusText}>{isProtected ? t('common.protected') : t('common.toConfigure')}</Text>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.header}>
-        <Text style={styles.kicker}>{t('vehicle.kicker')}</Text>
-        <Text style={styles.title}>{vehicle.display_name ?? vehicle.model ?? t('common.vehicleFallback')}</Text>
-        <Text style={styles.subtitle}>{vehicle.vin}</Text>
-      </View>
+        <View style={styles.header}>
+          <Text style={styles.kicker}>{t('vehicle.kicker')}</Text>
+          <Text style={styles.title}>{vehicle.display_name ?? vehicle.model ?? t('common.vehicleFallback')}</Text>
+          <Text style={styles.subtitle}>{vehicle.vin}</Text>
+        </View>
 
-      <View style={styles.grid}>
-        <DetailTile
-          label={t('vehicle.alertSentry')}
-          styles={styles}
-          value={vehicle.sentry_mode_monitoring_enabled ? t('common.active') : t('common.inactive')}
-        />
-        <DetailTile label={t('vehicle.keyMobile')} styles={styles} value={vehicle.key_paired ? t('vehicle.keyPaired') : t('vehicle.keyUnpaired')} />
-        {isBetaTester ? (
-          <>
-            <DetailTile
-              label={t('vehicle.alertIntrusion')}
-              styles={styles}
-              value={vehicle.break_in_monitoring_enabled ? t('common.active') : t('common.inactive')}
-            />
-            {vehicle.break_in_monitoring_enabled ? (
-              <DetailTile label={t('vehicle.offensive')} styles={styles} value={resolveOffensiveResponseLabel(vehicle, t)} />
-            ) : null}
-          </>
-        ) : null}
-      </View>
+        <View style={styles.grid}>
+          <DetailTile
+            label={t('vehicle.sentrySection')}
+            styles={styles}
+            value={vehicle.sentry_mode_monitoring_enabled ? t('common.active') : t('common.inactive')}
+          />
+          <DetailTile
+            label={t('vehicle.keyMobile')}
+            styles={styles}
+            value={vehicle.key_paired ? t('vehicle.keyPaired') : t('vehicle.keyUnpaired')}
+          />
+          {isBetaTester ? (
+            <>
+              <DetailTile
+                label={t('vehicle.intrusionSection')}
+                styles={styles}
+                value={vehicle.break_in_monitoring_enabled ? t('common.active') : t('common.inactive')}
+              />
+              {vehicle.break_in_monitoring_enabled ? (
+                <DetailTile label={t('vehicle.offensive')} styles={styles} value={resolveOffensiveResponseLabel(vehicle, t)} />
+              ) : null}
+            </>
+          ) : null}
+        </View>
 
-      <View style={styles.actionsPanel}>
-        <Text style={styles.panelTitle}>{t('vehicle.actions')}</Text>
         {!vehicle.key_paired ? (
           <LockedSetting
             description={t('vehicle.lockedKeyDescription')}
@@ -161,27 +163,32 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
             title={t('onboarding.virtualKeyTitle')}
           />
         ) : null}
-        <ToggleSetting
-          description={
-            vehicle.sentry_mode_monitoring_enabled
-              ? t('vehicle.sentryEnabledDescription')
-              : t('vehicle.sentryDisabledDescription')
-          }
-          disabled={isActionRunning}
-          isOn={vehicle.sentry_mode_monitoring_enabled}
-          label={t('vehicle.alertSentry')}
-          onToggle={() => {
-            if (vehicle.sentry_mode_monitoring_enabled) {
-                  confirmTelemetryDeletion(() => actionMutation.mutate(VehicleAction.DeleteTelemetry), t);
-              return;
-            }
 
-            actionMutation.mutate(VehicleAction.ConfigureTelemetry);
-          }}
-          styles={styles}
-        />
+        <View style={styles.actionsPanel}>
+          <Text style={styles.panelTitle}>{t('vehicle.sentrySection')}</Text>
+          <ToggleSetting
+            description={
+              vehicle.sentry_mode_monitoring_enabled
+                ? t('vehicle.sentryEnabledDescription')
+                : t('vehicle.sentryDisabledDescription')
+            }
+            disabled={isActionRunning}
+            isOn={vehicle.sentry_mode_monitoring_enabled}
+            label={t('vehicle.monitoring')}
+            onToggle={() => {
+              if (vehicle.sentry_mode_monitoring_enabled) {
+                confirmTelemetryDeletion(() => actionMutation.mutate(VehicleAction.DeleteTelemetry), t);
+                return;
+              }
+
+              actionMutation.mutate(VehicleAction.ConfigureTelemetry);
+            }}
+            styles={styles}
+          />
+        </View>
         {isBetaTester ? (
-          <View style={styles.settingGroup}>
+          <View style={styles.actionsPanel}>
+            <PanelTitle isBeta styles={styles} title={t('vehicle.intrusionSection')} />
             <ToggleSetting
               description={
                 vehicle.break_in_monitoring_enabled
@@ -190,42 +197,39 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
               }
               disabled={isActionRunning}
               isOn={vehicle.break_in_monitoring_enabled === true}
-              label={t('vehicle.alertIntrusion')}
+              label={t('vehicle.monitoring')}
               onToggle={() => actionMutation.mutate(VehicleAction.ToggleBreakIn)}
               styles={styles}
             />
             {vehicle.break_in_monitoring_enabled ? (
-              <View style={styles.nestedSetting}>
-                {vehicleCommandsQuery.data?.authorized ? (
-                  <ToggleSetting
-                    description={
-                      isBreakInOffensiveOn(vehicle)
-                        ? t('vehicle.offensiveEnabledDescription')
-                        : t('vehicle.offensiveDisabledDescription')
-                    }
-                    disabled={isActionRunning}
-                    isOn={isBreakInOffensiveOn(vehicle)}
-                    label={t('vehicle.offensive')}
-                    onToggle={() => actionMutation.mutate(resolveNextOffensiveResponse(vehicle))}
-                    styles={styles}
-                  />
-                ) : (
-                  <LockedSetting
-                    description={t('vehicle.scopeDescription')}
-                    disabled={scopeMutation.isPending}
-                    label={scopeMutation.isPending ? t('vehicle.openingTesla') : t('vehicle.authorizeOffensive')}
-                    onPress={() => scopeMutation.mutate()}
-                    styles={styles}
-                    title={t('vehicle.offensive')}
-                  />
-                )}
-              </View>
+              vehicleCommandsQuery.data?.authorized ? (
+                <ToggleSetting
+                  description={
+                    isBreakInOffensiveOn(vehicle)
+                      ? t('vehicle.offensiveEnabledDescription')
+                      : t('vehicle.offensiveDisabledDescription')
+                  }
+                  disabled={isActionRunning}
+                  isOn={isBreakInOffensiveOn(vehicle)}
+                  label={t('vehicle.offensive')}
+                  onToggle={() => actionMutation.mutate(resolveNextOffensiveResponse(vehicle))}
+                  styles={styles}
+                />
+              ) : (
+                <LockedSetting
+                  description={t('vehicle.scopeDescription')}
+                  disabled={scopeMutation.isPending}
+                  label={scopeMutation.isPending ? t('vehicle.openingTesla') : t('vehicle.authorizeOffensive')}
+                  onPress={() => scopeMutation.mutate()}
+                  styles={styles}
+                  title={t('vehicle.offensive')}
+                />
+              )
             ) : null}
           </View>
         ) : null}
         {feedback ? <Text style={styles.feedback}>{feedback}</Text> : null}
-      </View>
-    </ScrollView>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -354,11 +358,38 @@ function confirmTelemetryDeletion(onConfirm: () => void, t: TranslationFunction)
 
 type VehicleDetailStyles = ReturnType<typeof createStyles>;
 
+function BetaBadge({ styles }: { styles: VehicleDetailStyles }): JSX.Element {
+  const { t } = useTranslation();
+
+  return (
+    <View style={styles.betaBadge}>
+      <Text style={styles.betaBadgeText}>{t('common.beta')}</Text>
+    </View>
+  );
+}
+
 function DetailTile({ label, styles, value }: { label: string; styles: VehicleDetailStyles; value: string }): JSX.Element {
   return (
     <View style={styles.detailTile}>
       <Text style={styles.tileLabel}>{label}</Text>
       <Text style={styles.tileValue}>{value}</Text>
+    </View>
+  );
+}
+
+function PanelTitle({
+  isBeta = false,
+  styles,
+  title,
+}: {
+  isBeta?: boolean;
+  styles: VehicleDetailStyles;
+  title: string;
+}): JSX.Element {
+  return (
+    <View style={styles.labelRow}>
+      <Text style={styles.panelTitle}>{title}</Text>
+      {isBeta ? <BetaBadge styles={styles} /> : null}
     </View>
   );
 }
@@ -450,6 +481,18 @@ function createStyles(colors: ThemeColors) {
       color: colors.text,
       fontWeight: '800',
     },
+    betaBadge: {
+      backgroundColor: colors.accent,
+      borderRadius: 999,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+    },
+    betaBadgeText: {
+      color: colors.accentText,
+      fontSize: 10,
+      fontWeight: '900',
+      textTransform: 'uppercase',
+    },
     container: {
       backgroundColor: colors.background,
       flex: 1,
@@ -503,12 +546,6 @@ function createStyles(colors: ThemeColors) {
       fontWeight: '900',
       textAlign: 'center',
     },
-    nestedSetting: {
-      borderLeftColor: colors.border,
-      borderLeftWidth: 2,
-      marginLeft: 12,
-      paddingLeft: 10,
-    },
     toggleCopy: {
       flex: 1,
       gap: 4,
@@ -546,6 +583,12 @@ function createStyles(colors: ThemeColors) {
       fontSize: 13,
       fontWeight: '800',
       textTransform: 'uppercase',
+    },
+    labelRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
     },
     panelTitle: {
       color: colors.text,
