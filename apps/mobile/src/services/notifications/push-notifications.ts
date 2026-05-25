@@ -3,11 +3,12 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { i18n } from '../../core/i18n';
+import { ensureCriticalNotificationChannel, isNotificationPolicyAccessGranted } from './dnd-policy-access';
 
 const notificationChannelId = 'sentryguard-alerts';
-const criticalNotificationChannelId = 'sentryguard-critical-alerts-v2';
+const criticalNotificationChannelId = 'sentryguard-critical-alerts-v5';
 
-export function configurePushNotifications(): void {
+export async function configurePushNotifications(): Promise<void> {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       priority: Notifications.AndroidNotificationPriority.HIGH,
@@ -20,22 +21,24 @@ export function configurePushNotifications(): void {
   });
 
   if (Platform.OS === 'android') {
-    void Notifications.setNotificationChannelAsync(notificationChannelId, {
-      importance: Notifications.AndroidImportance.HIGH,
-      lightColor: '#10b981',
-      name: i18n.t('notifications.channelName'),
-      vibrationPattern: [0, 250, 250, 250],
-    });
-    void Notifications.setNotificationChannelAsync(criticalNotificationChannelId, {
-      bypassDnd: true,
-      importance: Notifications.AndroidImportance.MAX,
-      lightColor: '#ef4444',
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-      name: i18n.t('notifications.criticalChannelName'),
-      sound: 'default',
-      vibrationPattern: [0, 250, 150, 250, 150, 500],
-    });
+    await Promise.all([
+      Notifications.setNotificationChannelAsync(notificationChannelId, {
+        importance: Notifications.AndroidImportance.HIGH,
+        lightColor: '#10b981',
+        name: i18n.t('notifications.channelName'),
+        vibrationPattern: [0, 250, 250, 250],
+      }),
+      configureCriticalNotificationChannel(),
+    ]);
   }
+}
+
+async function configureCriticalNotificationChannel(): Promise<void> {
+  if (!(await isNotificationPolicyAccessGranted())) {
+    return;
+  }
+
+  await ensureCriticalNotificationChannel(criticalNotificationChannelId, i18n.t('notifications.criticalChannelName'));
 }
 
 export async function requestExpoPushToken(): Promise<string | null> {

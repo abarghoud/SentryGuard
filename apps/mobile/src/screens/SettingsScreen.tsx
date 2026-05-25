@@ -1,14 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as Linking from 'expo-linking';
 import type { JSX } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ThemeColors, ThemeMode, useTheme } from '../core/theme';
 import { getAuthProfile } from '../services/api/auth-api';
 import { getNotificationPreferences, registerPushToken, updateNotificationPreferences, type NotificationPreferences } from '../services/api/notifications-api';
 import { getUserLanguage, updateUserLanguage, UserLanguage } from '../services/api/user-language-api';
-import { requestExpoPushToken } from '../services/notifications/push-notifications';
+import { isNotificationPolicyAccessGranted } from '../services/notifications/dnd-policy-access';
+import { configurePushNotifications, requestExpoPushToken } from '../services/notifications/push-notifications';
 
 interface SettingsScreenProps {
   onLogout(): Promise<void>;
@@ -17,6 +19,7 @@ interface SettingsScreenProps {
 export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
   const { i18n, t } = useTranslation();
   const [preferenceMessage, setPreferenceMessage] = useState<string | null>(null);
+  const [isDndAccessModalOpen, setIsDndAccessModalOpen] = useState(false);
   const hasRegisteredPushToken = useRef(false);
   const queryClient = useQueryClient();
   const { colors, mode, setMode } = useTheme();
@@ -81,9 +84,14 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         return;
       }
     }
+
+    if (updates.critical_alerts_enabled === true && !(await canEnableCriticalAlerts(setIsDndAccessModalOpen))) {
+      return;
+    }
+
     const preferences = await preferencesMutation.mutateAsync(resolvePreferenceUpdates(updates));
 
-    if (updates.critical_alerts_enabled === true && preferences.critical_alerts_enabled !== true) {
+    if (updates.critical_alerts_enabled === true && !preferences.critical_alerts_enabled) {
       setPreferenceMessage(t('settings.criticalAlertsUnavailable'));
     }
   };
@@ -188,6 +196,28 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
       <Pressable style={styles.logoutButton} onPress={() => void onLogout()}>
         <Text style={styles.logoutText}>{t('settings.logout')}</Text>
       </Pressable>
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setIsDndAccessModalOpen(false)}
+        transparent
+        visible={isDndAccessModalOpen}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.dndAccessModal}>
+            <Text style={styles.modalTitle}>{t('settings.dndAccessTitle')}</Text>
+            <Text style={styles.modalDescription}>{t('settings.dndAccessDescription')}</Text>
+            <Pressable
+              style={styles.primaryButton}
+              onPress={() => void openAndroidDoNotDisturbAccessSettings(setIsDndAccessModalOpen)}
+            >
+              <Text style={styles.primaryButtonText}>{t('settings.dndAccessButton')}</Text>
+            </Pressable>
+            <Pressable style={styles.secondaryButton} onPress={() => setIsDndAccessModalOpen(false)}>
+              <Text style={styles.secondaryButtonText}>{t('common.cancel')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -281,6 +311,29 @@ async function registerDeviceForPush(setMessage: ((message: string | null) => vo
   return true;
 }
 
+async function canEnableCriticalAlerts(
+  setIsDndAccessModalOpen: (isOpen: boolean) => void
+): Promise<boolean> {
+  const hasAccess = await isNotificationPolicyAccessGranted();
+
+  if (hasAccess) {
+    await configurePushNotifications();
+    return true;
+  }
+
+  setIsDndAccessModalOpen(true);
+  return false;
+}
+
+async function openAndroidDoNotDisturbAccessSettings(setIsDndAccessModalOpen: (isOpen: boolean) => void): Promise<void> {
+  if (Platform.OS !== 'android') {
+    return;
+  }
+
+  setIsDndAccessModalOpen(false);
+  await Linking.sendIntent('android.settings.NOTIFICATION_POLICY_ACCESS_SETTINGS');
+}
+
 function resolveSettingsError(error: unknown, t: (key: string) => string): string {
   return error instanceof Error ? error.message : t('settings.error');
 }
@@ -354,11 +407,38 @@ function createStyles(colors: ThemeColors) {
   disabledRowValue: {
     color: colors.muted,
   },
+  dndAccessModal: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 12,
+    maxWidth: 360,
+    padding: 16,
+    width: '100%',
+  },
   panel: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: 8,
     borderWidth: 1,
+  },
+  modalBackdrop: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalDescription: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  modalTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '900',
   },
   preferenceRow: {
     alignItems: 'center',
@@ -405,6 +485,29 @@ function createStyles(colors: ThemeColors) {
     marginBottom: -8,
     paddingHorizontal: 4,
     textTransform: 'uppercase',
+  },
+  primaryButton: {
+    alignItems: 'center',
+    backgroundColor: colors.accent,
+    borderRadius: 8,
+    paddingVertical: 12,
+  },
+  primaryButtonText: {
+    color: colors.accentText,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  secondaryButton: {
+    alignItems: 'center',
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingVertical: 11,
+  },
+  secondaryButtonText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '900',
   },
   subtitle: {
     color: colors.muted,

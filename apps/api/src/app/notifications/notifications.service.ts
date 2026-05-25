@@ -18,6 +18,7 @@ interface ExpoPushResponse {
     details?: {
       error?: string;
     };
+    id?: string;
     message?: string;
     status?: string;
   };
@@ -145,7 +146,6 @@ export class NotificationsService {
       channelId,
       data: { channelId, criticalAlertsEnabled, isCriticalAlert, severity, teslaRedirectUrl: this.buildTeslaRedirectUrl(userId, userLanguage) },
       priority: isCriticalAlert || severity === AlertEventSeverity.Critical ? 'high' : 'default',
-      sound: isCriticalAlert ? { critical: true, name: 'default', volume: 1 } : 'default',
       title,
       to: token,
     };

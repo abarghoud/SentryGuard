@@ -34,7 +34,7 @@ function ThemedAppContent(): JSX.Element {
   const [isApiReady, setIsApiReady] = useState(false);
 
   useEffect(() => {
-    configurePushNotifications();
+    void configurePushNotifications();
     Promise.all([initializeApiUrl(), initializeVirtualKeyPairingUrl()]).finally(() => setIsApiReady(true));
   }, []);
 
@@ -88,6 +88,7 @@ function SessionQueryBoundary(): JSX.Element {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
+        void configurePushNotifications();
         void queryClient.invalidateQueries({ queryKey: ['alerts'] });
       }
     });
