@@ -161,7 +161,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         />
         <PreferenceRow
           description={t('settings.criticalAlertsDescription')}
-          disabled={preferencesMutation.isPending || !preferences.push_enabled || !preferences.critical_only}
+          disabled={preferencesMutation.isPending || !preferences.push_enabled}
           isNested
           label={t('settings.criticalAlerts')}
           styles={styles}
@@ -263,7 +263,7 @@ const defaultPreferences: NotificationPreferences = {
 };
 
 function resolvePreferenceUpdates(updates: Partial<NotificationPreferences>): Partial<NotificationPreferences> {
-  if (updates.push_enabled === false || updates.critical_only === false) {
+  if (updates.push_enabled === false) {
     return { ...updates, critical_alerts_enabled: false };
   }
 
