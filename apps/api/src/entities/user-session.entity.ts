@@ -8,7 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { User } from './user.entity';
+import type { User } from './user.entity';
 
 @Entity('user_sessions')
 @Index(['jwt_hash'], { unique: true })
@@ -44,7 +44,7 @@ export class UserSession {
   @UpdateDateColumn()
   updated_at!: Date;
 
-  @ManyToOne(() => User, (user) => user.sessions, { onDelete: 'CASCADE' })
+  @ManyToOne('User', 'sessions', { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   user!: User;
 }

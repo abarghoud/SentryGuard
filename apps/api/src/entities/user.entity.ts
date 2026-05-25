@@ -7,7 +7,7 @@ import {
   OneToMany,
   OneToOne,
 } from 'typeorm';
-import { UserSession } from './user-session.entity';
+import type { UserSession } from './user-session.entity';
 
 @Entity('users')
 export class User {
@@ -74,7 +74,7 @@ export class User {
   @OneToMany('UserConsent', 'user')
   consents!: any[];
 
-  @OneToMany(() => UserSession, (session) => session.user)
+  @OneToMany('UserSession', 'user')
   sessions!: UserSession[];
 
   @OneToOne('NotificationPreferences', 'user')
