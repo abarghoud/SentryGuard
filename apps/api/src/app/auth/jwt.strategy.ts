@@ -4,6 +4,8 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../../entities/user.entity';
+import { UserSession } from '../../entities/user-session.entity';
+import * as crypto from 'crypto';
 
 export interface JwtPayload {
   sub: string;
@@ -21,8 +23,8 @@ interface JwtRequest {
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    @InjectRepository(UserSession)
+    private readonly userSessionRepository: Repository<UserSession>,
   ) {
     const jwtSecret = process.env.JWT_SECRET;
 
@@ -39,23 +41,25 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(request: JwtRequest, payload: JwtPayload): Promise<User> {
-    const user = await this.userRepository.findOne({
-      where: { userId: payload.sub },
+    const session = await this.userSessionRepository.findOne({
+      relations: { user: true },
+      where: { jwt_hash: this.hashJwt(this.extractBearerToken(request) || '') },
     });
+    const user = session?.user;
 
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
 
-    if (this.isInvalidToken(user, request)) {
+    if (user.userId !== payload.sub || this.isInvalidToken(session)) {
       throw new UnauthorizedException('Token expired or invalid');
     }
 
     return user;
   }
 
-  private isInvalidToken(user: User, request: JwtRequest): boolean {
-    return !user.jwt_token || user.jwt_token !== this.extractBearerToken(request) || this.isExpired(user);
+  private isInvalidToken(session: UserSession): boolean {
+    return !!session.revoked_at || !!session.user.token_revoked_at || this.isExpired(session);
   }
 
   private extractBearerToken(request: JwtRequest): string | null {
@@ -68,7 +72,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return authorization.slice('Bearer '.length);
   }
 
-  private isExpired(user: User): boolean {
-    return !!user.jwt_expires_at && new Date() > user.jwt_expires_at;
+  private isExpired(session: UserSession): boolean {
+    return new Date() > session.expires_at;
+  }
+
+  private hashJwt(jwt: string): string {
+    return crypto.createHash('sha256').update(jwt).digest('hex');
   }
 }

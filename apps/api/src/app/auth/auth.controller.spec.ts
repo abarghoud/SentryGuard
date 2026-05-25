@@ -9,6 +9,7 @@ describe('The AuthController class', () => {
   let controller: AuthController;
 
   const mockAuthService = {
+    getActiveJwtSession: jest.fn(),
     getRefreshableJwtUser: jest.fn(),
     refreshJwtSession: jest.fn(),
     validateJwtToken: jest.fn(),
@@ -129,19 +130,23 @@ describe('The AuthController class', () => {
     it('should return the status for an authenticated user', async () => {
       const mockUser = {
         userId: 'test-user-id',
-        jwt_expires_at: new Date('2025-12-31'),
         expires_at: new Date('2025-12-31'),
         created_at: new Date('2025-01-01'),
         email: 'test@example.com',
       } as User;
+      const jwtExpiresAt = new Date('2025-12-31');
 
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2025-06-15'));
+      mockAuthService.getActiveJwtSession.mockResolvedValue({
+        expires_at: jwtExpiresAt,
+      });
 
-      const result = await controller.getAuthStatus(mockUser);
+      const result = await controller.getAuthStatus(mockUser, 'Bearer valid-jwt');
 
       expect(result.authenticated).toBe(true);
       expect(result.expires_at).toEqual(mockUser.expires_at);
+      expect(result.jwt_expires_at).toEqual(jwtExpiresAt);
       expect(result.has_profile).toBe(true);
       expect(result.message).toBe('Valid JWT token');
 
@@ -151,30 +156,16 @@ describe('The AuthController class', () => {
     it('should return unauthenticated for a user without a token', async () => {
       const mockUser = {
         userId: 'test-user-id',
-        jwt_expires_at: null,
+        expires_at: new Date('2025-12-31'),
+        created_at: new Date('2025-01-01'),
       } as User;
 
-      const result = await controller.getAuthStatus(mockUser);
+      mockAuthService.getActiveJwtSession.mockResolvedValue(null);
+
+      const result = await controller.getAuthStatus(mockUser, 'Bearer invalid-jwt');
 
       expect(result.authenticated).toBe(false);
       expect(result.message).toBe('JWT token expired, please re-authenticate');
-    });
-
-    it('should detect an expired token', async () => {
-      const mockUser = {
-        userId: 'test-user-id',
-        jwt_expires_at: new Date('2025-01-01'),
-      } as User;
-
-      jest.useFakeTimers();
-      jest.setSystemTime(new Date('2026-01-01'));
-
-      const result = await controller.getAuthStatus(mockUser);
-
-      expect(result.authenticated).toBe(false);
-      expect(result.message).toBe('JWT token expired, please re-authenticate');
-
-      jest.useRealTimers();
     });
   });
 
@@ -249,6 +240,7 @@ describe('The AuthController class', () => {
 
       const result = await controller.refreshSession('Bearer old-jwt');
 
+      expect(mockAuthService.refreshJwtSession).toHaveBeenCalledWith('test-user-id', 'old-jwt');
       expect(result).toStrictEqual({
         success: true,
         userId: 'test-user-id',

@@ -64,18 +64,22 @@ export class AuthController {
   @Throttle(ThrottleOptions.authenticatedRead())
   @Get('status')
   @UseGuards(JwtAuthGuard)
-  async getAuthStatus(@CurrentUser() user: User) {
+  async getAuthStatus(
+    @CurrentUser() user: User,
+    @Headers('authorization') authorization?: string
+  ) {
     this.logger.log(`Checking JWT status for user: ${user.userId}`);
 
-    const now = new Date();
-    const isValid = !!user.jwt_expires_at && now < user.jwt_expires_at;
+    const jwt = this.extractBearerJwt(authorization);
+    const session = await this.authService.getActiveJwtSession(jwt);
+    const isValid = !!session;
 
     return {
       authenticated: isValid,
       userId: user.userId,
       email: user.email,
       expires_at: user.expires_at,
-      jwt_expires_at: user.jwt_expires_at,
+      jwt_expires_at: session?.expires_at ?? null,
       created_at: user.created_at,
       has_profile: !!(user.email || user.full_name),
       message: isValid
@@ -124,7 +128,7 @@ export class AuthController {
       throw new UnauthorizedException('Session cannot be refreshed');
     }
 
-    const session = await this.authService.refreshJwtSession(user.userId);
+    const session = await this.authService.refreshJwtSession(user.userId, jwt);
 
     if (!session) {
       throw new UnauthorizedException('Session cannot be refreshed');
@@ -190,13 +194,16 @@ export class AuthController {
   @Throttle(ThrottleOptions.authenticatedWrite())
   @Get('logout')
   @UseGuards(JwtAuthGuard)
-  async logout(@CurrentUser() user: User): Promise<{
+  async logout(
+    @CurrentUser() user: User,
+    @Headers('authorization') authorization?: string
+  ): Promise<{
     success: boolean;
     message: string;
   }> {
     this.logger.log(`Logging out user: ${user.userId}`);
 
-    await this.authService.revokeJwtToken(user.userId);
+    await this.authService.revokeJwtToken(user.userId, this.extractBearerJwt(authorization));
 
     return {
       success: true,

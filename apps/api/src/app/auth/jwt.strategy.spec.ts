@@ -1,11 +1,12 @@
 import { mock, MockProxy } from 'jest-mock-extended';
 import { Repository } from 'typeorm';
 import { User } from '../../entities/user.entity';
+import { UserSession } from '../../entities/user-session.entity';
 import { JwtPayload, JwtStrategy } from './jwt.strategy';
 
 describe('The JwtStrategy class', () => {
   let strategy: JwtStrategy;
-  let mockUserRepository: MockProxy<Repository<User>>;
+  let mockUserSessionRepository: MockProxy<Repository<UserSession>>;
 
   const fakeUserId = 'user-123';
   const fakePayload: JwtPayload = { sub: fakeUserId, email: 'test@example.com' };
@@ -17,24 +18,27 @@ describe('The JwtStrategy class', () => {
   const fakeUser = {
     userId: fakeUserId,
     email: 'test@example.com',
-    jwt_token: 'valid-token',
-    jwt_expires_at: new Date(Date.now() + 86400000),
-    token_revoked_at: undefined,
+    token_revoked_at: null,
   } as User;
+  const fakeSession = {
+    expires_at: new Date(Date.now() + 86400000),
+    revoked_at: null,
+    user: fakeUser,
+  } as UserSession;
 
   beforeEach(() => {
     process.env.JWT_SECRET = 'test-secret-for-unit-tests';
-    mockUserRepository = mock<Repository<User>>();
-    strategy = new JwtStrategy(mockUserRepository);
+    mockUserSessionRepository = mock<Repository<UserSession>>();
+    strategy = new JwtStrategy(mockUserSessionRepository);
   });
 
   describe('The validate() method', () => {
-    describe('When user is not found', () => {
+    describe('When the session is not found', () => {
       const expectedError = 'User not found';
       let act: () => Promise<User>;
 
       beforeEach(() => {
-        mockUserRepository.findOne.mockResolvedValue(null);
+        mockUserSessionRepository.findOne.mockResolvedValue(null);
         act = () => strategy.validate(fakeRequest, fakePayload);
       });
 
@@ -43,12 +47,15 @@ describe('The JwtStrategy class', () => {
       });
     });
 
-    describe('When jwt_token is null', () => {
+    describe('When the session is revoked', () => {
       const expectedError = 'Token expired or invalid';
       let act: () => Promise<User>;
 
       beforeEach(() => {
-        mockUserRepository.findOne.mockResolvedValue({ ...fakeUser, jwt_token: null });
+        mockUserSessionRepository.findOne.mockResolvedValue({
+          ...fakeSession,
+          revoked_at: new Date(),
+        });
         act = () => strategy.validate(fakeRequest, fakePayload);
       });
 
@@ -57,12 +64,15 @@ describe('The JwtStrategy class', () => {
       });
     });
 
-    describe('When token is expired', () => {
+    describe('When the user tokens are revoked', () => {
       const expectedError = 'Token expired or invalid';
       let act: () => Promise<User>;
 
       beforeEach(() => {
-        mockUserRepository.findOne.mockResolvedValue({ ...fakeUser, jwt_expires_at: new Date(Date.now() - 1000) });
+        mockUserSessionRepository.findOne.mockResolvedValue({
+          ...fakeSession,
+          user: { ...fakeUser, token_revoked_at: new Date() } as User,
+        });
         act = () => strategy.validate(fakeRequest, fakePayload);
       });
 
@@ -71,12 +81,32 @@ describe('The JwtStrategy class', () => {
       });
     });
 
-    describe('When bearer token is not the current token', () => {
+    describe('When the session is expired', () => {
       const expectedError = 'Token expired or invalid';
       let act: () => Promise<User>;
 
       beforeEach(() => {
-        mockUserRepository.findOne.mockResolvedValue({ ...fakeUser, jwt_token: 'new-token' });
+        mockUserSessionRepository.findOne.mockResolvedValue({
+          ...fakeSession,
+          expires_at: new Date(Date.now() - 1000),
+        });
+        act = () => strategy.validate(fakeRequest, fakePayload);
+      });
+
+      it('should throw UnauthorizedException', async () => {
+        await expect(act()).rejects.toThrow(expectedError);
+      });
+    });
+
+    describe('When the session user does not match the payload', () => {
+      const expectedError = 'Token expired or invalid';
+      let act: () => Promise<User>;
+
+      beforeEach(() => {
+        mockUserSessionRepository.findOne.mockResolvedValue({
+          ...fakeSession,
+          user: { ...fakeUser, userId: 'other-user' } as User,
+        });
         act = () => strategy.validate(fakeRequest, fakePayload);
       });
 
@@ -89,7 +119,7 @@ describe('The JwtStrategy class', () => {
       let result: User;
 
       beforeEach(async () => {
-        mockUserRepository.findOne.mockResolvedValue(fakeUser);
+        mockUserSessionRepository.findOne.mockResolvedValue(fakeSession);
         result = await strategy.validate(fakeRequest, fakePayload);
       });
 

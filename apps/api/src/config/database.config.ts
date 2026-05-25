@@ -8,6 +8,7 @@ import { Waitlist } from '../entities/waitlist.entity';
 import { NotificationPreferences } from '../entities/notification-preferences.entity';
 import { PushDeviceToken } from '../entities/push-device-token.entity';
 import { AlertEvent } from '../entities/alert-event.entity';
+import { UserSession } from '../entities/user-session.entity';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -62,7 +63,7 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
     username: databaseUser,
     password: databasePassword,
     database: databaseName,
-    entities: [User, Vehicle, TelegramConfig, UserConsent, Waitlist, NotificationPreferences, PushDeviceToken, AlertEvent],
+    entities: [User, Vehicle, TelegramConfig, UserConsent, Waitlist, NotificationPreferences, PushDeviceToken, AlertEvent, UserSession],
     synchronize,
     migrationsRun,
     migrations: ['dist/migrations/*.js'],

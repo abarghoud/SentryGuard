@@ -15,6 +15,7 @@ import { TeslaTokenRefreshSchedulerService } from './services/tesla-token-refres
 import { DistributedLockService } from '../../common/services/distributed-lock.service';
 import { JwtStrategy } from './jwt.strategy';
 import { User } from '../../entities/user.entity';
+import { UserSession } from '../../entities/user-session.entity';
 import { WaitlistModule } from '../waitlist/waitlist.module';
 
 const jwtSecret = process.env.JWT_SECRET;
@@ -28,7 +29,7 @@ if (!jwtSecret) {
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, UserSession]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: jwtSecret,
