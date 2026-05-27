@@ -3,6 +3,7 @@ import * as Linking from 'expo-linking';
 import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 
 import { ThemeColors, useThemeColors } from '../core/theme';
@@ -68,14 +69,13 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
     },
     onError: (error: Error) => setMessage(error.message),
   });
-  const skipMutation = useMutation({
+  useMutation({
     mutationFn: skipOnboarding,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['onboarding-status'] });
       onComplete();
     },
   });
-
   const vehicles = vehiclesQuery.data ?? [];
   const isLoading = consentStatusQuery.isLoading || onboardingQuery.isLoading || consentTextQuery.isLoading;
   const isConsentMissing = consentStatusQuery.data?.hasConsent !== true;
@@ -230,15 +230,12 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
       t={t}
       message={message}
       actions={
-        <>
-          <PrimaryButton
-            disabled={completeMutation.isPending}
-            label={completeMutation.isPending ? t('onboarding.finalizing') : t('onboarding.finish')}
-            onPress={() => completeMutation.mutate()}
-            styles={styles}
-          />
-          <SecondaryButton disabled={skipMutation.isPending} label={t('onboarding.skip')} onPress={() => skipMutation.mutate()} styles={styles} />
-        </>
+        <PrimaryButton
+          disabled={completeMutation.isPending}
+          label={completeMutation.isPending ? t('onboarding.finalizing') : t('onboarding.finish')}
+          onPress={() => completeMutation.mutate()}
+          styles={styles}
+        />
       }
     />
   );
@@ -262,16 +259,18 @@ function OnboardingFrame({
   title: string;
 }): JSX.Element {
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.kicker}>{t('onboarding.kicker')}</Text>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.subtitle}>{subtitle}</Text>
-      </View>
-      {children ? <View style={styles.panel}>{children}</View> : null}
-      {message ? <Text style={styles.message}>{message}</Text> : null}
-      {actions ? <View style={styles.actions}>{actions}</View> : null}
-    </ScrollView>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <Text style={styles.kicker}>{t('onboarding.kicker')}</Text>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.subtitle}>{subtitle}</Text>
+        </View>
+        {children ? <View style={styles.panel}>{children}</View> : null}
+        {message ? <Text style={styles.message}>{message}</Text> : null}
+        {actions ? <View style={styles.actions}>{actions}</View> : null}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
