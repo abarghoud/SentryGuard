@@ -5,17 +5,8 @@ export class NotificationPreferences {
   @PrimaryColumn('varchar', { length: 64 })
   userId!: string;
 
-  @Column({ type: 'boolean', default: false })
-  push_enabled!: boolean;
-
   @Column({ type: 'boolean', default: true })
   telegram_enabled!: boolean;
-
-  @Column({ type: 'boolean', default: false })
-  critical_only!: boolean;
-
-  @Column({ type: 'boolean', default: false })
-  critical_alerts_enabled!: boolean;
 
   @CreateDateColumn()
   created_at!: Date;

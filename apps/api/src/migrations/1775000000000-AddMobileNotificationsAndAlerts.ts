@@ -9,9 +9,7 @@ export class AddMobileNotificationsAndAlerts1775000000000 implements MigrationIn
     await queryRunner.query(`
       CREATE TABLE "notification_preferences" (
         "userId" character varying(64) NOT NULL,
-        "push_enabled" boolean NOT NULL DEFAULT false,
         "telegram_enabled" boolean NOT NULL DEFAULT true,
-        "critical_only" boolean NOT NULL DEFAULT false,
         "created_at" TIMESTAMP NOT NULL DEFAULT now(),
         "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
         CONSTRAINT "PK_notification_preferences_userId" PRIMARY KEY ("userId")
@@ -23,7 +21,9 @@ export class AddMobileNotificationsAndAlerts1775000000000 implements MigrationIn
         "userId" character varying(64) NOT NULL,
         "token" text NOT NULL,
         "platform" character varying(32),
-        "enabled" boolean NOT NULL DEFAULT true,
+        "push_enabled" boolean NOT NULL DEFAULT true,
+        "critical_only" boolean NOT NULL DEFAULT false,
+        "critical_alerts_enabled" boolean NOT NULL DEFAULT false,
         "created_at" TIMESTAMP NOT NULL DEFAULT now(),
         "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
         CONSTRAINT "PK_push_device_tokens_id" PRIMARY KEY ("id")

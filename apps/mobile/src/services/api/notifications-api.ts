@@ -7,15 +7,17 @@ export interface NotificationPreferences {
   telegram_enabled: boolean;
 }
 
-export function getNotificationPreferences(): Promise<NotificationPreferences> {
-  return requestApi<NotificationPreferences>('/notifications/preferences');
+export function getNotificationPreferences(token?: string): Promise<NotificationPreferences> {
+  const query = token ? `?token=${encodeURIComponent(token)}` : '';
+  return requestApi<NotificationPreferences>(`/notifications/preferences${query}`);
 }
 
 export function updateNotificationPreferences(
-  preferences: Partial<NotificationPreferences>
+  preferences: Partial<NotificationPreferences>,
+  token?: string
 ): Promise<NotificationPreferences> {
   return requestApi<NotificationPreferences>('/notifications/preferences', {
-    body: JSON.stringify(preferences),
+    body: JSON.stringify(token ? { ...preferences, token } : preferences),
     method: 'POST',
   });
 }

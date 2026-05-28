@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 
 import { NotificationPreferences } from '../../entities/notification-preferences.entity';
 import { PushDeviceToken } from '../../entities/push-device-token.entity';
-import { AlertEventSeverity } from '../../entities/alert-event.entity';
+import { AlertEventSeverity, AlertEventType } from '../../entities/alert-event.entity';
 
 export interface NotificationPreferencesDto {
   critical_alerts_enabled: boolean;
@@ -35,29 +35,36 @@ export class NotificationsService {
     private readonly pushDeviceTokenRepository: Repository<PushDeviceToken>
   ) {}
 
-  public async getPreferences(userId: string): Promise<NotificationPreferencesDto> {
+  public async getPreferences(userId: string, token?: string): Promise<NotificationPreferencesDto> {
     const preferences = await this.findOrCreatePreferences(userId);
-    return this.toDto(preferences);
+    const device = token ? await this.findPushDevice(userId, token) : null;
+    return this.toDto(preferences, device);
   }
 
-  public async updatePreferences(userId: string, preferences: Partial<NotificationPreferencesDto>): Promise<NotificationPreferencesDto> {
+  public async updatePreferences(
+    userId: string,
+    preferences: Partial<NotificationPreferencesDto>,
+    token?: string
+  ): Promise<NotificationPreferencesDto> {
     const currentPreferences = await this.findOrCreatePreferences(userId);
-    Object.assign(currentPreferences, this.pickPreferenceUpdates(preferences));
+    Object.assign(currentPreferences, this.pickGlobalPreferenceUpdates(preferences));
     await this.preferencesRepository.save(currentPreferences);
-    return this.toDto(currentPreferences);
+
+    const device = token ? await this.resolvePushDeviceForUpdate(userId, token, preferences) : null;
+    return this.toDto(currentPreferences, device);
   }
 
   public async registerPushToken(userId: string, token: string, platform?: string): Promise<{ success: boolean }> {
     await this.pushDeviceTokenRepository.upsert(
-      { userId, token, platform, enabled: true },
+      { userId, token, platform, push_enabled: true },
       { conflictPaths: ['token'], skipUpdateIfNoValuesChanged: true }
     );
     return { success: true };
   }
 
-  public async shouldSendTelegram(userId: string, severity: AlertEventSeverity): Promise<boolean> {
+  public async shouldSendTelegram(userId: string, _severity: AlertEventSeverity): Promise<boolean> {
     const preferences = await this.findOrCreatePreferences(userId);
-    return preferences.telegram_enabled && this.allowsSeverity(preferences, severity);
+    return preferences.telegram_enabled;
   }
 
   public async sendPushAlert(
@@ -65,15 +72,14 @@ export class NotificationsService {
     title: string,
     body: string,
     severity: AlertEventSeverity,
+    type: AlertEventType,
     userLanguage: 'en' | 'fr'
   ): Promise<void> {
-    const preferences = await this.findOrCreatePreferences(userId);
-    if (!preferences.push_enabled || !this.allowsSeverity(preferences, severity)) {
-      return;
-    }
-
-    const devices = await this.pushDeviceTokenRepository.find({ where: { userId, enabled: true } });
-    await Promise.all(devices.map((device) => this.sendExpoPush(device, title, body, severity, preferences.critical_alerts_enabled, userId, userLanguage)));
+    const devices = await this.pushDeviceTokenRepository.find({ where: { userId, push_enabled: true } });
+    const eligibleDevices = devices.filter((device) => this.shouldSendPushToDevice(device, severity));
+    await Promise.all(
+      eligibleDevices.map((device) => this.sendExpoPush(device, title, body, severity, type, device.critical_alerts_enabled, userId, userLanguage))
+    );
   }
 
   private async findOrCreatePreferences(userId: string): Promise<NotificationPreferences> {
@@ -85,26 +91,67 @@ export class NotificationsService {
     return await this.preferencesRepository.save(this.preferencesRepository.create({ userId }));
   }
 
-  private pickPreferenceUpdates(preferences: Partial<NotificationPreferencesDto>): Partial<NotificationPreferencesDto> {
+  private async findPushDevice(userId: string, token: string): Promise<PushDeviceToken | null> {
+    return await this.pushDeviceTokenRepository.findOne({ where: { token, userId } });
+  }
+
+  private async updatePushDevicePreferences(
+    userId: string,
+    token: string,
+    preferences: Partial<NotificationPreferencesDto>
+  ): Promise<PushDeviceToken> {
+    const device =
+      (await this.findPushDevice(userId, token)) ??
+      this.pushDeviceTokenRepository.create({ push_enabled: preferences.push_enabled ?? false, token, userId });
+    Object.assign(device, this.pickPushDeviceUpdates(preferences));
+    return await this.pushDeviceTokenRepository.save(device);
+  }
+
+  private async resolvePushDeviceForUpdate(
+    userId: string,
+    token: string,
+    preferences: Partial<NotificationPreferencesDto>
+  ): Promise<PushDeviceToken | null> {
+    if (this.hasPushDeviceUpdates(preferences)) {
+      return await this.updatePushDevicePreferences(userId, token, preferences);
+    }
+
+    return await this.findPushDevice(userId, token);
+  }
+
+  private hasPushDeviceUpdates(preferences: Partial<NotificationPreferencesDto>): boolean {
+    return (
+      preferences.critical_alerts_enabled !== undefined ||
+      preferences.critical_only !== undefined ||
+      preferences.push_enabled !== undefined
+    );
+  }
+
+  private pickGlobalPreferenceUpdates(preferences: Partial<NotificationPreferencesDto>): Partial<NotificationPreferences> {
     return {
-      ...(preferences.critical_only !== undefined ? { critical_only: preferences.critical_only } : {}),
-      ...(preferences.critical_alerts_enabled !== undefined ? { critical_alerts_enabled: preferences.critical_alerts_enabled } : {}),
-      ...(preferences.push_enabled !== undefined ? { push_enabled: preferences.push_enabled } : {}),
       ...(preferences.telegram_enabled !== undefined ? { telegram_enabled: preferences.telegram_enabled } : {}),
     };
   }
 
-  private toDto(preferences: NotificationPreferences): NotificationPreferencesDto {
+  private pickPushDeviceUpdates(preferences: Partial<NotificationPreferencesDto>): Partial<PushDeviceToken> {
     return {
-      critical_alerts_enabled: preferences.critical_alerts_enabled,
-      critical_only: preferences.critical_only,
-      push_enabled: preferences.push_enabled,
+      ...(preferences.critical_only !== undefined ? { critical_only: preferences.critical_only } : {}),
+      ...(preferences.critical_alerts_enabled !== undefined ? { critical_alerts_enabled: preferences.critical_alerts_enabled } : {}),
+      ...(preferences.push_enabled !== undefined ? { push_enabled: preferences.push_enabled } : {}),
+    };
+  }
+
+  private toDto(preferences: NotificationPreferences, device: PushDeviceToken | null): NotificationPreferencesDto {
+    return {
+      critical_alerts_enabled: device?.critical_alerts_enabled ?? false,
+      critical_only: device?.critical_only ?? false,
+      push_enabled: device?.push_enabled ?? false,
       telegram_enabled: preferences.telegram_enabled,
     };
   }
 
-  private allowsSeverity(preferences: NotificationPreferences, severity: AlertEventSeverity): boolean {
-    return !preferences.critical_only || severity === AlertEventSeverity.Critical;
+  private shouldSendPushToDevice(device: PushDeviceToken, severity: AlertEventSeverity): boolean {
+    return !device.critical_only || severity === AlertEventSeverity.Critical;
   }
 
   private async sendExpoPush(
@@ -112,13 +159,14 @@ export class NotificationsService {
     title: string,
     body: string,
     severity: AlertEventSeverity,
+    type: AlertEventType,
     criticalAlertsEnabled: boolean,
     userId: string,
     userLanguage: 'en' | 'fr'
   ): Promise<void> {
     try {
       const response = await fetch('https://exp.host/--/api/v2/push/send', {
-        body: JSON.stringify(this.buildExpoPushBody(device.token, title, body, severity, criticalAlertsEnabled, userId, userLanguage)),
+        body: JSON.stringify(this.buildExpoPushBody(device.token, title, body, severity, type, criticalAlertsEnabled, userId, userLanguage)),
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         method: 'POST',
       });
@@ -134,21 +182,34 @@ export class NotificationsService {
     title: string,
     body: string,
     severity: AlertEventSeverity,
+    type: AlertEventType,
     criticalAlertsEnabled: boolean,
     userId: string,
     userLanguage: 'en' | 'fr'
   ): object {
-    const isCriticalAlert = criticalAlertsEnabled && severity === AlertEventSeverity.Critical;
-    const channelId = isCriticalAlert ? 'sentryguard-critical-alerts-v5' : 'sentryguard-alerts';
+    const isPriorityAlert = criticalAlertsEnabled && this.shouldUsePriorityChannel(severity, type);
+    const channelId = isPriorityAlert ? 'sentryguard-critical-alerts-v5' : 'sentryguard-alerts';
 
     return {
       body,
       channelId,
-      data: { channelId, criticalAlertsEnabled, isCriticalAlert, severity, teslaRedirectUrl: this.buildTeslaRedirectUrl(userId, userLanguage) },
-      priority: isCriticalAlert || severity === AlertEventSeverity.Critical ? 'high' : 'default',
+      data: {
+        channelId,
+        criticalAlertsEnabled,
+        isCriticalAlert: isPriorityAlert,
+        isPriorityAlert,
+        severity,
+        teslaRedirectUrl: this.buildTeslaRedirectUrl(userId, userLanguage),
+        type,
+      },
+      priority: isPriorityAlert || severity === AlertEventSeverity.Critical ? 'high' : 'default',
       title,
       to: token,
     };
+  }
+
+  private shouldUsePriorityChannel(severity: AlertEventSeverity, type: AlertEventType): boolean {
+    return severity === AlertEventSeverity.Critical || type === AlertEventType.Sentry;
   }
 
   private buildTeslaRedirectUrl(userId: string, userLanguage: 'en' | 'fr'): string {
@@ -177,7 +238,7 @@ export class NotificationsService {
   }
 
   private async disablePushDevice(device: PushDeviceToken): Promise<void> {
-    device.enabled = false;
+    device.push_enabled = false;
     await this.pushDeviceTokenRepository.save(device);
   }
 }

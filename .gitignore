@@ -57,6 +57,7 @@ out
 # Expo local state
 .expo
 apps/*/.expo
+apps/mobile/ios/
 
 # Environment variables
 .env

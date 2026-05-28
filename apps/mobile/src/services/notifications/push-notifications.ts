@@ -56,6 +56,23 @@ export async function requestExpoPushToken(): Promise<string | null> {
     return null;
   }
 
+  return await getExpoPushToken();
+}
+
+export async function getGrantedExpoPushToken(): Promise<string | null> {
+  if (Platform.OS === 'web' || !Device.isDevice) {
+    return null;
+  }
+
+  const permissions = await Notifications.getPermissionsAsync();
+  if (!permissions.granted) {
+    return null;
+  }
+
+  return await getExpoPushToken();
+}
+
+async function getExpoPushToken(): Promise<string | null> {
   try {
     const projectId = getEasProjectId();
     const expoToken = projectId

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -12,6 +12,10 @@ interface RegisterPushTokenBody {
   token?: string;
 }
 
+interface NotificationPreferencesBody extends Partial<NotificationPreferencesDto> {
+  token?: string;
+}
+
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
 export class NotificationsController {
@@ -19,17 +23,21 @@ export class NotificationsController {
 
   @Throttle(ThrottleOptions.authenticatedRead())
   @Get('preferences')
-  public async getPreferences(@CurrentUser() user: User): Promise<NotificationPreferencesDto> {
-    return await this.notificationsService.getPreferences(user.userId);
+  public async getPreferences(
+    @CurrentUser() user: User,
+    @Query('token') token?: string
+  ): Promise<NotificationPreferencesDto> {
+    return await this.notificationsService.getPreferences(user.userId, token);
   }
 
   @Throttle(ThrottleOptions.authenticatedWrite())
   @Post('preferences')
   public async updatePreferences(
     @CurrentUser() user: User,
-    @Body() preferences: Partial<NotificationPreferencesDto>
+    @Body() body: NotificationPreferencesBody
   ): Promise<NotificationPreferencesDto> {
-    return await this.notificationsService.updatePreferences(user.userId, preferences);
+    const { token, ...preferences } = body;
+    return await this.notificationsService.updatePreferences(user.userId, preferences, token);
   }
 
   @Throttle(ThrottleOptions.authenticatedWrite())

@@ -137,7 +137,7 @@ export class VehicleAlertNotifierService {
         await telegramNotifier(userId, alertInfo, userLanguage);
       }
       if (config) {
-        await this.notificationsService.sendPushAlert(userId, config.alertTitle, config.message, config.severity, userLanguage);
+        await this.notificationsService.sendPushAlert(userId, config.alertTitle, config.message, config.severity, config.type, userLanguage);
       }
       const telegramTime = Date.now() - telegramStart;
 

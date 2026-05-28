@@ -10,16 +10,22 @@ import { getAuthProfile } from '../services/api/auth-api';
 import { getNotificationPreferences, registerPushToken, updateNotificationPreferences, type NotificationPreferences } from '../services/api/notifications-api';
 import { getUserLanguage, updateUserLanguage, UserLanguage } from '../services/api/user-language-api';
 import { isNotificationPolicyAccessGranted } from '../services/notifications/dnd-policy-access';
-import { configurePushNotifications, requestExpoPushToken } from '../services/notifications/push-notifications';
+import { configurePushNotifications, getGrantedExpoPushToken, requestExpoPushToken } from '../services/notifications/push-notifications';
 
 interface SettingsScreenProps {
   onLogout(): Promise<void>;
+}
+
+interface UpdateNotificationPreferencesMutation {
+  preferences: Partial<NotificationPreferences>;
+  token?: string;
 }
 
 export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
   const { i18n, t } = useTranslation();
   const [preferenceMessage, setPreferenceMessage] = useState<string | null>(null);
   const [isDndAccessModalOpen, setIsDndAccessModalOpen] = useState(false);
+  const [pushToken, setPushToken] = useState<string | null>(null);
   const hasRegisteredPushToken = useRef(false);
   const queryClient = useQueryClient();
   const { colors, mode, setMode } = useTheme();
@@ -29,17 +35,17 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
     queryKey: ['auth-profile'],
   });
   const preferencesQuery = useQuery({
-    queryFn: getNotificationPreferences,
-    queryKey: ['notification-preferences'],
+    queryFn: () => getNotificationPreferences(pushToken ?? undefined),
+    queryKey: ['notification-preferences', pushToken],
   });
   const languageQuery = useQuery({
     queryFn: getUserLanguage,
     queryKey: ['user-language'],
   });
   const preferencesMutation = useMutation({
-    mutationFn: updateNotificationPreferences,
-    onSuccess: (preferences) => {
-      queryClient.setQueryData(['notification-preferences'], preferences);
+    mutationFn: ({ preferences, token }: UpdateNotificationPreferencesMutation) => updateNotificationPreferences(preferences, token),
+    onSuccess: (preferences, variables) => {
+      queryClient.setQueryData(['notification-preferences', variables.token ?? pushToken], preferences);
     },
   });
   const languageMutation = useMutation({
@@ -61,24 +67,56 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
   }, [i18n, languageQuery.data?.language]);
 
   useEffect(() => {
+    if (Platform.OS === 'web') {
+      return;
+    }
+
+    void getGrantedExpoPushToken()
+      .then((token) => {
+        setPushToken(token);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
     if (!preferencesQuery.data?.push_enabled || hasRegisteredPushToken.current || Platform.OS === 'web') {
       return;
     }
 
-    void registerDeviceForPush(undefined, t).then((isRegistered) => {
-      hasRegisteredPushToken.current = isRegistered;
+    void registerDeviceForPush(undefined, t).then((token) => {
+      hasRegisteredPushToken.current = Boolean(token);
+      setPushToken(token);
     });
   }, [preferencesQuery.data?.push_enabled, t]);
 
   const updatePreference = async (updates: Partial<NotificationPreferences>): Promise<void> => {
     setPreferenceMessage(null);
+    let currentPushToken = pushToken ?? undefined;
+
     if (updates.push_enabled === true) {
       try {
-        const isRegistered = await registerDeviceForPush(setPreferenceMessage, t);
-        if (!isRegistered) {
+        const registeredToken = await registerDeviceForPush(setPreferenceMessage, t);
+        if (!registeredToken) {
           setPreferenceMessage(Platform.OS === 'web' ? t('settings.pushNativeOnly') : t('settings.pushNoToken'));
           return;
         }
+        currentPushToken = registeredToken;
+        setPushToken(registeredToken);
+      } catch {
+        setPreferenceMessage(t('settings.pushError'));
+        return;
+      }
+    }
+
+    if (requiresPushDevice(updates) && !currentPushToken && Platform.OS !== 'web') {
+      try {
+        const registeredToken = await registerDeviceForPush(setPreferenceMessage, t);
+        if (!registeredToken) {
+          setPreferenceMessage(t('settings.pushNoToken'));
+          return;
+        }
+        currentPushToken = registeredToken;
+        setPushToken(registeredToken);
       } catch {
         setPreferenceMessage(t('settings.pushError'));
         return;
@@ -89,7 +127,10 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
       return;
     }
 
-    const preferences = await preferencesMutation.mutateAsync(resolvePreferenceUpdates(updates));
+    const preferences = await preferencesMutation.mutateAsync({
+      preferences: resolvePreferenceUpdates(updates),
+      token: currentPushToken,
+    });
 
     if (updates.critical_alerts_enabled === true && !preferences.critical_alerts_enabled) {
       setPreferenceMessage(t('settings.criticalAlertsUnavailable'));
@@ -300,15 +341,23 @@ function resolvePreferenceUpdates(updates: Partial<NotificationPreferences>): Pa
   return updates;
 }
 
-async function registerDeviceForPush(setMessage: ((message: string | null) => void) | undefined, t: (key: string) => string): Promise<boolean> {
+function requiresPushDevice(updates: Partial<NotificationPreferences>): boolean {
+  return (
+    updates.push_enabled !== undefined ||
+    updates.critical_only !== undefined ||
+    updates.critical_alerts_enabled !== undefined
+  );
+}
+
+async function registerDeviceForPush(setMessage: ((message: string | null) => void) | undefined, t: (key: string) => string): Promise<string | null> {
   const token = await requestExpoPushToken();
   if (!token) {
     setMessage?.(Platform.OS === 'web' ? t('settings.pushNativeOnly') : t('settings.pushPermissionDenied'));
-    return false;
+    return null;
   }
 
   await registerPushToken(token, Platform.OS);
-  return true;
+  return token;
 }
 
 async function canEnableCriticalAlerts(

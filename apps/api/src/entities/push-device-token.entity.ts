@@ -17,7 +17,13 @@ export class PushDeviceToken {
   platform?: string | null;
 
   @Column({ type: 'boolean', default: true })
-  enabled!: boolean;
+  push_enabled!: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  critical_only!: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  critical_alerts_enabled!: boolean;
 
   @CreateDateColumn()
   created_at!: Date;
