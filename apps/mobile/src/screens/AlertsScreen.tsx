@@ -2,17 +2,19 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { JSX } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 
-import { ThemeColors, useThemeColors } from '../core/theme';
-import { AlertEventSeverity, type AlertEvent } from '../features/alerts/domain/entities';
+import { useThemeColors } from '../core/theme';
 import { clearAlertsUseCase, getAlertsUseCase } from '../features/alerts/di';
-
-enum AlertFilter {
-  All = 'all',
-  Critical = 'critical',
-  Warning = 'warning',
-}
+import {
+  AlertFilter,
+  filterAlerts,
+  formatAlertDate,
+  resolveAlertError,
+  resolveAlertTone,
+  resolveFilterLabelKey,
+} from './alerts/alerts.helpers';
+import { AlertStyles, createAlertsStyles } from './alerts/alerts.styles';
 
 interface AlertsScreenProps {
   isActive: boolean;
@@ -26,7 +28,7 @@ export function AlertsScreen({ isActive }: AlertsScreenProps): JSX.Element {
   const refetchAlertsRef = useRef<() => Promise<unknown>>(async () => undefined);
   const wasActiveRef = useRef(false);
   const colors = useThemeColors();
-  const styles = createStyles(colors);
+  const styles = createAlertsStyles(colors);
   const alertsQuery = useQuery({
     queryFn: () => getAlertsUseCase.execute(),
     queryKey: ['alerts'],
@@ -34,10 +36,7 @@ export function AlertsScreen({ isActive }: AlertsScreenProps): JSX.Element {
   });
   const alerts = alertsQuery.data ?? [];
   const hasClearableAlerts = alerts.length > 0;
-  const filteredAlerts = useMemo(
-    () => filterAlerts(alerts, activeFilter),
-    [activeFilter, alerts]
-  );
+  const filteredAlerts = useMemo(() => filterAlerts(alerts, activeFilter), [activeFilter, alerts]);
 
   useEffect(() => {
     refetchAlertsRef.current = alertsQuery.refetch;
@@ -125,186 +124,10 @@ export function AlertsScreen({ isActive }: AlertsScreenProps): JSX.Element {
   );
 }
 
-type AlertStyles = ReturnType<typeof createStyles>;
-
 function StateCard({ styles, text }: { styles: AlertStyles; text: string }): JSX.Element {
   return (
     <View style={styles.stateCard}>
       <Text style={styles.stateText}>{text}</Text>
     </View>
   );
-}
-
-function filterAlerts(alerts: AlertEvent[], activeFilter: AlertFilter): AlertEvent[] {
-  if (activeFilter === AlertFilter.Critical) {
-    return alerts.filter((alert) => alert.severity === AlertEventSeverity.Critical);
-  }
-
-  if (activeFilter === AlertFilter.Warning) {
-    return alerts.filter((alert) => alert.severity === AlertEventSeverity.Warning);
-  }
-
-  return alerts;
-}
-
-function resolveAlertTone(alert: AlertEvent, colors: ThemeColors): string {
-  return alert.severity === AlertEventSeverity.Critical ? colors.critical : colors.warning;
-}
-
-function formatAlertDate(value: string, language: string): string {
-  return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'fr-FR', { day: '2-digit', hour: '2-digit', minute: '2-digit', month: '2-digit' }).format(new Date(value));
-}
-
-function resolveAlertError(error: unknown, t: (key: string) => string): string {
-  return error instanceof Error ? error.message : t('alerts.error');
-}
-
-function resolveFilterLabelKey(filter: AlertFilter): string {
-  return `alerts.filter.${filter}`;
-}
-
-function createStyles(colors: ThemeColors) {
-  return StyleSheet.create({
-  activeFilterButton: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
-  },
-  activeFilterText: {
-    color: colors.accentText,
-  },
-  card: {
-    alignItems: 'stretch',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: 'row',
-    overflow: 'hidden',
-  },
-  cardHeader: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: 12,
-    justifyContent: 'space-between',
-  },
-  cardSubtitle: {
-    color: colors.muted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  cardMeta: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  cardText: {
-    flex: 1,
-    gap: 4,
-    padding: 16,
-  },
-  cardTime: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  cardTitle: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: '900',
-  },
-  clearButton: {
-    alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  clearButtonText: {
-    color: colors.text,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  container: {
-    flex: 1,
-  },
-  content: {
-    paddingBottom: 20,
-  },
-  disabledClearButton: {
-    opacity: 0.45,
-  },
-  disabledClearButtonText: {
-    color: colors.muted,
-  },
-  filterButton: {
-    alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    flex: 1,
-    paddingVertical: 10,
-  },
-  filterText: {
-    color: colors.muted,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  filters: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 20,
-  },
-  rail: {
-    width: 5,
-  },
-  header: {
-    gap: 6,
-    padding: 20,
-    paddingBottom: 12,
-  },
-  kicker: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  list: {
-    gap: 12,
-    padding: 20,
-    paddingTop: 14,
-  },
-  stateCard: {
-    alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 20,
-  },
-  stateText: {
-    color: colors.muted,
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: colors.muted,
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 32,
-    fontWeight: '900',
-  },
-  titleCopy: {
-    flex: 1,
-    gap: 6,
-  },
-  titleRow: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: 12,
-    justifyContent: 'space-between',
-  },
-  });
 }
