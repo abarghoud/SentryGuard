@@ -23,7 +23,7 @@
   "auth.error.virtualKeyUrl": "Invalid virtual key address. Use a URL starting with http:// or https://.",
   "auth.login": "Tesla login",
   "auth.loginPending": "Connecting...",
-  "auth.subtitle": "Mobile dashboard, alerts and security settings connected to your API.",
+  "auth.subtitle": "Get an instant alert the moment suspicious activity is detected around your car.",
   "auth.title": "Monitor your Tesla from your phone.",
   "common.active": "Active",
   "common.back": "Back",

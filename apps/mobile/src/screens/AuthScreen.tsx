@@ -2,16 +2,18 @@ import * as Linking from 'expo-linking';
 import type { JSX } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { radius, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
 import { useThemeColors } from '../core/theme';
-import { AppText, GlassButton, GlassButtonVariant, Icon, Surface } from '../core/ui';
+import { AppText, GlassButton, GlassButtonVariant, Surface } from '../core/ui';
 import { apiUrlStore, virtualKeyStore } from '../core/api';
 import { getTeslaLoginUrlUseCase } from '../features/auth/di';
 import { extractTokenFromCallbackUrl } from './auth/auth.helpers';
+
+const appLogo = require('../../assets/icon.png');
 
 interface AuthScreenProps {
   onAuthenticated(token: string): Promise<void>;
@@ -143,10 +145,13 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
         <ScrollView ref={scrollViewRef} keyboardShouldPersistTaps="handled" style={styles.flex} contentContainerStyle={styles.content}>
           <View style={styles.hero}>
-            <Pressable accessibilityRole="button" onPress={revealAdvancedSettings} style={styles.logo}>
-              <Icon name="shield.lefthalf.filled" size={40} color={colors.systemBlue} />
+            <Pressable accessibilityRole="button" onPress={revealAdvancedSettings}>
+              <Image source={appLogo} style={styles.logo} resizeMode="contain" />
             </Pressable>
-            <AppText variant={TextVariant.Title1} style={styles.centerText}>
+            <AppText variant={TextVariant.LargeTitle} style={styles.centerText}>
+              SentryGuard
+            </AppText>
+            <AppText variant={TextVariant.Title3} style={styles.centerText}>
               {t('auth.title')}
             </AppText>
             <AppText variant={TextVariant.Body} color={colors.secondaryLabel} style={styles.centerText}>
@@ -246,13 +251,9 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
       padding: spacing.md,
     },
     logo: {
-      alignItems: 'center',
-      backgroundColor: colors.fill,
-      borderRadius: radius.capsule,
-      height: 72,
-      justifyContent: 'center',
+      height: 96,
       marginBottom: spacing.sm,
-      width: 72,
+      width: 96,
     },
   });
 }
