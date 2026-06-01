@@ -63,6 +63,13 @@
       "options": {
         "command": "tsc --project apps/mobile/tsconfig.app.json --noEmit"
       }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/apps/mobile"],
+      "options": {
+        "jestConfig": "apps/mobile/jest.config.js"
+      }
     }
   }
 }
