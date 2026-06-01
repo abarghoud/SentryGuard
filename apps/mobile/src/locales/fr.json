@@ -58,6 +58,7 @@
   "dashboard.virtualKey.title": "Clé virtuelle non associée",
   "settings.account": "Compte",
   "settings.beta": "Beta",
+  "settings.betaFooter": "Membre du programme bêta",
   "settings.criticalOnly": "Critiques uniquement",
   "settings.criticalAlerts": "Alertes prioritaires",
   "settings.criticalAlertsDescription": "Permet aux alertes critiques de sonner même en mode silencieux ou Ne pas déranger, si le téléphone l’autorise.",

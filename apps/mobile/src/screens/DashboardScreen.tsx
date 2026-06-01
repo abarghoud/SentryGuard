@@ -1,71 +1,89 @@
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, RefreshControl, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
+import { screenPadding, spacing } from '../core/design/metrics';
+import { TextVariant } from '../core/design/typography';
+import { useScreenTopInset } from '../core/design/use-screen-inset';
 import { useThemeColors } from '../core/theme';
-import { Vehicle } from '../features/vehicles/domain/entities';
+import { AppText } from '../core/ui';
+import { MainStackParamList } from '../core/navigation';
 import { useVehiclesQuery } from '../features/vehicles/di';
 import { EmptyState } from './dashboard/components/EmptyState';
-import { SummaryTile } from './dashboard/components/SummaryTile';
 import { VehicleCard } from './dashboard/components/VehicleCard';
 import { VirtualKeyBanner } from './dashboard/components/VirtualKeyBanner';
-import { countProtectedVehicles, countUnprotectedVehicles, openVirtualKey, resolveSubtitle } from './dashboard/dashboard.helpers';
-import { createDashboardStyles } from './dashboard/dashboard.styles';
+import { openVirtualKey, resolveSubtitle } from './dashboard/dashboard.helpers';
 
 interface DashboardScreenProps {
   isBetaTester?: boolean;
-  onSelectVehicle(vehicle: Vehicle): void;
 }
 
-export function DashboardScreen({ isBetaTester = false, onSelectVehicle }: DashboardScreenProps): JSX.Element {
+export function DashboardScreen({ isBetaTester = false }: DashboardScreenProps): JSX.Element {
   const { t } = useTranslation();
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const [virtualKeyMessage, setVirtualKeyMessage] = useState<string | null>(null);
   const colors = useThemeColors();
-  const styles = createDashboardStyles(colors);
+  const topInset = useScreenTopInset();
   const vehiclesQuery = useVehiclesQuery();
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.kicker}>{t('dashboard.kicker')}</Text>
-        <Text style={styles.title}>{t('dashboard.title')}</Text>
-        <Text style={styles.subtitle}>{resolveSubtitle(vehiclesQuery.data, isBetaTester, t)}</Text>
-      </View>
+    <FlatList
+      style={{ backgroundColor: colors.systemGroupedBackground }}
+      contentContainerStyle={[styles.content, { paddingTop: topInset + spacing.sm }]}
+      contentInsetAdjustmentBehavior="automatic"
+      data={vehiclesQuery.data ?? []}
+      keyExtractor={(vehicle) => vehicle.id}
+      ItemSeparatorComponent={() => <View style={styles.separator} />}
+      refreshControl={<RefreshControl refreshing={vehiclesQuery.isFetching} onRefresh={() => void vehiclesQuery.refetch()} />}
+      ListHeaderComponent={
+        <View style={styles.headerBlock}>
+          <View style={styles.titleBlock}>
+            <AppText variant={TextVariant.LargeTitle}>{t('dashboard.title')}</AppText>
+            <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
+              {resolveSubtitle(vehiclesQuery.data, isBetaTester, t)}
+            </AppText>
+          </View>
 
-      <VirtualKeyBanner
-        message={virtualKeyMessage}
-        styles={styles}
-        t={t}
-        vehicles={vehiclesQuery.data ?? []}
-        onOpenKey={() => void openVirtualKey(setVirtualKeyMessage, t)}
-      />
-
-      <View style={styles.summaryRow}>
-        <SummaryTile
-          label={t('dashboard.monitored')}
-          styles={styles}
-          value={String(countProtectedVehicles(vehiclesQuery.data, isBetaTester))}
-          tone={colors.accent}
+          <VirtualKeyBanner
+            message={virtualKeyMessage}
+            t={t}
+            vehicles={vehiclesQuery.data ?? []}
+            onOpenKey={() => void openVirtualKey(setVirtualKeyMessage, t)}
+          />
+        </View>
+      }
+      ListEmptyComponent={<EmptyState isLoading={vehiclesQuery.isLoading} error={vehiclesQuery.error} t={t} />}
+      renderItem={({ item }) => (
+        <VehicleCard
+          isBetaTester={isBetaTester}
+          vehicle={item}
+          onSelect={() => navigation.navigate('VehicleDetail', { vehicleId: item.vin })}
+          t={t}
         />
-        <SummaryTile
-          label={t('dashboard.configure')}
-          styles={styles}
-          value={String(countUnprotectedVehicles(vehiclesQuery.data, isBetaTester))}
-          tone={colors.warning}
-        />
-      </View>
-
-      <FlatList
-        contentContainerStyle={styles.listContent}
-        data={vehiclesQuery.data ?? []}
-        keyExtractor={(vehicle) => vehicle.id}
-        ListEmptyComponent={<EmptyState isLoading={vehiclesQuery.isLoading} error={vehiclesQuery.error} styles={styles} t={t} />}
-        refreshControl={<RefreshControl refreshing={vehiclesQuery.isFetching} onRefresh={() => void vehiclesQuery.refetch()} />}
-        renderItem={({ item }) => (
-          <VehicleCard isBetaTester={isBetaTester} vehicle={item} onSelect={() => onSelectVehicle(item)} styles={styles} t={t} />
-        )}
-      />
-    </View>
+      )}
+    />
   );
 }
+
+const styles = StyleSheet.create({
+  content: {
+    gap: spacing.md,
+    paddingBottom: spacing.xxl * 3,
+    paddingHorizontal: screenPadding,
+    paddingTop: spacing.sm,
+  },
+  headerBlock: {
+    gap: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  separator: {
+    height: spacing.md,
+  },
+  titleBlock: {
+    gap: spacing.xs,
+    paddingTop: spacing.sm,
+  },
+});

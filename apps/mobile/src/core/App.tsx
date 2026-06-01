@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import type { JSX } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { AppState, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { MobileShell } from './MobileShell';
@@ -17,13 +18,15 @@ export function App(): JSX.Element {
   const queryClient = useMemo(() => new QueryClient(), []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <SafeAreaProvider>
-        <ThemeProvider>
-          <ThemedAppContent />
-        </ThemeProvider>
-      </SafeAreaProvider>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider>
+          <ThemeProvider>
+            <ThemedAppContent />
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }
 

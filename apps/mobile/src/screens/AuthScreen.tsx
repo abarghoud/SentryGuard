@@ -2,14 +2,16 @@ import * as Linking from 'expo-linking';
 import type { JSX } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { radius, screenPadding, spacing } from '../core/design/metrics';
+import { TextVariant } from '../core/design/typography';
 import { useThemeColors } from '../core/theme';
+import { AppText, GlassButton, GlassButtonVariant, Icon, Surface } from '../core/ui';
 import { apiUrlStore, virtualKeyStore } from '../core/api';
 import { getTeslaLoginUrlUseCase } from '../features/auth/di';
 import { extractTokenFromCallbackUrl } from './auth/auth.helpers';
-import { createAuthStyles } from './auth/auth.styles';
 
 interface AuthScreenProps {
   onAuthenticated(token: string): Promise<void>;
@@ -25,7 +27,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
   const [virtualKeyPairingUrl, setVirtualKeyPairingUrl] = useState(virtualKeyStore.getCustomUrl());
   const scrollViewRef = useRef<ScrollView>(null);
   const colors = useThemeColors();
-  const styles = createAuthStyles(colors);
+  const styles = createStyles(colors);
 
   useEffect(() => {
     const authenticateFromUrl = (url: string | null): void => {
@@ -138,32 +140,41 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardAvoider}>
-        <ScrollView ref={scrollViewRef} keyboardShouldPersistTaps="handled" style={styles.scroller} contentContainerStyle={styles.content}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
+        <ScrollView ref={scrollViewRef} keyboardShouldPersistTaps="handled" style={styles.flex} contentContainerStyle={styles.content}>
           <View style={styles.hero}>
-            <Pressable onPress={revealAdvancedSettings}>
-              <Text selectable={false} style={styles.brand}>SentryGuard</Text>
+            <Pressable accessibilityRole="button" onPress={revealAdvancedSettings} style={styles.logo}>
+              <Icon name="shield.lefthalf.filled" size={40} color={colors.systemBlue} />
             </Pressable>
-            <Text style={styles.title}>{t('auth.title')}</Text>
-            <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
+            <AppText variant={TextVariant.Title1} style={styles.centerText}>
+              {t('auth.title')}
+            </AppText>
+            <AppText variant={TextVariant.Body} color={colors.secondaryLabel} style={styles.centerText}>
+              {t('auth.subtitle')}
+            </AppText>
           </View>
 
-          <View style={styles.panel}>
-            <Pressable disabled={isAuthenticating} style={[styles.primaryButton, isAuthenticating ? styles.disabledButton : null]} onPress={openTeslaLogin}>
-              <Text style={styles.primaryButtonText}>{isAuthenticating ? t('auth.loginPending') : t('auth.login')}</Text>
-            </Pressable>
+          <View style={styles.actions}>
+            <GlassButton
+              label={isAuthenticating ? t('auth.loginPending') : t('auth.login')}
+              icon="bolt.car.fill"
+              disabled={isAuthenticating}
+              onPress={openTeslaLogin}
+            />
 
             {isAdvancedVisible ? (
-              <View style={styles.advancedSection}>
-                <Text style={styles.manualLabel}>{t('auth.advanced.label')}</Text>
+              <Surface style={styles.advanced}>
+                <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
+                  {t('auth.advanced.label').toUpperCase()}
+                </AppText>
                 <TextInput
                   autoCapitalize="none"
                   autoCorrect={false}
                   onChangeText={setApiUrl}
                   onFocus={scrollToAdvancedSettings}
                   placeholder={t('auth.advanced.apiPlaceholder')}
-                  placeholderTextColor={colors.muted}
-                  style={styles.apiInput}
+                  placeholderTextColor={colors.tertiaryLabel}
+                  style={styles.input}
                   value={apiUrl}
                 />
                 <TextInput
@@ -172,25 +183,76 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
                   onChangeText={setVirtualKeyPairingUrl}
                   onFocus={scrollToAdvancedSettings}
                   placeholder={t('auth.advanced.virtualKeyPlaceholder')}
-                  placeholderTextColor={colors.muted}
-                  style={styles.apiInput}
+                  placeholderTextColor={colors.tertiaryLabel}
+                  style={styles.input}
                   value={virtualKeyPairingUrl}
                 />
                 <View style={styles.advancedActions}>
-                  <Pressable style={styles.smallButton} onPress={saveAdvancedSettings}>
-                    <Text style={styles.smallButtonText}>{t('auth.advanced.save')}</Text>
-                  </Pressable>
-                  <Pressable style={styles.smallButton} onPress={resetAdvancedSettings}>
-                    <Text style={styles.smallButtonText}>{t('auth.advanced.reset')}</Text>
-                  </Pressable>
+                  <GlassButton label={t('auth.advanced.save')} variant={GlassButtonVariant.Secondary} onPress={saveAdvancedSettings} style={styles.flex} />
+                  <GlassButton label={t('auth.advanced.reset')} variant={GlassButtonVariant.Plain} onPress={resetAdvancedSettings} style={styles.flex} />
                 </View>
-              </View>
+              </Surface>
             ) : null}
 
-            {message ? <Text style={styles.message}>{message}</Text> : null}
+            {message ? (
+              <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel} style={styles.centerText}>
+                {message}
+              </AppText>
+            ) : null}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+}
+
+function createStyles(colors: ReturnType<typeof useThemeColors>) {
+  return StyleSheet.create({
+    actions: {
+      gap: spacing.md,
+    },
+    advanced: {
+      gap: spacing.md,
+    },
+    advancedActions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    centerText: {
+      textAlign: 'center',
+    },
+    container: {
+      backgroundColor: colors.systemBackground,
+      flex: 1,
+    },
+    content: {
+      flexGrow: 1,
+      gap: spacing.xxl,
+      justifyContent: 'center',
+      padding: screenPadding,
+    },
+    flex: {
+      flex: 1,
+    },
+    hero: {
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    input: {
+      backgroundColor: colors.fill,
+      borderRadius: radius.control,
+      color: colors.label,
+      fontSize: 17,
+      padding: spacing.md,
+    },
+    logo: {
+      alignItems: 'center',
+      backgroundColor: colors.fill,
+      borderRadius: radius.capsule,
+      height: 72,
+      justifyContent: 'center',
+      marginBottom: spacing.sm,
+      width: 72,
+    },
+  });
 }

@@ -1,48 +1,123 @@
 import type { JSX } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { spacing } from '../../../core/design/metrics';
+import { TextVariant } from '../../../core/design/typography';
+import { useThemeColors } from '../../../core/theme';
+import { AppText, Icon, Surface } from '../../../core/ui';
 import { Vehicle } from '../../../features/vehicles/domain/entities';
 import { TranslationFunction, isVehicleProtected } from '../dashboard.helpers';
-import { DashboardStyles } from '../dashboard.styles';
-import { Metric } from './Metric';
 
 export function VehicleCard({
   isBetaTester,
   onSelect,
-  styles,
   t,
   vehicle,
 }: {
   isBetaTester: boolean;
   onSelect(): void;
-  styles: DashboardStyles;
   t: TranslationFunction;
   vehicle: Vehicle;
 }): JSX.Element {
+  const colors = useThemeColors();
   const isProtected = isVehicleProtected(vehicle, isBetaTester);
+  const statusColor = isProtected ? colors.systemGreen : colors.systemOrange;
 
   return (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View>
-          <Text style={styles.vehicleName}>{vehicle.display_name ?? vehicle.model ?? t('common.vehicleFallback')}</Text>
-          <Text style={styles.vin}>{vehicle.vin}</Text>
-        </View>
-        <View style={[styles.statusBadge, isProtected ? styles.safeBadge : styles.warningBadge]}>
-          <Text style={styles.statusText}>{isProtected ? t('common.protected') : t('common.toConfigure')}</Text>
-        </View>
-      </View>
+    <Pressable accessibilityRole="button" onPress={onSelect}>
+      {({ pressed }) => (
+        <Surface elevated style={[styles.card, pressed ? styles.pressed : null]}>
+          <View style={styles.header}>
+            <View style={styles.titleBlock}>
+              <AppText variant={TextVariant.Headline}>{vehicle.display_name ?? vehicle.model ?? t('common.vehicleFallback')}</AppText>
+              <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
+                {vehicle.vin}
+              </AppText>
+            </View>
+            <View style={[styles.badge, { backgroundColor: statusColor }]}>
+              <AppText variant={TextVariant.Caption1} color={colors.onAccent} style={styles.badgeText}>
+                {isProtected ? t('common.protected') : t('common.toConfigure')}
+              </AppText>
+            </View>
+          </View>
 
-      <View style={styles.metrics}>
-        <Metric label={t('vehicle.alertSentry')} styles={styles} value={vehicle.sentry_mode_monitoring_enabled ? t('common.active') : t('common.inactive')} />
-        {isBetaTester ? (
-          <Metric label={t('vehicle.alertIntrusion')} styles={styles} value={vehicle.break_in_monitoring_enabled ? t('common.active') : t('common.inactive')} />
-        ) : null}
-      </View>
+          <View style={styles.metrics}>
+            <Metric
+              label={t('vehicle.alertSentry')}
+              value={vehicle.sentry_mode_monitoring_enabled ? t('common.active') : t('common.inactive')}
+            />
+            {isBetaTester ? (
+              <Metric
+                label={t('vehicle.alertIntrusion')}
+                value={vehicle.break_in_monitoring_enabled ? t('common.active') : t('common.inactive')}
+              />
+            ) : null}
+          </View>
 
-      <Pressable accessibilityRole="button" style={styles.cardAction} onPress={onSelect}>
-        <Text style={styles.cardActionText}>{t('dashboard.details')}</Text>
-      </Pressable>
+          <View style={styles.footer}>
+            <AppText variant={TextVariant.Subhead} color={colors.systemBlue}>
+              {t('dashboard.details')}
+            </AppText>
+            <Icon name="chevron.right" size={14} color={colors.tertiaryLabel} weight="semibold" />
+          </View>
+        </Surface>
+      )}
+    </Pressable>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }): JSX.Element {
+  const colors = useThemeColors();
+
+  return (
+    <View style={[styles.metric, { backgroundColor: colors.fill }]}>
+      <AppText variant={TextVariant.Caption1} color={colors.secondaryLabel}>
+        {label}
+      </AppText>
+      <AppText variant={TextVariant.Subhead}>{value}</AppText>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  badge: {
+    borderRadius: 999,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+  },
+  badgeText: {
+    fontWeight: '700',
+  },
+  card: {
+    gap: spacing.lg,
+  },
+  footer: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.xs,
+    justifyContent: 'flex-end',
+  },
+  header: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: spacing.md,
+    justifyContent: 'space-between',
+  },
+  metric: {
+    borderRadius: 12,
+    flex: 1,
+    gap: spacing.xs,
+    padding: spacing.md,
+  },
+  metrics: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  pressed: {
+    opacity: 0.85,
+  },
+  titleBlock: {
+    flex: 1,
+    gap: 2,
+  },
+});

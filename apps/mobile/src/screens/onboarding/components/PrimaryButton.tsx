@@ -1,22 +1,7 @@
 import type { JSX } from 'react';
-import { Pressable, Text } from 'react-native';
 
-import { OnboardingStyles } from '../onboarding.styles';
+import { GlassButton } from '../../../core/ui';
 
-export function PrimaryButton({
-  disabled,
-  label,
-  onPress,
-  styles,
-}: {
-  disabled?: boolean;
-  label: string;
-  onPress(): void;
-  styles: OnboardingStyles;
-}): JSX.Element {
-  return (
-    <Pressable disabled={disabled} onPress={onPress} style={[styles.primaryButton, disabled ? styles.disabled : null]}>
-      <Text style={styles.primaryButtonText}>{label}</Text>
-    </Pressable>
-  );
+export function PrimaryButton({ disabled, label, onPress }: { disabled?: boolean; label: string; onPress(): void }): JSX.Element {
+  return <GlassButton label={label} disabled={disabled} onPress={onPress} />;
 }

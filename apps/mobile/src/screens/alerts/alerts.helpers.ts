@@ -20,7 +20,11 @@ export function filterAlerts(alerts: AlertEvent[], activeFilter: AlertFilter): A
 }
 
 export function resolveAlertTone(alert: AlertEvent, colors: ThemeColors): string {
-  return alert.severity === AlertEventSeverity.Critical ? colors.critical : colors.warning;
+  return alert.severity === AlertEventSeverity.Critical ? colors.systemRed : colors.systemOrange;
+}
+
+export function resolveAlertIcon(alert: AlertEvent): 'exclamationmark.triangle.fill' | 'bell.badge.fill' {
+  return alert.severity === AlertEventSeverity.Critical ? 'exclamationmark.triangle.fill' : 'bell.badge.fill';
 }
 
 export function formatAlertDate(value: string, language: string): string {

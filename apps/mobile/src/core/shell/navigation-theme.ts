@@ -10,12 +10,12 @@ export function createNavigationTheme(colors: ThemeColors, mode: ThemeMode): Nav
     ...baseTheme,
     colors: {
       ...baseTheme.colors,
-      background: colors.background,
-      border: colors.border,
-      card: colors.background,
-      notification: colors.accent,
-      primary: colors.accent,
-      text: colors.text,
+      background: colors.systemGroupedBackground,
+      border: colors.separator,
+      card: colors.secondarySystemGroupedBackground,
+      notification: colors.systemRed,
+      primary: colors.systemBlue,
+      text: colors.label,
     },
   };
 }

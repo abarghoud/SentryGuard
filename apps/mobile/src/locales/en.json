@@ -58,6 +58,7 @@
   "dashboard.virtualKey.title": "Virtual key not paired",
   "settings.account": "Account",
   "settings.beta": "Beta",
+  "settings.betaFooter": "Beta program member",
   "settings.criticalOnly": "Critical only",
   "settings.criticalAlerts": "Priority alerts",
   "settings.criticalAlertsDescription": "Allows critical alerts to ring even in silent or Do Not Disturb mode, when the phone allows it.",

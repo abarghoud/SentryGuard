@@ -1,15 +1,17 @@
 import type { JSX } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { screenPadding, spacing } from '../../../core/design/metrics';
+import { TextVariant } from '../../../core/design/typography';
+import { useThemeColors } from '../../../core/theme';
+import { AppText, Surface } from '../../../core/ui';
 import { TranslationFunction } from '../onboarding.helpers';
-import { OnboardingStyles } from '../onboarding.styles';
 
 export function OnboardingFrame({
   actions,
   children,
   message,
-  styles,
   subtitle,
   t,
   title,
@@ -17,23 +19,54 @@ export function OnboardingFrame({
   actions?: JSX.Element;
   children?: JSX.Element;
   message?: string | null;
-  styles: OnboardingStyles;
   subtitle: string;
   t: TranslationFunction;
   title: string;
 }): JSX.Element {
+  const colors = useThemeColors();
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.systemBackground }]} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.kicker}>{t('onboarding.kicker')}</Text>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
+          <AppText variant={TextVariant.Footnote} color={colors.systemBlue} style={styles.kicker}>
+            {t('onboarding.kicker').toUpperCase()}
+          </AppText>
+          <AppText variant={TextVariant.Title1}>{title}</AppText>
+          <AppText variant={TextVariant.Body} color={colors.secondaryLabel}>
+            {subtitle}
+          </AppText>
         </View>
-        {children ? <View style={styles.panel}>{children}</View> : null}
-        {message ? <Text style={styles.message}>{message}</Text> : null}
+        {children ? <Surface>{children}</Surface> : null}
+        {message ? (
+          <AppText variant={TextVariant.Footnote} color={colors.systemOrange}>
+            {message}
+          </AppText>
+        ) : null}
         {actions ? <View style={styles.actions}>{actions}</View> : null}
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  actions: {
+    gap: spacing.md,
+  },
+  container: {
+    flex: 1,
+  },
+  content: {
+    flexGrow: 1,
+    gap: spacing.xl,
+    justifyContent: 'center',
+    padding: screenPadding,
+  },
+  header: {
+    gap: spacing.sm,
+  },
+  kicker: {
+    fontWeight: '700',
+    letterSpacing: 0.6,
+  },
+});

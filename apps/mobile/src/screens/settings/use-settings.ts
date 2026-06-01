@@ -18,6 +18,7 @@ import {
   registerDeviceForPush,
   requiresPushDevice,
   resolvePreferenceUpdates,
+  resolveSettingsError,
 } from './settings.helpers';
 
 interface UpdateNotificationPreferencesMutation {
@@ -120,23 +121,40 @@ export function useSettings() {
 
   const updatePreference = async (updates: Partial<NotificationPreferences>): Promise<void> => {
     setPreferenceMessage(null);
+
+    const queryKey = ['notification-preferences', pushToken];
+    const previousPreferences = queryClient.getQueryData<NotificationPreferences>(queryKey) ?? defaultPreferences;
+    const rollback = (): void => {
+      queryClient.setQueryData(queryKey, previousPreferences);
+    };
+
+    // Optimistic: reflect the toggle immediately, before any network/registration work.
+    queryClient.setQueryData(queryKey, { ...previousPreferences, ...resolvePreferenceUpdates(updates) });
+
     const currentPushToken = await resolvePushTokenForUpdate(updates);
 
     if (currentPushToken === false) {
+      rollback();
       return;
     }
 
     if (updates.critical_alerts_enabled === true && !(await canEnableCriticalAlerts(setIsDndAccessModalOpen))) {
+      rollback();
       return;
     }
 
-    const preferences = await preferencesMutation.mutateAsync({
-      preferences: resolvePreferenceUpdates(updates),
-      token: currentPushToken,
-    });
+    try {
+      const preferences = await preferencesMutation.mutateAsync({
+        preferences: resolvePreferenceUpdates(updates),
+        token: currentPushToken,
+      });
 
-    if (updates.critical_alerts_enabled === true && !preferences.critical_alerts_enabled) {
-      setPreferenceMessage(t('settings.criticalAlertsUnavailable'));
+      if (updates.critical_alerts_enabled === true && !preferences.critical_alerts_enabled) {
+        setPreferenceMessage(t('settings.criticalAlertsUnavailable'));
+      }
+    } catch (error) {
+      rollback();
+      setPreferenceMessage(resolveSettingsError(error, t));
     }
   };
 

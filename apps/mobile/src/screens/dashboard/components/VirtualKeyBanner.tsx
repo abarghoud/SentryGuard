@@ -1,37 +1,56 @@
 import type { JSX } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { spacing } from '../../../core/design/metrics';
+import { TextVariant } from '../../../core/design/typography';
+import { useThemeColors } from '../../../core/theme';
+import { AppText, GlassButton, GlassButtonVariant, Icon, Surface } from '../../../core/ui';
 import { Vehicle } from '../../../features/vehicles/domain/entities';
 import { TranslationFunction } from '../dashboard.helpers';
-import { DashboardStyles } from '../dashboard.styles';
 
 export function VirtualKeyBanner({
   message,
   onOpenKey,
-  styles,
   t,
   vehicles,
 }: {
   message: string | null;
   onOpenKey(): void;
-  styles: DashboardStyles;
   t: TranslationFunction;
   vehicles: Vehicle[];
 }): JSX.Element | null {
+  const colors = useThemeColors();
+
   if (vehicles.length === 0 || vehicles.some((vehicle) => vehicle.key_paired)) {
     return null;
   }
 
   return (
-    <View style={styles.keyBanner}>
-      <View style={styles.keyCopy}>
-        <Text style={styles.keyTitle}>{t('dashboard.virtualKey.title')}</Text>
-        <Text style={styles.keyText}>{t('dashboard.virtualKey.text')}</Text>
-        {message ? <Text style={styles.keyMessage}>{message}</Text> : null}
+    <Surface style={styles.banner}>
+      <View style={styles.heading}>
+        <Icon name="key.fill" size={20} color={colors.systemOrange} />
+        <AppText variant={TextVariant.Headline}>{t('dashboard.virtualKey.title')}</AppText>
       </View>
-      <Pressable accessibilityRole="button" onPress={onOpenKey} style={styles.keyButton}>
-        <Text style={styles.keyButtonText}>{t('dashboard.virtualKey.open')}</Text>
-      </Pressable>
-    </View>
+      <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
+        {t('dashboard.virtualKey.text')}
+      </AppText>
+      {message ? (
+        <AppText variant={TextVariant.Footnote} color={colors.systemOrange}>
+          {message}
+        </AppText>
+      ) : null}
+      <GlassButton label={t('dashboard.virtualKey.open')} icon="arrow.up.right.square" onPress={onOpenKey} variant={GlassButtonVariant.Secondary} />
+    </Surface>
   );
 }
+
+const styles = StyleSheet.create({
+  banner: {
+    gap: spacing.md,
+  },
+  heading: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+});

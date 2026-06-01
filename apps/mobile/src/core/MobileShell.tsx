@@ -41,29 +41,21 @@ export function MobileShell(): JSX.Element {
     }
   }, [i18n, languageQuery.data?.language]);
 
-  if (!session.isReady) {
+  if (!session.isReady || (session.token && onboardingQuery.isLoading)) {
     return (
-      <SafeAreaView style={{ alignItems: 'center', backgroundColor: '#07110f', flex: 1, justifyContent: 'center' }}>
-        <Text style={{ color: '#edf7f3', fontSize: 22, fontWeight: '700' }}>SentryGuard</Text>
-      </SafeAreaView>
-    );
-  }
-
-  if (session.token && onboardingQuery.isLoading) {
-    return (
-      <SafeAreaView style={{ alignItems: 'center', backgroundColor: colors.background, flex: 1, justifyContent: 'center' }}>
-        <Text style={{ color: colors.text, fontSize: 22, fontWeight: '700' }}>SentryGuard</Text>
+      <SafeAreaView style={{ alignItems: 'center', backgroundColor: colors.systemBackground, flex: 1, justifyContent: 'center' }}>
+        <Text style={{ color: colors.label, fontSize: 22, fontWeight: '700' }}>SentryGuard</Text>
       </SafeAreaView>
     );
   }
 
   return (
     <NavigationContainer theme={createNavigationTheme(colors, mode)}>
-      <Stack.Navigator screenOptions={{ contentStyle: { backgroundColor: colors.background }, headerShown: false }}>
+      <Stack.Navigator screenOptions={{ contentStyle: { backgroundColor: colors.systemBackground }, headerShown: false }}>
         {session.token ? (
           onboardingQuery.data?.isComplete ? (
             <Stack.Screen name="Main" options={{ animation: 'none' }}>
-              {(props) => <MainScreen {...props} onLogout={session.clearToken} />}
+              {() => <MainScreen onLogout={session.clearToken} />}
             </Stack.Screen>
           ) : (
             <Stack.Screen name="Main" options={{ animation: 'none' }}>

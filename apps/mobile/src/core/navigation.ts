@@ -9,7 +9,17 @@ export enum AppTab {
 export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
+};
+
+export type MainStackParamList = {
+  Tabs: undefined;
   VehicleDetail: { vehicleId: string };
 };
 
-export type VehicleDetailScreenProps = NativeStackScreenProps<RootStackParamList, 'VehicleDetail'>;
+export type AppTabParamList = {
+  Dashboard: undefined;
+  Alerts: undefined;
+  Settings: undefined;
+};
+
+export type VehicleDetailScreenProps = NativeStackScreenProps<MainStackParamList, 'VehicleDetail'>;

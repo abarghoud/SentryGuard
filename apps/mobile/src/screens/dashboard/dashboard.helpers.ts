@@ -9,14 +9,6 @@ export function isVehicleProtected(vehicle: Vehicle, isBetaTester: boolean): boo
   return vehicle.sentry_mode_monitoring_enabled || (isBetaTester && vehicle.break_in_monitoring_enabled === true);
 }
 
-export function countProtectedVehicles(vehicles: Vehicle[] | undefined, isBetaTester: boolean): number {
-  return vehicles?.filter((vehicle) => isVehicleProtected(vehicle, isBetaTester)).length ?? 0;
-}
-
-export function countUnprotectedVehicles(vehicles: Vehicle[] | undefined, isBetaTester: boolean): number {
-  return (vehicles?.length ?? 0) - countProtectedVehicles(vehicles, isBetaTester);
-}
-
 export function resolveSubtitle(vehicles: Vehicle[] | undefined, isBetaTester: boolean, t: TranslationFunction): string {
   if (!vehicles) {
     return t('dashboard.subtitleLoading');
