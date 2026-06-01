@@ -8,7 +8,7 @@ import { useScreenTopInset } from '../core/design/use-screen-inset';
 import { ThemeMode, useTheme } from '../core/theme';
 import { AppSwitch, AppText, GlassButton, GlassButtonVariant, ListRow, ListSection, SegmentedControl, Surface } from '../core/ui';
 import { UserLanguage } from '../features/user/domain/entities';
-import { openAndroidDoNotDisturbAccessSettings, resolveSettingsError } from './settings/settings.helpers';
+import { openAndroidDoNotDisturbAccessSettings, openDonation, resolveSettingsError } from './settings/settings.helpers';
 import { useSettings } from './settings/use-settings';
 
 interface SettingsScreenProps {
@@ -115,6 +115,16 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         <ListRow
           title={t('settings.telegram')}
           accessory={<AppSwitch disabled={isBusy} value={preferences.telegram_enabled} onValueChange={(value) => void updatePreference({ telegram_enabled: value })} />}
+        />
+      </ListSection>
+
+      <ListSection header={t('settings.supportSection')} footer={t('settings.supportFooter')}>
+        <ListRow
+          icon="cup.and.saucer.fill"
+          iconColor={colors.secondaryLabel}
+          title={t('settings.support')}
+          showChevron
+          onPress={() => void openDonation()}
         />
       </ListSection>
 

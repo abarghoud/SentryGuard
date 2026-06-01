@@ -28,6 +28,7 @@ const ioniconsFallback: Record<string, keyof typeof Ionicons.glyphMap> = {
   'car.fill': 'car',
   'checkmark.shield.fill': 'shield-checkmark',
   'chevron.right': 'chevron-forward',
+  'cup.and.saucer.fill': 'cafe',
   'envelope.fill': 'mail',
   'exclamationmark.shield.fill': 'shield-half',
   'exclamationmark.triangle.fill': 'warning',
