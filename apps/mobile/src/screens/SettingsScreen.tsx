@@ -1,148 +1,36 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as Linking from 'expo-linking';
 import type { JSX } from 'react';
-import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 
-import { ThemeColors, ThemeMode, useTheme } from '../core/theme';
-import { getAuthProfileUseCase } from '../features/auth/di';
-import {
-  dndPolicyAccess,
-  getNotificationPreferencesUseCase,
-  pushNotificationService,
-  registerPushTokenUseCase,
-  updateNotificationPreferencesUseCase,
-} from '../features/notifications/di';
-import { type NotificationPreferences } from '../features/notifications/domain/entities';
-import { getUserLanguageUseCase, updateUserLanguageUseCase } from '../features/user/di';
+import { ThemeMode, useTheme } from '../core/theme';
 import { UserLanguage } from '../features/user/domain/entities';
+import { PreferenceRow } from './settings/components/PreferenceRow';
+import { SettingRow } from './settings/components/SettingRow';
+import { ThemeOption } from './settings/components/ThemeOption';
+import { openAndroidDoNotDisturbAccessSettings, resolveSettingsError } from './settings/settings.helpers';
+import { createSettingsStyles } from './settings/settings.styles';
+import { useSettings } from './settings/use-settings';
 
 interface SettingsScreenProps {
   onLogout(): Promise<void>;
 }
 
-interface UpdateNotificationPreferencesMutation {
-  preferences: Partial<NotificationPreferences>;
-  token?: string;
-}
-
 export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
-  const { i18n, t } = useTranslation();
-  const [preferenceMessage, setPreferenceMessage] = useState<string | null>(null);
-  const [isDndAccessModalOpen, setIsDndAccessModalOpen] = useState(false);
-  const [pushToken, setPushToken] = useState<string | null>(null);
-  const hasRegisteredPushToken = useRef(false);
-  const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const { colors, mode, setMode } = useTheme();
-  const styles = createStyles(colors);
-  const profileQuery = useQuery({
-    queryFn: () => getAuthProfileUseCase.execute(),
-    queryKey: ['auth-profile'],
-  });
-  const preferencesQuery = useQuery({
-    queryFn: () => getNotificationPreferencesUseCase.execute(pushToken ?? undefined),
-    queryKey: ['notification-preferences', pushToken],
-  });
-  const languageQuery = useQuery({
-    queryFn: () => getUserLanguageUseCase.execute(),
-    queryKey: ['user-language'],
-  });
-  const preferencesMutation = useMutation({
-    mutationFn: ({ preferences, token }: UpdateNotificationPreferencesMutation) => updateNotificationPreferencesUseCase.execute(preferences, token),
-    onSuccess: (preferences, variables) => {
-      queryClient.setQueryData(['notification-preferences', variables.token ?? pushToken], preferences);
-    },
-  });
-  const languageMutation = useMutation({
-    mutationFn: (language: UserLanguage) => updateUserLanguageUseCase.execute(language),
-    onSuccess: async (language) => {
-      await i18n.changeLanguage(language.language);
-      queryClient.setQueryData(['user-language'], language);
-    },
-  });
-
-  const profile = profileQuery.data?.profile;
-  const preferences = preferencesQuery.data ?? defaultPreferences;
-
-  useEffect(() => {
-    const language = languageQuery.data?.language;
-    if (language && i18n.language !== language) {
-      void i18n.changeLanguage(language);
-    }
-  }, [i18n, languageQuery.data?.language]);
-
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      return;
-    }
-
-    void pushNotificationService
-      .getGrantedExpoPushToken()
-      .then((token) => {
-        setPushToken(token);
-      })
-      .catch(() => undefined);
-  }, []);
-
-  useEffect(() => {
-    if (!preferencesQuery.data?.push_enabled || hasRegisteredPushToken.current || Platform.OS === 'web') {
-      return;
-    }
-
-    void registerDeviceForPush(undefined, t).then((token) => {
-      hasRegisteredPushToken.current = Boolean(token);
-      setPushToken(token);
-    });
-  }, [preferencesQuery.data?.push_enabled, t]);
-
-  const updatePreference = async (updates: Partial<NotificationPreferences>): Promise<void> => {
-    setPreferenceMessage(null);
-    let currentPushToken = pushToken ?? undefined;
-
-    if (updates.push_enabled === true) {
-      try {
-        const registeredToken = await registerDeviceForPush(setPreferenceMessage, t);
-        if (!registeredToken) {
-          setPreferenceMessage(Platform.OS === 'web' ? t('settings.pushNativeOnly') : t('settings.pushNoToken'));
-          return;
-        }
-        currentPushToken = registeredToken;
-        setPushToken(registeredToken);
-      } catch {
-        setPreferenceMessage(t('settings.pushError'));
-        return;
-      }
-    }
-
-    if (requiresPushDevice(updates) && !currentPushToken && Platform.OS !== 'web') {
-      try {
-        const registeredToken = await registerDeviceForPush(setPreferenceMessage, t);
-        if (!registeredToken) {
-          setPreferenceMessage(t('settings.pushNoToken'));
-          return;
-        }
-        currentPushToken = registeredToken;
-        setPushToken(registeredToken);
-      } catch {
-        setPreferenceMessage(t('settings.pushError'));
-        return;
-      }
-    }
-
-    if (updates.critical_alerts_enabled === true && !(await canEnableCriticalAlerts(setIsDndAccessModalOpen))) {
-      return;
-    }
-
-    const preferences = await preferencesMutation.mutateAsync({
-      preferences: resolvePreferenceUpdates(updates),
-      token: currentPushToken,
-    });
-
-    if (updates.critical_alerts_enabled === true && !preferences.critical_alerts_enabled) {
-      setPreferenceMessage(t('settings.criticalAlertsUnavailable'));
-    }
-  };
+  const styles = createSettingsStyles(colors);
+  const {
+    isDndAccessModalOpen,
+    languageMutation,
+    languageQuery,
+    preferenceMessage,
+    preferences,
+    preferencesMutation,
+    preferencesQuery,
+    profile,
+    setIsDndAccessModalOpen,
+    updatePreference,
+  } = useSettings();
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -164,18 +52,8 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
           <Text style={styles.rowLabel}>{t('settings.themeSubtitle')}</Text>
         </View>
         <View style={styles.themeSelector}>
-          <ThemeOption
-            isActive={mode === ThemeMode.Dark}
-            label={t('settings.dark')}
-            onPress={() => void setMode(ThemeMode.Dark)}
-            styles={styles}
-          />
-          <ThemeOption
-            isActive={mode === ThemeMode.Light}
-            label={t('settings.light')}
-            onPress={() => void setMode(ThemeMode.Light)}
-            styles={styles}
-          />
+          <ThemeOption isActive={mode === ThemeMode.Dark} label={t('settings.dark')} onPress={() => void setMode(ThemeMode.Dark)} styles={styles} />
+          <ThemeOption isActive={mode === ThemeMode.Light} label={t('settings.light')} onPress={() => void setMode(ThemeMode.Light)} styles={styles} />
         </View>
       </View>
 
@@ -225,6 +103,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
           onValueChange={(value) => void updatePreference({ critical_alerts_enabled: value })}
         />
       </View>
+
       <Text style={styles.sectionTitle}>{t('settings.telegramSection')}</Text>
       <View style={styles.panel}>
         <PreferenceRow
@@ -235,29 +114,24 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
           onValueChange={(value) => void updatePreference({ telegram_enabled: value })}
         />
       </View>
+
       {preferencesQuery.error || preferencesMutation.error || languageQuery.error || languageMutation.error || preferenceMessage ? (
         <Text style={styles.statusText}>
-          {preferenceMessage ?? resolveSettingsError(preferencesQuery.error ?? preferencesMutation.error ?? languageQuery.error ?? languageMutation.error, t)}
+          {preferenceMessage ??
+            resolveSettingsError(preferencesQuery.error ?? preferencesMutation.error ?? languageQuery.error ?? languageMutation.error, t)}
         </Text>
       ) : null}
 
       <Pressable style={styles.logoutButton} onPress={() => void onLogout()}>
         <Text style={styles.logoutText}>{t('settings.logout')}</Text>
       </Pressable>
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setIsDndAccessModalOpen(false)}
-        transparent
-        visible={isDndAccessModalOpen}
-      >
+
+      <Modal animationType="fade" onRequestClose={() => setIsDndAccessModalOpen(false)} transparent visible={isDndAccessModalOpen}>
         <View style={styles.modalBackdrop}>
           <View style={styles.dndAccessModal}>
             <Text style={styles.modalTitle}>{t('settings.dndAccessTitle')}</Text>
             <Text style={styles.modalDescription}>{t('settings.dndAccessDescription')}</Text>
-            <Pressable
-              style={styles.primaryButton}
-              onPress={() => void openAndroidDoNotDisturbAccessSettings(setIsDndAccessModalOpen)}
-            >
+            <Pressable style={styles.primaryButton} onPress={() => void openAndroidDoNotDisturbAccessSettings(setIsDndAccessModalOpen)}>
               <Text style={styles.primaryButtonText}>{t('settings.dndAccessButton')}</Text>
             </Pressable>
             <Pressable style={styles.secondaryButton} onPress={() => setIsDndAccessModalOpen(false)}>
@@ -268,368 +142,4 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
       </Modal>
     </ScrollView>
   );
-}
-
-type SettingsStyles = ReturnType<typeof createStyles>;
-
-function SettingRow({ label, styles, value }: { label: string; styles: SettingsStyles; value: string }): JSX.Element {
-  return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
-    </View>
-  );
-}
-
-function PreferenceRow({
-  description,
-  disabled,
-  isNested = false,
-  label,
-  onValueChange,
-  styles,
-  value,
-}: {
-  description?: string;
-  disabled: boolean;
-  isNested?: boolean;
-  label: string;
-  onValueChange(value: boolean): void;
-  styles: SettingsStyles;
-  value: boolean;
-}): JSX.Element {
-  return (
-    <View style={[styles.preferenceRow, description ? styles.describedPreferenceRow : null, isNested ? styles.nestedPreferenceRow : null, disabled ? styles.disabledPreferenceRow : null]}>
-      <View style={styles.preferenceText}>
-        <Text style={[styles.rowValue, isNested ? styles.nestedRowValue : null, disabled ? styles.disabledRowValue : null]}>{label}</Text>
-        {description ? <Text style={styles.rowLabel}>{description}</Text> : null}
-      </View>
-      <ToggleSwitch disabled={disabled} isOn={value} onToggle={() => onValueChange(!value)} styles={styles} />
-    </View>
-  );
-}
-
-function ToggleSwitch({
-  disabled,
-  isOn,
-  onToggle,
-  styles,
-}: {
-  disabled: boolean;
-  isOn: boolean;
-  onToggle(): void;
-  styles: SettingsStyles;
-}): JSX.Element {
-  return (
-    <Pressable
-      accessibilityRole="switch"
-      accessibilityState={{ checked: isOn }}
-      disabled={disabled}
-      onPress={onToggle}
-      style={[styles.toggleTrack, isOn ? styles.toggleTrackOn : styles.toggleTrackOff, disabled ? styles.disabledSwitch : null]}
-    >
-      <View style={[styles.toggleThumb, isOn ? styles.toggleThumbOn : styles.toggleThumbOff]} />
-    </Pressable>
-  );
-}
-
-const defaultPreferences: NotificationPreferences = {
-  critical_alerts_enabled: false,
-  critical_only: false,
-  push_enabled: false,
-  telegram_enabled: true,
-};
-
-function resolvePreferenceUpdates(updates: Partial<NotificationPreferences>): Partial<NotificationPreferences> {
-  if (updates.push_enabled === false) {
-    return { ...updates, critical_alerts_enabled: false };
-  }
-
-  return updates;
-}
-
-function requiresPushDevice(updates: Partial<NotificationPreferences>): boolean {
-  return (
-    updates.push_enabled !== undefined ||
-    updates.critical_only !== undefined ||
-    updates.critical_alerts_enabled !== undefined
-  );
-}
-
-async function registerDeviceForPush(setMessage: ((message: string | null) => void) | undefined, t: (key: string) => string): Promise<string | null> {
-  const token = await pushNotificationService.requestExpoPushToken();
-  if (!token) {
-    setMessage?.(Platform.OS === 'web' ? t('settings.pushNativeOnly') : t('settings.pushPermissionDenied'));
-    return null;
-  }
-
-  await registerPushTokenUseCase.execute(token, Platform.OS);
-  return token;
-}
-
-async function canEnableCriticalAlerts(
-  setIsDndAccessModalOpen: (isOpen: boolean) => void
-): Promise<boolean> {
-  const hasAccess = await dndPolicyAccess.isNotificationPolicyAccessGranted();
-
-  if (hasAccess) {
-    await pushNotificationService.configure();
-    return true;
-  }
-
-  setIsDndAccessModalOpen(true);
-  return false;
-}
-
-async function openAndroidDoNotDisturbAccessSettings(setIsDndAccessModalOpen: (isOpen: boolean) => void): Promise<void> {
-  if (Platform.OS !== 'android') {
-    return;
-  }
-
-  setIsDndAccessModalOpen(false);
-  await Linking.sendIntent('android.settings.NOTIFICATION_POLICY_ACCESS_SETTINGS');
-}
-
-function resolveSettingsError(error: unknown, t: (key: string) => string): string {
-  return error instanceof Error ? error.message : t('settings.error');
-}
-
-function ThemeOption({
-  isActive,
-  label,
-  onPress,
-  styles,
-}: {
-  isActive: boolean;
-  label: string;
-  onPress(): void;
-  styles: SettingsStyles;
-}): JSX.Element {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: isActive }}
-      onPress={onPress}
-      style={[styles.themeOption, isActive ? styles.activeThemeOption : null]}
-    >
-      <Text style={[styles.themeOptionText, isActive ? styles.activeThemeOptionText : null]}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function createStyles(colors: ThemeColors) {
-  return StyleSheet.create({
-  activeThemeOption: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
-  },
-  activeThemeOptionText: {
-    color: colors.accentText,
-  },
-  container: {
-    flex: 1,
-  },
-  content: {
-    gap: 16,
-    padding: 20,
-  },
-  header: {
-    gap: 6,
-  },
-  kicker: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  logoutButton: {
-    alignItems: 'center',
-    borderColor: colors.critical,
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 14,
-  },
-  logoutText: {
-    color: colors.critical,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  disabledSwitch: {
-    opacity: 0.55,
-  },
-  disabledPreferenceRow: {
-    opacity: 0.55,
-  },
-  disabledRowValue: {
-    color: colors.muted,
-  },
-  dndAccessModal: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 12,
-    maxWidth: 360,
-    padding: 16,
-    width: '100%',
-  },
-  panel: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  modalBackdrop: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modalDescription: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  modalTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  preferenceRow: {
-    alignItems: 'center',
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    minHeight: 62,
-    paddingHorizontal: 16,
-  },
-  describedPreferenceRow: {
-    paddingVertical: 12,
-  },
-  preferenceText: {
-    flex: 1,
-    gap: 4,
-    paddingRight: 12,
-  },
-  nestedPreferenceRow: {
-    paddingLeft: 28,
-  },
-  nestedRowValue: {
-    fontSize: 14,
-  },
-  row: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    gap: 4,
-    padding: 16,
-  },
-  rowLabel: {
-    color: colors.muted,
-    fontSize: 13,
-  },
-  rowValue: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  sectionTitle: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '900',
-    marginBottom: -8,
-    paddingHorizontal: 4,
-    textTransform: 'uppercase',
-  },
-  primaryButton: {
-    alignItems: 'center',
-    backgroundColor: colors.accent,
-    borderRadius: 8,
-    paddingVertical: 12,
-  },
-  primaryButtonText: {
-    color: colors.accentText,
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  secondaryButton: {
-    alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingVertical: 11,
-  },
-  secondaryButtonText: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  subtitle: {
-    color: colors.muted,
-    fontSize: 15,
-  },
-  statusText: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 19,
-    paddingHorizontal: 4,
-  },
-  themeHeader: {
-    gap: 4,
-    padding: 16,
-    paddingBottom: 10,
-  },
-  themeOption: {
-    alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    flex: 1,
-    paddingVertical: 12,
-  },
-  themeOptionText: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  themeSelector: {
-    flexDirection: 'row',
-    gap: 10,
-    padding: 16,
-    paddingTop: 0,
-  },
-  toggleThumb: {
-    backgroundColor: colors.accentText,
-    borderRadius: 10,
-    height: 20,
-    width: 20,
-  },
-  toggleThumbOff: {
-    backgroundColor: colors.muted,
-    transform: [{ translateX: 2 }],
-  },
-  toggleThumbOn: {
-    transform: [{ translateX: 24 }],
-  },
-  toggleTrack: {
-    borderRadius: 14,
-    height: 28,
-    justifyContent: 'center',
-    width: 48,
-  },
-  toggleTrackOff: {
-    backgroundColor: colors.panel,
-    borderColor: colors.border,
-    borderWidth: 1,
-  },
-  toggleTrackOn: {
-    backgroundColor: colors.control,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 32,
-    fontWeight: '900',
-  },
-  });
 }
