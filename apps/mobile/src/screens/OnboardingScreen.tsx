@@ -1,93 +1,42 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as Linking from 'expo-linking';
 import type { JSX } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState } from 'react';
+import { Text } from 'react-native';
 
-import { ThemeColors, useThemeColors } from '../core/theme';
-import { virtualKeyStore } from '../core/api';
-import { acceptConsentUseCase, getConsentStatusUseCase, getConsentTextUseCase } from '../features/consent/di';
-import { completeOnboardingUseCase, getOnboardingStatusUseCase, skipOnboardingUseCase } from '../features/onboarding/di';
-import { generateTelegramLinkUseCase, getTelegramStatusUseCase, sendTelegramTestMessageUseCase } from '../features/telegram/di';
-import { getUserLanguageUseCase } from '../features/user/di';
-import { UserLanguage } from '../features/user/domain/entities';
-import { configureTelemetryUseCase, getVehiclesUseCase } from '../features/vehicles/di';
-import { type Vehicle } from '../features/vehicles/domain/entities';
+import { useThemeColors } from '../core/theme';
+import { OnboardingFrame } from './onboarding/components/OnboardingFrame';
+import { PrimaryButton } from './onboarding/components/PrimaryButton';
+import { SecondaryButton } from './onboarding/components/SecondaryButton';
+import { StepList } from './onboarding/components/StepList';
+import { openVirtualKey, resolveError, resolveVehicleName } from './onboarding/onboarding.helpers';
+import { createOnboardingStyles } from './onboarding/onboarding.styles';
+import { useOnboarding } from './onboarding/use-onboarding';
 
 interface OnboardingScreenProps {
   onComplete(): void;
 }
 
 export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Element {
-  const { t } = useTranslation();
   const colors = useThemeColors();
-  const styles = createStyles(colors);
-  const queryClient = useQueryClient();
-  const [message, setMessage] = useState<string | null>(null);
-  const languageQuery = useQuery({ queryFn: () => getUserLanguageUseCase.execute(), queryKey: ['user-language'] });
-  const selectedLanguage = languageQuery.data?.language ?? UserLanguage.French;
-  const consentStatusQuery = useQuery({ queryFn: () => getConsentStatusUseCase.execute(), queryKey: ['consent-status'] });
-  const consentTextQuery = useQuery({ queryFn: () => getConsentTextUseCase.execute(selectedLanguage), queryKey: ['consent-text', selectedLanguage] });
-  const onboardingQuery = useQuery({ queryFn: () => getOnboardingStatusUseCase.execute(), queryKey: ['onboarding-status'] });
-  const telegramQuery = useQuery({
-    enabled: consentStatusQuery.data?.hasConsent === true,
-    queryFn: () => getTelegramStatusUseCase.execute(),
-    queryKey: ['telegram-status'],
-  });
-  const vehiclesQuery = useQuery({
-    enabled: consentStatusQuery.data?.hasConsent === true,
-    queryFn: () => getVehiclesUseCase.execute(),
-    queryKey: ['vehicles'],
-  });
-  const acceptConsentMutation = useMutation({
-    mutationFn: acceptConsentUseCase.execute.bind(acceptConsentUseCase),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['consent-status'] });
-      setMessage(null);
-    },
-  });
-  const telegramLinkMutation = useMutation({
-    mutationFn: () => generateTelegramLinkUseCase.execute(),
-    onSuccess: async (linkInfo) => {
-      await Linking.openURL(linkInfo.link);
-      setMessage(t('onboarding.telegramReturn'));
-    },
-  });
-  const telemetryMutation = useMutation({
-    mutationFn: (vin: string) => configureTelemetryUseCase.execute(vin),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
-      setMessage(null);
-    },
-    onError: (error: Error) => setMessage(error.message),
-  });
-  const completeMutation = useMutation({
-    mutationFn: () => completeOnboardingUseCase.execute(),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['onboarding-status'] });
-      onComplete();
-    },
-    onError: (error: Error) => setMessage(error.message),
-  });
-  useMutation({
-    mutationFn: () => skipOnboardingUseCase.execute(),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['onboarding-status'] });
-      onComplete();
-    },
-  });
-  const vehicles = vehiclesQuery.data ?? [];
-  const isLoading = consentStatusQuery.isLoading || onboardingQuery.isLoading || consentTextQuery.isLoading;
-  const isConsentMissing = consentStatusQuery.data?.hasConsent !== true;
-  const isTelegramMissing = telegramQuery.data?.linked !== true;
-  const isVehicleMissing = vehicles.length === 0;
-  const isVirtualKeyMissing = vehicles.length > 0 && !vehicles.some((vehicle) => vehicle.key_paired);
-  const telemetryVehicle = vehicles.find((vehicle) => !vehicle.sentry_mode_monitoring_enabled) ?? vehicles[0] ?? null;
-  const isTelemetryMissing = vehicles.length > 0 && !vehicles.some((vehicle) => vehicle.sentry_mode_monitoring_enabled);
+  const styles = createOnboardingStyles(colors);
+  const {
+    acceptConsentMutation,
+    completeMutation,
+    consentStatusQuery,
+    consentTextQuery,
+    flags,
+    message,
+    onboardingQuery,
+    sendTelegramTestMessage,
+    setMessage,
+    t,
+    telegramLinkMutation,
+    telegramQuery,
+    telemetryMutation,
+    telemetryVehicle,
+    vehicles,
+    vehiclesQuery,
+  } = useOnboarding(onComplete);
 
-  if (isLoading) {
+  if (flags.isLoading) {
     return <OnboardingFrame styles={styles} title={t('onboarding.loadingTitle')} subtitle={t('onboarding.loadingSubtitle')} t={t} />;
   }
 
@@ -103,7 +52,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
     );
   }
 
-  if (isConsentMissing) {
+  if (flags.isConsentMissing) {
     return (
       <OnboardingFrame
         styles={styles}
@@ -129,7 +78,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
     );
   }
 
-  if (isTelegramMissing) {
+  if (flags.isTelegramMissing) {
     return (
       <OnboardingFrame
         styles={styles}
@@ -146,7 +95,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
               styles={styles}
             />
             <SecondaryButton label={t('onboarding.telegramLinked')} onPress={() => void telegramQuery.refetch()} styles={styles} />
-            <SecondaryButton label={t('onboarding.telegramTest')} onPress={() => void sendTelegramTestMessageUseCase.execute()} styles={styles} />
+            <SecondaryButton label={t('onboarding.telegramTest')} onPress={sendTelegramTestMessage} styles={styles} />
           </>
         }
       >
@@ -158,7 +107,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
     );
   }
 
-  if (isVehicleMissing) {
+  if (flags.isVehicleMissing) {
     return (
       <OnboardingFrame
         styles={styles}
@@ -168,15 +117,12 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
         message={resolveError(vehiclesQuery.error)}
         actions={<SecondaryButton label={t('onboarding.refresh')} onPress={() => void vehiclesQuery.refetch()} styles={styles} />}
       >
-        <StepList
-          items={[t('onboarding.vehiclesStep1'), t('onboarding.vehiclesStep2'), t('onboarding.vehiclesStep3')]}
-          styles={styles}
-        />
+        <StepList items={[t('onboarding.vehiclesStep1'), t('onboarding.vehiclesStep2'), t('onboarding.vehiclesStep3')]} styles={styles} />
       </OnboardingFrame>
     );
   }
 
-  if (isVirtualKeyMissing) {
+  if (flags.isVirtualKeyMissing) {
     return (
       <OnboardingFrame
         styles={styles}
@@ -199,7 +145,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
     );
   }
 
-  if (isTelemetryMissing && telemetryVehicle) {
+  if (flags.isTelemetryMissing && telemetryVehicle) {
     return (
       <OnboardingFrame
         styles={styles}
@@ -217,7 +163,11 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
         }
       >
         <StepList
-          items={vehicles.map((vehicle) => t(vehicle.sentry_mode_monitoring_enabled ? 'onboarding.vehicleEnabled' : 'onboarding.vehicleDisabled', { vehicle: resolveVehicleName(vehicle, t) }))}
+          items={vehicles.map((vehicle) =>
+            t(vehicle.sentry_mode_monitoring_enabled ? 'onboarding.vehicleEnabled' : 'onboarding.vehicleDisabled', {
+              vehicle: resolveVehicleName(vehicle, t),
+            })
+          )}
           styles={styles}
         />
       </OnboardingFrame>
@@ -241,207 +191,4 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
       }
     />
   );
-}
-
-function OnboardingFrame({
-  actions,
-  children,
-  message,
-  styles,
-  subtitle,
-  t,
-  title,
-}: {
-  actions?: JSX.Element;
-  children?: JSX.Element;
-  message?: string | null;
-  styles: OnboardingStyles;
-  subtitle: string;
-  t: TranslationFunction;
-  title: string;
-}): JSX.Element {
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.kicker}>{t('onboarding.kicker')}</Text>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
-        </View>
-        {children ? <View style={styles.panel}>{children}</View> : null}
-        {message ? <Text style={styles.message}>{message}</Text> : null}
-        {actions ? <View style={styles.actions}>{actions}</View> : null}
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-type OnboardingStyles = ReturnType<typeof createStyles>;
-
-function StepList({ items, styles }: { items: string[]; styles: OnboardingStyles }): JSX.Element {
-  return (
-    <View style={styles.steps}>
-      {items.map((item, index) => (
-        <View key={item} style={styles.stepRow}>
-          <Text style={styles.stepNumber}>{index + 1}</Text>
-          <Text style={styles.stepText}>{item}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function PrimaryButton({
-  disabled,
-  label,
-  onPress,
-  styles,
-}: {
-  disabled?: boolean;
-  label: string;
-  onPress(): void;
-  styles: OnboardingStyles;
-}): JSX.Element {
-  return (
-    <Pressable disabled={disabled} onPress={onPress} style={[styles.primaryButton, disabled ? styles.disabled : null]}>
-      <Text style={styles.primaryButtonText}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function SecondaryButton({
-  disabled,
-  label,
-  onPress,
-  styles,
-}: {
-  disabled?: boolean;
-  label: string;
-  onPress(): void;
-  styles: OnboardingStyles;
-}): JSX.Element {
-  return (
-    <Pressable disabled={disabled} onPress={onPress} style={[styles.secondaryButton, disabled ? styles.disabled : null]}>
-      <Text style={styles.secondaryButtonText}>{label}</Text>
-    </Pressable>
-  );
-}
-
-type TranslationFunction = (key: string, options?: Record<string, unknown>) => string;
-
-async function openVirtualKey(setMessage: (message: string | null) => void, t: TranslationFunction): Promise<void> {
-  const url = virtualKeyStore.resolveUrl();
-
-  if (!url) {
-    setMessage(t('onboarding.virtualKeyMissingUrl'));
-    return;
-  }
-
-  await Linking.openURL(url);
-  setMessage(t('onboarding.virtualKeyReturn'));
-}
-
-function resolveVehicleName(vehicle: Vehicle, t: TranslationFunction): string {
-  return vehicle.display_name ?? vehicle.model ?? t('common.vehicleFallback');
-}
-
-function resolveError(error: unknown): string | null {
-  return error instanceof Error ? error.message : null;
-}
-
-function createStyles(colors: ThemeColors) {
-  return StyleSheet.create({
-    actions: {
-      gap: 10,
-    },
-    container: {
-      backgroundColor: colors.background,
-      flex: 1,
-    },
-    content: {
-      gap: 16,
-      padding: 20,
-    },
-    disabled: {
-      opacity: 0.55,
-    },
-    header: {
-      gap: 6,
-    },
-    kicker: {
-      color: colors.accent,
-      fontSize: 13,
-      fontWeight: '800',
-      textTransform: 'uppercase',
-    },
-    legalText: {
-      color: colors.text,
-      fontSize: 12,
-      lineHeight: 18,
-    },
-    message: {
-      color: colors.warning,
-      fontSize: 13,
-      lineHeight: 19,
-    },
-    panel: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 8,
-      borderWidth: 1,
-      padding: 16,
-    },
-    primaryButton: {
-      alignItems: 'center',
-      backgroundColor: colors.accent,
-      borderRadius: 8,
-      padding: 15,
-    },
-    primaryButtonText: {
-      color: colors.accentText,
-      fontSize: 15,
-      fontWeight: '900',
-    },
-    secondaryButton: {
-      alignItems: 'center',
-      borderColor: colors.border,
-      borderRadius: 8,
-      borderWidth: 1,
-      padding: 14,
-    },
-    secondaryButtonText: {
-      color: colors.text,
-      fontSize: 14,
-      fontWeight: '800',
-    },
-    stepNumber: {
-      color: colors.accentText,
-      fontSize: 12,
-      fontWeight: '900',
-    },
-    stepRow: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      gap: 10,
-    },
-    stepText: {
-      color: colors.text,
-      flex: 1,
-      fontSize: 14,
-      lineHeight: 20,
-    },
-    steps: {
-      gap: 12,
-    },
-    subtitle: {
-      color: colors.muted,
-      fontSize: 15,
-      lineHeight: 21,
-    },
-    title: {
-      color: colors.text,
-      fontSize: 30,
-      fontWeight: '900',
-    },
-  });
 }
