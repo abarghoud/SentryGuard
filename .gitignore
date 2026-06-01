@@ -59,6 +59,10 @@ out
 apps/*/.expo
 apps/mobile/ios/
 
+# Local native build outputs
+*.apk
+*.aab
+
 # Environment variables
 .env
 .env.local

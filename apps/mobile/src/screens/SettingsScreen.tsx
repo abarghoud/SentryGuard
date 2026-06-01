@@ -6,11 +6,17 @@ import { useTranslation } from 'react-i18next';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ThemeColors, ThemeMode, useTheme } from '../core/theme';
-import { getAuthProfile } from '../services/api/auth-api';
-import { getNotificationPreferences, registerPushToken, updateNotificationPreferences, type NotificationPreferences } from '../services/api/notifications-api';
-import { getUserLanguage, updateUserLanguage, UserLanguage } from '../services/api/user-language-api';
-import { isNotificationPolicyAccessGranted } from '../services/notifications/dnd-policy-access';
-import { configurePushNotifications, getGrantedExpoPushToken, requestExpoPushToken } from '../services/notifications/push-notifications';
+import { getAuthProfileUseCase } from '../features/auth/di';
+import {
+  dndPolicyAccess,
+  getNotificationPreferencesUseCase,
+  pushNotificationService,
+  registerPushTokenUseCase,
+  updateNotificationPreferencesUseCase,
+} from '../features/notifications/di';
+import { type NotificationPreferences } from '../features/notifications/domain/entities';
+import { getUserLanguageUseCase, updateUserLanguageUseCase } from '../features/user/di';
+import { UserLanguage } from '../features/user/domain/entities';
 
 interface SettingsScreenProps {
   onLogout(): Promise<void>;
@@ -31,25 +37,25 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
   const { colors, mode, setMode } = useTheme();
   const styles = createStyles(colors);
   const profileQuery = useQuery({
-    queryFn: getAuthProfile,
+    queryFn: () => getAuthProfileUseCase.execute(),
     queryKey: ['auth-profile'],
   });
   const preferencesQuery = useQuery({
-    queryFn: () => getNotificationPreferences(pushToken ?? undefined),
+    queryFn: () => getNotificationPreferencesUseCase.execute(pushToken ?? undefined),
     queryKey: ['notification-preferences', pushToken],
   });
   const languageQuery = useQuery({
-    queryFn: getUserLanguage,
+    queryFn: () => getUserLanguageUseCase.execute(),
     queryKey: ['user-language'],
   });
   const preferencesMutation = useMutation({
-    mutationFn: ({ preferences, token }: UpdateNotificationPreferencesMutation) => updateNotificationPreferences(preferences, token),
+    mutationFn: ({ preferences, token }: UpdateNotificationPreferencesMutation) => updateNotificationPreferencesUseCase.execute(preferences, token),
     onSuccess: (preferences, variables) => {
       queryClient.setQueryData(['notification-preferences', variables.token ?? pushToken], preferences);
     },
   });
   const languageMutation = useMutation({
-    mutationFn: updateUserLanguage,
+    mutationFn: (language: UserLanguage) => updateUserLanguageUseCase.execute(language),
     onSuccess: async (language) => {
       await i18n.changeLanguage(language.language);
       queryClient.setQueryData(['user-language'], language);
@@ -71,7 +77,8 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
       return;
     }
 
-    void getGrantedExpoPushToken()
+    void pushNotificationService
+      .getGrantedExpoPushToken()
       .then((token) => {
         setPushToken(token);
       })
@@ -350,23 +357,23 @@ function requiresPushDevice(updates: Partial<NotificationPreferences>): boolean 
 }
 
 async function registerDeviceForPush(setMessage: ((message: string | null) => void) | undefined, t: (key: string) => string): Promise<string | null> {
-  const token = await requestExpoPushToken();
+  const token = await pushNotificationService.requestExpoPushToken();
   if (!token) {
     setMessage?.(Platform.OS === 'web' ? t('settings.pushNativeOnly') : t('settings.pushPermissionDenied'));
     return null;
   }
 
-  await registerPushToken(token, Platform.OS);
+  await registerPushTokenUseCase.execute(token, Platform.OS);
   return token;
 }
 
 async function canEnableCriticalAlerts(
   setIsDndAccessModalOpen: (isOpen: boolean) => void
 ): Promise<boolean> {
-  const hasAccess = await isNotificationPolicyAccessGranted();
+  const hasAccess = await dndPolicyAccess.isNotificationPolicyAccessGranted();
 
   if (hasAccess) {
-    await configurePushNotifications();
+    await pushNotificationService.configure();
     return true;
   }
 

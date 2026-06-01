@@ -7,12 +7,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 
 import { ThemeColors, useThemeColors } from '../core/theme';
-import { acceptConsent, getConsentStatus, getConsentText } from '../services/api/consent-api';
-import { completeOnboarding, getOnboardingStatus, skipOnboarding } from '../services/api/onboarding-api';
-import { generateTelegramLink, getTelegramStatus, sendTelegramTestMessage } from '../services/api/telegram-api';
-import { getUserLanguage, UserLanguage } from '../services/api/user-language-api';
-import { configureTelemetry, getVehicles, type Vehicle } from '../services/api/vehicles-api';
-import { resolveVirtualKeyUrl } from '../services/api/virtual-key';
+import { virtualKeyStore } from '../core/api';
+import { acceptConsentUseCase, getConsentStatusUseCase, getConsentTextUseCase } from '../features/consent/di';
+import { completeOnboardingUseCase, getOnboardingStatusUseCase, skipOnboardingUseCase } from '../features/onboarding/di';
+import { generateTelegramLinkUseCase, getTelegramStatusUseCase, sendTelegramTestMessageUseCase } from '../features/telegram/di';
+import { getUserLanguageUseCase } from '../features/user/di';
+import { UserLanguage } from '../features/user/domain/entities';
+import { configureTelemetryUseCase, getVehiclesUseCase } from '../features/vehicles/di';
+import { type Vehicle } from '../features/vehicles/domain/entities';
 
 interface OnboardingScreenProps {
   onComplete(): void;
@@ -24,37 +26,37 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
   const styles = createStyles(colors);
   const queryClient = useQueryClient();
   const [message, setMessage] = useState<string | null>(null);
-  const languageQuery = useQuery({ queryFn: getUserLanguage, queryKey: ['user-language'] });
+  const languageQuery = useQuery({ queryFn: () => getUserLanguageUseCase.execute(), queryKey: ['user-language'] });
   const selectedLanguage = languageQuery.data?.language ?? UserLanguage.French;
-  const consentStatusQuery = useQuery({ queryFn: getConsentStatus, queryKey: ['consent-status'] });
-  const consentTextQuery = useQuery({ queryFn: () => getConsentText(selectedLanguage), queryKey: ['consent-text', selectedLanguage] });
-  const onboardingQuery = useQuery({ queryFn: getOnboardingStatus, queryKey: ['onboarding-status'] });
+  const consentStatusQuery = useQuery({ queryFn: () => getConsentStatusUseCase.execute(), queryKey: ['consent-status'] });
+  const consentTextQuery = useQuery({ queryFn: () => getConsentTextUseCase.execute(selectedLanguage), queryKey: ['consent-text', selectedLanguage] });
+  const onboardingQuery = useQuery({ queryFn: () => getOnboardingStatusUseCase.execute(), queryKey: ['onboarding-status'] });
   const telegramQuery = useQuery({
     enabled: consentStatusQuery.data?.hasConsent === true,
-    queryFn: getTelegramStatus,
+    queryFn: () => getTelegramStatusUseCase.execute(),
     queryKey: ['telegram-status'],
   });
   const vehiclesQuery = useQuery({
     enabled: consentStatusQuery.data?.hasConsent === true,
-    queryFn: getVehicles,
+    queryFn: () => getVehiclesUseCase.execute(),
     queryKey: ['vehicles'],
   });
   const acceptConsentMutation = useMutation({
-    mutationFn: acceptConsent,
+    mutationFn: acceptConsentUseCase.execute.bind(acceptConsentUseCase),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['consent-status'] });
       setMessage(null);
     },
   });
   const telegramLinkMutation = useMutation({
-    mutationFn: generateTelegramLink,
+    mutationFn: () => generateTelegramLinkUseCase.execute(),
     onSuccess: async (linkInfo) => {
       await Linking.openURL(linkInfo.link);
       setMessage(t('onboarding.telegramReturn'));
     },
   });
   const telemetryMutation = useMutation({
-    mutationFn: (vin: string) => configureTelemetry(vin),
+    mutationFn: (vin: string) => configureTelemetryUseCase.execute(vin),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       setMessage(null);
@@ -62,7 +64,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
     onError: (error: Error) => setMessage(error.message),
   });
   const completeMutation = useMutation({
-    mutationFn: completeOnboarding,
+    mutationFn: () => completeOnboardingUseCase.execute(),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['onboarding-status'] });
       onComplete();
@@ -70,7 +72,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
     onError: (error: Error) => setMessage(error.message),
   });
   useMutation({
-    mutationFn: skipOnboarding,
+    mutationFn: () => skipOnboardingUseCase.execute(),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['onboarding-status'] });
       onComplete();
@@ -144,7 +146,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
               styles={styles}
             />
             <SecondaryButton label={t('onboarding.telegramLinked')} onPress={() => void telegramQuery.refetch()} styles={styles} />
-            <SecondaryButton label={t('onboarding.telegramTest')} onPress={() => void sendTelegramTestMessage()} styles={styles} />
+            <SecondaryButton label={t('onboarding.telegramTest')} onPress={() => void sendTelegramTestMessageUseCase.execute()} styles={styles} />
           </>
         }
       >
@@ -328,7 +330,7 @@ function SecondaryButton({
 type TranslationFunction = (key: string, options?: Record<string, unknown>) => string;
 
 async function openVirtualKey(setMessage: (message: string | null) => void, t: TranslationFunction): Promise<void> {
-  const url = resolveVirtualKeyUrl();
+  const url = virtualKeyStore.resolveUrl();
 
   if (!url) {
     setMessage(t('onboarding.virtualKeyMissingUrl'));

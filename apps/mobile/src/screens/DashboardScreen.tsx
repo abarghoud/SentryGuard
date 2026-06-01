@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import * as Linking from 'expo-linking';
 import type { JSX } from 'react';
 import { useState } from 'react';
@@ -6,8 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { ThemeColors, useThemeColors } from '../core/theme';
-import { getVehicles, Vehicle } from '../services/api/vehicles-api';
-import { resolveVirtualKeyUrl } from '../services/api/virtual-key';
+import { Vehicle } from '../features/vehicles/domain/entities';
+import { useVehiclesQuery } from '../features/vehicles/di';
+import { virtualKeyStore } from '../core/api';
 
 interface DashboardScreenProps {
   isBetaTester?: boolean;
@@ -19,10 +19,7 @@ export function DashboardScreen({ isBetaTester = false, onSelectVehicle }: Dashb
   const [virtualKeyMessage, setVirtualKeyMessage] = useState<string | null>(null);
   const colors = useThemeColors();
   const styles = createStyles(colors);
-  const vehiclesQuery = useQuery({
-    queryFn: getVehicles,
-    queryKey: ['vehicles'],
-  });
+  const vehiclesQuery = useVehiclesQuery();
 
   return (
     <View style={styles.container}>
@@ -222,7 +219,7 @@ function isVehicleProtected(vehicle: Vehicle, isBetaTester: boolean): boolean {
 }
 
 async function openVirtualKey(setMessage: (message: string | null) => void, t: TranslationFunction): Promise<void> {
-  const url = resolveVirtualKeyUrl();
+  const url = virtualKeyStore.resolveUrl();
 
   if (!url) {
     setMessage(t('dashboard.virtualKey.missingUrl'));

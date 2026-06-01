@@ -10,20 +10,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 WebBrowser.maybeCompleteAuthSession();
 
 import { ThemeColors, useThemeColors } from '../core/theme';
+import { tokenStore, virtualKeyStore } from '../core/api';
+import { OffensiveResponse, type Vehicle, type VehicleActionResponse } from '../features/vehicles/domain/entities';
 import {
-  configureTelemetry,
-  deleteTelemetryConfig,
-  getVehicles,
-  OffensiveResponse,
-  toggleBreakInMonitoring,
-  updateOffensiveResponse,
-  type Vehicle,
-  type VehicleActionResponse,
-} from '../services/api/vehicles-api';
-import { getAuthProfile, getTeslaScopeChangeUrl, getVehicleCommandsAuthorization } from '../services/api/auth-api';
-import { storeToken } from '../services/session/token-storage';
-import { setAccessToken } from '../services/api/token-state';
-import { resolveVirtualKeyUrl } from '../services/api/virtual-key';
+  configureTelemetryUseCase,
+  deleteTelemetryConfigUseCase,
+  getVehiclesUseCase,
+  toggleBreakInMonitoringUseCase,
+  updateOffensiveResponseUseCase,
+} from '../features/vehicles/di';
+import {
+  getAuthProfileUseCase,
+  getTeslaScopeChangeUrlUseCase,
+  getVehicleCommandsAuthorizationUseCase,
+} from '../features/auth/di';
 
 interface VehicleDetailScreenProps {
   navigation: {
@@ -43,16 +43,16 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const vehiclesQuery = useQuery({
-    queryFn: getVehicles,
+    queryFn: () => getVehiclesUseCase.execute(),
     queryKey: ['vehicles'],
   });
   const profileQuery = useQuery({
-    queryFn: getAuthProfile,
+    queryFn: () => getAuthProfileUseCase.execute(),
     queryKey: ['auth-profile'],
   });
   const vehicleCommandsQuery = useQuery({
     enabled: profileQuery.data?.profile.isBetaTester === true,
-    queryFn: getVehicleCommandsAuthorization,
+    queryFn: () => getVehicleCommandsAuthorizationUseCase.execute(),
     queryKey: ['auth', 'vehicle-commands-authorized'],
     staleTime: 5 * 60 * 1000,
   });
@@ -73,21 +73,21 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
   const actionMutation = useMutation<VehicleActionResponse, Error, VehicleMutationAction>({
     mutationFn: async (action: VehicleMutationAction): Promise<VehicleActionResponse> => {
       if (action === VehicleAction.ConfigureTelemetry) {
-        return resolveTelemetryConfigurationResponse(await configureTelemetry(vehicle.vin), t);
+        return resolveTelemetryConfigurationResponse(await configureTelemetryUseCase.execute(vehicle.vin), t);
       }
 
       if (action === VehicleAction.DeleteTelemetry) {
-        return resolveSuccessfulResponse(await deleteTelemetryConfig(vehicle.vin), t);
+        return resolveSuccessfulResponse(await deleteTelemetryConfigUseCase.execute(vehicle.vin), t);
       }
 
       if (action === VehicleAction.ToggleBreakIn) {
         return resolveSuccessfulResponse(
-          await toggleBreakInMonitoring(vehicle.vin, !vehicle.break_in_monitoring_enabled),
+          await toggleBreakInMonitoringUseCase.execute(vehicle.vin, !vehicle.break_in_monitoring_enabled),
           t
         );
       }
 
-      return resolveSuccessfulResponse(await updateOffensiveResponse(vehicle.vin, action), t);
+      return resolveSuccessfulResponse(await updateOffensiveResponseUseCase.execute(vehicle.vin, action), t);
     },
     onError: (error: Error) => {
       setFeedback(error.message);
@@ -238,7 +238,7 @@ type TranslationFunction = (key: string, options?: Record<string, unknown>) => s
 
 async function requestVehicleCommandsScope(t: TranslationFunction): Promise<void> {
   const redirectUri = Linking.createURL('callback');
-  const login = await getTeslaScopeChangeUrl(['vehicle_cmds'], redirectUri);
+  const login = await getTeslaScopeChangeUrlUseCase.execute(['vehicle_cmds'], redirectUri);
   const result = await WebBrowser.openAuthSessionAsync(login.url, redirectUri);
   const token = result.type === 'success' ? extractTokenFromCallbackUrl(result.url) : null;
 
@@ -246,12 +246,11 @@ async function requestVehicleCommandsScope(t: TranslationFunction): Promise<void
     throw new Error(t('vehicle.scopeCancelled'));
   }
 
-  await storeToken(token);
-  setAccessToken(token);
+  await tokenStore.store(token);
 }
 
 async function openVirtualKey(setMessage: (message: string | null) => void, t: TranslationFunction): Promise<void> {
-  const url = resolveVirtualKeyUrl();
+  const url = virtualKeyStore.resolveUrl();
 
   if (!url) {
     setMessage(t('dashboard.virtualKey.missingUrl'));

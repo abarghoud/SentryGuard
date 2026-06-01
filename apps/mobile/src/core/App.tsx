@@ -9,10 +9,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { MobileShell } from './MobileShell';
 import { ThemeMode, ThemeProvider, useTheme } from './theme';
-import { initializeApiUrl } from '../services/api/api-client';
-import { initializeVirtualKeyPairingUrl } from '../services/api/virtual-key';
-import { configurePushNotifications } from '../services/notifications/push-notifications';
-import { subscribeAccessToken } from '../services/api/token-state';
+import { initializeRuntimeConfig, tokenStore } from './api';
+import { pushNotificationService } from '../features/notifications/di';
 import './i18n';
 
 export function App(): JSX.Element {
@@ -34,8 +32,8 @@ function ThemedAppContent(): JSX.Element {
   const [isApiReady, setIsApiReady] = useState(false);
 
   useEffect(() => {
-    void configurePushNotifications();
-    Promise.all([initializeApiUrl(), initializeVirtualKeyPairingUrl()]).finally(() => setIsApiReady(true));
+    void pushNotificationService.configure();
+    void initializeRuntimeConfig().finally(() => setIsApiReady(true));
   }, []);
 
   if (!isApiReady) {
@@ -58,7 +56,7 @@ function ThemedAppContent(): JSX.Element {
 function SessionQueryBoundary(): JSX.Element {
   const queryClient = useQueryClient();
 
-  useEffect(() => subscribeAccessToken((token) => {
+  useEffect(() => tokenStore.subscribe((token) => {
     if (!token) {
       queryClient.clear();
     }
@@ -88,7 +86,7 @@ function SessionQueryBoundary(): JSX.Element {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        void configurePushNotifications();
+        void pushNotificationService.configure();
         void queryClient.invalidateQueries({ queryKey: ['alerts'] });
       }
     });

@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ThemeColors, useThemeColors } from '../core/theme';
-import { AlertEventSeverity, clearAlerts as clearAlertsApi, getAlerts, type AlertEvent } from '../services/api/alerts-api';
+import { AlertEventSeverity, type AlertEvent } from '../features/alerts/domain/entities';
+import { clearAlertsUseCase, getAlertsUseCase } from '../features/alerts/di';
 
 enum AlertFilter {
   All = 'all',
@@ -27,7 +28,7 @@ export function AlertsScreen({ isActive }: AlertsScreenProps): JSX.Element {
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const alertsQuery = useQuery({
-    queryFn: getAlerts,
+    queryFn: () => getAlertsUseCase.execute(),
     queryKey: ['alerts'],
     refetchInterval: 30000,
   });
@@ -54,7 +55,7 @@ export function AlertsScreen({ isActive }: AlertsScreenProps): JSX.Element {
     setIsClearingAlerts(true);
 
     try {
-      await clearAlertsApi();
+      await clearAlertsUseCase.execute();
       queryClient.setQueryData(['alerts'], []);
     } finally {
       setIsClearingAlerts(false);

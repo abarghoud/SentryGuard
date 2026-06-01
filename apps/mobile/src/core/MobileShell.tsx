@@ -18,10 +18,10 @@ import { AlertsScreen } from '../screens/AlertsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { VehicleDetailScreen } from '../screens/VehicleDetailScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
-import { getAuthProfile } from '../services/api/auth-api';
-import { getOnboardingStatus } from '../services/api/onboarding-api';
-import { getUserLanguage } from '../services/api/user-language-api';
-import { useSession } from '../services/session/useSession';
+import { getAuthProfileUseCase } from '../features/auth/di';
+import { getOnboardingStatusUseCase } from '../features/onboarding/di';
+import { getUserLanguageUseCase } from '../features/user/di';
+import { useSession } from './session/use-session';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const tabs: AppTab[] = [AppTab.Dashboard, AppTab.Alerts, AppTab.Settings];
@@ -49,12 +49,12 @@ export function MobileShell(): JSX.Element {
   const { i18n } = useTranslation();
   const onboardingQuery = useQuery({
     enabled: session.isReady && !!session.token,
-    queryFn: getOnboardingStatus,
+    queryFn: () => getOnboardingStatusUseCase.execute(),
     queryKey: ['onboarding-status'],
   });
   const languageQuery = useQuery({
     enabled: session.isReady && !!session.token,
-    queryFn: getUserLanguage,
+    queryFn: () => getUserLanguageUseCase.execute(),
     queryKey: ['user-language'],
   });
 
@@ -114,7 +114,7 @@ function MainScreen({
   const { colors, mode } = useTheme();
   const { t } = useTranslation();
   const profileQuery = useQuery({
-    queryFn: getAuthProfile,
+    queryFn: () => getAuthProfileUseCase.execute(),
     queryKey: ['auth-profile'],
   });
   const isBetaTester = profileQuery.data?.profile.isBetaTester === true;

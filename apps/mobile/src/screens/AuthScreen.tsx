@@ -5,10 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getTeslaLoginUrl } from '../services/api/auth-api';
 import { ThemeColors, useThemeColors } from '../core/theme';
-import { getCustomApiUrl, resetCurrentApiUrl, setCurrentApiUrl } from '../services/api/api-client';
-import { getCustomVirtualKeyPairingUrl, resetCurrentVirtualKeyPairingUrl, setCurrentVirtualKeyPairingUrl } from '../services/api/virtual-key';
+import { apiUrlStore, virtualKeyStore } from '../core/api';
+import { getTeslaLoginUrlUseCase } from '../features/auth/di';
 
 interface AuthScreenProps {
   onAuthenticated(token: string): Promise<void>;
@@ -20,8 +19,8 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isAdvancedVisible, setIsAdvancedVisible] = useState(false);
   const [advancedTapCount, setAdvancedTapCount] = useState(0);
-  const [apiUrl, setApiUrl] = useState(getCustomApiUrl());
-  const [virtualKeyPairingUrl, setVirtualKeyPairingUrl] = useState(getCustomVirtualKeyPairingUrl());
+  const [apiUrl, setApiUrl] = useState(apiUrlStore.getCustomUrl());
+  const [virtualKeyPairingUrl, setVirtualKeyPairingUrl] = useState(virtualKeyStore.getCustomUrl());
   const scrollViewRef = useRef<ScrollView>(null);
   const colors = useThemeColors();
   const styles = createStyles(colors);
@@ -50,7 +49,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
       setMessage(null);
       await applyPendingAdvancedSettings();
       const redirectUri = Linking.createURL('callback');
-      const login = await getTeslaLoginUrl(redirectUri);
+      const login = await getTeslaLoginUrlUseCase.execute(redirectUri);
 
       if (Platform.OS === 'web') {
         globalThis.location?.assign(login.url);
@@ -81,8 +80,8 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
       throw new Error(t('auth.error.apiUrl'));
     }
 
-    await setCurrentApiUrl(trimmedApiUrl);
-    setApiUrl(getCustomApiUrl());
+    await apiUrlStore.setUrl(trimmedApiUrl);
+    setApiUrl(apiUrlStore.getCustomUrl());
   };
 
   const applyPendingVirtualKeyPairingUrl = async (): Promise<void> => {
@@ -96,8 +95,8 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
       throw new Error(t('auth.error.virtualKeyUrl'));
     }
 
-    await setCurrentVirtualKeyPairingUrl(trimmedVirtualKeyPairingUrl);
-    setVirtualKeyPairingUrl(getCustomVirtualKeyPairingUrl());
+    await virtualKeyStore.setUrl(trimmedVirtualKeyPairingUrl);
+    setVirtualKeyPairingUrl(virtualKeyStore.getCustomUrl());
   };
 
   const saveAdvancedSettings = async (): Promise<void> => {
@@ -113,8 +112,8 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
   };
 
   const resetAdvancedSettings = async (): Promise<void> => {
-    await resetCurrentApiUrl();
-    await resetCurrentVirtualKeyPairingUrl();
+    await apiUrlStore.reset();
+    await virtualKeyStore.reset();
     setApiUrl('');
     setVirtualKeyPairingUrl('');
     setMessage(t('auth.advanced.resetDone'));
