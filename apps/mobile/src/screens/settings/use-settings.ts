@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
@@ -31,6 +31,7 @@ export function useSettings() {
   const [preferenceMessage, setPreferenceMessage] = useState<string | null>(null);
   const [isDndAccessModalOpen, setIsDndAccessModalOpen] = useState(false);
   const [pushToken, setPushToken] = useState<string | null>(null);
+  const [isTokenResolved, setIsTokenResolved] = useState(false);
   const hasRegisteredPushToken = useRef(false);
   const queryClient = useQueryClient();
 
@@ -39,8 +40,11 @@ export function useSettings() {
     queryKey: ['auth-profile'],
   });
   const preferencesQuery = useQuery({
+    enabled: isTokenResolved,
+    placeholderData: keepPreviousData,
     queryFn: () => getNotificationPreferencesUseCase.execute(pushToken ?? undefined),
     queryKey: ['notification-preferences', pushToken],
+    staleTime: 5 * 60 * 1000,
   });
   const languageQuery = useQuery({
     queryFn: () => getUserLanguageUseCase.execute(),
@@ -69,14 +73,34 @@ export function useSettings() {
   }, [i18n, languageQuery.data?.language]);
 
   useEffect(() => {
-    if (Platform.OS === 'web') {
-      return;
-    }
+    let isActive = true;
+
+    void pushNotificationService
+      .getCachedExpoPushToken()
+      .then((cachedToken) => {
+        if (isActive && cachedToken) {
+          setPushToken(cachedToken);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (isActive) {
+          setIsTokenResolved(true);
+        }
+      });
 
     void pushNotificationService
       .getGrantedExpoPushToken()
-      .then((token) => setPushToken(token))
+      .then((freshToken) => {
+        if (isActive && freshToken) {
+          setPushToken(freshToken);
+        }
+      })
       .catch(() => undefined);
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   useEffect(() => {

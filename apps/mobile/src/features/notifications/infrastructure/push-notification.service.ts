@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 import { i18n } from '../../../core/i18n';
@@ -8,6 +9,7 @@ import { DndPolicyAccessRequirements } from './dnd-policy-access';
 
 export interface PushNotificationServiceRequirements {
   configure(): Promise<void>;
+  getCachedExpoPushToken(): Promise<string | null>;
   getGrantedExpoPushToken(): Promise<string | null>;
   requestExpoPushToken(): Promise<string | null>;
 }
@@ -15,8 +17,26 @@ export interface PushNotificationServiceRequirements {
 export class PushNotificationService implements PushNotificationServiceRequirements {
   private readonly notificationChannelId = 'sentryguard-alerts';
   private readonly criticalNotificationChannelId = 'sentryguard-critical-alerts-v5';
+  private readonly pushTokenStorageKey = 'sentryguard.expoPushToken';
 
   public constructor(private readonly dndPolicyAccess: DndPolicyAccessRequirements) {}
+
+  public async getCachedExpoPushToken(): Promise<string | null> {
+    if (Platform.OS === 'web') {
+      return globalThis.localStorage?.getItem(this.pushTokenStorageKey) ?? null;
+    }
+
+    return SecureStore.getItemAsync(this.pushTokenStorageKey);
+  }
+
+  private async storeExpoPushToken(token: string): Promise<void> {
+    if (Platform.OS === 'web') {
+      globalThis.localStorage?.setItem(this.pushTokenStorageKey, token);
+      return;
+    }
+
+    await SecureStore.setItemAsync(this.pushTokenStorageKey, token);
+  }
 
   public async configure(): Promise<void> {
     Notifications.setNotificationHandler({
@@ -97,6 +117,7 @@ export class PushNotificationService implements PushNotificationServiceRequireme
         ? await Notifications.getExpoPushTokenAsync({ projectId })
         : await Notifications.getExpoPushTokenAsync();
 
+      await this.storeExpoPushToken(expoToken.data);
       return expoToken.data;
     } catch (error) {
       throw new Error(this.resolvePushTokenErrorMessage(error));
