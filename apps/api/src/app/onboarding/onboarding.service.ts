@@ -3,11 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../../entities/user.entity';
 import { TelegramLinkStatus } from '../../entities/telegram-config.entity';
+import { FeatureAnnouncement } from '../../entities/feature-announcement.entity';
+import { UserDismissedAnnouncement } from '../../entities/user-dismissed-announcement.entity';
 import { TelemetryConfigService } from '../telemetry/telemetry-config.service';
 
 export interface OnboardingStatus {
   isComplete: boolean;
   isSkipped: boolean;
+  pendingAnnouncementKey: string | null;
 }
 
 @Injectable()
@@ -17,6 +20,10 @@ export class OnboardingService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(FeatureAnnouncement)
+    private readonly featureAnnouncementRepository: Repository<FeatureAnnouncement>,
+    @InjectRepository(UserDismissedAnnouncement)
+    private readonly userDismissedAnnouncementRepository: Repository<UserDismissedAnnouncement>,
     private readonly telemetryConfigService: TelemetryConfigService,
   ) {}
 
@@ -29,10 +36,59 @@ export class OnboardingService {
       throw new BadRequestException('User not found');
     }
 
+    const pendingAnnouncementKey = await this.findPendingAnnouncementKey(userId);
+
     return {
       isComplete: user.onboarding_completed,
       isSkipped: user.onboarding_skipped,
+      pendingAnnouncementKey,
     };
+  }
+
+  private async findPendingAnnouncementKey(userId: string): Promise<string | null> {
+    const activeAnnouncements = await this.featureAnnouncementRepository.find({
+      where: { is_active: true },
+    });
+
+    if (activeAnnouncements.length === 0) {
+      return null;
+    }
+
+    const dismissedAnnouncements = await this.userDismissedAnnouncementRepository.find({
+      where: { user_id: userId },
+    });
+
+    const dismissedKeys = new Set(dismissedAnnouncements.map((d) => d.announcement_key));
+    const pending = activeAnnouncements.find((a) => !dismissedKeys.has(a.key));
+
+    return pending?.key ?? null;
+  }
+
+  async dismissAnnouncement(userId: string, announcementKey: string): Promise<{ success: boolean }> {
+    const announcement = await this.featureAnnouncementRepository.findOne({
+      where: { key: announcementKey },
+    });
+
+    if (!announcement) {
+      throw new BadRequestException('Announcement not found');
+    }
+
+    const alreadyDismissed = await this.userDismissedAnnouncementRepository.findOne({
+      where: { user_id: userId, announcement_key: announcementKey },
+    });
+
+    if (alreadyDismissed) {
+      return { success: true };
+    }
+
+    await this.userDismissedAnnouncementRepository.save({
+      user_id: userId,
+      announcement_key: announcementKey,
+    });
+
+    this.logger.log(`User ${userId} dismissed announcement ${announcementKey}`);
+
+    return { success: true };
   }
 
   async completeOnboarding(userId: string): Promise<{ success: boolean }> {

@@ -7,7 +7,6 @@ export interface VehiclesViewProps {
   vehicles: Vehicle[];
   isLoading: boolean;
   error: string | null;
-  isBetaTester: boolean;
   onRefresh: () => void;
   onConfigureTelemetry: (vin: string) => Promise<{
     success: boolean;
@@ -23,7 +22,6 @@ export function VehiclesView({
   vehicles,
   isLoading,
   error,
-  isBetaTester,
   onRefresh,
   onConfigureTelemetry,
   onDeleteTelemetry,
@@ -228,7 +226,6 @@ export function VehiclesView({
             <VehicleCard
               key={vehicle.id}
               vehicle={vehicle}
-              isBetaTester={isBetaTester}
               onToggleTelemetry={onConfigureTelemetry}
 onToggleBreakInMonitoring={onToggleBreakInMonitoring}
                onDeleteTelemetry={onDeleteTelemetry}

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Param,
   UseGuards,
   Logger,
 } from '@nestjs/common';
@@ -39,5 +40,16 @@ export class OnboardingController {
   async skipOnboarding(@CurrentUser() user: User): Promise<{ success: boolean }> {
     this.logger.log(`User ${user.userId} skipping onboarding`);
     return await this.onboardingService.skipOnboarding(user.userId);
+  }
+
+  @Post('dismiss-announcement/:key')
+  @UseGuards(JwtAuthGuard)
+  @Throttle(ThrottleOptions.authenticatedWrite())
+  async dismissAnnouncement(
+    @CurrentUser() user: User,
+    @Param('key') key: string,
+  ): Promise<{ success: boolean }> {
+    this.logger.log(`User ${user.userId} dismissing announcement ${key}`);
+    return await this.onboardingService.dismissAnnouncement(user.userId, key);
   }
 }

@@ -20,4 +20,10 @@ export class OnboardingApiRepository implements OnboardingRepositoryRequirements
       method: 'POST',
     });
   }
+
+  async dismissAnnouncement(key: string): Promise<OnboardingActionResponse> {
+    return this.client.request<OnboardingActionResponse>(`/onboarding/dismiss-announcement/${key}`, {
+      method: 'POST',
+    });
+  }
 }

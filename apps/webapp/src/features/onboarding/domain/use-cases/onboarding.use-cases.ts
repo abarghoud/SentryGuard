@@ -4,6 +4,7 @@ import {
   GetOnboardingStatusRequirements,
   CompleteOnboardingRequirements,
   SkipOnboardingRequirements,
+  DismissAnnouncementRequirements,
 } from './onboarding.use-cases.requirements';
 
 export class GetOnboardingStatusUseCase implements GetOnboardingStatusRequirements {
@@ -27,5 +28,13 @@ export class SkipOnboardingUseCase implements SkipOnboardingRequirements {
 
   async execute(): Promise<OnboardingActionResponse> {
     return this.repository.skipOnboarding();
+  }
+}
+
+export class DismissAnnouncementUseCase implements DismissAnnouncementRequirements {
+  constructor(private repository: OnboardingRepositoryRequirements) {}
+
+  async execute(key: string): Promise<OnboardingActionResponse> {
+    return this.repository.dismissAnnouncement(key);
   }
 }

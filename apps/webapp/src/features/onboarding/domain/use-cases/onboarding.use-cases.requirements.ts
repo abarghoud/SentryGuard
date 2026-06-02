@@ -11,3 +11,7 @@ export interface CompleteOnboardingRequirements {
 export interface SkipOnboardingRequirements {
   execute(): Promise<OnboardingActionResponse>;
 }
+
+export interface DismissAnnouncementRequirements {
+  execute(key: string): Promise<OnboardingActionResponse>;
+}

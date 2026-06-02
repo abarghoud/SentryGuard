@@ -1,11 +1,7 @@
 import { VehiclesView } from '../views/VehiclesView';
 import { useVehiclesQuery } from '../../../vehicles/di';
-import { useAuthQuery } from '../../../auth/di';
 
 export function VehiclesContainer() {
-  const { query: authQuery } = useAuthQuery();
-  const profile = authQuery.data?.profile;
-  
   const {
     query,
     configureTelemetryMutation,
@@ -21,7 +17,6 @@ export function VehiclesContainer() {
       vehicles={vehicles}
       isLoading={isLoading || isFetching}
       error={error?.message || null}
-      isBetaTester={profile?.isBetaTester ?? false}
       onRefresh={refetch}
       onConfigureTelemetry={async (vin) => configureTelemetryMutation.mutateAsync(vin)}
       onDeleteTelemetry={async (vin) => deleteTelemetryMutation.mutateAsync(vin)}
