@@ -26,8 +26,8 @@ export function ListSection({ badge, children, footer, header }: ListSectionProp
             {header.toUpperCase()}
           </AppText>
           {badge ? (
-            <View style={[styles.badge, { backgroundColor: colors.fill }]}>
-              <AppText variant={TextVariant.Caption2} color={colors.secondaryLabel} style={styles.badgeText}>
+            <View style={[styles.badge, { backgroundColor: colors.systemBlue }]}>
+              <AppText variant={TextVariant.Caption2} color={colors.onAccent} style={styles.badgeText}>
                 {badge.toUpperCase()}
               </AppText>
             </View>

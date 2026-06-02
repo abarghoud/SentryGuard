@@ -56,7 +56,7 @@ const lightColors: ThemeColors = {
   systemBackground: '#ffffff',
   secondarySystemBackground: '#f3f4f6',
   tertiarySystemBackground: '#ffffff',
-  systemGroupedBackground: '#f9fafb',
+  systemGroupedBackground: '#f2f2f7',
   secondarySystemGroupedBackground: '#ffffff',
   separator: '#e5e7eb',
   fill: '#f3f4f6',
