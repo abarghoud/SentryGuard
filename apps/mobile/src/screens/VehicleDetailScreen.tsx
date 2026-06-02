@@ -14,7 +14,6 @@ import {
   isBreakInOffensiveOn,
   openVirtualKey,
   resolveNextOffensiveResponse,
-  resolveOffensiveResponseLabel,
 } from './vehicle-detail/vehicle-detail.helpers';
 import { VehicleAction } from './vehicle-detail/vehicle-detail.types';
 import { useVehicleDetail } from './vehicle-detail/use-vehicle-detail';
@@ -69,17 +68,6 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
           </AppText>
         </View>
       </Surface>
-
-      <View style={styles.grid}>
-        <DetailTile label={t('vehicle.sentrySection')} value={vehicle.sentry_mode_monitoring_enabled ? t('common.active') : t('common.inactive')} />
-        <DetailTile label={t('vehicle.keyMobile')} value={vehicle.key_paired ? t('vehicle.keyPaired') : t('vehicle.keyUnpaired')} />
-        {isBetaTester ? (
-          <>
-            <DetailTile label={t('vehicle.intrusionSection')} value={vehicle.break_in_monitoring_enabled ? t('common.active') : t('common.inactive')} />
-            {vehicle.break_in_monitoring_enabled ? <DetailTile label={t('vehicle.offensive')} value={resolveOffensiveResponseLabel(vehicle, t)} /> : null}
-          </>
-        ) : null}
-      </View>
 
       {!vehicle.key_paired ? (
         <Surface style={styles.lockedCard}>
@@ -164,19 +152,6 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
   );
 }
 
-function DetailTile({ label, value }: { label: string; value: string }): JSX.Element {
-  const colors = useThemeColors();
-
-  return (
-    <Surface style={styles.tile}>
-      <AppText variant={TextVariant.Caption1} color={colors.secondaryLabel}>
-        {label}
-      </AppText>
-      <AppText variant={TextVariant.Headline}>{value}</AppText>
-    </Surface>
-  );
-}
-
 const styles = StyleSheet.create({
   content: {
     gap: spacing.xl,
@@ -186,11 +161,6 @@ const styles = StyleSheet.create({
   },
   feedback: {
     paddingHorizontal: spacing.xs,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
   },
   loading: {
     alignItems: 'center',
@@ -215,10 +185,5 @@ const styles = StyleSheet.create({
   statusText: {
     flex: 1,
     gap: 2,
-  },
-  tile: {
-    flexBasis: '47%',
-    flexGrow: 1,
-    gap: spacing.xs,
   },
 });

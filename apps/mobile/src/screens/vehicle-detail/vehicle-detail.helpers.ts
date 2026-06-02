@@ -15,10 +15,6 @@ export function resolveNextOffensiveResponse(vehicle: Vehicle): OffensiveRespons
   return isBreakInOffensiveOn(vehicle) ? OffensiveResponse.Disabled : OffensiveResponse.Honk;
 }
 
-export function resolveOffensiveResponseLabel(vehicle: Vehicle, t: TranslationFunction): string {
-  return isBreakInOffensiveOn(vehicle) ? t('vehicle.honkActive') : t('vehicle.honkDisabled');
-}
-
 export function resolveSuccessfulResponse(response: VehicleActionResponse, t: TranslationFunction): VehicleActionResponse {
   if (response.success === false) {
     throw new Error(response.message || t('vehicle.actionRefused'));
