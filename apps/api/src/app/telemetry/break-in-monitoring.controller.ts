@@ -6,10 +6,9 @@ import { ConsentGuard } from '../../common/guards/consent.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { User } from '../../entities/user.entity';
 import { ThrottleOptions } from '../../config/throttle.config';
-import { BetaTesterGuard } from '../guards/beta-tester.guard';
 
 @Controller('telemetry-config/break-in-monitoring')
-@UseGuards(JwtAuthGuard, ConsentGuard, BetaTesterGuard)
+@UseGuards(JwtAuthGuard, ConsentGuard)
 export class BreakInMonitoringController {
   private readonly logger = new Logger(BreakInMonitoringController.name);
 
