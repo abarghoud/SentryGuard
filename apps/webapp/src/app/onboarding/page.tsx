@@ -16,7 +16,9 @@ export default function OnboardingPage() {
   const { data: status, isLoading: consentLoading } = consentQuery;
   const hasConsent = status?.hasConsent ?? false;
   const { query: onboardingQuery } = useOnboardingQuery();
-  const isComplete = onboardingQuery.data?.isComplete ?? false;
+  const { data: onboardingData, isLoading: onboardingLoading } = onboardingQuery;
+  const isComplete = onboardingData?.isComplete ?? false;
+  const pendingAnnouncementKey = onboardingData?.pendingAnnouncementKey ?? null;
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -29,11 +31,26 @@ export default function OnboardingPage() {
       return;
     }
 
-    if (!authLoading && !consentLoading && isComplete) {
+    if (
+      !authLoading &&
+      !consentLoading &&
+      !onboardingLoading &&
+      isComplete &&
+      pendingAnnouncementKey === null
+    ) {
       router.push('/dashboard');
       return;
     }
-  }, [isAuthenticated, hasConsent, isComplete, authLoading, consentLoading, router]);
+  }, [
+    isAuthenticated,
+    hasConsent,
+    isComplete,
+    pendingAnnouncementKey,
+    authLoading,
+    consentLoading,
+    onboardingLoading,
+    router,
+  ]);
 
   if (authLoading || consentLoading) {
     return (

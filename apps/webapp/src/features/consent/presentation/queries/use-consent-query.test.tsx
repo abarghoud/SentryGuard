@@ -33,6 +33,9 @@ describe('The useConsentQuery() hook', () => {
     mockAcceptConsentUseCase = mock<AcceptConsentRequirements>();
     mockRevokeConsentUseCase = mock<RevokeConsentRequirements>();
     
+    mockGetConsentStatusUseCase.execute.mockResolvedValue({ status: 'pending' } as any);
+    mockGetConsentTextUseCase.execute.mockResolvedValue({ text: 'consent text' } as any);
+    
     useConsentQuery = createUseConsentQuery({
       getConsentStatusUseCase: mockGetConsentStatusUseCase,
       getConsentTextUseCase: mockGetConsentTextUseCase,

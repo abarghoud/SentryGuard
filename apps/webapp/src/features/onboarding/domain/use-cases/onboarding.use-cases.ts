@@ -10,7 +10,7 @@ import {
 export class GetOnboardingStatusUseCase implements GetOnboardingStatusRequirements {
   constructor(private repository: OnboardingRepositoryRequirements) {}
 
-  async execute(): Promise<OnboardingStatus> {
+  public async execute(): Promise<OnboardingStatus> {
     return this.repository.getOnboardingStatus();
   }
 }
@@ -18,7 +18,7 @@ export class GetOnboardingStatusUseCase implements GetOnboardingStatusRequiremen
 export class CompleteOnboardingUseCase implements CompleteOnboardingRequirements {
   constructor(private repository: OnboardingRepositoryRequirements) {}
 
-  async execute(): Promise<OnboardingActionResponse> {
+  public async execute(): Promise<OnboardingActionResponse> {
     return this.repository.completeOnboarding();
   }
 }
@@ -26,7 +26,7 @@ export class CompleteOnboardingUseCase implements CompleteOnboardingRequirements
 export class SkipOnboardingUseCase implements SkipOnboardingRequirements {
   constructor(private repository: OnboardingRepositoryRequirements) {}
 
-  async execute(): Promise<OnboardingActionResponse> {
+  public async execute(): Promise<OnboardingActionResponse> {
     return this.repository.skipOnboarding();
   }
 }
@@ -34,7 +34,7 @@ export class SkipOnboardingUseCase implements SkipOnboardingRequirements {
 export class DismissAnnouncementUseCase implements DismissAnnouncementRequirements {
   constructor(private repository: OnboardingRepositoryRequirements) {}
 
-  async execute(key: string): Promise<OnboardingActionResponse> {
+  public async execute(key: string): Promise<OnboardingActionResponse> {
     return this.repository.dismissAnnouncement(key);
   }
 }

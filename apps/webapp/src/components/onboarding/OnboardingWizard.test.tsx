@@ -145,7 +145,17 @@ describe('The OnboardingWizard component', () => {
   });
 
   describe('When onboarding is complete', () => {
-    beforeEach(() => {
+    it('should display success screen', () => {
+      mockUseOnboardingQuery.mockReturnValueOnce({
+        query: {
+          data: { isComplete: false },
+          isLoading: false,
+          refetch: mockCheckStatus,
+        },
+        skipOnboardingMutation: {
+          mutateAsync: mockSkipOnboarding,
+        },
+      });
       mockUseOnboardingQuery.mockReturnValue({
         query: {
           data: { isComplete: true },
@@ -156,16 +166,37 @@ describe('The OnboardingWizard component', () => {
           mutateAsync: mockSkipOnboarding,
         },
       });
-    });
 
-    it('should display success screen', () => {
-      render(<OnboardingWizard />);
+      const { rerender } = render(<OnboardingWizard />);
+      rerender(<OnboardingWizard />);
 
       expect(screen.getByTestId('success-screen')).toBeInTheDocument();
     });
 
     it('should redirect to dashboard after delay', async () => {
-      render(<OnboardingWizard />);
+      mockUseOnboardingQuery.mockReturnValueOnce({
+        query: {
+          data: { isComplete: false },
+          isLoading: false,
+          refetch: mockCheckStatus,
+        },
+        skipOnboardingMutation: {
+          mutateAsync: mockSkipOnboarding,
+        },
+      });
+      mockUseOnboardingQuery.mockReturnValue({
+        query: {
+          data: { isComplete: true },
+          isLoading: false,
+          refetch: mockCheckStatus,
+        },
+        skipOnboardingMutation: {
+          mutateAsync: mockSkipOnboarding,
+        },
+      });
+
+      const { rerender } = render(<OnboardingWizard />);
+      rerender(<OnboardingWizard />);
 
       await waitFor(
         () => {

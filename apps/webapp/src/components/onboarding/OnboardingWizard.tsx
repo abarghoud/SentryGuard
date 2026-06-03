@@ -23,7 +23,11 @@ export default function OnboardingWizard() {
   const isComplete = onboardingData?.isComplete ?? false;
   const pendingAnnouncementKey = onboardingData?.pendingAnnouncementKey ?? null;
 
-  const [wasAlreadyComplete] = useState(isComplete);
+  const wasAlreadyCompleteRef = useRef<boolean | null>(null);
+  if (!isOnboardingLoading && onboardingData && wasAlreadyCompleteRef.current === null) {
+    wasAlreadyCompleteRef.current = isComplete;
+  }
+  const wasAlreadyComplete = wasAlreadyCompleteRef.current ?? false;
 
   const skipOnboarding = async () => {
     try {

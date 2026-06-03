@@ -27,7 +27,7 @@ export class OnboardingService {
     private readonly telemetryConfigService: TelemetryConfigService,
   ) {}
 
-  async getOnboardingStatus(userId: string): Promise<OnboardingStatus> {
+  public async getOnboardingStatus(userId: string): Promise<OnboardingStatus> {
     const user = await this.userRepository.findOne({
       where: { userId },
     });
@@ -64,7 +64,7 @@ export class OnboardingService {
     return pending?.key ?? null;
   }
 
-  async dismissAnnouncement(userId: string, announcementKey: string): Promise<{ success: boolean }> {
+  public async dismissAnnouncement(userId: string, announcementKey: string): Promise<{ success: boolean }> {
     const announcement = await this.featureAnnouncementRepository.findOne({
       where: { key: announcementKey },
     });
@@ -91,7 +91,7 @@ export class OnboardingService {
     return { success: true };
   }
 
-  async completeOnboarding(userId: string): Promise<{ success: boolean }> {
+  public async completeOnboarding(userId: string): Promise<{ success: boolean }> {
     const user = await this.userRepository.findOne({
       where: { userId },
       relations: {
@@ -137,7 +137,7 @@ export class OnboardingService {
     return { success: true };
   }
 
-  async skipOnboarding(userId: string): Promise<{ success: boolean }> {
+  public async skipOnboarding(userId: string): Promise<{ success: boolean }> {
     const user = await this.userRepository.findOne({
       where: { userId },
     });
