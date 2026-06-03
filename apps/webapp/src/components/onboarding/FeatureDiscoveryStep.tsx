@@ -54,7 +54,7 @@ export default function FeatureDiscoveryStep({ announcementKey, onDismissed }: F
                 {t('Break-in Monitoring')}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                {t('Detects intrusion attempts on your vehicle via charge port latch analysis. You receive an instant Telegram alert as soon as a break-in attempt is detected.')}
+                {t('Detects intrusion attempts on your vehicle. You receive an instant Telegram alert as soon as a break-in attempt is detected.')}
               </p>
             </div>
           </div>
@@ -70,7 +70,7 @@ export default function FeatureDiscoveryStep({ announcementKey, onDismissed }: F
                 {t('Offensive Response (Horn)')}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                {t('When break-in monitoring is active, optionally trigger your vehicle horn automatically upon detection. This configurable response can deter intruders immediately.')}
+                {t('When the offensive response is active, your vehicle horn triggers automatically upon detection to deter intruders immediately.')}
               </p>
             </div>
           </div>
