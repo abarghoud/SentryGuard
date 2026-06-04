@@ -74,6 +74,19 @@ export default function PublicLayout({
 
       <footer className="container mx-auto px-6 py-8 border-t border-gray-300">
         <div className="text-center text-gray-700 text-sm">
+          <nav className="mb-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            <Link href={`/${locale}/legal/privacy`} className="hover:text-red-600 underline-offset-4 hover:underline">
+              {t('Privacy Policy')}
+            </Link>
+            <span aria-hidden className="text-gray-300">·</span>
+            <Link href={`/${locale}/legal/terms`} className="hover:text-red-600 underline-offset-4 hover:underline">
+              {t('Terms of Service')}
+            </Link>
+            <span aria-hidden className="text-gray-300">·</span>
+            <Link href={`/${locale}/faq`} className="hover:text-red-600 underline-offset-4 hover:underline">
+              {t('FAQ')}
+            </Link>
+          </nav>
           <p>
             {t('© {{year}} SentryGuard. All rights reserved.', {
               year: new Date().getFullYear(),

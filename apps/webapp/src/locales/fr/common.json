@@ -316,7 +316,6 @@
   "Checking...": "Vérification...",
   "The button will check your vehicle for the paired virtual key": "Le bouton vérifiera votre véhicule pour la clé virtuelle associée",
   "Continue to Next Step": "Continuer à l'étape suivante",
-  "Enable Telemetry": "Activer la télémétrie",
   "Start monitoring your vehicle's Sentry Mode in real-time": "Commencez à surveiller le mode Sentry de votre véhicule en temps réel",
   "No vehicles found. Please refresh or check your Tesla account.": "Aucun véhicule trouvé. Veuillez actualiser ou vérifier votre compte Tesla.",
   "📡 Telemetry monitoring is battery-efficient and uses Tesla's official API. You can enable it for one or more vehicles. You'll receive alerts via Telegram for each enabled vehicle.": "📡 La surveillance télémétrique est économe en énergie et utilise l'API officielle de Tesla. Vous pouvez l'activer pour un ou plusieurs véhicules. Vous recevrez des alertes via Telegram pour chaque véhicule activé.",
@@ -412,5 +411,7 @@
   "Authorize": "Autoriser",
   "offensiveResponseLockedTitle": "Réponse Offensive verrouillée",
   "offensiveResponseLockedDescription": "L'utilisation du klaxon nécessite une autorisation supplémentaire.",
-  "offensiveResponseLockedButton": "Déverrouiller l'alarme"
+  "offensiveResponseLockedButton": "Déverrouiller l'alarme",
+  "Privacy Policy": "Politique de confidentialité",
+  "Terms of Service": "Conditions d’utilisation"
 }

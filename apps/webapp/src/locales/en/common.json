@@ -316,7 +316,6 @@
   "Checking...": "Checking...",
   "The button will check your vehicle for the paired virtual key": "The button will check your vehicle for the paired virtual key",
   "Continue to Next Step": "Continue to Next Step",
-  "Enable Telemetry": "Enable Telemetry",
   "Start monitoring your vehicle's Sentry Mode in real-time": "Start monitoring your vehicle's Sentry Mode in real-time",
   "No vehicles found. Please refresh or check your Tesla account.": "No vehicles found. Please refresh or check your Tesla account.",
   "📡 Telemetry monitoring is battery-efficient and uses Tesla's official API. You can enable it for one or more vehicles. You'll receive alerts via Telegram for each enabled vehicle.": "📡 Telemetry monitoring is battery-efficient and uses Tesla's official API. You can enable it for one or more vehicles. You'll receive alerts via Telegram for each enabled vehicle.",
@@ -412,5 +411,7 @@
   "Authorize": "Authorize",
   "offensiveResponseLockedTitle": "Offensive Response Locked",
   "offensiveResponseLockedDescription": "Using the horn and headlights requires additional authorization.",
-  "offensiveResponseLockedButton": "Unlock alarm"
+  "offensiveResponseLockedButton": "Unlock alarm",
+  "Privacy Policy": "Privacy Policy",
+  "Terms of Service": "Terms of Service"
 }
