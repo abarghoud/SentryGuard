@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslation } from '@/core/i18n/server-i18n';
 import { SUPPORTED_LOCALES } from '@/core/i18n/i18n-config';
+import { SITE_URL } from '@/core/site';
 import PublicLayout from '@/components/PublicLayout';
 import AuthRedirect from '@/components/AuthRedirect';
 import TeslaLoginButton from '@/components/TeslaLoginButton';
@@ -50,9 +51,24 @@ export async function generateMetadata({
   };
 }
 
+function buildSoftwareApplicationJsonLd(locale: string, description: string) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'SentryGuard',
+    applicationCategory: 'SecurityApplication',
+    operatingSystem: 'iOS, Android, Web',
+    url: `${SITE_URL}/${locale}`,
+    description,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    publisher: { '@type': 'Organization', name: 'SentryGuard', url: SITE_URL },
+  };
+}
+
 export default async function HomePage({ params }: HomePageProps) {
   const { locale } = await params;
   const t = getTranslation(locale);
+  const jsonLd = buildSoftwareApplicationJsonLd(locale, t('meta.home.description'));
 
   return (
     <PublicLayout
@@ -80,6 +96,11 @@ export default async function HomePage({ params }: HomePageProps) {
         },
       ]}
     >
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       <AuthRedirect />
 
       <div className="container mx-auto px-6 py-20">
