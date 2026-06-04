@@ -296,6 +296,7 @@ describe('TelemetryConfigService', () => {
           vin: 'VIN123',
           display_name: 'Tesla Model 3',
           sentry_mode_monitoring_enabled: false,
+          break_in_monitoring_enabled: true,
         },
         { conflictPaths: ['userId', 'vin'], skipUpdateIfNoValuesChanged: true }
       );
