@@ -48,6 +48,16 @@ jest.mock('./TelemetryActivationStep', () => ({
   ),
 }));
 
+jest.mock('./FeatureDiscoveryStep', () => ({
+  __esModule: true,
+  default: ({ announcementKey, onDismissed }: { announcementKey: string; onDismissed: () => void }) => (
+    <div data-testid="feature-discovery-step">
+      <span>Announcement: {announcementKey}</span>
+      <button onClick={onDismissed}>Dismiss Announcement</button>
+    </div>
+  ),
+}));
+
 jest.mock('./OnboardingLoadingScreen', () => ({
   __esModule: true,
   default: () => <div data-testid="loading-screen">Loading...</div>,
@@ -275,6 +285,49 @@ describe('The OnboardingWizard component', () => {
       render(<OnboardingWizard />);
 
       expect(screen.getByTestId('telemetry-activation-step')).toBeInTheDocument();
+    });
+  });
+
+  describe('When there is a pending announcement', () => {
+    beforeEach(() => {
+      mockUseOnboardingQuery.mockReturnValue({
+        query: {
+          data: { isComplete: false, pendingAnnouncementKey: 'break_in_offensive_response_v1' },
+          isLoading: false,
+          refetch: mockCheckStatus,
+        },
+        skipOnboardingMutation: {
+          mutateAsync: mockSkipOnboarding,
+        },
+      });
+    });
+
+    describe('When rendering', () => {
+      beforeEach(() => {
+        render(<OnboardingWizard />);
+      });
+
+      it('should display feature discovery step', () => {
+        expect(screen.getByTestId('feature-discovery-step')).toBeInTheDocument();
+      });
+    });
+
+    describe('When dismissing the announcement', () => {
+      beforeEach(async () => {
+        render(<OnboardingWizard />);
+        fireEvent.click(screen.getByText('Dismiss Announcement'));
+        await waitFor(() => {
+          expect(mockCheckStatus).toHaveBeenCalled();
+        });
+      });
+
+      it('should call checkStatus', () => {
+        expect(mockCheckStatus).toHaveBeenCalled();
+      });
+
+      it('should call refreshAll', () => {
+        expect(mockRefreshAll).toHaveBeenCalled();
+      });
     });
   });
 
