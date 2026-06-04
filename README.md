@@ -30,14 +30,6 @@
 
 ---
 
-## 🚀 Join the Waitlist
-
-> **Want to try SentryGuard?** Visit [sentryguard.org](https://sentryguard.org) and log in with your Tesla account to join our waitlist!
->
-> We'll notify you as soon as access becomes available.
-
----
-
 ## 🎥 Demo Video
 
 > **See SentryGuard in action!** Watch our demo video to understand how the platform works.

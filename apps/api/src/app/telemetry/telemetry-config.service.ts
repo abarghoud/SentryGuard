@@ -145,18 +145,21 @@ export class TelemetryConfigService {
       );
       telemetryConfigsMap.set(teslaVehicle.vin, telemetryConfig);
 
-      const isTelemetryConfigured = this.isSentryModeConfigured(telemetryConfig);
+      const fields = telemetryConfig?.config?.fields ?? {};
+      const isSentryModeConfigured = 'SentryMode' in fields;
+      const isBreakInConfigured = 'CenterDisplay' in fields;
 
       await this.vehicleRepository.upsert(
         {
           userId,
           vin: teslaVehicle.vin,
           display_name: teslaVehicle.display_name ?? teslaVehicle.vin,
-          sentry_mode_monitoring_enabled: isTelemetryConfigured,
+          sentry_mode_monitoring_enabled: isSentryModeConfigured,
+          break_in_monitoring_enabled: isBreakInConfigured,
         },
         { conflictPaths: ['userId', 'vin'], skipUpdateIfNoValuesChanged: true }
       );
-      this.logger.log(SUCCESS_MESSAGES.VEHICLE_UPDATED(teslaVehicle.vin, isTelemetryConfigured));
+      this.logger.log(SUCCESS_MESSAGES.VEHICLE_UPDATED(teslaVehicle.vin, isSentryModeConfigured));
     }
 
     return telemetryConfigsMap;
@@ -167,10 +170,6 @@ export class TelemetryConfigService {
       where: { userId },
       order: { created_at: 'ASC' },
     });
-  }
-
-  private isSentryModeConfigured(telemetryConfig: TelemetryConfig | null): boolean {
-    return telemetryConfig?.config?.fields?.SentryMode !== undefined;
   }
 
   async patchTelemetryConfig(
@@ -204,7 +203,7 @@ export class TelemetryConfigService {
       }
 
       if (Object.keys(configPayload.fields).length === 0) {
-        await this.deleteTelemetryConfig(vin, userId);
+        await this.deleteTelemetryConfig(vin, userId, true);
         return { success: true, skippedVehicle: null, response: { response: {} } } as unknown as ConfigureTelemetryResult;
       }
 
@@ -260,9 +259,31 @@ export class TelemetryConfigService {
 
   async deleteTelemetryConfig(
     vin: string,
-    userId: string
+    userId: string,
+    forceDeleteAll = false
   ): Promise<DeleteTelemetryConfigResponse> {
     try {
+      const vehicle = await this.vehicleRepository.findOne({
+        where: { userId, vin },
+      });
+
+      if (!forceDeleteAll && vehicle?.break_in_monitoring_enabled) {
+        const result = await this.patchTelemetryConfig(
+          vin,
+          userId,
+          {},
+          ['SentryMode']
+        );
+
+        if (result?.success) {
+          await this.updateVehicleTelemetryStatus(userId, vin, false);
+          return {
+            success: true,
+            message: SUCCESS_MESSAGES.CONFIG_DELETED_SUCCESSFULLY,
+          };
+        }
+      }
+
       const accessToken = await this.getAccessToken(userId);
 
       await this.teslaApi.delete(

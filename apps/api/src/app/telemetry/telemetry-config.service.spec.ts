@@ -129,7 +129,7 @@ describe('TelemetryConfigService', () => {
               config: {
                 hostname: 'h',
                 ca: 'c',
-                fields: {},
+                fields: { SentryMode: { interval_seconds: 30 } },
               },
             }
             : {
@@ -193,6 +193,7 @@ describe('TelemetryConfigService', () => {
           vin: 'VIN123',
           display_name: 'Tesla Model 3',
           sentry_mode_monitoring_enabled: false,
+          break_in_monitoring_enabled: false,
         },
         { conflictPaths: ['userId', 'vin'], skipUpdateIfNoValuesChanged: true }
       );
@@ -223,6 +224,7 @@ describe('TelemetryConfigService', () => {
           vin: 'VIN123',
           display_name: 'Updated Name',
           sentry_mode_monitoring_enabled: false,
+          break_in_monitoring_enabled: false,
         },
         { conflictPaths: ['userId', 'vin'], skipUpdateIfNoValuesChanged: true }
       );
@@ -253,6 +255,7 @@ describe('TelemetryConfigService', () => {
           vin: 'VIN123',
           display_name: 'Tesla Model 3',
           sentry_mode_monitoring_enabled: true,
+          break_in_monitoring_enabled: false,
         },
         { conflictPaths: ['userId', 'vin'], skipUpdateIfNoValuesChanged: true }
       );
@@ -376,6 +379,7 @@ describe('TelemetryConfigService', () => {
       const userId = 'test-user-id';
       const userToken = 'user-access-token';
 
+      mockVehicleRepository.findOne.mockResolvedValueOnce(null);
       mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue(userToken);
       mockAxiosInstance.delete.mockResolvedValueOnce({
         data: { success: true },
@@ -394,9 +398,40 @@ describe('TelemetryConfigService', () => {
       expect(mockAxiosInstance.delete).toHaveBeenCalledWith(
         `/api/1/vehicles/${vin}/fleet_telemetry_config`,
         expect.objectContaining({
-          headers: { Authorization: `Bearer ${userToken}` },
+          headers: { Authorization: 'Bearer user-access-token' },
         })
       );
+      expect(updateSpy).toHaveBeenCalledWith(userId, vin, false);
+    });
+
+    it('should only patch out SentryMode if break_in_monitoring_enabled is true', async () => {
+      const vin = 'VIN123';
+      const userId = 'test-user-id';
+      const vehicle = { vin, userId, break_in_monitoring_enabled: true };
+
+      mockVehicleRepository.findOne.mockResolvedValueOnce(vehicle);
+
+      const patchSpy = jest
+        .spyOn(service, 'patchTelemetryConfig')
+        .mockResolvedValueOnce({ success: true });
+
+      const updateSpy = jest
+        .spyOn(service, 'updateVehicleTelemetryStatus')
+        .mockResolvedValueOnce(undefined);
+
+      const result = await service.deleteTelemetryConfig(vin, userId);
+
+      expect(result).toEqual({
+        success: true,
+        message: 'Telemetry configuration deleted successfully',
+      });
+      expect(patchSpy).toHaveBeenCalledWith(
+        vin,
+        userId,
+        {},
+        ['SentryMode']
+      );
+      expect(mockAxiosInstance.delete).not.toHaveBeenCalled();
       expect(updateSpy).toHaveBeenCalledWith(userId, vin, false);
     });
 
