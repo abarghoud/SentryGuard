@@ -19,4 +19,10 @@ export class ConsentApiRepository implements ConsentRepositoryRequirements {
       method: 'POST',
     });
   }
+
+  public async revokeConsent(): Promise<{ success: boolean }> {
+    return this.client.request<{ success: boolean }>('/consent/revoke', {
+      method: 'POST',
+    });
+  }
 }

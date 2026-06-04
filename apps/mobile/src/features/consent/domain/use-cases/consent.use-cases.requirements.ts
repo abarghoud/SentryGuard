@@ -11,3 +11,7 @@ export interface GetConsentTextRequirements {
 export interface AcceptConsentRequirements {
   execute(consent: ConsentAcceptRequest): Promise<{ success: boolean }>;
 }
+
+export interface RevokeConsentRequirements {
+  execute(): Promise<{ success: boolean }>;
+}

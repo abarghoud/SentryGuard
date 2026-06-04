@@ -4,6 +4,7 @@ import {
   AcceptConsentRequirements,
   GetConsentStatusRequirements,
   GetConsentTextRequirements,
+  RevokeConsentRequirements,
 } from './consent.use-cases.requirements';
 
 export class GetConsentStatusUseCase implements GetConsentStatusRequirements {
@@ -27,5 +28,13 @@ export class AcceptConsentUseCase implements AcceptConsentRequirements {
 
   public async execute(consent: ConsentAcceptRequest): Promise<{ success: boolean }> {
     return this.repository.acceptConsent(consent);
+  }
+}
+
+export class RevokeConsentUseCase implements RevokeConsentRequirements {
+  public constructor(private readonly repository: ConsentRepositoryRequirements) {}
+
+  public async execute(): Promise<{ success: boolean }> {
+    return this.repository.revokeConsent();
   }
 }

@@ -7,8 +7,16 @@ import { TextVariant } from '../core/design/typography';
 import { useScreenTopInset } from '../core/design/use-screen-inset';
 import { ThemeMode, useTheme } from '../core/theme';
 import { AppSwitch, AppText, GlassButton, GlassButtonVariant, ListRow, ListSection, SegmentedControl, Surface } from '../core/ui';
+import { revokeConsentUseCase } from '../features/consent/di';
 import { UserLanguage } from '../features/user/domain/entities';
-import { openAndroidDoNotDisturbAccessSettings, openDonation, resolveSettingsError } from './settings/settings.helpers';
+import {
+  confirmAccountDeletion,
+  openAndroidDoNotDisturbAccessSettings,
+  openDonation,
+  openPrivacyPolicy,
+  openTermsOfService,
+  resolveSettingsError,
+} from './settings/settings.helpers';
 import { useSettings } from './settings/use-settings';
 
 interface SettingsScreenProps {
@@ -16,7 +24,7 @@ interface SettingsScreenProps {
 }
 
 export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { colors, mode, setMode } = useTheme();
   const topInset = useScreenTopInset();
   const {
@@ -34,6 +42,15 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
 
   const isBusy = preferencesMutation.isPending;
   const language = languageQuery.data?.language ?? UserLanguage.French;
+
+  const handleDeleteAccount = (): void => {
+    confirmAccountDeletion(() => {
+      void (async (): Promise<void> => {
+        await revokeConsentUseCase.execute();
+        await onLogout();
+      })();
+    }, t);
+  };
   const statusMessage =
     preferenceMessage ??
     (preferencesQuery.error || preferencesMutation.error || languageQuery.error || languageMutation.error
@@ -128,6 +145,11 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         />
       </ListSection>
 
+      <ListSection header={t('settings.legalSection')}>
+        <ListRow title={t('settings.privacyPolicy')} showChevron onPress={() => void openPrivacyPolicy(i18n.language)} />
+        <ListRow title={t('settings.terms')} showChevron onPress={() => void openTermsOfService(i18n.language)} />
+      </ListSection>
+
       <GlassButton
         label={t('settings.logout')}
         variant={GlassButtonVariant.Secondary}
@@ -135,6 +157,14 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         icon="rectangle.portrait.and.arrow.right"
         onPress={() => void onLogout()}
         style={styles.logout}
+      />
+
+      <GlassButton
+        label={t('settings.deleteAccount')}
+        variant={GlassButtonVariant.Plain}
+        destructive
+        onPress={handleDeleteAccount}
+        style={styles.delete}
       />
 
       <Modal animationType="fade" onRequestClose={() => setIsDndAccessModalOpen(false)} transparent visible={isDndAccessModalOpen}>
@@ -159,6 +189,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl * 2,
     paddingHorizontal: screenPadding,
     paddingTop: spacing.sm,
+  },
+  delete: {
+    marginTop: -spacing.md,
   },
   logout: {
     marginTop: spacing.sm,

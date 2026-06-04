@@ -4,6 +4,7 @@ import {
   AcceptConsentUseCase,
   GetConsentStatusUseCase,
   GetConsentTextUseCase,
+  RevokeConsentUseCase,
 } from './domain/use-cases/consent.use-cases';
 
 export const consentRepository = new ConsentApiRepository(apiClient);
@@ -11,3 +12,4 @@ export const consentRepository = new ConsentApiRepository(apiClient);
 export const getConsentStatusUseCase = new GetConsentStatusUseCase(consentRepository);
 export const getConsentTextUseCase = new GetConsentTextUseCase(consentRepository);
 export const acceptConsentUseCase = new AcceptConsentUseCase(consentRepository);
+export const revokeConsentUseCase = new RevokeConsentUseCase(consentRepository);
