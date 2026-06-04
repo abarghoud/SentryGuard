@@ -414,5 +414,12 @@
   "Authorize": "Authorize",
   "offensiveResponseLockedTitle": "Offensive Response Locked",
   "offensiveResponseLockedDescription": "Using the horn and headlights requires additional authorization.",
-  "offensiveResponseLockedButton": "Unlock alarm"
+  "offensiveResponseLockedButton": "Unlock alarm",
+  "New features available": "New features available",
+  "SentryGuard has new advanced security capabilities to better protect your Tesla.": "SentryGuard has new advanced security capabilities to better protect your Tesla.",
+  "Detects intrusion attempts on your vehicle. You receive an instant Telegram alert as soon as a break-in attempt is detected.": "Detects intrusion attempts on your vehicle. You receive an instant Telegram alert as soon as a break-in attempt is detected.",
+  "Offensive Response (Horn)": "Offensive Response (Horn)",
+  "When the offensive response is active, your vehicle horn triggers automatically upon detection to deter intruders immediately.": "When the offensive response is active, your vehicle horn triggers automatically upon detection to deter intruders immediately.",
+  "💡 These features are available in the Vehicles section. You can enable break-in monitoring and configure the offensive response for each vehicle independently.": "💡 These features are available in the Vehicles section. You can enable break-in monitoring and configure the offensive response for each vehicle independently.",
+  "Understood, let's go!": "Understood, let's go!"
 }

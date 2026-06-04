@@ -39,6 +39,7 @@ export default function DashboardLayout({
   const { query: onboardingQuery } = useOnboardingQuery();
   const { data: onboardingData, isLoading: onboardingLoading } = onboardingQuery;
   const isOnboardingComplete = onboardingData?.isComplete ?? false;
+  const pendingAnnouncementKey = onboardingData?.pendingAnnouncementKey ?? null;
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -74,10 +75,10 @@ export default function DashboardLayout({
   }, [isAuthenticated, hasConsent, consentLoading, router]);
 
   useEffect(() => {
-    if (!onboardingLoading && isAuthenticated && hasConsent && !isOnboardingComplete) {
+    if (!onboardingLoading && isAuthenticated && hasConsent && (!isOnboardingComplete || pendingAnnouncementKey !== null)) {
       router.push('/onboarding');
     }
-  }, [isAuthenticated, hasConsent, isOnboardingComplete, onboardingLoading, router]);
+  }, [isAuthenticated, hasConsent, isOnboardingComplete, pendingAnnouncementKey, onboardingLoading, router]);
 
   if (isLoading || consentLoading || onboardingLoading) {
     return (
@@ -87,7 +88,7 @@ export default function DashboardLayout({
     );
   }
 
-  if (!isAuthenticated || !hasConsent || !isOnboardingComplete) {
+  if (!isAuthenticated || !hasConsent || !isOnboardingComplete || pendingAnnouncementKey !== null) {
     return null;
   }
 

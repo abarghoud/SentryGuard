@@ -413,5 +413,12 @@
   "Authorize": "Autoriser",
   "offensiveResponseLockedTitle": "Réponse Offensive verrouillée",
   "offensiveResponseLockedDescription": "L'utilisation du klaxon nécessite une autorisation supplémentaire.",
-  "offensiveResponseLockedButton": "Déverrouiller l'alarme"
+  "offensiveResponseLockedButton": "Déverrouiller l'alarme",
+  "New features available": "Nouvelles fonctionnalités disponibles",
+  "SentryGuard has new advanced security capabilities to better protect your Tesla.": "SentryGuard dispose de nouvelles capacités de sécurité avancées pour mieux protéger votre Tesla.",
+  "Detects intrusion attempts on your vehicle. You receive an instant Telegram alert as soon as a break-in attempt is detected.": "Détecte les tentatives d'intrusion sur votre véhicule. Vous recevez une alerte Telegram instantanée dès qu'une tentative d'effraction est détectée.",
+  "Offensive Response (Horn)": "Réponse Offensive (Klaxon)",
+  "When the offensive response is active, your vehicle horn triggers automatically upon detection to deter intruders immediately.": "Lorsque la réponse offensive est active, le klaxon de votre véhicule se déclenche automatiquement lors d'une détection pour dissuader immédiatement les intrus.",
+  "💡 These features are available in the Vehicles section. You can enable break-in monitoring and configure the offensive response for each vehicle independently.": "💡 Ces fonctionnalités sont disponibles dans la section Véhicules. Vous pouvez activer la surveillance d'effraction et configurer la réponse offensive pour chaque véhicule indépendamment.",
+  "Understood, let's go!": "C'est noté, allons-y !"
 }

@@ -5,12 +5,14 @@ import {
   GetOnboardingStatusRequirements,
   CompleteOnboardingRequirements,
   SkipOnboardingRequirements,
+  DismissAnnouncementRequirements,
 } from '../../domain/use-cases/onboarding.use-cases.requirements';
 
 export interface OnboardingQueryDependencies {
   getOnboardingStatusUseCase: GetOnboardingStatusRequirements;
   completeOnboardingUseCase: CompleteOnboardingRequirements;
   skipOnboardingUseCase: SkipOnboardingRequirements;
+  dismissAnnouncementUseCase: DismissAnnouncementRequirements;
 }
 
 export const createUseOnboardingQuery = (deps: OnboardingQueryDependencies) => () => {
@@ -48,9 +50,21 @@ export const createUseOnboardingQuery = (deps: OnboardingQueryDependencies) => (
     },
   });
 
+  const dismissAnnouncementMutation = useMutation({
+    mutationFn: async (key: string) => {
+      const result = await deps.dismissAnnouncementUseCase.execute(key);
+      if (!result.success) throw new Error('Failed to dismiss announcement');
+      return result;
+    },
+    onSuccess: () => {
+      return queryClient.invalidateQueries({ queryKey: ['onboarding', 'status'] });
+    },
+  });
+
   return {
     query,
     completeOnboardingMutation,
     skipOnboardingMutation,
+    dismissAnnouncementMutation,
   };
 };

@@ -83,7 +83,6 @@ function BreakInOffensiveToggle({
 
 export default function VehicleCard({
   vehicle,
-  isBetaTester,
   onToggleTelemetry,
   onToggleBreakInMonitoring,
   onToggleBreakInOffensive,
@@ -251,11 +250,10 @@ export default function VehicleCard({
         )}
       </div>
 
-      {isBetaTester && (
-        <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+      <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
-               <span>{t('Break-in Monitoring')}</span> <span className="shrink-0 text-[10px] uppercase font-bold text-indigo-600 bg-indigo-100 px-1 rounded">Beta</span>
+               <span>{t('Break-in Monitoring')}</span>
             </span>
             {vehicle.break_in_monitoring_enabled ? (
               <span className="shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
@@ -307,8 +305,7 @@ export default function VehicleCard({
               />
             </RequireVehicleCommands>
           )}
-        </div>
-      )}
+      </div>
 
       {inlineError && (
         <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-100">
@@ -328,7 +325,6 @@ interface VehicleCardProps {
     message?: string;
     skippedVehicle?: { vin: string; reason: string; details?: string } | null;
   }>;
-  isBetaTester?: boolean;
   onToggleBreakInMonitoring: (vin: string, enable: boolean) => Promise<boolean>;
   onToggleBreakInOffensive: (vin: string, enabled: boolean) => Promise<boolean>;
   onDeleteTelemetry: (vin: string) => Promise<boolean>;

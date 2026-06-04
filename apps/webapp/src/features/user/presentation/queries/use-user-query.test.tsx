@@ -27,6 +27,8 @@ describe('The useUserQuery() hook', () => {
     mockGetUserLanguageUseCase = mock<GetUserLanguageRequirements>();
     mockUpdateUserLanguageUseCase = mock<UpdateUserLanguageRequirements>();
     
+    mockGetUserLanguageUseCase.execute.mockResolvedValue({ language: 'en' } as any);
+    
     useUserQuery = createUseUserQuery({
       getUserLanguageUseCase: mockGetUserLanguageUseCase,
       updateUserLanguageUseCase: mockUpdateUserLanguageUseCase,
