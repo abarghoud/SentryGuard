@@ -39,6 +39,7 @@ export class BreakInMonitoringConfigService {
         fieldsToUpsert['ChargePortLatch'] = { interval_seconds: breakInIntervalSeconds };
       } else {
         fieldsToDelete.push('CenterDisplay');
+        fieldsToDelete.push('ChargePortLatch');
       }
 
       const result = await this.telemetryConfigService.patchTelemetryConfig(
