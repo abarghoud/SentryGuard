@@ -1,6 +1,8 @@
 import * as Linking from 'expo-linking';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
+import { virtualKeyStore } from '../../core/api';
+import { buildAppUrl } from '../../core/config/app-domain';
 import { dndPolicyAccess, pushNotificationService, registerPushTokenUseCase } from '../../features/notifications/di';
 import { NotificationPreferences } from '../../features/notifications/domain/entities';
 
@@ -72,4 +74,38 @@ const donationUrl = 'https://buymeacoffee.com/sentryguardorg';
 
 export async function openDonation(): Promise<void> {
   await Linking.openURL(donationUrl);
+}
+
+const fallbackDomain = 'sentryguard.org';
+
+function resolveLegalLocalePath(locale: string): string {
+  return locale.startsWith('fr') ? 'fr' : 'en';
+}
+
+function buildLegalUrl(locale: string, page: 'privacy' | 'terms'): string {
+  const domain = virtualKeyStore.resolveDomain() || fallbackDomain;
+  return buildAppUrl(domain, `/${resolveLegalLocalePath(locale)}/legal/${page}`);
+}
+
+export async function openPrivacyPolicy(locale: string): Promise<void> {
+  await Linking.openURL(buildLegalUrl(locale, 'privacy'));
+}
+
+export async function openTermsOfService(locale: string): Promise<void> {
+  await Linking.openURL(buildLegalUrl(locale, 'terms'));
+}
+
+export function confirmAccountDeletion(onConfirm: () => void, t: (key: string) => string): void {
+  if (Platform.OS === 'web') {
+    if (globalThis.confirm(t('settings.deleteAccountConfirm'))) {
+      onConfirm();
+    }
+
+    return;
+  }
+
+  Alert.alert(t('settings.deleteAccountTitle'), t('settings.deleteAccountConfirm'), [
+    { text: t('common.cancel'), style: 'cancel' },
+    { text: t('settings.deleteAccountCta'), style: 'destructive', onPress: onConfirm },
+  ]);
 }

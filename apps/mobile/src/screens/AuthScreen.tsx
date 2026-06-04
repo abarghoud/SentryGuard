@@ -10,6 +10,7 @@ import { TextVariant } from '../core/design/typography';
 import { useThemeColors } from '../core/theme';
 import { AppText, GlassButton, GlassButtonVariant, Surface } from '../core/ui';
 import { apiUrlStore, virtualKeyStore } from '../core/api';
+import { normalizeDomain } from '../core/config/app-domain';
 import { getTeslaLoginUrlUseCase } from '../features/auth/di';
 import { extractTokenFromCallbackUrl } from './auth/auth.helpers';
 
@@ -97,11 +98,13 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
       return;
     }
 
-    if (!/^https?:\/\/.+/.test(trimmedVirtualKeyPairingUrl)) {
+    const domain = normalizeDomain(trimmedVirtualKeyPairingUrl);
+
+    if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(domain)) {
       throw new Error(t('auth.error.virtualKeyUrl'));
     }
 
-    await virtualKeyStore.setUrl(trimmedVirtualKeyPairingUrl);
+    await virtualKeyStore.setUrl(domain);
     setVirtualKeyPairingUrl(virtualKeyStore.getCustomUrl());
   };
 
@@ -175,22 +178,22 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
                 <TextInput
                   autoCapitalize="none"
                   autoCorrect={false}
-                  onChangeText={setApiUrl}
-                  onFocus={scrollToAdvancedSettings}
-                  placeholder={t('auth.advanced.apiPlaceholder')}
-                  placeholderTextColor={colors.tertiaryLabel}
-                  style={styles.input}
-                  value={apiUrl}
-                />
-                <TextInput
-                  autoCapitalize="none"
-                  autoCorrect={false}
                   onChangeText={setVirtualKeyPairingUrl}
                   onFocus={scrollToAdvancedSettings}
                   placeholder={t('auth.advanced.virtualKeyPlaceholder')}
                   placeholderTextColor={colors.tertiaryLabel}
                   style={styles.input}
                   value={virtualKeyPairingUrl}
+                />
+                <TextInput
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onChangeText={setApiUrl}
+                  onFocus={scrollToAdvancedSettings}
+                  placeholder={t('auth.advanced.apiPlaceholder')}
+                  placeholderTextColor={colors.tertiaryLabel}
+                  style={styles.input}
+                  value={apiUrl}
                 />
                 <View style={styles.advancedActions}>
                   <GlassButton label={t('auth.advanced.save')} variant={GlassButtonVariant.Secondary} onPress={saveAdvancedSettings} style={styles.flex} />

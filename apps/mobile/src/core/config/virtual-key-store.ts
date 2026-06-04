@@ -1,9 +1,11 @@
 import { SecureStorageRequirements } from '../storage/secure-storage';
+import { buildTeslaPairingUrl, normalizeDomain } from './app-domain';
 
 export interface VirtualKeyStoreRequirements {
   getCustomUrl(): string;
   initialize(): Promise<void>;
   reset(): Promise<void>;
+  resolveDomain(): string;
   resolveUrl(): string;
   setUrl(virtualKeyPairingUrl: string): Promise<void>;
 }
@@ -14,8 +16,12 @@ export class VirtualKeyStore implements VirtualKeyStoreRequirements {
 
   public constructor(private readonly storage: SecureStorageRequirements) {}
 
+  public resolveDomain(): string {
+    return normalizeDomain(this.configuredVirtualKeyPairingUrl ?? process.env.EXPO_PUBLIC_VIRTUAL_KEY_PAIRING_URL ?? '');
+  }
+
   public resolveUrl(): string {
-    return this.configuredVirtualKeyPairingUrl ?? process.env.EXPO_PUBLIC_VIRTUAL_KEY_PAIRING_URL ?? '';
+    return buildTeslaPairingUrl(this.resolveDomain());
   }
 
   public getCustomUrl(): string {

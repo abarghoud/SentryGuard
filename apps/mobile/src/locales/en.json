@@ -16,11 +16,11 @@
   "auth.advanced.resetDone": "Default settings restored.",
   "auth.advanced.save": "Save",
   "auth.advanced.saved": "Advanced settings saved.",
-  "auth.advanced.virtualKeyPlaceholder": "Custom virtual key URL",
+  "auth.advanced.virtualKeyPlaceholder": "Custom domain",
   "auth.error.apiUrl": "Invalid API address. Use a URL starting with http:// or https://.",
   "auth.error.login": "Unable to open Tesla login.",
   "auth.error.missingToken": "Login was cancelled or the callback did not include a token.",
-  "auth.error.virtualKeyUrl": "Invalid virtual key address. Use a URL starting with http:// or https://.",
+  "auth.error.virtualKeyUrl": "Invalid domain. Enter a domain like yourdomain.com.",
   "auth.login": "Tesla login",
   "auth.loginPending": "Connecting...",
   "auth.subtitle": "Get an instant alert the moment suspicious activity is detected around your car.",
@@ -172,5 +172,12 @@
   "onboarding.vehicleEnabled": "{{vehicle}}: enabled",
   "onboarding.vehicleDisabled": "{{vehicle}}: inactive",
   "onboarding.virtualKeyMissingUrl": "Virtual key URL is not configured for this API.",
-  "onboarding.virtualKeyReturn": "Come back after confirming in Tesla, then verify the key."
+  "onboarding.virtualKeyReturn": "Come back after confirming in Tesla, then verify the key.",
+  "settings.legalSection": "Legal",
+  "settings.privacyPolicy": "Privacy Policy",
+  "settings.terms": "Terms of Service",
+  "settings.deleteAccount": "Delete my account",
+  "settings.deleteAccountTitle": "Delete account",
+  "settings.deleteAccountConfirm": "This permanently deletes your account and all associated data. This action cannot be undone.",
+  "settings.deleteAccountCta": "Delete"
 }

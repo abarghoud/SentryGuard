@@ -16,11 +16,11 @@
   "auth.advanced.resetDone": "Réglages par défaut restaurés.",
   "auth.advanced.save": "Enregistrer",
   "auth.advanced.saved": "Réglages avancés enregistrés.",
-  "auth.advanced.virtualKeyPlaceholder": "URL clé virtuelle personnalisée",
+  "auth.advanced.virtualKeyPlaceholder": "Domaine personnalisé",
   "auth.error.apiUrl": "Adresse API invalide. Utilise une URL qui commence par http:// ou https://.",
   "auth.error.login": "Impossible d’ouvrir la connexion Tesla.",
   "auth.error.missingToken": "Connexion annulée ou token absent dans le callback.",
-  "auth.error.virtualKeyUrl": "Adresse de clé virtuelle invalide. Utilise une URL qui commence par http:// ou https://.",
+  "auth.error.virtualKeyUrl": "Domaine invalide. Saisis un domaine comme votredomaine.com.",
   "auth.login": "Connexion Tesla",
   "auth.loginPending": "Connexion...",
   "auth.subtitle": "Reçois une alerte instantanée dès qu'une activité suspecte est détectée autour de ta voiture.",
@@ -172,5 +172,12 @@
   "onboarding.vehicleEnabled": "{{vehicle}}: activée",
   "onboarding.vehicleDisabled": "{{vehicle}}: inactive",
   "onboarding.virtualKeyMissingUrl": "URL de clé virtuelle non configurée pour cette API.",
-  "onboarding.virtualKeyReturn": "Reviens ici après validation dans Tesla, puis vérifie la clé."
+  "onboarding.virtualKeyReturn": "Reviens ici après validation dans Tesla, puis vérifie la clé.",
+  "settings.legalSection": "Légal",
+  "settings.privacyPolicy": "Politique de confidentialité",
+  "settings.terms": "Conditions d’utilisation",
+  "settings.deleteAccount": "Supprimer mon compte",
+  "settings.deleteAccountTitle": "Supprimer le compte",
+  "settings.deleteAccountConfirm": "Ceci supprime définitivement votre compte et toutes les données associées. Cette action est irréversible.",
+  "settings.deleteAccountCta": "Supprimer"
 }
