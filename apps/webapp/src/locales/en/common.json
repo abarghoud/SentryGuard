@@ -421,5 +421,8 @@
   "Offensive Response (Horn)": "Offensive Response (Horn)",
   "When the offensive response is active, your vehicle horn triggers automatically upon detection to deter intruders immediately.": "When the offensive response is active, your vehicle horn triggers automatically upon detection to deter intruders immediately.",
   "💡 These features are available in the Vehicles section. You can enable break-in monitoring and configure the offensive response for each vehicle independently.": "💡 These features are available in the Vehicles section. You can enable break-in monitoring and configure the offensive response for each vehicle independently.",
-  "Understood, let's go!": "Understood, let's go!"
+  "Understood, let's go!": "Understood, let's go!",
+  "Security Shield Configuration": "Security Shield Configuration",
+  "Configure the security features for this vehicle below.": "Configure the security features for this vehicle below.",
+  "Receive alerts on Telegram when an intrusion is detected": "Receive alerts on Telegram when an intrusion is detected"
 }
