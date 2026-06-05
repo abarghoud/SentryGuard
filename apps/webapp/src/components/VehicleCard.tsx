@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { type Vehicle } from '../features/vehicles/domain/entities';
 import Spinner from './Spinner';
 import RequireVehicleCommands from './RequireVehicleCommands';
+import VinMask from './VinMask';
 
 function BreakInOffensiveToggle({
   isOn,
@@ -173,10 +174,10 @@ export default function VehicleCard({
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">
-            {vehicle.display_name || vehicle.vin}
+            {vehicle.display_name || <VinMask vin={vehicle.vin} />}
           </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            {t('VIN')}: {vehicle.vin}
+            {t('VIN')}: <VinMask vin={vehicle.vin} />
           </p>
           {vehicle.model && (
             <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">

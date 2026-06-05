@@ -3,6 +3,7 @@
 import { useTranslation } from 'react-i18next';
 import OnboardingStepLayout from './OnboardingStepLayout';
 import RequireVehicleCommands from '../RequireVehicleCommands';
+import VinMask from '../VinMask';
 import { useTelemetryActivation } from '../../features/onboarding/presentation/hooks/use-telemetry-activation';
 
 interface TelemetryActivationStepProps {
@@ -88,7 +89,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                       {vehicle.display_name || `${vehicle.model} (${vehicle.vin.slice(-4)})`}
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      VIN: {vehicle.vin}
+                      VIN: <VinMask vin={vehicle.vin} />
                     </p>
                   </div>
                   {vehicle.sentry_mode_monitoring_enabled && (
