@@ -1,12 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useRouter } from 'next/navigation';
-import { useOnboardingQuery } from '../../features/onboarding/di';
-import { useVehiclesQuery } from '../../features/vehicles/di';
 import OnboardingStepLayout from './OnboardingStepLayout';
 import RequireVehicleCommands from '../RequireVehicleCommands';
+import { useTelemetryActivation } from '../../features/onboarding/presentation/hooks/use-telemetry-activation';
 
 interface TelemetryActivationStepProps {
   onCompleted?: () => Promise<void>;
@@ -14,155 +11,21 @@ interface TelemetryActivationStepProps {
 
 export default function TelemetryActivationStep({ onCompleted }: TelemetryActivationStepProps) {
   const { t } = useTranslation('common');
-  const router = useRouter();
-  const { completeOnboardingMutation } = useOnboardingQuery();
-  const completeOnboarding = async () => {
-    try {
-      await completeOnboardingMutation.mutateAsync();
-      return { success: true };
-    } catch (e: any) {
-      return { success: false, error: e.message };
-    }
-  };
   const {
-    query: vehicleQuery,
-    configureTelemetryMutation,
-    deleteTelemetryMutation,
-    toggleBreakInMutation,
-    updateOffensiveResponseMutation,
-  } = useVehiclesQuery();
-  const { data: vehicles = [], isLoading } = vehicleQuery;
-  const [activatingVins, setActivatingVins] = useState<Set<string>>(new Set());
-  const [deletingVins, setDeletingVins] = useState<Set<string>>(new Set());
-  const [togglingBreakInVins, setTogglingBreakInVins] = useState<Set<string>>(new Set());
-  const [togglingOffensiveVins, setTogglingOffensiveVins] = useState<Set<string>>(new Set());
-  const [errors, setErrors] = useState<Map<string, string>>(new Map());
-  const [isCompleting, setIsCompleting] = useState(false);
-
-  const handleToggleBreakIn = async (vin: string, currentEnabled: boolean) => {
-    setTogglingBreakInVins((prev) => new Set(prev).add(vin));
-    setErrors((prev) => {
-      const newErrors = new Map(prev);
-      newErrors.delete(vin);
-      return newErrors;
-    });
-    try {
-      await toggleBreakInMutation.mutateAsync({ vin, enable: !currentEnabled });
-    } catch (e: any) {
-      setErrors((prev) => {
-        const newErrors = new Map(prev);
-        newErrors.set(vin, e.message || t('Failed to update Break-in monitoring'));
-        return newErrors;
-      });
-    } finally {
-      setTogglingBreakInVins((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(vin);
-        return newSet;
-      });
-    }
-  };
-
-  const handleToggleOffensive = async (vin: string, currentEnabled: boolean) => {
-    setTogglingOffensiveVins((prev) => new Set(prev).add(vin));
-    setErrors((prev) => {
-      const newErrors = new Map(prev);
-      newErrors.delete(vin);
-      return newErrors;
-    });
-    try {
-      const nextValue = currentEnabled ? 'DISABLED' : 'HONK';
-      await updateOffensiveResponseMutation.mutateAsync({ vin, breakInResponse: nextValue });
-    } catch (e: any) {
-      setErrors((prev) => {
-        const newErrors = new Map(prev);
-        newErrors.set(vin, e.message || t('Failed to update offensive response'));
-        return newErrors;
-      });
-    } finally {
-      setTogglingOffensiveVins((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(vin);
-        return newSet;
-      });
-    }
-  };
-
-  const hasTelemetryEnabled = vehicles.some((v) => v.sentry_mode_monitoring_enabled === true || v.break_in_monitoring_enabled === true);
-
-  const handleToggleTelemetry = async (vin: string, currentEnabled: boolean) => {
-    if (currentEnabled) {
-      if (!window.confirm(t('Are you sure you want to disable telemetry for this vehicle?'))) {
-        return;
-      }
-      setDeletingVins((prev) => new Set(prev).add(vin));
-      setErrors((prev) => {
-        const newErrors = new Map(prev);
-        newErrors.delete(vin);
-        return newErrors;
-      });
-      try {
-        await deleteTelemetryMutation.mutateAsync(vin);
-      } catch (e: any) {
-        setErrors((prev) => {
-          const newErrors = new Map(prev);
-          newErrors.set(vin, e.message || t('Failed to disable telemetry'));
-          return newErrors;
-        });
-      } finally {
-        setDeletingVins((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(vin);
-          return newSet;
-        });
-      }
-    } else {
-      setActivatingVins((prev) => new Set(prev).add(vin));
-      setErrors((prev) => {
-        const newErrors = new Map(prev);
-        newErrors.delete(vin);
-        return newErrors;
-      });
-      try {
-        const result = await configureTelemetryMutation.mutateAsync(vin);
-        if (!result.success) {
-          setErrors((prev) => {
-            const newErrors = new Map(prev);
-            newErrors.set(vin, result.message || t('Failed to enable telemetry'));
-            return newErrors;
-          });
-        }
-      } finally {
-        setActivatingVins((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(vin);
-          return newSet;
-        });
-      }
-    }
-  };
-
-  const handleCompleteOnboarding = async () => {
-    setIsCompleting(true);
-    try {
-      const result = await completeOnboarding();
-
-      if (result.success) {
-        // Notify parent component that onboarding is complete
-        if (onCompleted) {
-          await onCompleted();
-        } else {
-          // Fallback: redirect directly if no callback provided
-          router.push('/dashboard');
-        }
-      } else {
-        // Show error - the user will see the error message from the backend
-        console.error('Failed to complete onboarding:', result.error);
-      }
-    } finally {
-      setIsCompleting(false);
-    }
-  };
+    vehicles,
+    isLoading,
+    activatingVins,
+    deletingVins,
+    togglingBreakInVins,
+    togglingOffensiveVins,
+    errors,
+    isCompleting,
+    hasTelemetryEnabled,
+    handleToggleBreakIn,
+    handleToggleOffensive,
+    handleToggleSentry,
+    handleCompleteOnboarding,
+  } = useTelemetryActivation(onCompleted);
 
   return (
     <OnboardingStepLayout
@@ -254,7 +117,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                       </span>
                     </div>
                     <button
-                      onClick={() => handleToggleTelemetry(vehicle.vin, !!vehicle.sentry_mode_monitoring_enabled)}
+                      onClick={() => handleToggleSentry(vehicle.vin, !!vehicle.sentry_mode_monitoring_enabled)}
                       disabled={activatingVins.has(vehicle.vin) || deletingVins.has(vehicle.vin)}
                       className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                         vehicle.sentry_mode_monitoring_enabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
