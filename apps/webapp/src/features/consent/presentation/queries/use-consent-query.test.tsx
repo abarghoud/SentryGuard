@@ -65,7 +65,7 @@ describe('The useConsentQuery() hook', () => {
       it('should return the success result', async () => {
         const expectedResponse = {
           success: true,
-          consent: { id: '1', acceptedAt: '2023-01-01', version: 'v1' },
+          consent: { id: '1', acceptedAt: '2023-01-01', version: 'v2' },
         };
         mockAcceptConsentUseCase.execute.mockResolvedValue(expectedResponse);
 

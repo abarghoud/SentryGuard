@@ -93,7 +93,7 @@ describe('The ConsentService class', () => {
   describe('The acceptConsent() method', () => {
     const userId = 'test-user-id';
     const consentData: ConsentData = {
-      version: 'v1',
+      version: ConsentService.ACTIVE_VERSION,
       locale: 'en',
       userAgent: 'test-agent',
       appTitle: 'SentryGuard',
@@ -197,7 +197,7 @@ describe('The ConsentService class', () => {
 
     describe('When called with version and locale', () => {
       beforeEach(() => {
-        version = 'v1';
+        version = ConsentService.ACTIVE_VERSION;
         locale = 'en';
         result = service.getConsentText(version, locale);
       });
@@ -241,7 +241,7 @@ describe('The ConsentService class', () => {
 
     describe('When locale is empty', () => {
       beforeEach(() => {
-        version = 'v1';
+        version = ConsentService.ACTIVE_VERSION;
         locale = '';
         result = service.getConsentText(version, locale);
       });
@@ -257,7 +257,7 @@ describe('The ConsentService class', () => {
 
     describe('When text is generated', () => {
       beforeEach(() => {
-        result = service.getConsentText('v1', 'en');
+        result = service.getConsentText(ConsentService.ACTIVE_VERSION, 'en');
       });
 
       it('should include translated paragraphs', () => {
@@ -300,7 +300,7 @@ describe('The ConsentService class', () => {
         mockConsent = {
           id: 'consent-id',
           userId,
-          version: 'v1',
+          version: ConsentService.ACTIVE_VERSION,
           acceptedAt: new Date(),
           revokedAt: null,
         } as unknown as UserConsent;
@@ -321,7 +321,7 @@ describe('The ConsentService class', () => {
       });
     });
 
-    describe('When consent is revoked', () => {
+    describe('When consent of an inactive version exists', () => {
       let mockConsent: UserConsent;
 
       beforeEach(async () => {
@@ -329,6 +329,34 @@ describe('The ConsentService class', () => {
           id: 'consent-id',
           userId,
           version: 'v1',
+          acceptedAt: new Date(),
+          revokedAt: null,
+        } as unknown as UserConsent;
+        mockConsentRepository.findOne.mockResolvedValue(mockConsent);
+        result = await service.getCurrentConsent(userId);
+      });
+
+      it('should return hasConsent false', () => {
+        expect(result.hasConsent).toBe(false);
+      });
+
+      it('should return isRevoked false', () => {
+        expect(result.isRevoked).toBe(false);
+      });
+
+      it('should not return latestConsent', () => {
+        expect(result.latestConsent).toBeUndefined();
+      });
+    });
+
+    describe('When consent is revoked', () => {
+      let mockConsent: UserConsent;
+
+      beforeEach(async () => {
+        mockConsent = {
+          id: 'consent-id',
+          userId,
+          version: ConsentService.ACTIVE_VERSION,
           acceptedAt: new Date(),
           revokedAt: new Date(),
         } as UserConsent;
@@ -363,7 +391,7 @@ describe('The ConsentService class', () => {
         mockConsent = {
           id: 'consent-id',
           userId,
-          version: 'v1',
+          version: ConsentService.ACTIVE_VERSION,
           acceptedAt: new Date(),
           revokedAt: null,
         } as unknown as UserConsent;
@@ -463,7 +491,7 @@ describe('The ConsentService class', () => {
         mockConsent = {
           id: 'consent-id',
           userId,
-          version: 'v1',
+          version: ConsentService.ACTIVE_VERSION,
           acceptedAt: new Date(),
           revokedAt: null,
         } as unknown as UserConsent;
@@ -504,7 +532,7 @@ describe('The ConsentService class', () => {
         mockConsent = {
           id: 'consent-id',
           userId,
-          version: 'v1',
+          version: ConsentService.ACTIVE_VERSION,
           acceptedAt: new Date(),
           revokedAt: null,
         } as unknown as UserConsent;

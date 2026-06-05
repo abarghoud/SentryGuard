@@ -22,7 +22,7 @@ export class ConsentController {
 
   @Get('text')
   async getConsentText(
-    @Query('version') version = 'v1',
+    @Query('version') version = ConsentService.ACTIVE_VERSION,
     @Query('locale') locale = 'en',
   ): Promise<ConsentTextResponse> {
     return this.consentService.getConsentText(version, locale);
