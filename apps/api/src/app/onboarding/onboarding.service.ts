@@ -113,7 +113,9 @@ export class OnboardingService {
 
     const vehiclesWithStatus = await this.telemetryConfigService.getVehicles(userId);
     const isVirtualKeyPaired = vehiclesWithStatus.some((vehicle) => vehicle.key_paired);
-    const isTelemetryEnabled = vehiclesWithStatus.some((vehicle) => vehicle.sentry_mode_monitoring_enabled);
+    const isTelemetryEnabled =
+      vehiclesWithStatus.some((vehicle) => vehicle.sentry_mode_monitoring_enabled) ||
+      vehiclesWithStatus.some((vehicle) => vehicle.break_in_monitoring_enabled);
 
     if (!isTelegramLinked) {
       throw new BadRequestException('Telegram account not linked');
@@ -124,7 +126,7 @@ export class OnboardingService {
     }
 
     if (!isTelemetryEnabled) {
-      throw new BadRequestException('Telemetry not enabled for any vehicle');
+      throw new BadRequestException('Telemetry or break-in monitoring not enabled for any vehicle');
     }
 
     await this.userRepository.update(userId, {

@@ -423,5 +423,8 @@
   "Understood, let's go!": "C'est noté, allons-y !",
   "Security Shield Configuration": "Configuration du bouclier de sécurité",
   "Configure the security features for this vehicle below.": "Configurez les fonctionnalités de sécurité de ce véhicule ci-dessous.",
-  "Receive alerts on Telegram when an intrusion is detected": "Recevez des alertes sur Telegram lors de la détection d'une intrusion"
+  "Receive alerts on Telegram when an intrusion is detected": "Recevez des alertes sur Telegram lors de la détection d'une intrusion",
+  "Enable Sentry Mode Monitoring": "Activer la surveillance du mode Sentinelle",
+  "Activate Sentry Mode Monitoring": "Activer la surveillance du mode Sentinelle",
+  "✅ Security monitoring enabled! Your setup is complete.": "✅ Surveillance de sécurité activée ! Votre configuration est terminée."
 }

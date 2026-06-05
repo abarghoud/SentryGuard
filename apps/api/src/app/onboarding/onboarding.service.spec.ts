@@ -237,10 +237,11 @@ describe('The OnboardingService class', () => {
           vin: 'VIN123',
           key_paired: true,
           sentry_mode_monitoring_enabled: false,
+          break_in_monitoring_enabled: false,
         },
       ];
 
-      const expectedError = 'Telemetry not enabled for any vehicle';
+      const expectedError = 'Telemetry or break-in monitoring not enabled for any vehicle';
       let act: () => Promise<void>;
 
       beforeEach(() => {

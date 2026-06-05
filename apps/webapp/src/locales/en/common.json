@@ -424,5 +424,8 @@
   "Understood, let's go!": "Understood, let's go!",
   "Security Shield Configuration": "Security Shield Configuration",
   "Configure the security features for this vehicle below.": "Configure the security features for this vehicle below.",
-  "Receive alerts on Telegram when an intrusion is detected": "Receive alerts on Telegram when an intrusion is detected"
+  "Receive alerts on Telegram when an intrusion is detected": "Receive alerts on Telegram when an intrusion is detected",
+  "Enable Sentry Mode Monitoring": "Enable Sentry Mode Monitoring",
+  "Activate Sentry Mode Monitoring": "Activate Sentry Mode Monitoring",
+  "✅ Security monitoring enabled! Your setup is complete.": "✅ Security monitoring enabled! Your setup is complete."
 }
