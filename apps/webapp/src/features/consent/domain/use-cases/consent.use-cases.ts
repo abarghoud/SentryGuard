@@ -16,8 +16,8 @@ import {
 export class GetConsentTextUseCase implements GetConsentTextRequirements {
   constructor(private repository: ConsentRepositoryRequirements) {}
 
-  async execute(version = 'v1', locale = 'en'): Promise<ConsentTextResponse> {
-    return this.repository.getConsentText(version, locale);
+  async execute(locale = 'en'): Promise<ConsentTextResponse> {
+    return this.repository.getConsentText(locale);
   }
 }
 

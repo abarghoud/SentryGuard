@@ -59,7 +59,7 @@ describe('The ConsentController class', () => {
 
     beforeEach(() => {
       mockResponse = {
-        version: 'v1',
+        version: ConsentService.ACTIVE_VERSION,
         locale: 'en',
         text: 'consent text',
         textHash: 'hash',
@@ -79,14 +79,14 @@ describe('The ConsentController class', () => {
       });
 
       it('should call service with default version and locale', () => {
-        expect(consentService.getConsentText).toHaveBeenCalledWith('v1', 'en');
+        expect(consentService.getConsentText).toHaveBeenCalledWith(ConsentService.ACTIVE_VERSION, 'en');
       });
     });
 
     describe('When called with custom version and locale', () => {
       beforeEach(async () => {
         mockResponse = {
-          version: 'v2',
+          version: 'custom-version',
           locale: 'fr',
           text: 'texte de consentement',
           textHash: 'hash',
@@ -94,7 +94,7 @@ describe('The ConsentController class', () => {
           appTitle: 'SentryGuard',
         };
         mockConsentService.getConsentText.mockReturnValue(mockResponse);
-        result = await controller.getConsentText('v2', 'fr');
+        result = await controller.getConsentText('custom-version', 'fr');
       });
 
       it('should return consent text response', () => {
@@ -102,7 +102,7 @@ describe('The ConsentController class', () => {
       });
 
       it('should call service with custom version and locale', () => {
-        expect(consentService.getConsentText).toHaveBeenCalledWith('v2', 'fr');
+        expect(consentService.getConsentText).toHaveBeenCalledWith('custom-version', 'fr');
       });
     });
   });
@@ -124,7 +124,7 @@ describe('The ConsentController class', () => {
           latestConsent: {
             id: 'consent-id',
             userId: 'test-user-id',
-            version: 'v1',
+            version: ConsentService.ACTIVE_VERSION,
             acceptedAt: new Date(),
           } as UserConsent,
         };
@@ -167,13 +167,13 @@ describe('The ConsentController class', () => {
     beforeEach(() => {
       mockUser = { userId: 'test-user-id' } as User;
       consentData = {
-        version: 'v1',
+        version: ConsentService.ACTIVE_VERSION,
         locale: 'en',
       };
       mockConsent = {
         id: 'consent-id',
         acceptedAt: new Date(),
-        version: 'v1',
+        version: ConsentService.ACTIVE_VERSION,
       } as UserConsent;
       mockConsentService.acceptConsent.mockResolvedValue(mockConsent);
     });
@@ -195,14 +195,14 @@ describe('The ConsentController class', () => {
 
       it('should return consent data', () => {
         expect(result.consent.id).toBe('consent-id');
-        expect(result.consent.version).toBe('v1');
+        expect(result.consent.version).toBe(ConsentService.ACTIVE_VERSION);
       });
 
       it('should call service with correct consent data', () => {
         expect(consentService.acceptConsent).toHaveBeenCalledWith(
           'test-user-id',
           expect.objectContaining({
-            version: 'v1',
+            version: ConsentService.ACTIVE_VERSION,
             locale: 'en',
             userAgent: 'test-agent',
             appTitle: 'SentryGuard',
