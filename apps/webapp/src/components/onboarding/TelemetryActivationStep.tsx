@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useRouter } from 'next/navigation';
-import { useOnboardingQuery } from '../../features/onboarding/di';
-import { useVehiclesQuery } from '../../features/vehicles/di';
 import OnboardingStepLayout from './OnboardingStepLayout';
+import RequireVehicleCommands from '../RequireVehicleCommands';
+import VinMask from '../VinMask';
+import { useTelemetryActivation } from '../../features/onboarding/presentation/hooks/use-telemetry-activation';
 
 interface TelemetryActivationStepProps {
   onCompleted?: () => Promise<void>;
@@ -13,76 +12,24 @@ interface TelemetryActivationStepProps {
 
 export default function TelemetryActivationStep({ onCompleted }: TelemetryActivationStepProps) {
   const { t } = useTranslation('common');
-  const router = useRouter();
-  const { completeOnboardingMutation } = useOnboardingQuery();
-  const completeOnboarding = async () => {
-    try {
-      await completeOnboardingMutation.mutateAsync();
-      return { success: true };
-    } catch (e: any) {
-      return { success: false, error: e.message };
-    }
-  };
-  const { query: vehicleQuery, configureTelemetryMutation } = useVehiclesQuery();
-  const { data: vehicles = [], isLoading } = vehicleQuery;
-  const [activatingVins, setActivatingVins] = useState<Set<string>>(new Set());
-  const [errors, setErrors] = useState<Map<string, string>>(new Map());
-  const [isCompleting, setIsCompleting] = useState(false);
-
-  const hasTelemetryEnabled = vehicles.some((v) => v.sentry_mode_monitoring_enabled === true);
-
-  const handleActivateTelemetry = async (vin: string) => {
-    setActivatingVins((prev) => new Set(prev).add(vin));
-    setErrors((prev) => {
-      const newErrors = new Map(prev);
-      newErrors.delete(vin);
-      return newErrors;
-    });
-
-    try {
-      const result = await configureTelemetryMutation.mutateAsync(vin);
-
-      if (!result.success) {
-        setErrors((prev) => {
-          const newErrors = new Map(prev);
-          newErrors.set(vin, result.message || t('Failed to enable telemetry'));
-          return newErrors;
-        });
-      }
-    } finally {
-      setActivatingVins((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(vin);
-        return newSet;
-      });
-    }
-  };
-
-  const handleCompleteOnboarding = async () => {
-    setIsCompleting(true);
-    try {
-      const result = await completeOnboarding();
-
-      if (result.success) {
-        // Notify parent component that onboarding is complete
-        if (onCompleted) {
-          await onCompleted();
-        } else {
-          // Fallback: redirect directly if no callback provided
-          router.push('/dashboard');
-        }
-      } else {
-        // Show error - the user will see the error message from the backend
-        console.error('Failed to complete onboarding:', result.error);
-      }
-    } finally {
-      setIsCompleting(false);
-    }
-  };
+  const {
+    vehicles,
+    isLoading,
+    activatingVins,
+    deletingVins,
+    errors,
+    isCompleting,
+    hasTelemetryEnabled,
+    handleToggleBreakIn,
+    handleToggleOffensive,
+    handleToggleSentry,
+    handleCompleteOnboarding,
+    isVehicleUpdating,
+  } = useTelemetryActivation(onCompleted);
 
   return (
     <OnboardingStepLayout
-      title={t('Enable Telemetry')}
+      title={t('Enable Sentry Mode Monitoring')}
       description={t(
         'Start monitoring your vehicle\'s Sentry Mode in real-time'
       )}
@@ -106,7 +53,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                 />
               </svg>
               <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                {t('✅ Telemetry enabled! Your setup is complete.')}
+                {t('✅ Security monitoring enabled! Your setup is complete.')}
               </p>
             </div>
             <p className="text-xs text-green-700 dark:text-green-300">
@@ -133,15 +80,15 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
             {vehicles.map((vehicle) => (
               <div
                 key={vehicle.vin}
-                className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600"
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 p-5 border border-gray-200 dark:border-gray-700 space-y-4"
               >
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                    <h3 className="font-semibold text-gray-900 dark:text-white text-base">
                       {vehicle.display_name || `${vehicle.model} (${vehicle.vin.slice(-4)})`}
                     </h3>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      VIN: {vehicle.vin}
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      VIN: <VinMask vin={vehicle.vin} />
                     </p>
                   </div>
                   {vehicle.sentry_mode_monitoring_enabled && (
@@ -151,27 +98,115 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                   )}
                 </div>
 
-                {/* Error message for this vehicle */}
                 {errors.has(vehicle.vin) && (
-                  <div className="mb-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-2">
-                    <p className="text-xs text-red-800 dark:text-red-200">
+                  <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-lg p-3">
+                    <p className="text-xs text-red-800 dark:text-red-300">
                       {errors.get(vehicle.vin)}
                     </p>
                   </div>
                 )}
 
-                {/* Activate button */}
-                {!vehicle.sentry_mode_monitoring_enabled && (
-                  <button
-                    onClick={() => handleActivateTelemetry(vehicle.vin)}
-                    disabled={activatingVins.has(vehicle.vin)}
-                    className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-medium py-2 px-4 rounded transition-colors duration-200 disabled:cursor-not-allowed text-sm"
-                  >
-                    {activatingVins.has(vehicle.vin)
-                      ? t('Activating...')
-                      : t('Activate Telemetry')}
-                  </button>
-                )}
+                <div className="space-y-4 pt-2">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white block">
+                        {t('Sentry Mode Monitoring')}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 leading-normal block mt-0.5">
+                        {t('Monitor Sentry Mode via telemetry without battery drain')}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleToggleSentry(vehicle.vin, !!vehicle.sentry_mode_monitoring_enabled)}
+                      disabled={isVehicleUpdating(vehicle.vin)}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        vehicle.sentry_mode_monitoring_enabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                      }`}
+                      role="switch"
+                      aria-checked={vehicle.sentry_mode_monitoring_enabled}
+                      type="button"
+                    >
+                      {activatingVins.has(vehicle.vin) || deletingVins.has(vehicle.vin) ? (
+                        <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <svg className="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                        </span>
+                      ) : (
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            vehicle.sentry_mode_monitoring_enabled ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="flex items-start justify-between gap-4 pt-3 border-t border-gray-100 dark:border-gray-700/50">
+                    <div className="flex-1">
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white block">
+                        {t('Break-in Monitoring')}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 leading-normal block mt-0.5">
+                        {t('Receive alerts on Telegram when an intrusion is detected')}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleToggleBreakIn(vehicle.vin, !!vehicle.break_in_monitoring_enabled)}
+                      disabled={isVehicleUpdating(vehicle.vin)}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        vehicle.break_in_monitoring_enabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                      }`}
+                      role="switch"
+                      aria-checked={vehicle.break_in_monitoring_enabled}
+                      type="button"
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          vehicle.break_in_monitoring_enabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {vehicle.break_in_monitoring_enabled && (
+                    <RequireVehicleCommands
+                      title={t('offensiveResponseLockedTitle')}
+                      description={t('offensiveResponseLockedDescription')}
+                      buttonLabel={t('offensiveResponseLockedButton')}
+                    >
+                      <div className="flex items-start justify-between gap-4 pt-3 border-t border-gray-100 dark:border-gray-700/50">
+                        <div className="flex-1">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white block">
+                            {t('Offensive Response')}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 leading-normal block mt-0.5">
+                            {t('offensiveResponseInfo')}
+                          </span>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <button
+                            onClick={() => handleToggleOffensive(vehicle.vin, vehicle.break_in_offensive_response === 'HONK')}
+                            disabled={isVehicleUpdating(vehicle.vin)}
+                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                              vehicle.break_in_offensive_response === 'HONK' ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                            }`}
+                            role="switch"
+                            aria-checked={vehicle.break_in_offensive_response === 'HONK'}
+                            type="button"
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                vehicle.break_in_offensive_response === 'HONK' ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    </RequireVehicleCommands>
+                  )}
+                </div>
               </div>
             ))}
           </div>

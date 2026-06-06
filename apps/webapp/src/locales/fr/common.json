@@ -420,5 +420,11 @@
   "Offensive Response (Horn)": "Réponse Offensive (Klaxon)",
   "When the offensive response is active, your vehicle horn triggers automatically upon detection to deter intruders immediately.": "Lorsque la réponse offensive est active, le klaxon de votre véhicule se déclenche automatiquement lors d'une détection pour dissuader immédiatement les intrus.",
   "💡 These features are available in the Vehicles section. You can enable break-in monitoring and configure the offensive response for each vehicle independently.": "💡 Ces fonctionnalités sont disponibles dans la section Véhicules. Vous pouvez activer la surveillance d'effraction et configurer la réponse offensive pour chaque véhicule indépendamment.",
-  "Understood, let's go!": "C'est noté, allons-y !"
+  "Understood, let's go!": "C'est noté, allons-y !",
+  "Security Shield Configuration": "Configuration du bouclier de sécurité",
+  "Configure the security features for this vehicle below.": "Configurez les fonctionnalités de sécurité de ce véhicule ci-dessous.",
+  "Receive alerts on Telegram when an intrusion is detected": "Recevez des alertes sur Telegram lors de la détection d'une intrusion",
+  "Enable Sentry Mode Monitoring": "Activer la surveillance du mode Sentinelle",
+  "Activate Sentry Mode Monitoring": "Activer la surveillance du mode Sentinelle",
+  "✅ Security monitoring enabled! Your setup is complete.": "✅ Surveillance de sécurité activée ! Votre configuration est terminée."
 }

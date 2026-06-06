@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { type Vehicle } from '../features/vehicles/domain/entities';
 import Spinner from './Spinner';
 import RequireVehicleCommands from './RequireVehicleCommands';
+import VinMask from './VinMask';
 
 function BreakInOffensiveToggle({
   isOn,
@@ -95,6 +96,8 @@ export default function VehicleCard({
   const [isDeleting, setIsDeleting] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
 
+  const isUpdating = isConfiguring || isConfiguringBreakIn || isUpdatingBreakInOffensive || isDeleting;
+
   const formatSkippedReason = (reason: string, details?: string) => {
     switch (reason) {
       case 'missing_key':
@@ -173,10 +176,10 @@ export default function VehicleCard({
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">
-            {vehicle.display_name || vehicle.vin}
+            {vehicle.display_name || <VinMask vin={vehicle.vin} />}
           </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            {t('VIN')}: {vehicle.vin}
+            {t('VIN')}: <VinMask vin={vehicle.vin} />
           </p>
           {vehicle.model && (
             <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
@@ -214,7 +217,7 @@ export default function VehicleCard({
         {!vehicle.sentry_mode_monitoring_enabled && (
           <button
             onClick={handleToggle}
-            disabled={isConfiguring}
+            disabled={isUpdating}
             className="w-full justify-center shrink-0 inline-flex items-center gap-1.5 px-2.5 py-2 bg-tesla-600 hover:bg-tesla-700 text-white text-xs font-medium rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             title={t('Enable Telemetry')}
           >
@@ -233,7 +236,7 @@ export default function VehicleCard({
           <>
             <button
               onClick={handleDisable}
-              disabled={isDeleting}
+              disabled={isUpdating}
               className="w-full justify-center shrink-0 inline-flex items-center gap-1.5 px-2.5 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 hover:text-gray-700 text-xs font-medium rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-400 dark:hover:text-gray-300 border border-gray-200 dark:border-gray-700"
               title={t('Disable Telemetry')}
             >
@@ -273,7 +276,7 @@ export default function VehicleCard({
           </div>
           <button
               onClick={handleToggleBreakIn}
-              disabled={isConfiguringBreakIn}
+              disabled={isUpdating}
               className={`w-full justify-center shrink-0 inline-flex items-center gap-1.5 px-2.5 py-2 text-xs font-medium rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm ${!vehicle.break_in_monitoring_enabled ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-400'}`}
               title={vehicle.break_in_monitoring_enabled ? t('Disable Break-in') : t('Enable Break-in')}
             >
@@ -299,7 +302,7 @@ export default function VehicleCard({
             >
               <BreakInOffensiveToggle
                 isOn={isBreakInOffensiveOn}
-                isDisabled={isUpdatingBreakInOffensive}
+                isDisabled={isUpdating}
                 onToggle={handleToggleBreakInOffensive}
                 tooltipText={t('offensiveResponseInfo')}
               />
