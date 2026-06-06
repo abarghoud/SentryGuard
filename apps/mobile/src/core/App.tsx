@@ -1,5 +1,4 @@
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import type { JSX } from 'react';
@@ -11,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MobileShell } from './MobileShell';
 import { ThemeMode, ThemeProvider, useTheme } from './theme';
 import { initializeRuntimeConfig, tokenStore } from './api';
+import { openTeslaApp } from './tesla-app-link';
 import { pushNotificationService } from '../features/notifications/di';
 import './i18n';
 
@@ -116,7 +116,7 @@ async function handleAlertNotificationResponse(
   }
 
   Notifications.clearLastNotificationResponse();
-  await Linking.openURL(teslaRedirectUrl);
+  await openTeslaApp(teslaRedirectUrl);
 }
 
 function resolveTeslaRedirectUrl(data: Record<string, unknown>): string | null {
