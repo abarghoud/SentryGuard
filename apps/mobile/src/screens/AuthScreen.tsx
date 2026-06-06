@@ -1,4 +1,5 @@
 import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import type { JSX } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +16,22 @@ import { getTeslaLoginUrlUseCase } from '../features/auth/di';
 import { extractTokenFromCallbackUrl } from './auth/auth.helpers';
 
 const appLogo = require('../../assets/icon.png');
+
+function openTeslaAuthUrl(url: string): Promise<void> {
+  const openBrowser = Platform.select({
+    web: async () => {
+      globalThis.location?.assign(url);
+    },
+    android: async () => {
+      await Linking.openURL(url);
+    },
+    default: async () => {
+      await WebBrowser.openBrowserAsync(url);
+    },
+  });
+
+  return openBrowser();
+}
 
 interface AuthScreenProps {
   onAuthenticated(token: string): Promise<void>;
@@ -36,6 +53,9 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
     const authenticateFromUrl = (url: string | null): void => {
       const token = extractTokenFromCallbackUrl(url ?? '');
       if (token) {
+        if (Platform.OS === 'ios') {
+          void WebBrowser.dismissBrowser();
+        }
         void onAuthenticated(token);
       }
     };
@@ -58,12 +78,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
       const redirectUri = Linking.createURL('callback');
       const login = await getTeslaLoginUrlUseCase.execute(redirectUri);
 
-      if (Platform.OS === 'web') {
-        globalThis.location?.assign(login.url);
-        return;
-      }
-
-      await Linking.openURL(login.url);
+      await openTeslaAuthUrl(login.url);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : t('auth.error.login'));
     } finally {
