@@ -38,6 +38,15 @@ export function useTelemetryActivation(onCompleted?: () => Promise<void>) {
     }
   }, [completeOnboardingMutation]);
 
+  const isVehicleUpdating = useCallback((vin: string) => {
+    return (
+      activatingVins.has(vin) ||
+      deletingVins.has(vin) ||
+      togglingBreakInVins.has(vin) ||
+      togglingOffensiveVins.has(vin)
+    );
+  }, [activatingVins, deletingVins, togglingBreakInVins, togglingOffensiveVins]);
+
   const handleToggleBreakIn = useCallback(async (vin: string, currentEnabled: boolean) => {
     setTogglingBreakInVins((prev) => new Set(prev).add(vin));
     setErrors((prev) => {
@@ -188,5 +197,6 @@ export function useTelemetryActivation(onCompleted?: () => Promise<void>) {
     handleToggleOffensive,
     handleToggleSentry,
     handleCompleteOnboarding,
+    isVehicleUpdating,
   };
 }

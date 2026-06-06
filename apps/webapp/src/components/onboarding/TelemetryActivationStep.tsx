@@ -17,8 +17,6 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
     isLoading,
     activatingVins,
     deletingVins,
-    togglingBreakInVins,
-    togglingOffensiveVins,
     errors,
     isCompleting,
     hasTelemetryEnabled,
@@ -26,6 +24,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
     handleToggleOffensive,
     handleToggleSentry,
     handleCompleteOnboarding,
+    isVehicleUpdating,
   } = useTelemetryActivation(onCompleted);
 
   return (
@@ -119,7 +118,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                     </div>
                     <button
                       onClick={() => handleToggleSentry(vehicle.vin, !!vehicle.sentry_mode_monitoring_enabled)}
-                      disabled={activatingVins.has(vehicle.vin) || deletingVins.has(vehicle.vin)}
+                      disabled={isVehicleUpdating(vehicle.vin)}
                       className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                         vehicle.sentry_mode_monitoring_enabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
                       }`}
@@ -155,7 +154,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                     </div>
                     <button
                       onClick={() => handleToggleBreakIn(vehicle.vin, !!vehicle.break_in_monitoring_enabled)}
-                      disabled={togglingBreakInVins.has(vehicle.vin)}
+                      disabled={isVehicleUpdating(vehicle.vin)}
                       className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                         vehicle.break_in_monitoring_enabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
                       }`}
@@ -189,7 +188,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                         <div className="flex-shrink-0">
                           <button
                             onClick={() => handleToggleOffensive(vehicle.vin, vehicle.break_in_offensive_response === 'HONK')}
-                            disabled={togglingOffensiveVins.has(vehicle.vin)}
+                            disabled={isVehicleUpdating(vehicle.vin)}
                             className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                               vehicle.break_in_offensive_response === 'HONK' ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
                             }`}
