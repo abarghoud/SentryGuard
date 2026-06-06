@@ -71,6 +71,18 @@ describe('The TeslaAppRedirectController class', () => {
       });
     });
 
+    describe('When the deep link attempt should be skipped', () => {
+      beforeEach(() => {
+        controller.teslaRedirect(mockResponse, undefined, undefined, 'true');
+      });
+
+      it('should not retry opening the Tesla app', () => {
+        expect((mockResponse.send as jest.Mock)).not.toHaveBeenCalledWith(
+          expect.stringContaining('window.location.href = \'tesla://\'')
+        );
+      });
+    });
+
     describe('When called with lang parameter', () => {
       describe('When lang is "fr"', () => {
         beforeEach(() => {
