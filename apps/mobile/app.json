@@ -43,7 +43,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#07110f",
+        "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/adaptive-icon.png"
       },
       "package": "com.sentryguard.mobile",
