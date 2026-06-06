@@ -58,6 +58,8 @@ out
 .expo
 apps/*/.expo
 apps/mobile/ios/
+apps/mobile/android/
+
 
 # Local native build outputs
 *.apk
