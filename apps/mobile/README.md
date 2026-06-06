@@ -6,11 +6,11 @@ React Native app (Expo SDK 54) for iOS and Android that lets Tesla owners monito
 
 - **Tesla OAuth** — login through the mobile browser auth flow with deep-link callback
 - **Session persistence** — JWT stored in SecureStore (native) or localStorage (web); automatic refresh via `/auth/refresh-session`; automatic logout on expired session
-- **Onboarding** — consent, Telegram linking, vehicle detection, virtual key pairing, Sentry activation
+- **Onboarding** — consent, vehicle detection, virtual key pairing, Sentry activation
 - **Dashboard** — vehicle list, monitored/unprotected counters, virtual key banner, vehicle detail
 - **Vehicle detail** — enable/disable Sentry alert, enable/disable intrusion alert (beta), horn offensive response (requires `vehicle_cmds` scope), virtual key pairing, telemetry deletion with confirmation
 - **Alerts** — paginated alert history with All / Critical / Warning filters
-- **Settings** — profile display, theme switcher (light/dark), language switcher (FR/EN synced with `/user/language`), push/Telegram/critical-only notification toggles, logout
+- **Settings** — profile display, theme switcher (light/dark), language switcher (FR/EN synced with `/user/language`), push/Telegram/critical-only notification toggles, in-app Telegram linking, logout
 - **Push notifications** — native Expo push with `sentryguard-alerts` Android channel, foreground display, device token registration
 - **Hidden advanced settings** — tap "SentryGuard" 5 times on the login screen to reveal custom API URL and virtual key URL fields
 - **i18n** — French (default) and English, synced with the API
@@ -204,7 +204,7 @@ React Query caches are keyed by purpose:
 | `['onboarding-status']` | MobileShell |
 | `['consent-status']` | OnboardingScreen |
 | `['consent-text', language]` | OnboardingScreen |
-| `['telegram-status']` | OnboardingScreen |
+| `['telegram-status']` | SettingsScreen |
 | `['notification-preferences']` | SettingsScreen |
 | `['user-language']` | MobileShell, Settings |
 
@@ -274,11 +274,12 @@ The API accepts these mobile redirect schemes: `sentryguard://`, `exp://`, `http
 The mobile onboarding follows these sequential steps:
 
 1. **Consent** — fetch consent text via `GET /consent/text?version=v1&locale=<lang>`, accept via `POST /consent/accept`
-2. **Telegram** — generate link via `POST /telegram/generate-link`, poll status via `GET /telegram/status`
-3. **Vehicle detection** — `GET /telemetry-config/vehicles`, refresh if empty
-4. **Virtual key pairing** — opens Tesla URL in system browser, poll until `key_paired` is true
-5. **Sentry activation** — `POST /telemetry-config/configure/<vin>`
-6. **Completion** — `POST /onboarding/complete` or `POST /onboarding/skip`
+2. **Vehicle detection** — `GET /telemetry-config/vehicles`, refresh if empty
+3. **Virtual key pairing** — opens Tesla URL in system browser, poll until `key_paired` is true
+4. **Sentry activation** — `POST /telemetry-config/configure/<vin>`
+5. **Completion** — `POST /onboarding/complete` or `POST /onboarding/skip`
+
+Telegram is no longer part of onboarding — it is linked on demand from **Settings** (shown only when not yet linked).
 
 Each step blocks until the previous one is satisfied. The flow can be skipped entirely.
 
@@ -420,9 +421,9 @@ Storage: SecureStore (native) or localStorage (web).
 | `/onboarding/status` | GET | MobileShell, OnboardingScreen |
 | `/onboarding/complete` | POST | OnboardingScreen |
 | `/onboarding/skip` | POST | OnboardingScreen |
-| `/telegram/status` | GET | OnboardingScreen |
-| `/telegram/generate-link` | POST | OnboardingScreen |
-| `/telegram/test-message` | POST | OnboardingScreen |
+| `/telegram/status` | GET | SettingsScreen |
+| `/telegram/generate-link` | POST | SettingsScreen |
+| `/telegram/test-message` | POST | — (available in repo, no caller) |
 | `/telemetry-config/vehicles` | GET | Dashboard, VehicleDetail, Onboarding |
 | `/telemetry-config/configure/:vin` | POST | VehicleDetail, Onboarding |
 | `/telemetry-config/:vin` | DELETE | VehicleDetail |

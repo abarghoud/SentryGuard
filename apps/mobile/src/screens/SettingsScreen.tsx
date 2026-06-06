@@ -29,6 +29,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
   const topInset = useScreenTopInset();
   const {
     isDndAccessModalOpen,
+    isTelegramLinked,
     languageMutation,
     languageQuery,
     preferenceMessage,
@@ -37,6 +38,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
     preferencesQuery,
     profile,
     setIsDndAccessModalOpen,
+    telegramLinkMutation,
     updatePreference,
   } = useSettings();
 
@@ -129,10 +131,19 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
       </ListSection>
 
       <ListSection header={t('settings.telegramSection')} footer={statusMessage ?? undefined}>
-        <ListRow
-          title={t('settings.telegram')}
-          accessory={<AppSwitch disabled={isBusy} value={preferences.telegram_enabled} onValueChange={(value) => void updatePreference({ telegram_enabled: value })} />}
-        />
+        {isTelegramLinked ? (
+          <ListRow
+            title={t('settings.telegram')}
+            accessory={<AppSwitch disabled={isBusy} value={preferences.telegram_enabled} onValueChange={(value) => void updatePreference({ telegram_enabled: value })} />}
+          />
+        ) : (
+          <ListRow
+            title={t('settings.telegramConnect')}
+            subtitle={t('settings.telegramConnectSubtitle')}
+            showChevron
+            onPress={() => telegramLinkMutation.mutate()}
+          />
+        )}
       </ListSection>
 
       <ListSection header={t('settings.supportSection')} footer={t('settings.supportFooter')}>

@@ -1,7 +1,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as Linking from 'expo-linking';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 import { getAuthProfileUseCase } from '../../features/auth/di';
 import {
@@ -10,6 +11,7 @@ import {
   updateNotificationPreferencesUseCase,
 } from '../../features/notifications/di';
 import { NotificationPreferences } from '../../features/notifications/domain/entities';
+import { generateTelegramLinkUseCase, getTelegramStatusUseCase } from '../../features/telegram/di';
 import { getUserLanguageUseCase, updateUserLanguageUseCase } from '../../features/user/di';
 import { UserLanguage } from '../../features/user/domain/entities';
 import {
@@ -50,6 +52,10 @@ export function useSettings() {
     queryFn: () => getUserLanguageUseCase.execute(),
     queryKey: ['user-language'],
   });
+  const telegramStatusQuery = useQuery({
+    queryFn: () => getTelegramStatusUseCase.execute(),
+    queryKey: ['telegram-status'],
+  });
   const preferencesMutation = useMutation({
     mutationFn: ({ preferences, token }: UpdateNotificationPreferencesMutation) =>
       updateNotificationPreferencesUseCase.execute(preferences, token),
@@ -64,6 +70,13 @@ export function useSettings() {
       queryClient.setQueryData(['user-language'], language);
     },
   });
+  const telegramLinkMutation = useMutation({
+    mutationFn: () => generateTelegramLinkUseCase.execute(),
+    onSuccess: async (linkInfo) => {
+      await Linking.openURL(linkInfo.link);
+      setPreferenceMessage(t('settings.telegramLinkReturn'));
+    },
+  });
 
   useEffect(() => {
     const language = languageQuery.data?.language;
@@ -71,6 +84,16 @@ export function useSettings() {
       void i18n.changeLanguage(language);
     }
   }, [i18n, languageQuery.data?.language]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void queryClient.invalidateQueries({ queryKey: ['telegram-status'] });
+      }
+    });
+
+    return () => subscription.remove();
+  }, [queryClient]);
 
   useEffect(() => {
     let isActive = true;
@@ -184,6 +207,7 @@ export function useSettings() {
 
   return {
     isDndAccessModalOpen,
+    isTelegramLinked: telegramStatusQuery.data?.linked === true,
     languageMutation,
     languageQuery,
     preferenceMessage,
@@ -192,6 +216,7 @@ export function useSettings() {
     preferencesQuery,
     profile: profileQuery.data?.profile,
     setIsDndAccessModalOpen,
+    telegramLinkMutation,
     updatePreference,
   };
 }

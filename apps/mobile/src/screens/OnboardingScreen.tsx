@@ -24,11 +24,8 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
     flags,
     message,
     onboardingQuery,
-    sendTelegramTestMessage,
     setMessage,
     t,
-    telegramLinkMutation,
-    telegramQuery,
     telemetryMutation,
     telemetryVehicle,
     vehicles,
@@ -72,32 +69,6 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
         <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
           {consentTextQuery.data?.text ?? t('onboarding.consentUnavailable')}
         </AppText>
-      </OnboardingFrame>
-    );
-  }
-
-  if (flags.isTelegramMissing) {
-    return (
-      <OnboardingFrame
-        title="Telegram"
-        subtitle={t('onboarding.telegramSubtitle')}
-        t={t}
-        message={resolveError(telegramQuery.error) ?? message}
-        actions={
-          <>
-            <PrimaryButton
-              disabled={telegramLinkMutation.isPending}
-              label={telegramLinkMutation.isPending ? t('onboarding.telegramOpening') : t('onboarding.telegramOpen')}
-              onPress={() => telegramLinkMutation.mutate()}
-            />
-            <SecondaryButton label={t('onboarding.telegramLinked')} onPress={() => void telegramQuery.refetch()} />
-            <SecondaryButton label={t('onboarding.telegramTest')} onPress={sendTelegramTestMessage} />
-          </>
-        }
-      >
-        <StepList
-          items={[t('onboarding.telegramStep1'), t('onboarding.telegramStep2'), t('onboarding.telegramStep3'), t('onboarding.telegramStep4')]}
-        />
       </OnboardingFrame>
     );
   }
