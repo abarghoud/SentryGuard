@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
+    "@expo/vector-icons": "*",
     "@nx/detox": "*",
     "@nx/devkit": "*",
     "@nx/eslint": "*",
@@ -29,6 +30,7 @@
     "expo-system-ui": "~6.0.8",
     "expo-web-browser": "~15.0.8",
     "i18next": "^25.6.0",
+    "jest-mock-extended": "*",
     "metro-config": "~0.83.0",
     "metro-resolver": "~0.83.0",
     "picocolors": "*",
