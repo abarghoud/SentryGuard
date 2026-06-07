@@ -165,7 +165,7 @@ describe('The BreakInAlertHandlerService class', () => {
         jest.advanceTimersByTime(3000);
         await Promise.resolve();
 
-        expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).toHaveBeenCalledWith('123', ['user-1']);
+        expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).toHaveBeenCalledWith('123', ['user-1'], message.createdAt);
       });
 
       it('should construct and send telegram message when notifier callback is invoked', async () => {

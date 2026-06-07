@@ -68,10 +68,35 @@ echo " 17) DisplayStateEntertainment # 🎮 Entertainment"
 echo ""
 echo "Special Scenarios:"
 echo " 18) False Positive Charge Port # ⚡ Simulates CenterDisplay=Lock followed by ChargePortLatch=Disengaged"
+echo " 19) Delayed Break-in Alert    # ⏳ Simulates CenterDisplay=Lock with a timestamp 2 minutes in the past"
 echo ""
 
 # Ask for state
-read -p "Choose state (1-18, or Enter for alert): " CHOICE
+read -p "Choose state (1-19, or Enter for alert): " CHOICE
+
+if [ "$CHOICE" = "19" ]; then
+    echo ""
+    echo "📤 Sending Scenario: Delayed Break-in Alert..."
+    echo "   VIN: $VIN"
+    
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        PAST_DATE=$(date -v-2M -u +%Y-%m-%dT%H:%M:%SZ)
+    else
+        PAST_DATE=$(date -u -d "2 minutes ago" +%Y-%m-%dT%H:%M:%SZ)
+    fi
+    
+    echo "   Generated timestamp in the past (2 mins ago): $PAST_DATE"
+    
+    printf '{"vin":"%s","createdAt":"%s","isResend":false,"data":[{"key":"CenterDisplay","value":{"stringValue":"DisplayStateLock"}}]}' \
+      "$VIN" "$PAST_DATE" | \
+    $DOCKER_COMPOSE_CMD exec -T kafka kafka-console-producer \
+      --bootstrap-server localhost:9092 \
+      --topic TeslaLogger_V
+      
+    echo ""
+    echo "✅ Scenario sent successfully! The Break-in alert will be dispatched, but the Offensive Response (honk) should be BYPASSED due to high latency."
+    exit 0
+fi
 
 if [ "$CHOICE" = "18" ]; then
     echo ""
