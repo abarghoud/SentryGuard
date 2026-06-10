@@ -8,8 +8,9 @@ import {
   GetTelegramStatusRequirements,
   UnlinkTelegramRequirements,
   SendTestMessageRequirements,
-} from '../../domain/use-cases/telegram.use-cases.requirements';
-import { TelegramStatus, TelegramLinkInfo } from '../../domain/entities';
+  TelegramStatus,
+  TelegramLinkInfo,
+} from '@sentryguard/telegram-domain';
 import React from 'react';
 
 jest.mock('../../../../core/api/token-manager', () => ({

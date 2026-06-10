@@ -2,16 +2,20 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import * as Linking from 'expo-linking';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppState, Platform } from 'react-native';
+import { Platform } from 'react-native';
 
+import { usePushTokenSync } from '../../core/hooks/usePushTokenSync';
+import { useTelegramStatusSync } from '../../core/hooks/useTelegramStatusSync';
 import { getAuthProfileUseCase } from '../../features/auth/di';
-import {
-  getNotificationPreferencesUseCase,
-  pushNotificationService,
-  updateNotificationPreferencesUseCase,
-} from '../../features/notifications/di';
+import { getNotificationPreferencesUseCase, updateNotificationPreferencesUseCase } from '../../features/notifications/di';
 import { NotificationPreferences } from '../../features/notifications/domain/entities';
-import { generateTelegramLinkUseCase, getTelegramStatusUseCase } from '../../features/telegram/di';
+import {
+  generateTelegramLinkUseCase,
+  getTelegramStatusUseCase,
+  sendTelegramTestMessageUseCase,
+  unlinkTelegramUseCase,
+} from '../../features/telegram/di';
+import { TelegramLinkInfo, TelegramActionResponse } from '@sentryguard/telegram-domain';
 import { getUserLanguageUseCase, updateUserLanguageUseCase } from '../../features/user/di';
 import { UserLanguage } from '../../features/user/domain/entities';
 import {
@@ -32,8 +36,9 @@ export function useSettings() {
   const { i18n, t } = useTranslation();
   const [preferenceMessage, setPreferenceMessage] = useState<string | null>(null);
   const [isDndAccessModalOpen, setIsDndAccessModalOpen] = useState(false);
-  const [pushToken, setPushToken] = useState<string | null>(null);
-  const [isTokenResolved, setIsTokenResolved] = useState(false);
+  const { isTokenResolved, pushToken, setPushToken } = usePushTokenSync();
+  useTelegramStatusSync();
+  const [telegramLinkInfo, setTelegramLinkInfo] = useState<TelegramLinkInfo | null>(null);
   const hasRegisteredPushToken = useRef(false);
   const queryClient = useQueryClient();
 
@@ -70,12 +75,26 @@ export function useSettings() {
       queryClient.setQueryData(['user-language'], language);
     },
   });
-  const telegramLinkMutation = useMutation({
+  const telegramLinkMutation = useMutation<TelegramLinkInfo, Error>({
     mutationFn: () => generateTelegramLinkUseCase.execute(),
     onSuccess: async (linkInfo) => {
+      setTelegramLinkInfo(linkInfo);
+      await queryClient.invalidateQueries({ queryKey: ['telegram-status'] });
       await Linking.openURL(linkInfo.link);
       setPreferenceMessage(t('settings.telegramLinkReturn'));
     },
+  });
+
+  const unlinkTelegramMutation = useMutation<TelegramActionResponse, Error>({
+    mutationFn: () => unlinkTelegramUseCase.execute(),
+    onSuccess: async () => {
+      setTelegramLinkInfo(null);
+      await queryClient.invalidateQueries({ queryKey: ['telegram-status'] });
+    },
+  });
+
+  const sendTelegramTestMessageMutation = useMutation<TelegramActionResponse, Error>({
+    mutationFn: () => sendTelegramTestMessageUseCase.execute(),
   });
 
   useEffect(() => {
@@ -85,46 +104,6 @@ export function useSettings() {
     }
   }, [i18n, languageQuery.data?.language]);
 
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        void queryClient.invalidateQueries({ queryKey: ['telegram-status'] });
-      }
-    });
-
-    return () => subscription.remove();
-  }, [queryClient]);
-
-  useEffect(() => {
-    let isActive = true;
-
-    void pushNotificationService
-      .getCachedExpoPushToken()
-      .then((cachedToken) => {
-        if (isActive && cachedToken) {
-          setPushToken(cachedToken);
-        }
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (isActive) {
-          setIsTokenResolved(true);
-        }
-      });
-
-    void pushNotificationService
-      .getGrantedExpoPushToken()
-      .then((freshToken) => {
-        if (isActive && freshToken) {
-          setPushToken(freshToken);
-        }
-      })
-      .catch(() => undefined);
-
-    return () => {
-      isActive = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (!preferencesQuery.data?.push_enabled || hasRegisteredPushToken.current || Platform.OS === 'web') {
@@ -206,6 +185,10 @@ export function useSettings() {
   };
 
   return {
+    generateTelegramLink: async () => {
+      const info = await telegramLinkMutation.mutateAsync();
+      return info;
+    },
     isDndAccessModalOpen,
     isTelegramLinked: telegramStatusQuery.data?.linked === true,
     languageMutation,
@@ -215,8 +198,21 @@ export function useSettings() {
     preferencesMutation,
     preferencesQuery,
     profile: profileQuery.data?.profile,
+    refreshTelegramStatus: async () => {
+      await telegramStatusQuery.refetch();
+    },
+    sendTelegramTest: async () => {
+      const result = await sendTelegramTestMessageMutation.mutateAsync();
+      return result.success;
+    },
     setIsDndAccessModalOpen,
+    telegramLinkInfo,
     telegramLinkMutation,
+    telegramStatus: telegramStatusQuery.data ?? null,
+    unlinkTelegram: async () => {
+      await unlinkTelegramMutation.mutateAsync();
+      return true;
+    },
     updatePreference,
   };
 }

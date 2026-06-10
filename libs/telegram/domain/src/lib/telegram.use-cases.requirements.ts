@@ -1,4 +1,4 @@
-import { TelegramLinkInfo, TelegramStatus, TelegramActionResponse } from '../entities';
+import { TelegramLinkInfo, TelegramStatus, TelegramActionResponse } from './entities';
 
 export interface GenerateTelegramLinkRequirements {
   execute(): Promise<TelegramLinkInfo>;

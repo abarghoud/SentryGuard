@@ -2,7 +2,7 @@ import type { JSX } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { screenPadding, spacing } from '../../../core/design/metrics';
+import { radius, screenPadding, spacing } from '../../../core/design/metrics';
 import { TextVariant } from '../../../core/design/typography';
 import { useThemeColors } from '../../../core/theme';
 import { AppText, Surface } from '../../../core/ui';
@@ -39,9 +39,11 @@ export function OnboardingFrame({
         </View>
         {children ? <Surface>{children}</Surface> : null}
         {message ? (
-          <AppText variant={TextVariant.Footnote} color={colors.systemOrange}>
-            {message}
-          </AppText>
+          <View style={[styles.alertBox, { backgroundColor: colors.systemOrange + '15', borderColor: colors.systemOrange + '30' }]}>
+            <AppText variant={TextVariant.Footnote} color={colors.systemOrange}>
+              {message}
+            </AppText>
+          </View>
         ) : null}
         {actions ? <View style={styles.actions}>{actions}</View> : null}
       </ScrollView>
@@ -68,5 +70,11 @@ const styles = StyleSheet.create({
   kicker: {
     fontWeight: '700',
     letterSpacing: 0.6,
+  },
+  alertBox: {
+    borderRadius: radius.control,
+    borderWidth: 1,
+    padding: spacing.md,
+    width: '100%',
   },
 });

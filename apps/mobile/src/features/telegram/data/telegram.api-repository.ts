@@ -1,6 +1,10 @@
+import {
+  TelegramRepositoryRequirements,
+  TelegramLinkInfo,
+  TelegramStatus,
+  TelegramActionResponse,
+} from '@sentryguard/telegram-domain';
 import { ApiClientRequirements } from '../../../core/api/api-client';
-import { TelegramLinkInfo, TelegramStatus, TelegramTestMessageResult } from '../domain/entities';
-import { TelegramRepositoryRequirements } from '../domain/telegram.repository.requirements';
 
 export class TelegramApiRepository implements TelegramRepositoryRequirements {
   public constructor(private readonly client: ApiClientRequirements) {}
@@ -15,9 +19,15 @@ export class TelegramApiRepository implements TelegramRepositoryRequirements {
     });
   }
 
-  public async sendTelegramTestMessage(): Promise<TelegramTestMessageResult> {
-    return this.client.request<TelegramTestMessageResult>('/telegram/test-message', {
+  public async sendTestMessage(): Promise<TelegramActionResponse> {
+    return this.client.request<TelegramActionResponse>('/telegram/test-message', {
       method: 'POST',
+    });
+  }
+
+  public async unlinkTelegram(): Promise<TelegramActionResponse> {
+    return this.client.request<TelegramActionResponse>('/telegram/unlink', {
+      method: 'DELETE',
     });
   }
 }

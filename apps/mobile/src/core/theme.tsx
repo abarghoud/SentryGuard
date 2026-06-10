@@ -72,7 +72,7 @@ const lightColors: ThemeColors = {
   fill: '#f3f4f6',
   secondaryFill: '#e5e7eb',
   systemBlue: '#dc2626', // brand accent (red)
-  systemGreen: '#dc2626', // positive states use the brand accent (no green)
+  systemGreen: '#16a34a', // positive states use true green
   systemRed: '#b91c1c', // destructive / critical (deeper, distinct from accent)
   systemOrange: '#ca8a04',
   onAccent: '#ffffff',
@@ -86,7 +86,7 @@ const lightColors: ThemeColors = {
   critical: '#b91c1c',
   muted: '#4b5563',
   panel: '#f3f4f6',
-  positive: '#dc2626',
+  positive: '#16a34a',
   surface: '#ffffff',
   text: '#111827',
   warning: '#ca8a04',
@@ -106,7 +106,7 @@ const darkColors: ThemeColors = {
   fill: 'rgba(120, 120, 128, 0.36)',
   secondaryFill: 'rgba(120, 120, 128, 0.32)',
   systemBlue: '#0A84FF',
-  systemGreen: '#0A84FF', // positive states use the accent (no green)
+  systemGreen: '#30d158', // positive states use true green
   systemRed: '#FF453A',
   systemOrange: '#FF9F0A',
   onAccent: '#FFFFFF',
@@ -120,7 +120,7 @@ const darkColors: ThemeColors = {
   critical: '#FF453A',
   muted: 'rgba(235, 235, 245, 0.6)',
   panel: '#2C2C2E',
-  positive: '#0A84FF',
+  positive: '#30d158',
   surface: '#1C1C1E',
   text: '#FFFFFF',
   warning: '#FF9F0A',

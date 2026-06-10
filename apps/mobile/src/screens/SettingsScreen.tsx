@@ -2,13 +2,14 @@ import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ScrollView, StyleSheet, View } from 'react-native';
 
-import { screenPadding, spacing } from '../core/design/metrics';
+import { radius, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
 import { useScreenTopInset } from '../core/design/use-screen-inset';
 import { ThemeMode, useTheme } from '../core/theme';
 import { AppSwitch, AppText, GlassButton, GlassButtonVariant, ListRow, ListSection, SegmentedControl, Surface } from '../core/ui';
 import { revokeConsentUseCase } from '../features/consent/di';
 import { UserLanguage } from '../features/user/domain/entities';
+import { TelegramConfigBlock } from '../features/telegram/presentation/components/TelegramConfigBlock';
 import {
   confirmAccountDeletion,
   openAndroidDoNotDisturbAccessSettings,
@@ -29,7 +30,6 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
   const topInset = useScreenTopInset();
   const {
     isDndAccessModalOpen,
-    isTelegramLinked,
     languageMutation,
     languageQuery,
     preferenceMessage,
@@ -38,8 +38,13 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
     preferencesQuery,
     profile,
     setIsDndAccessModalOpen,
-    telegramLinkMutation,
     updatePreference,
+    telegramStatus,
+    telegramLinkInfo,
+    generateTelegramLink,
+    unlinkTelegram,
+    sendTelegramTest,
+    refreshTelegramStatus,
   } = useSettings();
 
   const isBusy = preferencesMutation.isPending;
@@ -68,6 +73,14 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
       <AppText variant={TextVariant.LargeTitle} style={styles.title}>
         {t('settings.title')}
       </AppText>
+
+      {statusMessage ? (
+        <View style={[styles.messageBox, { backgroundColor: colors.systemOrange + '15', borderColor: colors.systemOrange + '30' }]}>
+          <AppText variant={TextVariant.Footnote} color={colors.systemOrange}>
+            {statusMessage}
+          </AppText>
+        </View>
+      ) : null}
 
       <ListSection header={t('settings.account')} footer={profile?.isBetaTester ? t('settings.betaFooter') : undefined}>
         <ListRow stacked title={t('settings.email')} value={profile?.email ?? t('common.notProvided')} />
@@ -131,21 +144,14 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         />
       </ListSection>
 
-      <ListSection header={t('settings.telegramSection')} footer={statusMessage ?? undefined}>
-        {isTelegramLinked ? (
-          <ListRow
-            title={t('settings.telegram')}
-            accessory={<AppSwitch disabled={isBusy} value={preferences.telegram_enabled} onValueChange={(value) => void updatePreference({ telegram_enabled: value })} />}
-          />
-        ) : (
-          <ListRow
-            title={t('settings.telegramConnect')}
-            subtitle={t('settings.telegramConnectSubtitle')}
-            showChevron
-            onPress={() => telegramLinkMutation.mutate()}
-          />
-        )}
-      </ListSection>
+      <TelegramConfigBlock
+        status={telegramStatus}
+        linkInfo={telegramLinkInfo}
+        onGenerateLink={generateTelegramLink}
+        onUnlink={unlinkTelegram}
+        onSendTest={sendTelegramTest}
+        onRefresh={refreshTelegramStatus}
+      />
 
       <ListSection header={t('settings.supportSection')} footer={t('settings.supportFooter')}>
         <ListRow
@@ -225,5 +231,11 @@ const styles = StyleSheet.create({
   },
   title: {
     paddingTop: spacing.sm,
+  },
+  messageBox: {
+    borderRadius: radius.control,
+    borderWidth: 1,
+    padding: spacing.md,
+    width: '100%',
   },
 });

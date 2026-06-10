@@ -5,7 +5,7 @@ import {
   GetTelegramStatusUseCase,
   UnlinkTelegramUseCase,
   SendTestMessageUseCase,
-} from './domain/use-cases/telegram.use-cases';
+} from '@sentryguard/telegram-domain';
 
 export const telegramRepository = new TelegramApiRepository(apiClient);
 

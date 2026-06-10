@@ -38,6 +38,9 @@ const ioniconsFallback: Record<string, keyof typeof Ionicons.glyphMap> = {
   'rectangle.portrait.and.arrow.right': 'log-out-outline',
   'shield.lefthalf.filled': 'shield-half',
   'star.fill': 'star',
+  'paperplane.fill': 'paper-plane',
+  'trash.fill': 'trash',
+  'link': 'link',
 };
 
 const useNativeSymbols = Platform.OS === 'ios';

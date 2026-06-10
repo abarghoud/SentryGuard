@@ -8828,6 +8828,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@sentryguard/telegram-domain@workspace:libs/telegram/domain":
+  version: 0.0.0-use.local
+  resolution: "@sentryguard/telegram-domain@workspace:libs/telegram/domain"
+  languageName: unknown
+  linkType: soft
+
 "@sinclair/typebox@npm:^0.27.8":
   version: 0.27.8
   resolution: "@sinclair/typebox@npm:0.27.8"

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { JSX } from 'react';
 
 import { TextVariant } from '../core/design/typography';
@@ -7,6 +8,7 @@ import { OnboardingFrame } from './onboarding/components/OnboardingFrame';
 import { PrimaryButton } from './onboarding/components/PrimaryButton';
 import { SecondaryButton } from './onboarding/components/SecondaryButton';
 import { StepList } from './onboarding/components/StepList';
+import { NotificationStep } from './onboarding/components/NotificationStep';
 import { openVirtualKey, resolveError, resolveVehicleName } from './onboarding/onboarding.helpers';
 import { useOnboarding } from './onboarding/use-onboarding';
 
@@ -16,12 +18,16 @@ interface OnboardingScreenProps {
 
 export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Element {
   const colors = useThemeColors();
+  const [hasConfirmedNotifications, setHasConfirmedNotifications] = useState(false);
   const {
     acceptConsentMutation,
     completeMutation,
     consentStatusQuery,
     consentTextQuery,
+    enablePush,
     flags,
+    isPushActive,
+    isTelegramLinked,
     message,
     onboardingQuery,
     setMessage,
@@ -129,6 +135,35 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
               vehicle: resolveVehicleName(vehicle, t),
             })
           )}
+        />
+      </OnboardingFrame>
+    );
+  }
+
+  if (flags.isNotificationConfigMissing || !hasConfirmedNotifications) {
+    return (
+      <OnboardingFrame
+        title={t('onboarding.notificationsTitle')}
+        subtitle={t('onboarding.notificationsSubtitle')}
+        t={t}
+        message={message}
+        actions={
+          flags.isNotificationConfigMissing ? (
+            <PrimaryButton
+              label={t('onboarding.notificationsActivatePush')}
+              onPress={enablePush}
+            />
+          ) : (
+            <PrimaryButton
+              label={t('onboarding.continue')}
+              onPress={() => setHasConfirmedNotifications(true)}
+            />
+          )
+        }
+      >
+        <NotificationStep
+          isPushActive={isPushActive}
+          isTelegramLinked={isTelegramLinked}
         />
       </OnboardingFrame>
     );
