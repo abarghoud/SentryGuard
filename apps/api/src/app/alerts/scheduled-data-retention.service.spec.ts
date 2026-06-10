@@ -34,19 +34,19 @@ describe('The ScheduledDataRetentionService class', () => {
         expect(mockAlertEventRepository.delete).toHaveBeenCalledTimes(1);
       });
 
-      it('should target events older than 365 days', () => {
-        expect(lastDeleteCutoffInDays()).toBe(365);
+      it('should target events older than 30 days', () => {
+        expect(lastDeleteCutoffInDays()).toBe(30);
       });
     });
 
     describe('When a retention period is configured', () => {
       beforeEach(async () => {
-        process.env.ALERT_RETENTION_DAYS = '30';
+        process.env.ALERT_RETENTION_DAYS = '90';
         await buildService().purgeExpiredAlertEvents();
       });
 
       it('should target events older than the configured period', () => {
-        expect(lastDeleteCutoffInDays()).toBe(30);
+        expect(lastDeleteCutoffInDays()).toBe(90);
       });
     });
 
@@ -57,7 +57,7 @@ describe('The ScheduledDataRetentionService class', () => {
       });
 
       it('should fall back to the default retention period', () => {
-        expect(lastDeleteCutoffInDays()).toBe(365);
+        expect(lastDeleteCutoffInDays()).toBe(30);
       });
     });
   });

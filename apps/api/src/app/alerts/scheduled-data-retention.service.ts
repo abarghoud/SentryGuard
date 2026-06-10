@@ -5,7 +5,7 @@ import { LessThan, Repository } from 'typeorm';
 
 import { AlertEvent } from '../../entities/alert-event.entity';
 
-const DEFAULT_RETENTION_DAYS = 365;
+const DEFAULT_RETENTION_DAYS = 30;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 @Injectable()
