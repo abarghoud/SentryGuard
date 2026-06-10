@@ -14,9 +14,7 @@ import { NotificationsService } from '../../notifications/notifications.service'
 export interface AlertDispatchConfig {
   telemetryMessage: TelemetryMessage;
   alertName: string;
-  alertTitle: string;
   latencyLabel: string;
-  message: string;
   severity: AlertEventSeverity;
   telegramNotifier: (userId: string, alertInfo: { vin: string; display_name?: string }, userLanguage: 'en' | 'fr') => Promise<void>;
   type: AlertEventType;
@@ -137,7 +135,7 @@ export class VehicleAlertNotifierService {
         await telegramNotifier(userId, alertInfo, userLanguage);
       }
       if (config) {
-        await this.notificationsService.sendPushAlert(userId, config.alertTitle, config.message, config.severity, config.type, userLanguage);
+        await this.notificationsService.sendPushAlert(userId, config.severity, config.type, userLanguage);
       }
       const telegramTime = Date.now() - telegramStart;
 
@@ -191,7 +189,7 @@ export class VehicleAlertNotifierService {
 
   private async recordAlerts(userIds: string[], alertInfo: { vin: string; display_name?: string }, config: AlertDispatchConfig): Promise<void> {
     await Promise.all(userIds.map((userId) =>
-      this.alertsService.record(userId, alertInfo.vin, config.type, config.severity, config.alertTitle, config.message, alertInfo.display_name)
+      this.alertsService.record(userId, alertInfo.vin, config.type, config.severity, alertInfo.display_name)
     ));
   }
 }

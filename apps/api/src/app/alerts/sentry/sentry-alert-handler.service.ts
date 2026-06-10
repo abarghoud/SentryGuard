@@ -29,9 +29,7 @@ export class SentryAlertHandlerService implements TelemetryEventHandler {
       await this.alertNotifier.dispatch({
         telemetryMessage,
         alertName: 'SENTRY_ALERT',
-        alertTitle: 'Alerte Sentinelle',
         latencyLabel: 'SENTRY_LATENCY',
-        message: 'Un événement Sentinelle a été détecté.',
         severity: AlertEventSeverity.Warning,
         telegramNotifier: this.telegramNotifier,
         type: AlertEventType.Sentry,

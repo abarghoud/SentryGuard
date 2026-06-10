@@ -70,5 +70,9 @@
   "offensiveActivatedFor": "📯 <b>{{vehicle}}</b>\n\nKlaxon activé pour {{duration}}",
   "offensiveDeactivatedAuto": "⏱️ <b>{{vehicle}}</b>\n\nKlaxon désactivé automatiquement",
   "offensiveError": "❌ Erreur lors de la mise à jour",
-  "offensiveDisabledMsg": "📯 <b>{{vehicle}}</b>\n\nKlaxon désactivé"
+  "offensiveDisabledMsg": "📯 <b>{{vehicle}}</b>\n\nKlaxon désactivé",
+  "Intrusion alert": "Alerte intrusion",
+  "A break-in attempt was detected.": "Une tentative d’intrusion a été détectée.",
+  "Sentry alert": "Alerte Sentinelle",
+  "A Sentry event was detected.": "Un événement Sentinelle a été détecté."
 }

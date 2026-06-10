@@ -59,9 +59,7 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
       const { userIds } = await this.alertNotifier.dispatch({
         telemetryMessage,
         alertName: 'BREAK_IN_ALERT',
-        alertTitle: 'Alerte intrusion',
         latencyLabel: 'BREAK_IN_LATENCY',
-        message: 'Une tentative d’intrusion a été détectée.',
         severity: AlertEventSeverity.Critical,
         telegramNotifier: this.telegramNotifier,
         type: AlertEventType.BreakIn,

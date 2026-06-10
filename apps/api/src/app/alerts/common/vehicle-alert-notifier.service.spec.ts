@@ -65,9 +65,7 @@ describe('The VehicleAlertNotifierService class', () => {
       config = {
         telemetryMessage,
         alertName: 'TEST_ALERT',
-        alertTitle: 'Test alert',
         latencyLabel: 'TEST_LATENCY',
-        message: 'Test message',
         severity: AlertEventSeverity.Critical,
         telegramNotifier: mockTelegramNotifier,
         type: AlertEventType.BreakIn,

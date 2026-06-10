@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { NotificationPreferences } from '../../entities/notification-preferences.entity';
 import { PushDeviceToken } from '../../entities/push-device-token.entity';
 import { AlertEventSeverity, AlertEventType } from '../../entities/alert-event.entity';
+import i18n from '../../i18n';
 
 export interface NotificationPreferencesDto {
   critical_alerts_enabled: boolean;
@@ -69,17 +70,30 @@ export class NotificationsService {
 
   public async sendPushAlert(
     userId: string,
-    title: string,
-    body: string,
     severity: AlertEventSeverity,
     type: AlertEventType,
     userLanguage: 'en' | 'fr'
   ): Promise<void> {
+    const { body, title } = this.resolveAlertTexts(type, userLanguage);
     const devices = await this.pushDeviceTokenRepository.find({ where: { userId, push_enabled: true } });
     const eligibleDevices = devices.filter((device) => this.shouldSendPushToDevice(device, severity));
     await Promise.all(
       eligibleDevices.map((device) => this.sendExpoPush(device, title, body, severity, type, device.critical_alerts_enabled, userId, userLanguage))
     );
+  }
+
+  private resolveAlertTexts(type: AlertEventType, lng: 'en' | 'fr'): { body: string; title: string } {
+    if (type === AlertEventType.BreakIn) {
+      return {
+        body: i18n.t('A break-in attempt was detected.', { lng }),
+        title: i18n.t('Intrusion alert', { lng }),
+      };
+    }
+
+    return {
+      body: i18n.t('A Sentry event was detected.', { lng }),
+      title: i18n.t('Sentry alert', { lng }),
+    };
   }
 
   private async findOrCreatePreferences(userId: string): Promise<NotificationPreferences> {
