@@ -21,7 +21,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function MobileShell(): JSX.Element {
   const session = useSession();
-  const { colors, mode } = useTheme();
+  const { colors, isDark } = useTheme();
   const { i18n } = useTranslation();
   const onboardingQuery = useQuery({
     enabled: session.isReady && !!session.token,
@@ -50,7 +50,7 @@ export function MobileShell(): JSX.Element {
   }
 
   return (
-    <NavigationContainer theme={createNavigationTheme(colors, mode)}>
+    <NavigationContainer theme={createNavigationTheme(colors, isDark)}>
       <Stack.Navigator screenOptions={{ contentStyle: { backgroundColor: colors.systemBackground }, headerShown: false }}>
         {session.token ? (
           onboardingQuery.data?.isComplete ? (

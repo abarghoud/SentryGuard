@@ -8,7 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { MobileShell } from './MobileShell';
-import { ThemeMode, ThemeProvider, useTheme } from './theme';
+import { ThemeProvider, useTheme } from './theme';
 import { initializeRuntimeConfig, tokenStore } from './api';
 import { openTeslaApp } from './tesla-app-link';
 import { pushNotificationService } from '../features/notifications/di';
@@ -31,7 +31,7 @@ export function App(): JSX.Element {
 }
 
 function ThemedAppContent(): JSX.Element {
-  const { mode } = useTheme();
+  const { isDark } = useTheme();
   const [isApiReady, setIsApiReady] = useState(false);
 
   useEffect(() => {
@@ -42,7 +42,7 @@ function ThemedAppContent(): JSX.Element {
   if (!isApiReady) {
     return (
       <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}>
-        <StatusBar style={mode === ThemeMode.Dark ? 'light' : 'dark'} />
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <Text>SentryGuard</Text>
       </View>
     );
@@ -50,7 +50,7 @@ function ThemedAppContent(): JSX.Element {
 
   return (
     <>
-      <StatusBar style={mode === ThemeMode.Dark ? 'light' : 'dark'} />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <SessionQueryBoundary />
     </>
   );

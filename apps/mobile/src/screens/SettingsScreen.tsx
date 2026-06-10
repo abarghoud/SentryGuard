@@ -82,6 +82,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
           value={mode}
           onChange={(next) => void setMode(next)}
           options={[
+            { label: t('settings.system'), value: ThemeMode.System },
             { label: t('settings.light'), value: ThemeMode.Light },
             { label: t('settings.dark'), value: ThemeMode.Dark },
           ]}

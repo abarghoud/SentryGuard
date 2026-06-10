@@ -1,10 +1,20 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type JSX, type ReactNode } from 'react';
+import { Appearance, Platform, useColorScheme, type ColorSchemeName } from 'react-native';
 
 import { getStoredThemeMode, storeThemeMode } from './theme-storage';
 
 export enum ThemeMode {
   Dark = 'dark',
   Light = 'light',
+  System = 'system',
+}
+
+export function resolveIsDark(mode: ThemeMode, systemScheme: ColorSchemeName): boolean {
+  if (mode === ThemeMode.System) {
+    return systemScheme === 'dark';
+  }
+
+  return mode === ThemeMode.Dark;
 }
 
 export interface ThemeColors {
@@ -119,7 +129,8 @@ const darkColors: ThemeColors = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }): JSX.Element {
-  const [mode, setMode] = useState(ThemeMode.Light);
+  const systemScheme = useColorScheme();
+  const [mode, setMode] = useState(ThemeMode.System);
   const updateMode = useCallback(async (nextMode: ThemeMode): Promise<void> => {
     setMode(nextMode);
     await storeThemeMode(nextMode);
@@ -133,7 +144,15 @@ export function ThemeProvider({ children }: { children: ReactNode }): JSX.Elemen
     });
   }, []);
 
-  const isDark = mode === ThemeMode.Dark;
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      return;
+    }
+
+    Appearance.setColorScheme(mode === ThemeMode.System ? null : mode);
+  }, [mode]);
+
+  const isDark = resolveIsDark(mode, systemScheme);
   const colors = isDark ? darkColors : lightColors;
   const value = useMemo(() => ({ colors, isDark, mode, setMode: updateMode }), [colors, isDark, mode, updateMode]);
 

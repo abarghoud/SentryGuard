@@ -1,10 +1,10 @@
 import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 import type { Theme as NavigationTheme } from '@react-navigation/native';
 
-import { ThemeColors, ThemeMode } from '../theme';
+import { ThemeColors } from '../theme';
 
-export function createNavigationTheme(colors: ThemeColors, mode: ThemeMode): NavigationTheme {
-  const baseTheme = mode === ThemeMode.Dark ? DarkTheme : DefaultTheme;
+export function createNavigationTheme(colors: ThemeColors, isDark: boolean): NavigationTheme {
+  const baseTheme = isDark ? DarkTheme : DefaultTheme;
 
   return {
     ...baseTheme,

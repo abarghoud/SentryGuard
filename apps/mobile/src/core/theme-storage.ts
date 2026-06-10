@@ -23,5 +23,5 @@ export async function storeThemeMode(mode: ThemeMode): Promise<void> {
 }
 
 function isThemeMode(value: string | null): value is ThemeMode {
-  return value === 'dark' || value === 'light';
+  return value === 'dark' || value === 'light' || value === 'system';
 }
