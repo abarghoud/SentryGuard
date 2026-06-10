@@ -1,4 +1,4 @@
-import { IsArray, IsString, IsBoolean, IsOptional, ValidateNested, IsEnum, IsDateString, ArrayMinSize, IsObject } from 'class-validator';
+import { IsArray, IsString, IsBoolean, IsOptional, ValidateNested, IsEnum, IsDateString, ArrayMinSize, IsObject, Matches } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum SentryModeState {
@@ -59,7 +59,7 @@ export class TelemetryMessage {
   @IsDateString()
   createdAt!: string;
 
-  @IsString()
+  @Matches(/^[A-HJ-NPR-Z0-9]{17}$/, { message: 'VIN must be a valid 17-character ISO 3779 alphanumeric string' })
   vin!: string;
 
   @IsBoolean()

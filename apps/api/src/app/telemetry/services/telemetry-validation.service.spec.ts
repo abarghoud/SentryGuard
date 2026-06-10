@@ -26,7 +26,7 @@ describe('TelemetryValidationService', () => {
             value: { stringValue: 'Off' }
           }
         ],
-        createdAt: '2025-11-26T16:57:07.330713028Z',
+        createdAt: new Date().toISOString(),
         vin: 'LRWRGCEGXHR312345',
         isResend: false
       };
@@ -40,7 +40,7 @@ describe('TelemetryValidationService', () => {
     it('should reject message without data', async () => {
       const invalidMessage = {
         data: [],
-        createdAt: '2025-11-26T16:57:07.330713028Z',
+        createdAt: new Date().toISOString(),
         vin: 'LRWRGCEGXHR312345',
         isResend: false
       };
@@ -51,7 +51,7 @@ describe('TelemetryValidationService', () => {
       expect(result.errors.length).toBeGreaterThan(0);
     });
 
-    it('should reject message with invalid createdAt', async () => {
+    it('should reject message with invalid createdAt format', async () => {
       const invalidMessage = {
         data: [{ key: 'SentryMode', value: { stringValue: 'Off' } }],
         createdAt: 'invalid-date',
@@ -95,10 +95,10 @@ describe('TelemetryValidationService', () => {
   });
 
   describe('validateMessage', () => {
-    it('should validate complete valid message', async () => {
+    it('should validate complete valid message within time bounds', async () => {
       const validMessage = {
         data: [{ key: 'SentryMode', value: { stringValue: 'Off' } }],
-        createdAt: '2025-11-26T16:57:07.330713028Z',
+        createdAt: new Date().toISOString(),
         vin: 'LRWRGCEGXHR312345',
         isResend: false
       };
@@ -112,7 +112,7 @@ describe('TelemetryValidationService', () => {
     it('should reject message with invalid structure', async () => {
       const invalidMessage = {
         data: [],
-        createdAt: '2025-11-26T16:57:07.330713028Z',
+        createdAt: new Date().toISOString(),
         vin: 'LRWRGCEGXHR312345',
         isResend: false
       };
@@ -121,6 +121,50 @@ describe('TelemetryValidationService', () => {
 
       expect(result.isValidMessage).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    it('should reject message with a VIN that does not match the 17-character regex', async () => {
+      const invalidMessage = {
+        data: [{ key: 'SentryMode', value: { stringValue: 'Off' } }],
+        createdAt: new Date().toISOString(),
+        vin: 'INVALID-VIN',
+        isResend: false
+      };
+
+      const result = await service.validateMessage(invalidMessage);
+
+      expect(result.isValidMessage).toBe(false);
+      expect(result.errors.join(', ')).toContain('VIN');
+    });
+
+    it('should reject message with createdAt timestamp too old (> 24 hours)', async () => {
+      const tooOldDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+      const invalidMessage = {
+        data: [{ key: 'SentryMode', value: { stringValue: 'Off' } }],
+        createdAt: tooOldDate,
+        vin: 'LRWRGCEGXHR312345',
+        isResend: false
+      };
+
+      const result = await service.validateMessage(invalidMessage);
+
+      expect(result.isValidMessage).toBe(false);
+      expect(result.errors).toContain('createdAt is too old (greater than 24 hours)');
+    });
+
+    it('should reject message with createdAt timestamp in the future (> 5 minutes)', async () => {
+      const futureDate = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      const invalidMessage = {
+        data: [{ key: 'SentryMode', value: { stringValue: 'Off' } }],
+        createdAt: futureDate,
+        vin: 'LRWRGCEGXHR312345',
+        isResend: false
+      };
+
+      const result = await service.validateMessage(invalidMessage);
+
+      expect(result.isValidMessage).toBe(false);
+      expect(result.errors).toContain('createdAt is in the future');
     });
   });
 });

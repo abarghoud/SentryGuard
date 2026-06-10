@@ -55,6 +55,11 @@ function CallbackContent() {
         setStatus('success');
         setMessage(t('Authentication successful! Checking consent status...'));
 
+        // Clear token from URL to avoid exposure in browser history/address bar
+        if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
         try {
           const consentStatus = await getConsentStatusUseCase.execute();
           if (!consentStatus.hasConsent) {

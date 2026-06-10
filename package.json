@@ -63,6 +63,7 @@
     "class-validator": "^0.14.3",
     "flush-promises": "^1.0.2",
     "google-protobuf": "^4.0.0",
+    "helmet": "^8.0.0",
     "i18next": "^25.6.0",
     "kafkajs": "^2.2.4",
     "nestjs-pino": "^4.5.0",

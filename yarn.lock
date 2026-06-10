@@ -10097,6 +10097,7 @@ __metadata:
     expo: "npm:~54.0.0"
     flush-promises: "npm:^1.0.2"
     google-protobuf: "npm:^4.0.0"
+    helmet: "npm:^8.0.0"
     i18next: "npm:^25.6.0"
     identity-obj-proxy: "npm:^3.0.0"
     jest: "npm:^30.2.0"
@@ -18115,6 +18116,13 @@ __metadata:
   dependencies:
     rsvp: "npm:~3.2.1"
   checksum: 10c0/20c9d9cce7983683a6423720387af0701de8c50660734899bf68a2d862535414e463ac69fd6423875ab3ace8f83ae4b490f18e047c5b3db8e5ab64da1b7aedc3
+  languageName: node
+  linkType: hard
+
+"helmet@npm:^8.0.0":
+  version: 8.3.0
+  resolution: "helmet@npm:8.3.0"
+  checksum: 10c0/69f33ca716ed3ce34f1f2f48ce8618846dfa9c89e3a15d6bccefc882541e8b028517448c6b0e7450792fd23e5580bfe6d410d4f22bedc2a94f6b1188817a059a
   languageName: node
   linkType: hard
 

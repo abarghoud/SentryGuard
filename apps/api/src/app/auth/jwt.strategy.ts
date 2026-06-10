@@ -33,6 +33,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ignoreExpiration: false,
       passReqToCallback: true,
       secretOrKey: jwtSecret,
+      algorithms: ['HS256'],
     });
   }
 

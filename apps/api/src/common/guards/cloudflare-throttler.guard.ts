@@ -19,6 +19,12 @@ export class CloudflareThrottlerGuard extends ThrottlerGuard {
       return cfConnectingIp;
     }
 
+    // In production, we strictly expect CF-Connecting-IP when routing through Cloudflare.
+    // We do not trust arbitrary user-supplied headers like X-Forwarded-For or X-Real-IP to prevent IP spoofing.
+    if (process.env.NODE_ENV === 'production') {
+      return req.ip || 'unknown';
+    }
+
     const xForwardedFor = req.headers['x-forwarded-for'];
     if (xForwardedFor) {
       // X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
