@@ -43,3 +43,11 @@ export function resolveAlertError(error: unknown, t: (key: string) => string): s
 export function resolveFilterLabelKey(filter: AlertFilter): string {
   return `alerts.filter.${filter}`;
 }
+
+export function resolveAlertTitleKey(alert: AlertEvent): string {
+  return `alerts.event.${alert.type}.title`;
+}
+
+export function resolveAlertMessageKey(alert: AlertEvent): string {
+  return `alerts.event.${alert.type}.message`;
+}

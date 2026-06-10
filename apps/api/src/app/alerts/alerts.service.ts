@@ -9,9 +9,7 @@ const maxAlertEventsPerUser = 50;
 export interface AlertEventDto {
   created_at: Date;
   id: string;
-  message: string;
   severity: AlertEventSeverity;
-  title: string;
   type: AlertEventType;
   vehicle_display_name?: string | null;
   vin: string;
@@ -42,12 +40,10 @@ export class AlertsService {
     vin: string,
     type: AlertEventType,
     severity: AlertEventSeverity,
-    title: string,
-    message: string,
     vehicleDisplayName?: string
   ): Promise<void> {
     await this.alertEventRepository.save(
-      this.alertEventRepository.create({ userId, vin, type, severity, title, message, vehicle_display_name: vehicleDisplayName })
+      this.alertEventRepository.create({ userId, vin, type, severity, vehicle_display_name: vehicleDisplayName })
     );
     await this.deleteOldAlertEvents(userId);
   }
@@ -75,9 +71,7 @@ export class AlertsService {
     return {
       created_at: event.created_at,
       id: event.id,
-      message: event.message,
       severity: event.severity,
-      title: event.title,
       type: event.type,
       vehicle_display_name: event.vehicle_display_name,
       vin: event.vin,

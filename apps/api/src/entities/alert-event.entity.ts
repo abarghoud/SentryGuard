@@ -32,12 +32,6 @@ export class AlertEvent {
   @Column({ type: 'enum', enum: AlertEventSeverity })
   severity!: AlertEventSeverity;
 
-  @Column({ type: 'varchar', length: 120 })
-  title!: string;
-
-  @Column({ type: 'text' })
-  message!: string;
-
   @CreateDateColumn()
   created_at!: Date;
 

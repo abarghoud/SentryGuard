@@ -17,6 +17,8 @@ import {
   formatAlertDate,
   resolveAlertError,
   resolveAlertIcon,
+  resolveAlertMessageKey,
+  resolveAlertTitleKey,
   resolveAlertTone,
   resolveFilterLabelKey,
 } from './alerts/alerts.helpers';
@@ -100,14 +102,14 @@ export function AlertsScreen(): JSX.Element {
               <View style={styles.cardText}>
                 <View style={styles.cardHeader}>
                   <AppText variant={TextVariant.Headline} style={styles.cardTitle}>
-                    {item.title}
+                    {t(resolveAlertTitleKey(item))}
                   </AppText>
                   <AppText variant={TextVariant.Caption1} color={colors.secondaryLabel}>
                     {formatAlertDate(item.created_at, i18n.language)}
                   </AppText>
                 </View>
                 <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
-                  {item.message}
+                  {t(resolveAlertMessageKey(item))}
                 </AppText>
                 <AppText variant={TextVariant.Caption1} color={colors.tertiaryLabel}>
                   {item.vehicle_display_name ?? item.vin}
