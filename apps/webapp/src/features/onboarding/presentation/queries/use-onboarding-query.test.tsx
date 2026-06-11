@@ -7,6 +7,7 @@ import {
   GetOnboardingStatusRequirements,
   CompleteOnboardingRequirements,
   SkipOnboardingRequirements,
+  DismissAnnouncementRequirements,
 } from '../../domain/use-cases/onboarding.use-cases.requirements';
 import React from 'react';
 
@@ -17,6 +18,7 @@ jest.mock('../../../../core/api/token-manager', () => ({
 let mockGetOnboardingStatusUseCase: MockProxy<GetOnboardingStatusRequirements>;
 let mockCompleteOnboardingUseCase: MockProxy<CompleteOnboardingRequirements>;
 let mockSkipOnboardingUseCase: MockProxy<SkipOnboardingRequirements>;
+let mockDismissAnnouncementUseCase: MockProxy<DismissAnnouncementRequirements>;
 
 const wrapper = ({ children }: { children: React.ReactNode }) => {
   const queryClient = new QueryClient({
@@ -29,15 +31,19 @@ describe('The useOnboardingQuery() hook', () => {
   let useOnboardingQuery: ReturnType<typeof createUseOnboardingQuery>;
 
   beforeEach(() => {
+    (hasToken as jest.Mock).mockReset();
+    (hasToken as jest.Mock).mockReturnValue(false);
     jest.clearAllMocks();
     mockGetOnboardingStatusUseCase = mock<GetOnboardingStatusRequirements>();
     mockCompleteOnboardingUseCase = mock<CompleteOnboardingRequirements>();
     mockSkipOnboardingUseCase = mock<SkipOnboardingRequirements>();
+    mockDismissAnnouncementUseCase = mock<DismissAnnouncementRequirements>();
     
     useOnboardingQuery = createUseOnboardingQuery({
       getOnboardingStatusUseCase: mockGetOnboardingStatusUseCase,
       completeOnboardingUseCase: mockCompleteOnboardingUseCase,
       skipOnboardingUseCase: mockSkipOnboardingUseCase,
+      dismissAnnouncementUseCase: mockDismissAnnouncementUseCase,
     });
   });
 

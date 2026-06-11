@@ -94,5 +94,29 @@ describe('The OnboardingController class', () => {
         expect(result).toStrictEqual(expectedResponse);
       });
     });
+
+  });
+
+  describe('The dismissAnnouncement() method', () => {
+    describe('When called with a valid user and key', () => {
+      const fakeAnnouncementKey = 'break_in_offensive_response_v1';
+      const expectedResponse = { success: true };
+
+      let result: { success: boolean };
+
+      beforeEach(async () => {
+        mockOnboardingService.dismissAnnouncement.mockResolvedValue(expectedResponse);
+
+        result = await controller.dismissAnnouncement(fakeUser, fakeAnnouncementKey);
+      });
+
+      it('should call the service with the user ID and key', () => {
+        expect(mockOnboardingService.dismissAnnouncement).toHaveBeenCalledWith(fakeUserId, fakeAnnouncementKey);
+      });
+
+      it('should return success response', () => {
+        expect(result).toStrictEqual(expectedResponse);
+      });
+    });
   });
 });

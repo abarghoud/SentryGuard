@@ -23,6 +23,10 @@ export const faqCategories: FaqCategoryData[] = [
         answerKey: 'SentryGuard requires active Sentry Mode',
       },
       {
+        questionKey: 'Does SentryGuard protect my car when Sentry Mode is OFF?',
+        answerKey: 'Break-in detection explanation',
+      },
+      {
         questionKey: 'Why Telegram?',
         answerKey: 'Why we chose Telegram',
       },

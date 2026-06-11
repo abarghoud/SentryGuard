@@ -11,8 +11,8 @@ import { ApiClientRequirements } from '../../../core/api/api-client';
 export class ConsentApiRepository implements ConsentRepositoryRequirements {
   constructor(private client: ApiClientRequirements) {}
 
-  async getConsentText(version = 'v1', locale = 'en'): Promise<ConsentTextResponse> {
-    const params = new URLSearchParams({ version, locale });
+  async getConsentText(locale = 'en'): Promise<ConsentTextResponse> {
+    const params = new URLSearchParams({ locale });
     return this.client.request<ConsentTextResponse>(`/consent/text?${params.toString()}`);
   }
 

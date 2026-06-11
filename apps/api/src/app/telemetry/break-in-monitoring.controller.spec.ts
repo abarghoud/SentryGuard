@@ -6,7 +6,6 @@ import { User } from '../../entities/user.entity';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ConsentGuard } from '../../common/guards/consent.guard';
-import { BetaTesterGuard } from '../guards/beta-tester.guard';
 
 describe('The BreakInMonitoringController class', () => {
   let controller: BreakInMonitoringController;
@@ -28,7 +27,6 @@ describe('The BreakInMonitoringController class', () => {
     })
       .overrideGuard(JwtAuthGuard).useValue({ canActivate: jest.fn().mockReturnValue(true) })
       .overrideGuard(ConsentGuard).useValue({ canActivate: jest.fn().mockReturnValue(true) })
-      .overrideGuard(BetaTesterGuard).useValue({ canActivate: jest.fn().mockReturnValue(true) })
       .compile();
 
     controller = module.get<BreakInMonitoringController>(BreakInMonitoringController);

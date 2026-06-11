@@ -41,6 +41,7 @@ export interface ConsentTextResponse {
 @Injectable()
 export class ConsentService {
   private readonly logger = new Logger(ConsentService.name);
+  public static readonly ACTIVE_VERSION = 'v2';
 
   constructor(
     @InjectRepository(UserConsent)
@@ -91,11 +92,12 @@ export class ConsentService {
       t('By signing or accepting this form, you consent to the processing of your Personal Data by SentryGuardOrg ("Partner") in the context of the Partner\'s application titled: SentryGuard (the "App").'),
       t('Partner is the data controller responsible for the processing of your Personal Data in the context of the App.'),
       `${t('By signing or accepting this form, you also acknowledge receipt of the Tesla Customer Privacy Notice available at')} ${teslaPrivacyUrl} ${t('("Tesla Privacy Notice") and consent to processing of Personal Data by Tesla in accordance with the Tesla Privacy Notice.')}`,
-      t('The App allows you to benefit from advanced monitoring and notification features based on your Tesla vehicle\'s Sentry Mode, including the identification and logging of security events (e.g., event detection, Sentry Mode alerts).'),
-      t('To provide these features, Partner must process some of your Personal Data, which may include: profile information (account identifier, display name or email address, necessary to associate events with your account); minimal vehicle information necessary for the App to function, including vehicle identifier (VIN or equivalent), Sentry Mode status (activation, detected events) and metadata associated with Sentry Mode events (date/time, event type).'),
-      t('Partner does not access or process other categories of data from your vehicle (e.g., remote commands, detailed driving data, battery or precise location information), beyond what is strictly necessary for the App to function as described above.'),
+      t('The App allows you to benefit from advanced monitoring and notification features based on your Tesla vehicle\'s Sentry Mode, including the identification and logging of security events (such as event detection, Sentry Mode alerts, and break-in attempt monitoring), and the ability to configure automated deterrent actions (such as honking the horn) upon detection of these events.'),
+      t('To provide these features, Partner must process some of your Personal Data, which may include: profile information (account identifier, display name or email address, necessary to associate events with your account); minimal vehicle information necessary for the App to function, including vehicle identifier (VIN or equivalent), Sentry Mode status (activation, detected events), configuration preferences for deterrent security responses, and metadata associated with Sentry Mode and break-in events (date/time, event type).'),
+      t('Partner does not access or process other categories of data from your vehicle (e.g., detailed driving data, battery or precise location information). The authorization to send commands (such as honking the horn) is optional and is only requested if you choose to enable the Offensive Response deterrent feature.'),
       t('Partner will only use this information for: (a) providing you with monitoring and notification features related to Sentry Mode; (b) associating Sentry Mode events with your user account and vehicle; (c) improving service reliability and security (e.g., technical incident diagnostics); (d) complying with applicable legal obligations, where applicable.'),
       t('Partner maintains administrative, technical, and physical safeguards designed to protect Personal Data against accidental, unlawful or unauthorized destruction, loss, alteration, access, disclosure or use, including encryption of data in transit and, where appropriate, at rest. Partner will only retain your Personal Data for as long as necessary to provide you with the App and the features described above, unless otherwise required or authorized by applicable law or if you request early deletion.'),
+      t('The App is provided "as is" and "as available", without warranty of any kind. SentryGuard and its authors disclaim all liability for any direct, indirect, incidental, special, or consequential damages, including but not limited to vehicle damage, loss of data, or service interruptions, arising out of the use of or inability to use the App. The user assumes sole and full responsibility for the use of the App and any automated actions configured (such as honking the horn).'),
       `${t('Subject to applicable law (including GDPR), you may have the right to request access and receive information about your Personal Data, update and correct inaccuracies, and request deletion when legal conditions are met. You also have the right to withdraw your consent at any time, without cost, which may however limit or prevent use of the App. To exercise your rights, withdraw your consent or obtain more information about the App and the processing of your Personal Data, you can contact Partner at: hello@sentryguard.org')}`,
       t('By accepting this consent, you also agree to receive occasional emails from Partner regarding product updates, new features, security alerts, and important service announcements. You can unsubscribe from these communications at any time via the unsubscribe link included in each email.'),
       t('I consent to the collection, use, and processing of my Personal Data as described above.'),
@@ -132,7 +134,7 @@ export class ConsentService {
       return { hasConsent: false, isRevoked: false };
     }
 
-    const hasConsent = !latestConsent.revokedAt;
+    const hasConsent = !latestConsent.revokedAt && latestConsent.version === ConsentService.ACTIVE_VERSION;
     return {
       hasConsent,
       latestConsent: hasConsent ? latestConsent : undefined,
