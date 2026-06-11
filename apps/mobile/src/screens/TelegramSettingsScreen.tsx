@@ -37,8 +37,8 @@ export function TelegramSettingsScreen(): JSX.Element {
       contentContainerStyle={styles.content}
     >
       {shouldShowLinkReturnHint(isAwaitingTelegramReturn, isTelegramLinked) ? (
-        <View style={[styles.messageBox, { backgroundColor: colors.systemOrange + '15', borderColor: colors.systemOrange + '30' }]}>
-          <AppText variant={TextVariant.Footnote} color={colors.systemOrange}>
+        <View style={[styles.messageBox, { backgroundColor: colors.warningSurface, borderColor: colors.warningBorder }]}>
+          <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
             {t('settings.telegramLinkReturn')}
           </AppText>
         </View>

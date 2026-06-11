@@ -19,7 +19,7 @@ const fakeColors = {
   label: '#111111',
   separator: '#222222',
   secondarySystemGroupedBackground: '#333333',
-  systemBlue: '#444444',
+  accent: '#444444',
   systemGroupedBackground: '#555555',
   systemRed: '#666666',
 } as ThemeColors;

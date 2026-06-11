@@ -116,14 +116,14 @@ export function TelegramConfigBlock({
           </AppText>
         </View>
         {isLinked ? (
-          <View style={[styles.badge, { backgroundColor: colors.systemGreen + '20' }]}>
+          <View style={[styles.badge, { backgroundColor: colors.successSurface }]}>
             <AppText variant={TextVariant.Footnote} color={colors.systemGreen}>
               {t('telegram.linked')}
             </AppText>
           </View>
         ) : isPending ? (
-          <View style={[styles.badge, { backgroundColor: colors.systemOrange + '20' }]}>
-            <AppText variant={TextVariant.Footnote} color={colors.systemOrange}>
+          <View style={[styles.badge, { backgroundColor: colors.warningSurface }]}>
+            <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
               {t('telegram.notLinked')}
             </AppText>
           </View>
@@ -144,8 +144,8 @@ export function TelegramConfigBlock({
 
       {isPending && linkInfo && (
         <View style={styles.pendingSection}>
-          <View style={[styles.alertBox, { backgroundColor: colors.systemOrange + '15', borderColor: colors.systemOrange + '30' }]}>
-            <AppText variant={TextVariant.Footnote} color={colors.systemOrange}>
+          <View style={[styles.alertBox, { backgroundColor: colors.warningSurface, borderColor: colors.warningBorder }]}>
+            <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
               {t('telegram.waiting')}
             </AppText>
             <AppText variant={TextVariant.Caption2} color={colors.secondaryLabel} style={styles.expiryText}>
@@ -173,7 +173,7 @@ export function TelegramConfigBlock({
 
       {isLinked && (
         <View style={styles.linkedSection}>
-          <View style={[styles.alertBox, { backgroundColor: colors.systemGreen + '15', borderColor: colors.systemGreen + '30' }]}>
+          <View style={[styles.alertBox, { backgroundColor: colors.successSurface, borderColor: colors.successBorder }]}>
             <AppText variant={TextVariant.Footnote} color={colors.systemGreen}>
               {t('telegram.success')}
             </AppText>

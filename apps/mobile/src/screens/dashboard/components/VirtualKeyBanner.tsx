@@ -28,14 +28,14 @@ export function VirtualKeyBanner({
   return (
     <Surface style={styles.banner}>
       <View style={styles.heading}>
-        <Icon name="key.fill" size={20} color={colors.systemOrange} />
+        <Icon name="key.fill" size={20} color={colors.secondaryLabel} />
         <AppText variant={TextVariant.Headline}>{t('dashboard.virtualKey.title')}</AppText>
       </View>
       <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
         {t('dashboard.virtualKey.text')}
       </AppText>
       {message ? (
-        <AppText variant={TextVariant.Footnote} color={colors.systemOrange}>
+        <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
           {message}
         </AppText>
       ) : null}

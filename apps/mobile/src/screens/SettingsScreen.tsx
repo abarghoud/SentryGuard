@@ -64,8 +64,8 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
       </AppText>
 
       {statusMessage ? (
-        <View style={[styles.messageBox, { backgroundColor: colors.systemOrange + '15', borderColor: colors.systemOrange + '30' }]}>
-          <AppText variant={TextVariant.Footnote} color={colors.systemOrange}>
+        <View style={[styles.messageBox, { backgroundColor: colors.warningSurface, borderColor: colors.warningBorder }]}>
+          <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
             {statusMessage}
           </AppText>
         </View>
@@ -108,12 +108,13 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
       <ListSection header={t('settings.notifications')}>
         <ListRow
           title={t('settings.push')}
-          accessory={<AppSwitch disabled={isBusy} value={preferences.push_enabled} onValueChange={(value) => void updatePreference({ push_enabled: value })} />}
+          accessory={<AppSwitch accessibilityLabel={t('settings.push')} disabled={isBusy} value={preferences.push_enabled} onValueChange={(value) => void updatePreference({ push_enabled: value })} />}
         />
         <ListRow
           title={t('settings.criticalOnly')}
           accessory={
             <AppSwitch
+              accessibilityLabel={t('settings.criticalOnly')}
               disabled={isBusy || !preferences.push_enabled}
               value={preferences.critical_only}
               onValueChange={(value) => void updatePreference({ critical_only: value })}
@@ -125,6 +126,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
           subtitle={t('settings.criticalAlertsDescription')}
           accessory={
             <AppSwitch
+              accessibilityLabel={t('settings.criticalAlerts')}
               disabled={isBusy || !preferences.push_enabled}
               value={preferences.critical_alerts_enabled}
               onValueChange={(value) => void updatePreference({ critical_alerts_enabled: value })}
@@ -145,6 +147,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
             title={t('settings.notifications')}
             accessory={
               <AppSwitch
+                accessibilityLabel={t('settings.telegram')}
                 disabled={isBusy}
                 value={preferences.telegram_enabled}
                 onValueChange={(value) => void updatePreference({ telegram_enabled: value })}
@@ -180,7 +183,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
       />
 
       <Modal animationType="fade" onRequestClose={() => setIsDndAccessModalOpen(false)} transparent visible={isDndAccessModalOpen}>
-        <View style={styles.modalBackdrop}>
+        <View style={[styles.modalBackdrop, { backgroundColor: colors.overlay }]}>
           <Surface style={styles.modalCard}>
             <AppText variant={TextVariant.Title3}>{t('settings.dndAccessTitle')}</AppText>
             <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>

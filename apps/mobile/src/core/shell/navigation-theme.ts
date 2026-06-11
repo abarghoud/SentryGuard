@@ -14,7 +14,7 @@ export function createNavigationTheme(colors: ThemeColors, isDark: boolean): Nav
       border: colors.separator,
       card: colors.secondarySystemGroupedBackground,
       notification: colors.systemRed,
-      primary: colors.systemBlue,
+      primary: colors.accent,
       text: colors.label,
     },
   };

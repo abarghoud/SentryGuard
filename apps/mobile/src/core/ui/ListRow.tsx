@@ -50,7 +50,7 @@ export function ListRow({
 
   const body = (
     <View style={styles.row}>
-      {icon ? <Icon name={icon} size={22} color={iconColor ?? colors.systemBlue} /> : null}
+      {icon ? <Icon name={icon} size={22} color={iconColor ?? colors.accent} /> : null}
       <View style={styles.text}>
         <AppText variant={TextVariant.Body} color={titleColor ?? colors.label} numberOfLines={1}>
           {title}
@@ -67,7 +67,7 @@ export function ListRow({
         </AppText>
       ) : null}
       {accessory}
-      {showChevron ? <Icon name="chevron.right" size={14} color={colors.tertiaryLabel} weight="semibold" /> : null}
+      {showChevron ? <Icon name="chevron.right" size={14} color={colors.secondaryLabel} weight="semibold" /> : null}
     </View>
   );
 

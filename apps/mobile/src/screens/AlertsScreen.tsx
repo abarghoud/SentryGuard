@@ -74,7 +74,7 @@ export function AlertsScreen(): JSX.Element {
           hitSlop={10}
           onPress={() => void clearAlerts()}
         >
-          <AppText variant={TextVariant.Body} color={hasClearableAlerts && !isClearingAlerts ? colors.systemBlue : colors.tertiaryLabel}>
+          <AppText variant={TextVariant.Body} color={hasClearableAlerts && !isClearingAlerts ? colors.accent : colors.tertiaryLabel}>
             {t('alerts.clear')}
           </AppText>
         </Pressable>
@@ -96,8 +96,8 @@ export function AlertsScreen(): JSX.Element {
 
           return (
             <Surface key={item.id} style={styles.card}>
-              <View style={[styles.iconWrap, { backgroundColor: tone }]}>
-                <Icon name={resolveAlertIcon(item)} size={18} color={colors.onAccent} />
+              <View style={[styles.iconWrap, { backgroundColor: tone.background }]}>
+                <Icon name={resolveAlertIcon(item)} size={18} color={tone.icon} />
               </View>
               <View style={styles.cardText}>
                 <View style={styles.cardHeader}>
@@ -111,7 +111,7 @@ export function AlertsScreen(): JSX.Element {
                 <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
                   {t(resolveAlertMessageKey(item))}
                 </AppText>
-                <AppText variant={TextVariant.Caption1} color={colors.tertiaryLabel}>
+                <AppText variant={TextVariant.Caption1} color={colors.secondaryLabel}>
                   {item.vehicle_display_name ?? item.vin}
                 </AppText>
               </View>

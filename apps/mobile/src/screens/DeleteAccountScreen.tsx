@@ -53,10 +53,10 @@ export function DeleteAccountScreen({ onLogout }: DeleteAccountScreenProps): JSX
     >
       <Surface style={styles.card}>
         <AppText variant={TextVariant.Title3}>{t('settings.deleteAccountTitle')}</AppText>
-        <AppText variant={TextVariant.Body} color={colors.secondaryLabel}>
+        <AppText variant={TextVariant.Body} color={colors.secondaryLabel} style={styles.paragraph}>
           {t('settings.deleteAccountConfirm')}
         </AppText>
-        <AppText variant={TextVariant.Footnote} color={colors.tertiaryLabel}>
+        <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
           {t('settings.deleteAccountCooldownHint')}
         </AppText>
       </Surface>
@@ -74,6 +74,9 @@ export function DeleteAccountScreen({ onLogout }: DeleteAccountScreenProps): JSX
 const styles = StyleSheet.create({
   card: {
     gap: spacing.md,
+  },
+  paragraph: {
+    textAlign: 'justify',
   },
   content: {
     gap: spacing.xl,

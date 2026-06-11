@@ -5,6 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 import { i18n } from '../../../core/i18n';
+import { lightColors } from '../../../core/theme';
 import { DndPolicyAccessRequirements } from './dnd-policy-access';
 
 export interface PushNotificationServiceRequirements {
@@ -82,7 +83,7 @@ export class PushNotificationService implements PushNotificationServiceRequireme
     await Promise.all([
       Notifications.setNotificationChannelAsync(this.notificationChannelId, {
         importance: Notifications.AndroidImportance.HIGH,
-        lightColor: '#10b981',
+        lightColor: lightColors.systemGreen,
         name: i18n.t('notifications.channelName'),
         vibrationPattern: [0, 250, 250, 250],
       }),

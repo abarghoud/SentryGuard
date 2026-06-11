@@ -39,8 +39,8 @@ export function GlassButton({
 }: GlassButtonProps): JSX.Element {
   const { colors, isDark } = useTheme();
   const haptics = useHaptics();
-  const tone = destructive ? colors.systemRed : colors.systemBlue;
-  const labelColor = resolveLabelColor(variant, tone, colors);
+  const tone = destructive ? colors.criticalFill : colors.accentFill;
+  const labelColor = resolveLabelColor(variant, destructive, colors);
 
   const handlePress = (): void => {
     haptics.selection();
@@ -84,8 +84,12 @@ export function GlassButton({
   );
 }
 
-function resolveLabelColor(variant: GlassButtonVariant, tone: string, colors: ThemeColors): string {
-  return variant === GlassButtonVariant.Primary ? colors.onAccent : tone;
+function resolveLabelColor(variant: GlassButtonVariant, destructive: boolean, colors: ThemeColors): string {
+  if (variant === GlassButtonVariant.Primary) {
+    return colors.onAccent;
+  }
+
+  return destructive ? colors.systemRed : colors.label;
 }
 
 function resolveFallbackStyle(variant: GlassButtonVariant, tone: string, colors: ThemeColors): ViewStyle {

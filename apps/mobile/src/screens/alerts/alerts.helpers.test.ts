@@ -1,5 +1,16 @@
+jest.mock('react-native', () => ({
+  Appearance: { setColorScheme: jest.fn() },
+  Platform: { OS: 'ios' },
+  useColorScheme: jest.fn(),
+}));
+jest.mock('../../core/theme-storage', () => ({
+  getStoredThemeMode: jest.fn(() => Promise.resolve(null)),
+  storeThemeMode: jest.fn(() => Promise.resolve()),
+}));
+
+import { lightColors } from '../../core/theme';
 import { AlertEvent, AlertEventSeverity, AlertEventType } from '../../features/alerts/domain/entities';
-import { AlertFilter, filterAlerts, resolveAlertMessageKey, resolveAlertTitleKey } from './alerts.helpers';
+import { AlertFilter, filterAlerts, resolveAlertMessageKey, resolveAlertTitleKey, resolveAlertTone } from './alerts.helpers';
 
 const createAlert = (type: AlertEventType, severity: AlertEventSeverity): AlertEvent => ({
   created_at: '2026-06-10T12:00:00.000Z',
@@ -42,6 +53,26 @@ describe('The resolveAlertMessageKey() function', () => {
       expect(resolveAlertMessageKey(createAlert(AlertEventType.Sentry, AlertEventSeverity.Warning))).toBe(
         'alerts.event.sentry.message'
       );
+    });
+  });
+});
+
+describe('The resolveAlertTone() function', () => {
+  describe('When the alert is critical', () => {
+    it('should use the destructive red with a contrasting icon', () => {
+      expect(resolveAlertTone(createAlert(AlertEventType.BreakIn, AlertEventSeverity.Critical), lightColors)).toStrictEqual({
+        background: lightColors.criticalFill,
+        icon: lightColors.onCritical,
+      });
+    });
+  });
+
+  describe('When the alert is a warning', () => {
+    it('should use the alert amber with a contrasting icon', () => {
+      expect(resolveAlertTone(createAlert(AlertEventType.Sentry, AlertEventSeverity.Warning), lightColors)).toStrictEqual({
+        background: lightColors.warningFill,
+        icon: lightColors.onWarning,
+      });
     });
   });
 });

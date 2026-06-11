@@ -49,7 +49,8 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
   }
 
   const isProtected = vehicle.sentry_mode_monitoring_enabled || (isBetaTester && vehicle.break_in_monitoring_enabled);
-  const statusTone = isProtected ? colors.systemGreen : colors.systemOrange;
+  const statusSurface = isProtected ? colors.successFill : colors.fill;
+  const statusGlyph = isProtected ? colors.onSuccess : colors.secondaryLabel;
 
   return (
     <ScrollView
@@ -58,8 +59,8 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
       contentInsetAdjustmentBehavior="automatic"
     >
       <Surface style={styles.statusCard}>
-        <View style={[styles.statusIcon, { backgroundColor: statusTone }]}>
-          <Icon name={isProtected ? 'checkmark.shield.fill' : 'exclamationmark.shield.fill'} size={22} color={colors.onAccent} />
+        <View style={[styles.statusIcon, { backgroundColor: statusSurface }]}>
+          <Icon name={isProtected ? 'checkmark.shield.fill' : 'exclamationmark.shield.fill'} size={22} color={statusGlyph} />
         </View>
         <View style={styles.statusText}>
           <AppText variant={TextVariant.Headline}>{isProtected ? t('common.protected') : t('common.toConfigure')}</AppText>
@@ -85,6 +86,7 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
           subtitle={vehicle.sentry_mode_monitoring_enabled ? t('vehicle.sentryEnabledDescription') : t('vehicle.sentryDisabledDescription')}
           accessory={
             <AppSwitch
+              accessibilityLabel={t('vehicle.alertSentry')}
               disabled={isActionRunning}
               value={vehicle.sentry_mode_monitoring_enabled}
               onValueChange={() => {
@@ -107,6 +109,7 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
             subtitle={vehicle.break_in_monitoring_enabled ? t('vehicle.intrusionEnabledDescription') : t('vehicle.intrusionDisabledDescription')}
             accessory={
               <AppSwitch
+                accessibilityLabel={t('vehicle.alertIntrusion')}
                 disabled={isActionRunning}
                 value={vehicle.break_in_monitoring_enabled === true}
                 onValueChange={() => actionMutation.mutate(VehicleAction.ToggleBreakIn)}
@@ -119,6 +122,7 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
               subtitle={isBreakInOffensiveOn(vehicle) ? t('vehicle.offensiveEnabledDescription') : t('vehicle.offensiveDisabledDescription')}
               accessory={
                 <AppSwitch
+                  accessibilityLabel={t('vehicle.offensive')}
                   disabled={isActionRunning}
                   value={isBreakInOffensiveOn(vehicle)}
                   onValueChange={() => actionMutation.mutate(resolveNextOffensiveResponse(vehicle))}

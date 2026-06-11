@@ -29,7 +29,7 @@ export function OnboardingFrame({
     <SafeAreaView style={[styles.container, { backgroundColor: colors.systemBackground }]} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <AppText variant={TextVariant.Footnote} color={colors.systemBlue} style={styles.kicker}>
+          <AppText variant={TextVariant.Footnote} color={colors.accent} style={styles.kicker}>
             {t('onboarding.kicker').toUpperCase()}
           </AppText>
           <AppText variant={TextVariant.Title1}>{title}</AppText>
@@ -39,8 +39,8 @@ export function OnboardingFrame({
         </View>
         {children ? <Surface>{children}</Surface> : null}
         {message ? (
-          <View style={[styles.alertBox, { backgroundColor: colors.systemOrange + '15', borderColor: colors.systemOrange + '30' }]}>
-            <AppText variant={TextVariant.Footnote} color={colors.systemOrange}>
+          <View style={[styles.alertBox, { backgroundColor: colors.warningSurface, borderColor: colors.warningBorder }]}>
+            <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
               {message}
             </AppText>
           </View>

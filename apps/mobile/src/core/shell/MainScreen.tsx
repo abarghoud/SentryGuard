@@ -5,6 +5,7 @@ import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 
+import { TextVariant, textStyle } from '../design/typography';
 import { AppTabParamList, MainStackParamList } from '../navigation';
 import { useTheme } from '../theme';
 import { GlassBackground } from '../ui';
@@ -28,7 +29,7 @@ export function MainScreen({ onLogout }: { onLogout(): Promise<void> }): JSX.Ele
       screenOptions={{
         contentStyle: { backgroundColor: colors.systemGroupedBackground },
         headerTintColor: colors.accent,
-        headerTitleStyle: { color: colors.label },
+        headerTitleStyle: { color: colors.label, fontSize: textStyle(TextVariant.Headline).fontSize, fontWeight: '600' },
         headerStyle: { backgroundColor: colors.systemGroupedBackground },
         headerShadowVisible: false,
         headerBackButtonDisplayMode: 'minimal',
@@ -47,7 +48,7 @@ export function MainScreen({ onLogout }: { onLogout(): Promise<void> }): JSX.Ele
 }
 
 function AppTabs({ onLogout }: { onLogout(): Promise<void> }): JSX.Element {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const profileQuery = useQuery({
     queryFn: () => getAuthProfileUseCase.execute(),
@@ -59,8 +60,8 @@ function AppTabs({ onLogout }: { onLogout(): Promise<void> }): JSX.Element {
     <Tabs.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.systemBlue,
-        tabBarInactiveTintColor: colors.secondaryLabel,
+        tabBarActiveTintColor: colors.label,
+        tabBarInactiveTintColor: isDark ? colors.secondaryLabel : colors.tertiaryLabel,
         tabBarStyle: Platform.OS === 'ios' ? { position: 'absolute', borderTopWidth: 0 } : { borderTopColor: colors.separator },
         tabBarBackground: Platform.OS === 'ios' ? () => <GlassBackground /> : undefined,
       }}

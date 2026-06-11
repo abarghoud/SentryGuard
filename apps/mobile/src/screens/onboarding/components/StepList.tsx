@@ -13,7 +13,7 @@ export function StepList({ items }: { items: string[] }): JSX.Element {
     <View style={styles.steps}>
       {items.map((item, index) => (
         <View key={item} style={styles.stepRow}>
-          <View style={[styles.badge, { backgroundColor: colors.systemBlue }]}>
+          <View style={[styles.badge, { backgroundColor: colors.accentFill }]}>
             <AppText variant={TextVariant.Caption1} color={colors.onAccent} style={styles.badgeText}>
               {index + 1}
             </AppText>

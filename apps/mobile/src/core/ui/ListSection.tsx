@@ -26,8 +26,8 @@ export function ListSection({ badge, children, footer, header }: ListSectionProp
             {header.toUpperCase()}
           </AppText>
           {badge ? (
-            <View style={[styles.badge, { backgroundColor: colors.systemBlue }]}>
-              <AppText variant={TextVariant.Caption2} color={colors.onAccent} style={styles.badgeText}>
+            <View style={[styles.badge, { borderColor: colors.secondaryLabel }]}>
+              <AppText variant={TextVariant.Caption2} color={colors.secondaryLabel} style={styles.badgeText}>
                 {badge.toUpperCase()}
               </AppText>
             </View>
@@ -54,6 +54,7 @@ export function ListSection({ badge, children, footer, header }: ListSectionProp
 const styles = StyleSheet.create({
   badge: {
     borderRadius: 4,
+    borderWidth: 1,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },

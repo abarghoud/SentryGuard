@@ -19,8 +19,17 @@ export function filterAlerts(alerts: AlertEvent[], activeFilter: AlertFilter): A
   return alerts;
 }
 
-export function resolveAlertTone(alert: AlertEvent, colors: ThemeColors): string {
-  return alert.severity === AlertEventSeverity.Critical ? colors.systemRed : colors.systemOrange;
+export interface AlertIconTone {
+  background: string;
+  icon: string;
+}
+
+export function resolveAlertTone(alert: AlertEvent, colors: ThemeColors): AlertIconTone {
+  if (alert.severity === AlertEventSeverity.Critical) {
+    return { background: colors.criticalFill, icon: colors.onCritical };
+  }
+
+  return { background: colors.warningFill, icon: colors.onWarning };
 }
 
 export function resolveAlertIcon(alert: AlertEvent): 'exclamationmark.triangle.fill' | 'bell.badge.fill' {

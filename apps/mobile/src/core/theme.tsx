@@ -18,37 +18,35 @@ export function resolveIsDark(mode: ThemeMode, systemScheme: ColorSchemeName): b
 }
 
 export interface ThemeColors {
-  // Legacy tokens (kept stable so existing screens keep compiling), remapped to iOS semantics.
   accent: string;
-  accentText: string;
-  background: string;
-  border: string;
-  control: string;
-  critical: string;
-  muted: string;
-  panel: string;
-  positive: string;
-  surface: string;
-  text: string;
-  warning: string;
-
-  // iOS semantic tokens (HIG).
+  accentFill: string;
+  criticalFill: string;
+  fill: string;
   label: string;
+  onAccent: string;
+  onCritical: string;
+  onSuccess: string;
+  onWarning: string;
+  overlay: string;
+  pressedOverlay: string;
+  secondaryFill: string;
   secondaryLabel: string;
-  tertiaryLabel: string;
-  systemBackground: string;
   secondarySystemBackground: string;
-  tertiarySystemBackground: string;
-  systemGroupedBackground: string;
   secondarySystemGroupedBackground: string;
   separator: string;
-  fill: string;
-  secondaryFill: string;
-  systemBlue: string;
+  successBorder: string;
+  successFill: string;
+  successSurface: string;
+  switchThumb: string;
+  systemBackground: string;
   systemGreen: string;
+  systemGroupedBackground: string;
   systemRed: string;
-  systemOrange: string;
-  onAccent: string;
+  tertiaryLabel: string;
+  tertiarySystemBackground: string;
+  warningBorder: string;
+  warningFill: string;
+  warningSurface: string;
 }
 
 interface ThemeContextValue {
@@ -58,72 +56,68 @@ interface ThemeContextValue {
   setMode(mode: ThemeMode): Promise<void>;
 }
 
-const lightColors: ThemeColors = {
-  // iOS semantic structure, mapped to the original brand palette.
+export const lightColors: ThemeColors = {
+  accent: '#dc2626', // brand red, also the primary action color
+  accentFill: '#dc2626', // deep stable fill for primary buttons, keeps white labels readable
+  criticalFill: '#dc2626', // critical-severity red for the security event log
+  fill: '#f3f4f6',
   label: '#111827',
+  onAccent: '#ffffff',
+  onCritical: '#ffffff',
+  onSuccess: '#ffffff',
+  onWarning: '#ffffff',
+  overlay: 'rgba(0, 0, 0, 0.4)',
+  pressedOverlay: 'rgba(0, 0, 0, 0.07)',
+  secondaryFill: '#e5e7eb',
   secondaryLabel: '#4b5563',
-  tertiaryLabel: '#9ca3af',
-  systemBackground: '#ffffff',
   secondarySystemBackground: '#f3f4f6',
-  tertiarySystemBackground: '#ffffff',
-  systemGroupedBackground: '#f2f2f7',
   secondarySystemGroupedBackground: '#ffffff',
   separator: '#e5e7eb',
-  fill: '#f3f4f6',
-  secondaryFill: '#e5e7eb',
-  systemBlue: '#dc2626', // brand accent (red)
-  systemGreen: '#16a34a', // positive states use true green
+  successBorder: 'rgba(21, 128, 61, 0.22)',
+  successFill: '#15803d',
+  successSurface: 'rgba(21, 128, 61, 0.06)',
+  switchThumb: '#ffffff',
+  systemBackground: '#ffffff',
+  systemGreen: '#15803d',
+  systemGroupedBackground: '#f2f2f7',
   systemRed: '#b91c1c', // destructive / critical (deeper, distinct from accent)
-  systemOrange: '#ca8a04',
-  onAccent: '#ffffff',
-
-  // Legacy aliases
-  accent: '#dc2626',
-  accentText: '#ffffff',
-  background: '#f9fafb',
-  border: '#e5e7eb',
-  control: '#dc2626',
-  critical: '#b91c1c',
-  muted: '#4b5563',
-  panel: '#f3f4f6',
-  positive: '#16a34a',
-  surface: '#ffffff',
-  text: '#111827',
-  warning: '#ca8a04',
+  tertiaryLabel: '#888f9c',
+  tertiarySystemBackground: '#ffffff',
+  warningBorder: 'rgba(120, 120, 128, 0.24)',
+  warningFill: '#b45309', // alert-severity amber, reserved for the security event log
+  warningSurface: 'rgba(120, 120, 128, 0.1)',
 };
 
-const darkColors: ThemeColors = {
-  // iOS semantic (dark)
+export const darkColors: ThemeColors = {
+  accent: '#ef4444', // brand red lifted for dark backgrounds
+  accentFill: '#dc2626', // deep stable fill for primary buttons, keeps white labels readable
+  criticalFill: '#dc2626', // critical-severity red for the security event log
+  fill: 'rgba(120, 120, 128, 0.36)',
   label: '#FFFFFF',
+  onAccent: '#FFFFFF',
+  onCritical: '#ffffff',
+  onSuccess: '#ffffff',
+  onWarning: '#ffffff',
+  overlay: 'rgba(0, 0, 0, 0.6)',
+  pressedOverlay: 'rgba(0, 0, 0, 0.28)',
+  secondaryFill: 'rgba(120, 120, 128, 0.32)',
   secondaryLabel: 'rgba(235, 235, 245, 0.6)',
-  tertiaryLabel: 'rgba(235, 235, 245, 0.3)',
-  systemBackground: '#000000',
   secondarySystemBackground: '#1C1C1E',
-  tertiarySystemBackground: '#2C2C2E',
-  systemGroupedBackground: '#000000',
   secondarySystemGroupedBackground: '#1C1C1E',
   separator: 'rgba(84, 84, 88, 0.6)',
-  fill: 'rgba(120, 120, 128, 0.36)',
-  secondaryFill: 'rgba(120, 120, 128, 0.32)',
-  systemBlue: '#0A84FF',
-  systemGreen: '#30d158', // positive states use true green
+  successBorder: 'rgba(48, 209, 88, 0.19)',
+  successFill: '#15803d', // deep green that keeps white content readable on dark
+  successSurface: 'rgba(48, 209, 88, 0.08)',
+  switchThumb: '#ffffff',
+  systemBackground: '#000000',
+  systemGreen: '#30d158',
+  systemGroupedBackground: '#000000',
   systemRed: '#FF453A',
-  systemOrange: '#FF9F0A',
-  onAccent: '#FFFFFF',
-
-  // Legacy aliases
-  accent: '#0A84FF',
-  accentText: '#FFFFFF',
-  background: '#000000',
-  border: 'rgba(84, 84, 88, 0.6)',
-  control: '#0A84FF',
-  critical: '#FF453A',
-  muted: 'rgba(235, 235, 245, 0.6)',
-  panel: '#2C2C2E',
-  positive: '#30d158',
-  surface: '#1C1C1E',
-  text: '#FFFFFF',
-  warning: '#FF9F0A',
+  tertiaryLabel: 'rgba(235, 235, 245, 0.3)',
+  tertiarySystemBackground: '#2C2C2E',
+  warningBorder: 'rgba(120, 120, 128, 0.36)',
+  warningFill: '#b45309', // alert-severity amber, reserved for the security event log
+  warningSurface: 'rgba(120, 120, 128, 0.16)',
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);

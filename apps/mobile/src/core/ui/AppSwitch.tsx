@@ -5,12 +5,13 @@ import { useHaptics } from '../design/use-haptics';
 import { useThemeColors } from '../theme';
 
 interface AppSwitchProps {
+  accessibilityLabel?: string;
   disabled?: boolean;
   onValueChange(value: boolean): void;
   value: boolean;
 }
 
-export function AppSwitch({ disabled = false, onValueChange, value }: AppSwitchProps): JSX.Element {
+export function AppSwitch({ accessibilityLabel, disabled = false, onValueChange, value }: AppSwitchProps): JSX.Element {
   const colors = useThemeColors();
   const haptics = useHaptics();
   const isAndroid = Platform.OS === 'android';
@@ -22,11 +23,12 @@ export function AppSwitch({ disabled = false, onValueChange, value }: AppSwitchP
 
   return (
     <Switch
+      accessibilityLabel={accessibilityLabel}
       disabled={disabled}
       ios_backgroundColor={colors.fill}
       onValueChange={handleChange}
-      thumbColor={isAndroid ? '#ffffff' : undefined}
-      trackColor={{ false: colors.fill, true: colors.accent }}
+      thumbColor={isAndroid ? colors.switchThumb : undefined}
+      trackColor={{ false: colors.fill, true: colors.successFill }}
       value={value}
     />
   );

@@ -8,7 +8,7 @@ jest.mock('./theme-storage', () => ({
   storeThemeMode: jest.fn(() => Promise.resolve()),
 }));
 
-import { resolveIsDark, ThemeMode } from './theme';
+import { darkColors, lightColors, resolveIsDark, ThemeMode } from './theme';
 
 describe('The resolveIsDark() function', () => {
   describe('When the mode is Dark', () => {
@@ -41,5 +41,16 @@ describe('The resolveIsDark() function', () => {
         expect(resolveIsDark(ThemeMode.System, null)).toBe(false);
       });
     });
+  });
+});
+
+describe('The color palettes', () => {
+  it('should expose the same tokens in light and dark mode', () => {
+    expect(Object.keys(darkColors).sort()).toStrictEqual(Object.keys(lightColors).sort());
+  });
+
+  it('should keep the brand accent in the red family in both modes', () => {
+    expect(lightColors.accent).toBe('#dc2626');
+    expect(darkColors.accent).toBe('#ef4444');
   });
 });

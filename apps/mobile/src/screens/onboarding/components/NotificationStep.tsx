@@ -22,13 +22,13 @@ export function NotificationStep({
   return (
     <View style={styles.container}>
       {isPushActive ? (
-        <View style={[styles.alertBox, { backgroundColor: colors.systemGreen + '15', borderColor: colors.systemGreen + '30' }]}>
+        <View style={[styles.alertBox, { backgroundColor: colors.successSurface, borderColor: colors.successBorder }]}>
           <AppText variant={TextVariant.Footnote} color={colors.systemGreen} style={styles.successText}>
             {t('onboarding.notificationsPushActive')}
           </AppText>
         </View>
       ) : isTelegramLinked ? (
-        <View style={[styles.alertBox, { backgroundColor: colors.systemGreen + '15', borderColor: colors.systemGreen + '30' }]}>
+        <View style={[styles.alertBox, { backgroundColor: colors.successSurface, borderColor: colors.successBorder }]}>
           <AppText variant={TextVariant.Footnote} color={colors.systemGreen} style={styles.successText}>
             {t('telegram.connected')}
           </AppText>

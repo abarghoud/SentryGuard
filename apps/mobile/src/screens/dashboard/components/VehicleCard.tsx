@@ -21,12 +21,13 @@ export function VehicleCard({
 }): JSX.Element {
   const colors = useThemeColors();
   const isProtected = isVehicleProtected(vehicle, isBetaTester);
-  const statusColor = isProtected ? colors.systemGreen : colors.systemOrange;
+  const badgeSurface = isProtected ? colors.successSurface : colors.fill;
+  const badgeLabel = isProtected ? colors.systemGreen : colors.label;
 
   return (
     <Pressable accessibilityRole="button" onPress={onSelect}>
       {({ pressed }) => (
-        <Surface elevated style={[styles.card, pressed ? styles.pressed : null]}>
+        <Surface elevated style={styles.card}>
           <View style={styles.header}>
             <View style={styles.titleBlock}>
               <AppText variant={TextVariant.Headline}>{vehicle.display_name ?? vehicle.model ?? t('common.vehicleFallback')}</AppText>
@@ -34,8 +35,8 @@ export function VehicleCard({
                 {vehicle.vin}
               </AppText>
             </View>
-            <View style={[styles.badge, { backgroundColor: statusColor }]}>
-              <AppText variant={TextVariant.Caption1} color={colors.onAccent} style={styles.badgeText}>
+            <View style={[styles.badge, { backgroundColor: badgeSurface }]}>
+              <AppText variant={TextVariant.Caption1} color={badgeLabel} style={styles.badgeText}>
                 {isProtected ? t('common.protected') : t('common.toConfigure')}
               </AppText>
             </View>
@@ -55,11 +56,12 @@ export function VehicleCard({
           </View>
 
           <View style={styles.footer}>
-            <AppText variant={TextVariant.Subhead} color={colors.systemBlue}>
+            <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
               {t('dashboard.details')}
             </AppText>
-            <Icon name="chevron.right" size={14} color={colors.tertiaryLabel} weight="semibold" />
+            <Icon name="chevron.right" size={14} color={colors.secondaryLabel} weight="semibold" />
           </View>
+          {pressed ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.pressedOverlay }]} /> : null}
         </Surface>
       )}
     </Pressable>
@@ -112,9 +114,6 @@ const styles = StyleSheet.create({
   metrics: {
     flexDirection: 'row',
     gap: spacing.sm,
-  },
-  pressed: {
-    opacity: 0.85,
   },
   titleBlock: {
     flex: 1,
