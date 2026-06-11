@@ -26,10 +26,15 @@ export class TeslaVehicleCommandService {
     return this.sendVehicleCommand(vin, userId, 'honk_horn');
   }
 
+  async remoteBoombox(vin: string, userId: string, action: number): Promise<TeslaCommandResponse> {
+    return this.sendVehicleCommand(vin, userId, 'remote_boombox', { action });
+  }
+
   private async sendVehicleCommand(
     vin: string,
     userId: string,
     command: string,
+    body?: Record<string, any>,
   ): Promise<TeslaCommandResponse> {
     try {
       const hasScope = await this.accessTokenService.hasVehicleCommandsScope(userId);
@@ -50,7 +55,7 @@ export class TeslaVehicleCommandService {
 
       const response = await this.teslaApi.post(
         endpoint,
-        {},
+        body ?? {},
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
 
