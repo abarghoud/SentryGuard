@@ -5,6 +5,7 @@ import { Alert, Share, StyleSheet, View } from 'react-native';
 import * as Linking from 'expo-linking';
 
 import { TelegramLinkInfo, TelegramStatus } from '@sentryguard/telegram-domain';
+import { resolveRemainingLinkMinutes } from '../telegram-link.helpers';
 import { radius, spacing } from '../../../../core/design/metrics';
 import { TextVariant } from '../../../../core/design/typography';
 import { useTheme } from '../../../../core/theme';
@@ -106,6 +107,7 @@ export function TelegramConfigBlock({
 
   const isLinked = status?.linked === true;
   const isPending = status?.status === 'pending';
+  const pendingExpiryMinutes = linkInfo?.expires_in_minutes ?? resolveRemainingLinkMinutes(status?.expires_at, new Date());
 
   return (
     <Surface style={styles.card}>
@@ -142,34 +144,44 @@ export function TelegramConfigBlock({
         />
       )}
 
-      {isPending && linkInfo && (
+      {isPending ? (
         <View style={styles.pendingSection}>
           <View style={[styles.alertBox, { backgroundColor: colors.warningSurface, borderColor: colors.warningBorder }]}>
             <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
               {t('telegram.waiting')}
             </AppText>
-            <AppText variant={TextVariant.Caption2} color={colors.secondaryLabel} style={styles.expiryText}>
-              {t('telegram.linkExpires', { minutes: linkInfo.expires_in_minutes })}
-            </AppText>
+            {pendingExpiryMinutes === null ? null : (
+              <AppText variant={TextVariant.Caption2} color={colors.secondaryLabel} style={styles.expiryText}>
+                {t('telegram.linkExpires', { minutes: pendingExpiryMinutes })}
+              </AppText>
+            )}
           </View>
 
-          <View style={styles.buttonRow}>
+          {linkInfo ? (
+            <View style={styles.buttonRow}>
+              <GlassButton
+                variant={GlassButtonVariant.Secondary}
+                label={t('telegram.copy')}
+                icon="link"
+                onPress={handleShare}
+                style={styles.fullButton}
+              />
+              <GlassButton
+                label={t('telegram.openBot')}
+                icon="paperplane.fill"
+                onPress={handleOpenBot}
+                style={styles.fullButton}
+              />
+            </View>
+          ) : (
             <GlassButton
-              variant={GlassButtonVariant.Secondary}
-              label={t('telegram.copy')}
-              icon="link"
-              onPress={handleShare}
-              style={styles.fullButton}
+              label={isGenerating ? t('telegram.generating') : t('telegram.generateLink')}
+              disabled={isGenerating}
+              onPress={handleGenerate}
             />
-            <GlassButton
-              label={t('telegram.openBot')}
-              icon="paperplane.fill"
-              onPress={handleOpenBot}
-              style={styles.fullButton}
-            />
-          </View>
+          )}
         </View>
-      )}
+      ) : null}
 
       {isLinked && (
         <View style={styles.linkedSection}>
