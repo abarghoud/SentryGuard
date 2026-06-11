@@ -100,7 +100,7 @@ describe('The AlertsOffensiveResponseService class', () => {
       it('should trigger remote boombox only', async () => {
         await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1']);
 
-        expect(mockTeslaVehicleCommandService.remoteBoombox).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1', 0);
+        expect(mockTeslaVehicleCommandService.remoteBoombox).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1', 1);
       });
     });
 

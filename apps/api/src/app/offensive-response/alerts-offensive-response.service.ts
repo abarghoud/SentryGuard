@@ -13,7 +13,7 @@ export class AlertsOffensiveResponseService {
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>,
     private readonly teslaVehicleCommandService: TeslaVehicleCommandService,
-  ) { }
+  ) {}
 
   async handleBreakInOffensiveResponse(vin: string, userIds: string[]): Promise<void> {
     for (const userId of userIds) {
@@ -43,7 +43,7 @@ export class AlertsOffensiveResponseService {
       if (break_in_offensive_response === OffensiveResponse.HONK) {
         result = await this.teslaVehicleCommandService.honkHorn(vin, userId);
       } else if (break_in_offensive_response === OffensiveResponse.FART) {
-        result = await this.teslaVehicleCommandService.remoteBoombox(vin, userId, 0);
+        result = await this.teslaVehicleCommandService.remoteBoombox(vin, userId, 1);
       } else {
         return false;
       }
