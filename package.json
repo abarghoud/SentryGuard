@@ -42,6 +42,9 @@
     "kafka:send": "./scripts/send-interactive.sh",
     "kafka:stop": "./scripts/stop-kafka.sh"
   },
+  "resolutions": {
+    "expo-modules-core": "~3.0.30"
+  },
   "private": true,
   "dependencies": {
     "@nestjs/common": "^11.1.6",
