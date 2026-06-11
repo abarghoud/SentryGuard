@@ -9,6 +9,7 @@ import { TextVariant } from '../core/design/typography';
 import { useThemeColors } from '../core/theme';
 import { AppText } from '../core/ui';
 import { TelegramConfigBlock } from '../features/telegram/presentation/components/TelegramConfigBlock';
+import { shouldShowLinkReturnHint } from './telegram-settings/telegram-settings.helpers';
 import { useTelegramSettings } from './telegram-settings/use-telegram-settings';
 
 export function TelegramSettingsScreen(): JSX.Element {
@@ -17,7 +18,8 @@ export function TelegramSettingsScreen(): JSX.Element {
   const colors = useThemeColors();
   const {
     generateTelegramLink,
-    message,
+    isAwaitingTelegramReturn,
+    isTelegramLinked,
     refreshTelegramStatus,
     sendTelegramTest,
     telegramLinkInfo,
@@ -34,10 +36,10 @@ export function TelegramSettingsScreen(): JSX.Element {
       style={{ backgroundColor: colors.systemGroupedBackground }}
       contentContainerStyle={styles.content}
     >
-      {message ? (
+      {shouldShowLinkReturnHint(isAwaitingTelegramReturn, isTelegramLinked) ? (
         <View style={[styles.messageBox, { backgroundColor: colors.systemOrange + '15', borderColor: colors.systemOrange + '30' }]}>
           <AppText variant={TextVariant.Footnote} color={colors.systemOrange}>
-            {message}
+            {t('settings.telegramLinkReturn')}
           </AppText>
         </View>
       ) : null}

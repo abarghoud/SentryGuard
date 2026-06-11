@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Linking from 'expo-linking';
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useEffect, useState } from 'react';
 
 import { useTelegramStatusSync } from '../../core/hooks/useTelegramStatusSync';
 import {
@@ -13,9 +12,8 @@ import {
 import { TelegramActionResponse, TelegramLinkInfo } from '@sentryguard/telegram-domain';
 
 export function useTelegramSettings() {
-  const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [message, setMessage] = useState<string | null>(null);
+  const [isAwaitingTelegramReturn, setIsAwaitingTelegramReturn] = useState(false);
   const [telegramLinkInfo, setTelegramLinkInfo] = useState<TelegramLinkInfo | null>(null);
   useTelegramStatusSync();
 
@@ -23,6 +21,13 @@ export function useTelegramSettings() {
     queryFn: () => getTelegramStatusUseCase.execute(),
     queryKey: ['telegram-status'],
   });
+  const isTelegramLinked = telegramStatusQuery.data?.linked === true;
+
+  useEffect(() => {
+    if (isTelegramLinked) {
+      setIsAwaitingTelegramReturn(false);
+    }
+  }, [isTelegramLinked]);
 
   const telegramLinkMutation = useMutation<TelegramLinkInfo, Error>({
     mutationFn: () => generateTelegramLinkUseCase.execute(),
@@ -30,7 +35,7 @@ export function useTelegramSettings() {
       setTelegramLinkInfo(linkInfo);
       await queryClient.invalidateQueries({ queryKey: ['telegram-status'] });
       await Linking.openURL(linkInfo.link);
-      setMessage(t('settings.telegramLinkReturn'));
+      setIsAwaitingTelegramReturn(true);
     },
   });
 
@@ -50,7 +55,8 @@ export function useTelegramSettings() {
     generateTelegramLink: async () => {
       return telegramLinkMutation.mutateAsync();
     },
-    message,
+    isAwaitingTelegramReturn,
+    isTelegramLinked,
     refreshTelegramStatus: async () => {
       await telegramStatusQuery.refetch();
     },
