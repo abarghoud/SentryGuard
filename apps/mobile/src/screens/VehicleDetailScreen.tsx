@@ -100,7 +100,7 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
         />
       </ListSection>
 
-      <ListSection header={t('vehicle.intrusionSection')} badge={t('common.beta')}>
+      <ListSection header={t('vehicle.intrusionSection')}>
         <ListRow
           title={t('vehicle.monitoring')}
           subtitle={vehicle.break_in_monitoring_enabled ? t('vehicle.intrusionEnabledDescription') : t('vehicle.intrusionDisabledDescription')}
