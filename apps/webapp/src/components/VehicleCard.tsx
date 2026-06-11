@@ -6,31 +6,43 @@ import { type Vehicle } from '../features/vehicles/domain/entities';
 import Spinner from './Spinner';
 import RequireVehicleCommands from './RequireVehicleCommands';
 
-function BreakInOffensiveToggle({
-  isOn,
+function BreakInOffensiveSelect({
+  value,
   isDisabled,
-  onToggle,
+  onChange,
   tooltipText,
 }: {
-  isOn: boolean;
+  value: string;
   isDisabled: boolean;
-  onToggle: () => void;
+  onChange: (value: string) => void;
   tooltipText: string;
 }) {
   const { t } = useTranslation('common');
+  const [isOpen, setIsOpen] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!showTooltip) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (tooltipRef.current && !tooltipRef.current.contains(e.target as Node)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+      if (showTooltip && tooltipRef.current && !tooltipRef.current.contains(e.target as Node)) {
         setShowTooltip(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showTooltip]);
+
+  const options = [
+    { value: 'DISABLED', label: `🔇 ${t('Disabled')}`, description: t('offensiveResponseDisabled') },
+    { value: 'HONK', label: `📢 ${t('Horn')}`, description: t('offensiveResponseHonk') },
+    { value: 'FART', label: `💨 ${t('Fart')}`, description: t('offensiveResponseFart') },
+  ];
+
+  const currentOption = options.find((opt) => opt.value === value) || options[0];
 
   return (
     <div className="mt-3">
@@ -49,25 +61,56 @@ function BreakInOffensiveToggle({
             </svg>
           </button>
         </div>
-        <button
-          onClick={onToggle}
-          disabled={isDisabled}
-          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-            isOn ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
-          }`}
-          role="switch"
-          aria-checked={isOn}
-          type="button"
-        >
-          <span
-            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-              isOn ? 'translate-x-5' : 'translate-x-0'
-            }`}
-          />
-        </button>
+
+        <div className="relative inline-block text-left" ref={dropdownRef}>
+          <button
+            onClick={() => !isDisabled && setIsOpen(!isOpen)}
+            disabled={isDisabled}
+            type="button"
+            className="flex items-center justify-between gap-2 w-40 rounded-lg px-3 py-1.5 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm text-left font-medium"
+          >
+            <span>{currentOption.label}</span>
+            <svg
+              className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {isOpen && (
+            <div className="absolute right-0 mt-2 w-44 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-xl z-[100] overflow-hidden origin-top-right ring-1 ring-black ring-opacity-5">
+              <div className="py-1">
+                {options.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => {
+                      onChange(opt.value);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-all duration-200 ${
+                      value === opt.value
+                        ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    {value === opt.value && (
+                      <svg className="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        {isOn ? t('offensiveResponseOn') : t('offensiveResponseOff')}
+        {currentOption.description}
       </p>
       {showTooltip && (
         <div
@@ -86,7 +129,7 @@ export default function VehicleCard({
   isBetaTester,
   onToggleTelemetry,
   onToggleBreakInMonitoring,
-  onToggleBreakInOffensive,
+  onUpdateBreakInOffensive,
   onDeleteTelemetry,
 }: VehicleCardProps) {
   const { t } = useTranslation('common');
@@ -156,18 +199,15 @@ export default function VehicleCard({
     }
   };
 
-  const handleToggleBreakInOffensive = async () => {
+  const handleUpdateBreakInOffensive = async (newResponse: string) => {
     setIsUpdatingBreakInOffensive(true);
     setInlineError(null);
-    const newEnabled = vehicle.break_in_offensive_response !== 'HONK';
-    const result = await onToggleBreakInOffensive(vehicle.vin, newEnabled);
+    const result = await onUpdateBreakInOffensive(vehicle.vin, newResponse);
     if (!result) {
       setInlineError(t('Failed to update offensive response'));
     }
     setIsUpdatingBreakInOffensive(false);
   };
-
-  const isBreakInOffensiveOn = vehicle.break_in_offensive_response === 'HONK';
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6 border border-gray-200 dark:border-gray-700">
@@ -299,10 +339,10 @@ export default function VehicleCard({
               description={t('offensiveResponseLockedDescription')}
               buttonLabel={t('offensiveResponseLockedButton')}
             >
-              <BreakInOffensiveToggle
-                isOn={isBreakInOffensiveOn}
+              <BreakInOffensiveSelect
+                value={vehicle.break_in_offensive_response || 'DISABLED'}
                 isDisabled={isUpdatingBreakInOffensive}
-                onToggle={handleToggleBreakInOffensive}
+                onChange={handleUpdateBreakInOffensive}
                 tooltipText={t('offensiveResponseInfo')}
               />
             </RequireVehicleCommands>
@@ -330,6 +370,6 @@ interface VehicleCardProps {
   }>;
   isBetaTester?: boolean;
   onToggleBreakInMonitoring: (vin: string, enable: boolean) => Promise<boolean>;
-  onToggleBreakInOffensive: (vin: string, enabled: boolean) => Promise<boolean>;
+  onUpdateBreakInOffensive: (vin: string, breakInResponse: string) => Promise<boolean>;
   onDeleteTelemetry: (vin: string) => Promise<boolean>;
 }
