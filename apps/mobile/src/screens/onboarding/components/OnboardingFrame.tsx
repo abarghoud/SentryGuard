@@ -11,6 +11,7 @@ import { TranslationFunction } from '../onboarding.helpers';
 export function OnboardingFrame({
   actions,
   children,
+  kicker,
   message,
   subtitle,
   t,
@@ -18,6 +19,7 @@ export function OnboardingFrame({
 }: {
   actions?: JSX.Element;
   children?: JSX.Element;
+  kicker?: string;
   message?: string | null;
   subtitle: string;
   t: TranslationFunction;
@@ -30,7 +32,7 @@ export function OnboardingFrame({
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <AppText variant={TextVariant.Footnote} color={colors.accent} style={styles.kicker}>
-            {t('onboarding.kicker').toUpperCase()}
+            {(kicker ?? t('onboarding.kicker')).toUpperCase()}
           </AppText>
           <AppText variant={TextVariant.Title1}>{title}</AppText>
           <AppText variant={TextVariant.Body} color={colors.secondaryLabel}>

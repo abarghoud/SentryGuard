@@ -12,7 +12,10 @@ import { useTheme } from './theme';
 import { MainScreen } from './shell/MainScreen';
 import { createNavigationTheme } from './shell/navigation-theme';
 import { AuthScreen } from '../screens/AuthScreen';
+import { ConsentScreen } from '../screens/ConsentScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
+import { shouldRequestConsent } from '../screens/consent/consent-gate.helpers';
+import { getConsentStatusUseCase } from '../features/consent/di';
 import { getOnboardingStatusUseCase } from '../features/onboarding/di';
 import { getUserLanguageUseCase } from '../features/user/di';
 import { useSession } from './session/use-session';
@@ -28,6 +31,11 @@ export function MobileShell(): JSX.Element {
     queryFn: () => getOnboardingStatusUseCase.execute(),
     queryKey: ['onboarding-status'],
   });
+  const consentQuery = useQuery({
+    enabled: session.isReady && !!session.token,
+    queryFn: () => getConsentStatusUseCase.execute(),
+    queryKey: ['consent-status'],
+  });
   const languageQuery = useQuery({
     enabled: session.isReady && !!session.token,
     queryFn: () => getUserLanguageUseCase.execute(),
@@ -35,6 +43,7 @@ export function MobileShell(): JSX.Element {
   });
 
   const isOnboardingComplete = onboardingQuery.data?.isComplete === true;
+  const isConsentRequestNeeded = shouldRequestConsent(consentQuery.data, isOnboardingComplete);
 
   useEffect(() => {
     const language = languageQuery.data?.language;
@@ -43,7 +52,7 @@ export function MobileShell(): JSX.Element {
     }
   }, [i18n, isOnboardingComplete, languageQuery.data?.language]);
 
-  if (!session.isReady || (session.token && onboardingQuery.isLoading)) {
+  if (!session.isReady || (session.token && (onboardingQuery.isLoading || consentQuery.isLoading))) {
     return (
       <SafeAreaView style={{ alignItems: 'center', backgroundColor: colors.systemBackground, flex: 1, justifyContent: 'center' }}>
         <Text style={{ color: colors.label, fontSize: 22, fontWeight: '700' }}>SentryGuard</Text>
@@ -55,7 +64,11 @@ export function MobileShell(): JSX.Element {
     <NavigationContainer theme={createNavigationTheme(colors, isDark)}>
       <Stack.Navigator screenOptions={{ contentStyle: { backgroundColor: colors.systemBackground }, headerShown: false }}>
         {session.token ? (
-          onboardingQuery.data?.isComplete ? (
+          isConsentRequestNeeded ? (
+            <Stack.Screen name="Main" options={{ animation: 'none' }}>
+              {() => <ConsentScreen onLogout={session.clearToken} />}
+            </Stack.Screen>
+          ) : onboardingQuery.data?.isComplete ? (
             <Stack.Screen name="Main" options={{ animation: 'none' }}>
               {() => <MainScreen onLogout={session.clearToken} />}
             </Stack.Screen>
