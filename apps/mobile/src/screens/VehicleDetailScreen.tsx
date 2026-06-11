@@ -8,13 +8,12 @@ WebBrowser.maybeCompleteAuthSession();
 import { screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
 import { useThemeColors } from '../core/theme';
-import { AppSwitch, AppText, GlassButton, GlassButtonVariant, Icon, ListRow, ListSection, Surface } from '../core/ui';
+import { AppSwitch, AppText, GlassButton, GlassButtonVariant, Icon, ListRow, ListSection, SegmentedControl, Surface } from '../core/ui';
 import {
   confirmTelemetryDeletion,
-  isBreakInOffensiveOn,
   openVirtualKey,
-  resolveNextOffensiveResponse,
 } from './vehicle-detail/vehicle-detail.helpers';
+import { OffensiveResponse } from '../features/vehicles/domain/entities';
 import { VehicleAction } from './vehicle-detail/vehicle-detail.types';
 import { useVehicleDetail } from './vehicle-detail/use-vehicle-detail';
 import type { VehicleDetailScreenProps } from '../core/navigation';
@@ -101,7 +100,7 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
         />
       </ListSection>
 
-      <ListSection header={t('vehicle.intrusionSection')}>
+      <ListSection header={t('vehicle.intrusionSection')} badge={t('common.beta')}>
         <ListRow
           title={t('vehicle.monitoring')}
           subtitle={vehicle.break_in_monitoring_enabled ? t('vehicle.intrusionEnabledDescription') : t('vehicle.intrusionDisabledDescription')}
@@ -115,18 +114,25 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
           }
         />
         {vehicle.break_in_monitoring_enabled && vehicleCommandsAuthorized ? (
-          <ListRow
-            title={t('vehicle.offensive')}
-            subtitle={isBreakInOffensiveOn(vehicle) ? t('vehicle.offensiveEnabledDescription') : t('vehicle.offensiveDisabledDescription')}
-            accessory={
-              <AppSwitch
-                accessibilityLabel={t('vehicle.offensive')}
-                disabled={isActionRunning}
-                value={isBreakInOffensiveOn(vehicle)}
-                onValueChange={() => actionMutation.mutate(resolveNextOffensiveResponse(vehicle))}
-              />
-            }
-          />
+          <View style={styles.offensiveRow}>
+            <AppText variant={TextVariant.Body}>{t('vehicle.offensive')}</AppText>
+            <SegmentedControl
+              value={(vehicle.break_in_offensive_response as OffensiveResponse) ?? OffensiveResponse.Disabled}
+              onChange={(value) => actionMutation.mutate(value)}
+              options={[
+                { label: t('vehicle.offensiveDisabled'), value: OffensiveResponse.Disabled },
+                { label: t('vehicle.offensiveHonk'), value: OffensiveResponse.Honk },
+                { label: t('vehicle.offensiveFart'), value: OffensiveResponse.Fart },
+              ]}
+            />
+            <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
+              {vehicle.break_in_offensive_response === OffensiveResponse.Honk
+                ? t('vehicle.offensiveEnabledDescription')
+                : vehicle.break_in_offensive_response === OffensiveResponse.Fart
+                ? t('vehicle.offensiveFartEnabledDescription')
+                : t('vehicle.offensiveDisabledDescription')}
+            </AppText>
+          </View>
         ) : null}
       </ListSection>
 
@@ -170,6 +176,11 @@ const styles = StyleSheet.create({
   },
   lockedCard: {
     gap: spacing.md,
+  },
+  offensiveRow: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
   statusCard: {
     alignItems: 'center',

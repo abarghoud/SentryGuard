@@ -1,6 +1,7 @@
 export enum OffensiveResponse {
   Disabled = 'DISABLED',
   Honk = 'HONK',
+  Fart = 'FART',
 }
 
 export interface Vehicle {

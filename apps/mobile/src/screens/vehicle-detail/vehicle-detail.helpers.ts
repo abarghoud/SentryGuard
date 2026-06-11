@@ -4,16 +4,9 @@ import * as WebBrowser from 'expo-web-browser';
 
 import { tokenStore, virtualKeyStore } from '../../core/api';
 import { getTeslaScopeChangeUrlUseCase } from '../../features/auth/di';
-import { OffensiveResponse, Vehicle, VehicleActionResponse } from '../../features/vehicles/domain/entities';
+import { VehicleActionResponse } from '../../features/vehicles/domain/entities';
 import { TranslationFunction } from './vehicle-detail.types';
 
-export function isBreakInOffensiveOn(vehicle: Vehicle): boolean {
-  return vehicle.break_in_offensive_response === OffensiveResponse.Honk;
-}
-
-export function resolveNextOffensiveResponse(vehicle: Vehicle): OffensiveResponse {
-  return isBreakInOffensiveOn(vehicle) ? OffensiveResponse.Disabled : OffensiveResponse.Honk;
-}
 
 export function resolveSuccessfulResponse(response: VehicleActionResponse, t: TranslationFunction): VehicleActionResponse {
   if (response.success === false) {
