@@ -3,7 +3,7 @@ jest.mock('react-native', () => ({
 }));
 
 const mockRequireOptionalNativeModule = jest.fn();
-jest.mock('expo-modules-core', () => ({
+jest.mock('expo', () => ({
   requireOptionalNativeModule: (name: string) => mockRequireOptionalNativeModule(name),
 }));
 
