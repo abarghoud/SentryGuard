@@ -73,7 +73,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
           />
         }
       >
-        <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel} style={styles.paragraph}>
+        <AppText android_hyphenationFrequency="full" variant={TextVariant.Footnote} color={colors.secondaryLabel} style={styles.paragraph}>
           {consentTextQuery.data?.text ?? t('onboarding.consentUnavailable')}
         </AppText>
       </OnboardingFrame>

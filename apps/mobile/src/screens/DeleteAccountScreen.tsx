@@ -53,7 +53,7 @@ export function DeleteAccountScreen({ onLogout }: DeleteAccountScreenProps): JSX
     >
       <Surface style={styles.card}>
         <AppText variant={TextVariant.Title3}>{t('settings.deleteAccountTitle')}</AppText>
-        <AppText variant={TextVariant.Body} color={colors.secondaryLabel} style={styles.paragraph}>
+        <AppText android_hyphenationFrequency="full" variant={TextVariant.Body} color={colors.secondaryLabel} style={styles.paragraph}>
           {t('settings.deleteAccountConfirm')}
         </AppText>
         <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
