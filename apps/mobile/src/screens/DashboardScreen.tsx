@@ -17,11 +17,7 @@ import { VehicleCard } from './dashboard/components/VehicleCard';
 import { VirtualKeyBanner } from './dashboard/components/VirtualKeyBanner';
 import { openVirtualKey, resolveSubtitle } from './dashboard/dashboard.helpers';
 
-interface DashboardScreenProps {
-  isBetaTester?: boolean;
-}
-
-export function DashboardScreen({ isBetaTester = false }: DashboardScreenProps): JSX.Element {
+export function DashboardScreen(): JSX.Element {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const [virtualKeyMessage, setVirtualKeyMessage] = useState<string | null>(null);
@@ -43,7 +39,7 @@ export function DashboardScreen({ isBetaTester = false }: DashboardScreenProps):
           <View style={styles.titleBlock}>
             <AppText variant={TextVariant.LargeTitle}>{t('dashboard.title')}</AppText>
             <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
-              {resolveSubtitle(vehiclesQuery.data, isBetaTester, t)}
+              {resolveSubtitle(vehiclesQuery.data, t)}
             </AppText>
           </View>
 
@@ -58,7 +54,6 @@ export function DashboardScreen({ isBetaTester = false }: DashboardScreenProps):
       ListEmptyComponent={<EmptyState isLoading={vehiclesQuery.isLoading} error={vehiclesQuery.error} t={t} />}
       renderItem={({ item }) => (
         <VehicleCard
-          isBetaTester={isBetaTester}
           vehicle={item}
           onSelect={() => navigation.navigate('VehicleDetail', { vehicleId: item.vin })}
           t={t}

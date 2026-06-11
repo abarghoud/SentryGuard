@@ -9,18 +9,16 @@ import { Vehicle } from '../../../features/vehicles/domain/entities';
 import { TranslationFunction, isVehicleProtected } from '../dashboard.helpers';
 
 export function VehicleCard({
-  isBetaTester,
   onSelect,
   t,
   vehicle,
 }: {
-  isBetaTester: boolean;
   onSelect(): void;
   t: TranslationFunction;
   vehicle: Vehicle;
 }): JSX.Element {
   const colors = useThemeColors();
-  const isProtected = isVehicleProtected(vehicle, isBetaTester);
+  const isProtected = isVehicleProtected(vehicle);
   const badgeSurface = isProtected ? colors.successSurface : colors.fill;
   const badgeLabel = isProtected ? colors.systemGreen : colors.label;
 
@@ -47,12 +45,10 @@ export function VehicleCard({
               label={t('vehicle.alertSentry')}
               value={vehicle.sentry_mode_monitoring_enabled ? t('common.active') : t('common.inactive')}
             />
-            {isBetaTester ? (
-              <Metric
-                label={t('vehicle.alertIntrusion')}
-                value={vehicle.break_in_monitoring_enabled ? t('common.active') : t('common.inactive')}
-              />
-            ) : null}
+            <Metric
+              label={t('vehicle.alertIntrusion')}
+              value={vehicle.break_in_monitoring_enabled ? t('common.active') : t('common.inactive')}
+            />
           </View>
 
           <View style={styles.footer}>

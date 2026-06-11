@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { JSX } from 'react';
@@ -16,7 +15,6 @@ import { DeleteAccountScreen } from '../../screens/DeleteAccountScreen';
 import { SettingsScreen } from '../../screens/SettingsScreen';
 import { TelegramSettingsScreen } from '../../screens/TelegramSettingsScreen';
 import { VehicleDetailScreen } from '../../screens/VehicleDetailScreen';
-import { getAuthProfileUseCase } from '../../features/auth/di';
 
 const Tabs = createBottomTabNavigator<AppTabParamList>();
 const MainStack = createNativeStackNavigator<MainStackParamList>();
@@ -50,11 +48,6 @@ export function MainScreen({ onLogout }: { onLogout(): Promise<void> }): JSX.Ele
 function AppTabs({ onLogout }: { onLogout(): Promise<void> }): JSX.Element {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
-  const profileQuery = useQuery({
-    queryFn: () => getAuthProfileUseCase.execute(),
-    queryKey: ['auth-profile'],
-  });
-  const isBetaTester = profileQuery.data?.profile.isBetaTester === true;
 
   return (
     <Tabs.Navigator
@@ -73,7 +66,7 @@ function AppTabs({ onLogout }: { onLogout(): Promise<void> }): JSX.Element {
           tabBarIcon: ({ color, size }) => <Icon name="car.fill" color={color} size={size} />,
         }}
       >
-        {() => <DashboardScreen isBetaTester={isBetaTester} />}
+        {() => <DashboardScreen />}
       </Tabs.Screen>
       <Tabs.Screen
         name="Alerts"

@@ -25,7 +25,6 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
     actionMutation,
     feedback,
     isActionRunning,
-    isBetaTester,
     scopeMutation,
     setFeedback,
     t,
@@ -48,7 +47,7 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
     );
   }
 
-  const isProtected = vehicle.sentry_mode_monitoring_enabled || (isBetaTester && vehicle.break_in_monitoring_enabled);
+  const isProtected = vehicle.sentry_mode_monitoring_enabled || vehicle.break_in_monitoring_enabled;
   const statusSurface = isProtected ? colors.successFill : colors.fill;
   const statusGlyph = isProtected ? colors.onSuccess : colors.secondaryLabel;
 
@@ -102,38 +101,36 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
         />
       </ListSection>
 
-      {isBetaTester ? (
-        <ListSection header={t('vehicle.intrusionSection')} badge={t('common.beta')}>
+      <ListSection header={t('vehicle.intrusionSection')}>
+        <ListRow
+          title={t('vehicle.monitoring')}
+          subtitle={vehicle.break_in_monitoring_enabled ? t('vehicle.intrusionEnabledDescription') : t('vehicle.intrusionDisabledDescription')}
+          accessory={
+            <AppSwitch
+              accessibilityLabel={t('vehicle.alertIntrusion')}
+              disabled={isActionRunning}
+              value={vehicle.break_in_monitoring_enabled === true}
+              onValueChange={() => actionMutation.mutate(VehicleAction.ToggleBreakIn)}
+            />
+          }
+        />
+        {vehicle.break_in_monitoring_enabled && vehicleCommandsAuthorized ? (
           <ListRow
-            title={t('vehicle.monitoring')}
-            subtitle={vehicle.break_in_monitoring_enabled ? t('vehicle.intrusionEnabledDescription') : t('vehicle.intrusionDisabledDescription')}
+            title={t('vehicle.offensive')}
+            subtitle={isBreakInOffensiveOn(vehicle) ? t('vehicle.offensiveEnabledDescription') : t('vehicle.offensiveDisabledDescription')}
             accessory={
               <AppSwitch
-                accessibilityLabel={t('vehicle.alertIntrusion')}
+                accessibilityLabel={t('vehicle.offensive')}
                 disabled={isActionRunning}
-                value={vehicle.break_in_monitoring_enabled === true}
-                onValueChange={() => actionMutation.mutate(VehicleAction.ToggleBreakIn)}
+                value={isBreakInOffensiveOn(vehicle)}
+                onValueChange={() => actionMutation.mutate(resolveNextOffensiveResponse(vehicle))}
               />
             }
           />
-          {vehicle.break_in_monitoring_enabled && vehicleCommandsAuthorized ? (
-            <ListRow
-              title={t('vehicle.offensive')}
-              subtitle={isBreakInOffensiveOn(vehicle) ? t('vehicle.offensiveEnabledDescription') : t('vehicle.offensiveDisabledDescription')}
-              accessory={
-                <AppSwitch
-                  accessibilityLabel={t('vehicle.offensive')}
-                  disabled={isActionRunning}
-                  value={isBreakInOffensiveOn(vehicle)}
-                  onValueChange={() => actionMutation.mutate(resolveNextOffensiveResponse(vehicle))}
-                />
-              }
-            />
-          ) : null}
-        </ListSection>
-      ) : null}
+        ) : null}
+      </ListSection>
 
-      {isBetaTester && vehicle.break_in_monitoring_enabled && !vehicleCommandsAuthorized ? (
+      {vehicle.break_in_monitoring_enabled && !vehicleCommandsAuthorized ? (
         <Surface style={styles.lockedCard}>
           <AppText variant={TextVariant.Headline}>{t('vehicle.offensive')}</AppText>
           <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>

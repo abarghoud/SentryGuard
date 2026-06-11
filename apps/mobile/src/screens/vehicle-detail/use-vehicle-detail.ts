@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useHaptics } from '../../core/design/use-haptics';
-import { getAuthProfileUseCase, getVehicleCommandsAuthorizationUseCase } from '../../features/auth/di';
+import { getVehicleCommandsAuthorizationUseCase } from '../../features/auth/di';
 import { Vehicle, VehicleActionResponse } from '../../features/vehicles/domain/entities';
 import {
   configureTelemetryUseCase,
@@ -29,13 +29,7 @@ export function useVehicleDetail(vehicleId: string) {
     queryFn: () => getVehiclesUseCase.execute(),
     queryKey: ['vehicles'],
   });
-  const profileQuery = useQuery({
-    queryFn: () => getAuthProfileUseCase.execute(),
-    queryKey: ['auth-profile'],
-  });
-  const isBetaTester = profileQuery.data?.profile.isBetaTester === true;
   const vehicleCommandsQuery = useQuery({
-    enabled: isBetaTester,
     queryFn: () => getVehicleCommandsAuthorizationUseCase.execute(),
     queryKey: ['auth', 'vehicle-commands-authorized'],
     staleTime: 5 * 60 * 1000,
@@ -89,7 +83,6 @@ export function useVehicleDetail(vehicleId: string) {
     actionMutation,
     feedback,
     isActionRunning: actionMutation.isPending,
-    isBetaTester,
     scopeMutation,
     setFeedback,
     t,

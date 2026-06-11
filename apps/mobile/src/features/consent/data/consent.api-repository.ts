@@ -10,7 +10,7 @@ export class ConsentApiRepository implements ConsentRepositoryRequirements {
   }
 
   public async getConsentText(locale = 'fr'): Promise<ConsentTextResponse> {
-    return this.client.request<ConsentTextResponse>(`/consent/text?version=v1&locale=${locale}`);
+    return this.client.request<ConsentTextResponse>(`/consent/text?locale=${locale}`);
   }
 
   public async acceptConsent(consent: ConsentAcceptRequest): Promise<{ success: boolean }> {
