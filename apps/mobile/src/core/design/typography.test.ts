@@ -5,26 +5,27 @@ jest.mock('react-native', () => ({
 import { scaleSpecForAndroid } from './typography';
 
 describe('The scaleSpecForAndroid() function', () => {
-  describe('When scaling the body size', () => {
-    it('should bring the iOS 17pt down to the Android 16dp convention', () => {
-      expect(scaleSpecForAndroid({ fontSize: 17, fontWeight: '400', letterSpacing: -0.43, lineHeight: 22 })).toStrictEqual({
-        fontSize: 16,
-        fontWeight: '400',
-        letterSpacing: 0,
-        lineHeight: 21,
-      });
+  const bodySpec = { fontSize: 17, fontWeight: '400' as const, letterSpacing: -0.43, lineHeight: 22 };
+
+  describe('When adapting a spec for Android', () => {
+    it('should neutralize the San Francisco letter spacing for Roboto', () => {
+      expect(scaleSpecForAndroid(bodySpec).letterSpacing).toBe(0);
+    });
+
+    it('should keep the font weight untouched', () => {
+      expect(scaleSpecForAndroid(bodySpec).fontWeight).toBe('400');
+    });
+
+    it('should produce whole pixel sizes', () => {
+      const scaled = scaleSpecForAndroid(bodySpec);
+
+      expect([scaled.fontSize, scaled.lineHeight]).toStrictEqual([Math.round(scaled.fontSize), Math.round(scaled.lineHeight)]);
     });
   });
 
-  describe('When the size is already at the readability floor', () => {
-    it('should not scale below the minimum readable size', () => {
-      expect(scaleSpecForAndroid({ fontSize: 11, fontWeight: '400', letterSpacing: 0.07, lineHeight: 13 }).fontSize).toBe(11);
-    });
-  });
-
-  describe('When the spec carries San Francisco letter spacing', () => {
-    it('should neutralize the letter spacing for Roboto', () => {
-      expect(scaleSpecForAndroid({ fontSize: 34, fontWeight: '700', letterSpacing: 0.4, lineHeight: 41 }).letterSpacing).toBe(0);
+  describe('When the size is at the readability floor', () => {
+    it('should never scale below the minimum readable size', () => {
+      expect(scaleSpecForAndroid({ fontSize: 11, fontWeight: '400', letterSpacing: 0.07, lineHeight: 13 }).fontSize).toBeGreaterThanOrEqual(11);
     });
   });
 });

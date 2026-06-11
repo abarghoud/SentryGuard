@@ -7,7 +7,7 @@ import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleShee
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { radius, screenPadding, spacing } from '../core/design/metrics';
-import { TextVariant } from '../core/design/typography';
+import { TextVariant, textStyle } from '../core/design/typography';
 import { useThemeColors } from '../core/theme';
 import { AppText, GlassButton, GlassButtonVariant, Surface } from '../core/ui';
 import { apiUrlStore, virtualKeyStore } from '../core/api';
@@ -265,7 +265,7 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
       backgroundColor: colors.fill,
       borderRadius: radius.control,
       color: colors.label,
-      fontSize: 17,
+      fontSize: textStyle(TextVariant.Body).fontSize,
       padding: spacing.md,
     },
     logo: {

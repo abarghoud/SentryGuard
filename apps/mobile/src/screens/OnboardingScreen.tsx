@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { JSX } from 'react';
+import { StyleSheet } from 'react-native';
 
 import { TextVariant } from '../core/design/typography';
 import { useThemeColors } from '../core/theme';
@@ -72,7 +73,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
           />
         }
       >
-        <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
+        <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel} style={styles.paragraph}>
           {consentTextQuery.data?.text ?? t('onboarding.consentUnavailable')}
         </AppText>
       </OnboardingFrame>
@@ -185,3 +186,9 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
     />
   );
 }
+
+const styles = StyleSheet.create({
+  paragraph: {
+    textAlign: 'justify',
+  },
+});
