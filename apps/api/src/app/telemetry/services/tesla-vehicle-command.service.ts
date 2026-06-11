@@ -26,8 +26,8 @@ export class TeslaVehicleCommandService {
     return this.sendVehicleCommand(vin, userId, 'honk_horn');
   }
 
-  async remoteBoombox(vin: string, userId: string, action: number): Promise<TeslaCommandResponse> {
-    return this.sendVehicleCommand(vin, userId, 'remote_boombox', { action });
+  async remoteBoombox(vin: string, userId: string, sound: number): Promise<TeslaCommandResponse> {
+    return this.sendVehicleCommand(vin, userId, 'remote_boombox', { sound });
   }
 
   private async sendVehicleCommand(

@@ -83,7 +83,7 @@ describe('The TeslaVehicleCommandService class', () => {
         expect(result.success).toBe(true);
         expect((service as any).teslaApi.post).toHaveBeenCalledWith(
           '/api/1/vehicles/TESTVIN1234567890/command/remote_boombox',
-          { action: 0 },
+          { sound: 0 },
           expect.any(Object),
         );
       });
