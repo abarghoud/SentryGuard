@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Always run from the project root directory to ensure correct Docker context
+cd "$(dirname "$0")/.."
+
 IMAGE_NAME="abarghoud/sentryguard-vehicle-command"
 VERSION="${1:-latest}"
 PLATFORMS="linux/amd64,linux/arm64"
@@ -22,6 +25,7 @@ fi
 docker buildx build \
     --builder "${BUILDER_NAME}" \
     --platform "${PLATFORMS}" \
+    -f vehicle-command-proxy/Dockerfile \
     --tag "${IMAGE_NAME}:${VERSION}" \
     --push \
     .
