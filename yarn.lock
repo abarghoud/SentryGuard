@@ -9853,6 +9853,7 @@ __metadata:
     expo-glass-effect: "npm:~0.1.10"
     expo-haptics: "npm:~15.0.8"
     expo-linking: "npm:~8.0.8"
+    expo-localization: "npm:~17.0.9"
     expo-notifications: "npm:~0.32.17"
     expo-secure-store: "npm:~15.0.7"
     expo-splash-screen: "npm:~31.0.11"
@@ -16319,6 +16320,18 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 10c0/56894fc1b53f3e21c197b547615395a2aec75535128db231abcce6356e5c28a3eaeca130816ee77c9bb74fa8f2ac01c996b4219d6bb0641d74bc9eb6eb1fe3e1
+  languageName: node
+  linkType: hard
+
+"expo-localization@npm:~17.0.9":
+  version: 17.0.9
+  resolution: "expo-localization@npm:17.0.9"
+  dependencies:
+    rtl-detect: "npm:^1.0.2"
+  peerDependencies:
+    expo: "*"
+    react: "*"
+  checksum: 10c0/3b69dc16079ba0bd172cd51551eae251951b4e5de248ab82c056e47fea07acf905818c2e607515b7a281cb13db73cb1484d3e20f0605ba89b5b97bd6dca53ebc
   languageName: node
   linkType: hard
 
@@ -25801,6 +25814,13 @@ __metadata:
   version: 3.2.1
   resolution: "rsvp@npm:3.2.1"
   checksum: 10c0/7c075134976d0e95710ed62f87eaf01fa7dc1068357c9988f224e53509ac152ddeb1781cfd7784f13e2cc084c8dee71ad12317b758687b7ea107af2f8588704d
+  languageName: node
+  linkType: hard
+
+"rtl-detect@npm:^1.0.2":
+  version: 1.1.2
+  resolution: "rtl-detect@npm:1.1.2"
+  checksum: 10c0/1b92888aafca1593314f837e83fdf02eb208faae3e713ab87c176804728efd3b1980d53b64f65f1fa593348087e852c5cd729b7b9372950f6e9b7be489afc0ca
   languageName: node
   linkType: hard
 

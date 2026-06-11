@@ -34,12 +34,14 @@ export function MobileShell(): JSX.Element {
     queryKey: ['user-language'],
   });
 
+  const isOnboardingComplete = onboardingQuery.data?.isComplete === true;
+
   useEffect(() => {
     const language = languageQuery.data?.language;
-    if (language && i18n.language !== language) {
+    if (isOnboardingComplete && language && i18n.language !== language) {
       void i18n.changeLanguage(language);
     }
-  }, [i18n, languageQuery.data?.language]);
+  }, [i18n, isOnboardingComplete, languageQuery.data?.language]);
 
   if (!session.isReady || (session.token && onboardingQuery.isLoading)) {
     return (

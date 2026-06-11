@@ -1,14 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { usePushTokenSync } from '../../core/hooks/usePushTokenSync';
 import { useTelegramStatusSync } from '../../core/hooks/useTelegramStatusSync';
+import { resolveDeviceLanguage } from '../../core/i18n';
 import { acceptConsentUseCase, getConsentStatusUseCase, getConsentTextUseCase } from '../../features/consent/di';
 import { completeOnboardingUseCase, getOnboardingStatusUseCase, skipOnboardingUseCase } from '../../features/onboarding/di';
 import { getNotificationPreferencesUseCase } from '../../features/notifications/di';
 import { getTelegramStatusUseCase } from '../../features/telegram/di';
-import { getUserLanguageUseCase } from '../../features/user/di';
+import { getUserLanguageUseCase, updateUserLanguageUseCase } from '../../features/user/di';
 import { UserLanguage } from '../../features/user/domain/entities';
 import { configureTelemetryUseCase, getVehiclesUseCase } from '../../features/vehicles/di';
 import { registerDeviceForPush } from '../settings/settings.helpers';
@@ -20,8 +21,17 @@ export function useOnboarding(onComplete: () => void) {
   const { pushToken, setPushToken } = usePushTokenSync();
   useTelegramStatusSync();
 
+  const deviceLanguage = resolveDeviceLanguage() === 'fr' ? UserLanguage.French : UserLanguage.English;
+
+  useEffect(() => {
+    updateUserLanguageUseCase
+      .execute(deviceLanguage)
+      .then(() => queryClient.invalidateQueries({ queryKey: ['user-language'] }))
+      .catch(() => undefined);
+  }, [deviceLanguage, queryClient]);
+
   const languageQuery = useQuery({ queryFn: () => getUserLanguageUseCase.execute(), queryKey: ['user-language'] });
-  const selectedLanguage = languageQuery.data?.language ?? UserLanguage.French;
+  const selectedLanguage = languageQuery.data?.language ?? deviceLanguage;
   const consentStatusQuery = useQuery({ queryFn: () => getConsentStatusUseCase.execute(), queryKey: ['consent-status'] });
   const consentTextQuery = useQuery({
     queryFn: () => getConsentTextUseCase.execute(selectedLanguage),
