@@ -1,4 +1,5 @@
-import { NativeModules, Platform } from 'react-native';
+import { requireOptionalNativeModule } from 'expo-modules-core';
+import { Platform } from 'react-native';
 
 interface DndAccessNativeModule {
   ensureCriticalNotificationChannel(channelId: string, channelName: string): Promise<boolean>;
@@ -11,8 +12,7 @@ export interface DndPolicyAccessRequirements {
 }
 
 export class DndPolicyAccess implements DndPolicyAccessRequirements {
-  private readonly nativeModule = (NativeModules as { SentryGuardDndAccess?: DndAccessNativeModule })
-    .SentryGuardDndAccess;
+  private readonly nativeModule = requireOptionalNativeModule<DndAccessNativeModule>('SentryGuardDndAccess');
 
   public async isNotificationPolicyAccessGranted(): Promise<boolean> {
     if (Platform.OS !== 'android') {
