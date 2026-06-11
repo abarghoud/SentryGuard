@@ -13,6 +13,7 @@ import { AlertsScreen } from '../../screens/AlertsScreen';
 import { DashboardScreen } from '../../screens/DashboardScreen';
 import { DeleteAccountScreen } from '../../screens/DeleteAccountScreen';
 import { SettingsScreen } from '../../screens/SettingsScreen';
+import { TelegramSettingsScreen } from '../../screens/TelegramSettingsScreen';
 import { VehicleDetailScreen } from '../../screens/VehicleDetailScreen';
 import { getAuthProfileUseCase } from '../../features/auth/di';
 
@@ -37,6 +38,7 @@ export function MainScreen({ onLogout }: { onLogout(): Promise<void> }): JSX.Ele
         {() => <AppTabs onLogout={onLogout} />}
       </MainStack.Screen>
       <MainStack.Screen name="VehicleDetail" component={VehicleDetailScreen} options={{ headerShown: true, presentation: 'card' }} />
+      <MainStack.Screen name="TelegramSettings" component={TelegramSettingsScreen} options={{ headerShown: true, presentation: 'card' }} />
       <MainStack.Screen name="DeleteAccount" options={{ headerShown: true, presentation: 'card' }}>
         {() => <DeleteAccountScreen onLogout={onLogout} />}
       </MainStack.Screen>

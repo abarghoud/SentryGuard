@@ -11,7 +11,7 @@ import { MainStackParamList } from '../core/navigation';
 import { ThemeMode, useTheme } from '../core/theme';
 import { AppSwitch, AppText, GlassButton, GlassButtonVariant, ListRow, ListSection, SegmentedControl, Surface } from '../core/ui';
 import { UserLanguage } from '../features/user/domain/entities';
-import { TelegramConfigBlock } from '../features/telegram/presentation/components/TelegramConfigBlock';
+import { resolveTelegramStatusKey } from './telegram-settings/telegram-settings.helpers';
 import {
   openAndroidDoNotDisturbAccessSettings,
   openDonation,
@@ -31,6 +31,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
   const topInset = useScreenTopInset();
   const {
     isDndAccessModalOpen,
+    isTelegramLinked,
     languageMutation,
     languageQuery,
     preferenceMessage,
@@ -40,12 +41,6 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
     profile,
     setIsDndAccessModalOpen,
     updatePreference,
-    telegramStatus,
-    telegramLinkInfo,
-    generateTelegramLink,
-    unlinkTelegram,
-    sendTelegramTest,
-    refreshTelegramStatus,
   } = useSettings();
 
   const isBusy = preferencesMutation.isPending;
@@ -138,14 +133,26 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         />
       </ListSection>
 
-      <TelegramConfigBlock
-        status={telegramStatus}
-        linkInfo={telegramLinkInfo}
-        onGenerateLink={generateTelegramLink}
-        onUnlink={unlinkTelegram}
-        onSendTest={sendTelegramTest}
-        onRefresh={refreshTelegramStatus}
-      />
+      <ListSection header={t('settings.telegramSection')} footer={isTelegramLinked ? undefined : t('settings.telegramConnectSubtitle')}>
+        <ListRow
+          title={t('settings.telegramAccount')}
+          value={t(resolveTelegramStatusKey(isTelegramLinked))}
+          showChevron
+          onPress={() => navigation.navigate('TelegramSettings')}
+        />
+        {isTelegramLinked ? (
+          <ListRow
+            title={t('settings.notifications')}
+            accessory={
+              <AppSwitch
+                disabled={isBusy}
+                value={preferences.telegram_enabled}
+                onValueChange={(value) => void updatePreference({ telegram_enabled: value })}
+              />
+            }
+          />
+        ) : null}
+      </ListSection>
 
       <ListSection header={t('settings.supportSection')} footer={t('settings.supportFooter')}>
         <ListRow

@@ -14,6 +14,7 @@ export type RootStackParamList = {
 export type MainStackParamList = {
   DeleteAccount: undefined;
   Tabs: undefined;
+  TelegramSettings: undefined;
   VehicleDetail: { vehicleId: string };
 };
 
