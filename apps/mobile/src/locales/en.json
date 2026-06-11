@@ -178,6 +178,8 @@
   "settings.deleteAccountTitle": "Delete account",
   "settings.deleteAccountConfirm": "This permanently deletes your account and all associated data. This action cannot be undone.",
   "settings.deleteAccountCta": "Delete",
+  "settings.deleteAccountCountdown": "Delete ({{seconds}}s)",
+  "settings.deleteAccountCooldownHint": "The delete button unlocks after a few seconds, so you have time to read this warning.",
   "common.or": "or",
   "telegram.title": "Telegram Configuration",
   "telegram.linked": "Linked",

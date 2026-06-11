@@ -1,3 +1,5 @@
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ScrollView, StyleSheet, View } from 'react-native';
@@ -5,13 +7,12 @@ import { Modal, ScrollView, StyleSheet, View } from 'react-native';
 import { radius, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
 import { useScreenTopInset } from '../core/design/use-screen-inset';
+import { MainStackParamList } from '../core/navigation';
 import { ThemeMode, useTheme } from '../core/theme';
 import { AppSwitch, AppText, GlassButton, GlassButtonVariant, ListRow, ListSection, SegmentedControl, Surface } from '../core/ui';
-import { revokeConsentUseCase } from '../features/consent/di';
 import { UserLanguage } from '../features/user/domain/entities';
 import { TelegramConfigBlock } from '../features/telegram/presentation/components/TelegramConfigBlock';
 import {
-  confirmAccountDeletion,
   openAndroidDoNotDisturbAccessSettings,
   openDonation,
   openPrivacyPolicy,
@@ -50,14 +51,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
   const isBusy = preferencesMutation.isPending;
   const language = languageQuery.data?.language ?? UserLanguage.French;
 
-  const handleDeleteAccount = (): void => {
-    confirmAccountDeletion(() => {
-      void (async (): Promise<void> => {
-        await revokeConsentUseCase.execute();
-        await onLogout();
-      })();
-    }, t);
-  };
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const statusMessage =
     preferenceMessage ??
     (preferencesQuery.error || preferencesMutation.error || languageQuery.error || languageMutation.error
@@ -166,6 +160,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
       <ListSection header={t('settings.legalSection')}>
         <ListRow title={t('settings.privacyPolicy')} showChevron onPress={() => void openPrivacyPolicy(i18n.language)} />
         <ListRow title={t('settings.terms')} showChevron onPress={() => void openTermsOfService(i18n.language)} />
+        <ListRow title={t('settings.deleteAccount')} showChevron onPress={() => navigation.navigate('DeleteAccount')} />
       </ListSection>
 
       <GlassButton
@@ -175,14 +170,6 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         icon="rectangle.portrait.and.arrow.right"
         onPress={() => void onLogout()}
         style={styles.logout}
-      />
-
-      <GlassButton
-        label={t('settings.deleteAccount')}
-        variant={GlassButtonVariant.Plain}
-        destructive
-        onPress={handleDeleteAccount}
-        style={styles.delete}
       />
 
       <Modal animationType="fade" onRequestClose={() => setIsDndAccessModalOpen(false)} transparent visible={isDndAccessModalOpen}>
@@ -207,9 +194,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl * 2,
     paddingHorizontal: screenPadding,
     paddingTop: spacing.sm,
-  },
-  delete: {
-    marginTop: -spacing.md,
   },
   logout: {
     marginTop: spacing.sm,

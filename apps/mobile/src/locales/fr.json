@@ -178,6 +178,8 @@
   "settings.deleteAccountTitle": "Supprimer le compte",
   "settings.deleteAccountConfirm": "Ceci supprime définitivement votre compte et toutes les données associées. Cette action est irréversible.",
   "settings.deleteAccountCta": "Supprimer",
+  "settings.deleteAccountCountdown": "Supprimer ({{seconds}}s)",
+  "settings.deleteAccountCooldownHint": "Le bouton de suppression se débloque après quelques secondes, le temps de lire cet avertissement.",
   "common.or": "ou",
   "telegram.title": "Configuration Telegram",
   "telegram.linked": "Lié",

@@ -12,6 +12,7 @@ export type RootStackParamList = {
 };
 
 export type MainStackParamList = {
+  DeleteAccount: undefined;
   Tabs: undefined;
   VehicleDetail: { vehicleId: string };
 };
