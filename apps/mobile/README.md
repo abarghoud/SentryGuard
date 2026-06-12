@@ -382,6 +382,16 @@ yarn eas credentials
 - **Android**: EAS manages credentials. Push goes through FCM via Expo.
 - **iOS**: Requires an Apple Developer account. Push goes through APNs via Expo.
 
+### Export Compliance & Encryption (iOS)
+
+When submitting to the App Store Connect, Apple asks about the encryption algorithms used in the app. SentryGuard only uses:
+- Standard HTTPS/TLS for network requests (managed by iOS).
+- Native Keychain storage via `expo-secure-store` (managed by iOS).
+
+Because it only relies on the standard encryption built into Apple's OS, it qualifies for the **"Aucun des algorithmes mentionnés ci-dessus"** (None of the above) option, and does not require export compliance documentation.
+
+To automate this and bypass the questionnaire on every submission, the property `"ITSAppUsesNonExemptEncryption": false` has been added to `ios.infoPlist` in [app.json](file:///Users/abarghoud-merci/WebstormProjects/TeslaGuard/apps/mobile/app.json).
+
 ### Builds
 
 ```bash
@@ -392,6 +402,43 @@ yarn eas build --profile preview --platform ios
 yarn eas build --profile production --platform android
 yarn eas build --profile production --platform ios
 ```
+
+### Submitting to Stores (TestFlight & Google Play Console)
+
+To compile and automatically submit your build to the stores, you can use either the `--auto-submit` flag (which uses the submit profile of the same name as the build profile) or `--auto-submit-with-profile <profile>`:
+
+#### For Testing / QA (iOS TestFlight & Android Internal Testing Track)
+```bash
+# Build and automatically submit to TestFlight (iOS)
+yarn eas build --platform ios --profile production --auto-submit
+
+# Build and automatically submit to Android Internal Testing (using preview submit profile)
+yarn eas build --platform android --profile production --auto-submit-with-profile preview
+```
+
+#### For Public Release (App Store & Google Play Store Production)
+```bash
+# Submit to App Store (requires App Store Connect validation)
+yarn eas build --platform ios --profile production --auto-submit
+
+# Build and automatically submit to Android Production Track
+yarn eas build --platform android --profile production --auto-submit
+```
+
+Alternatively, to submit a previously compiled build:
+
+```bash
+# Submit an existing build to TestFlight (iOS)
+yarn eas submit --platform ios --profile production
+
+# Submit an existing build to Android Internal Testing
+yarn eas submit --platform android --profile preview
+
+# Submit an existing build to Android Production
+yarn eas submit --platform android --profile production
+```
+
+The submission destination (e.g. TestFlight for iOS, Internal vs Production track for Android) is configured in the `"submit"` section of your `eas.json`.
 
 ## Hidden Advanced Settings
 
