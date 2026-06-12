@@ -35,6 +35,10 @@ export class AlertsService {
     await this.alertEventRepository.delete({ userId });
   }
 
+  public async deleteForUser(userId: string, alertId: string): Promise<void> {
+    await this.alertEventRepository.delete({ id: alertId, userId });
+  }
+
   public async record(
     userId: string,
     vin: string,

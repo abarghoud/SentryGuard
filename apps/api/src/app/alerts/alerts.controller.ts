@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Param, ParseUUIDPipe, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -22,6 +22,16 @@ export class AlertsController {
   @Delete()
   public async clearAlerts(@CurrentUser() user: User): Promise<{ success: boolean }> {
     await this.alertsService.clearForUser(user.userId);
+    return { success: true };
+  }
+
+  @Throttle(ThrottleOptions.authenticatedWrite())
+  @Delete(':id')
+  public async deleteAlert(
+    @CurrentUser() user: User,
+    @Param('id', ParseUUIDPipe) alertId: string
+  ): Promise<{ success: boolean }> {
+    await this.alertsService.deleteForUser(user.userId, alertId);
     return { success: true };
   }
 }

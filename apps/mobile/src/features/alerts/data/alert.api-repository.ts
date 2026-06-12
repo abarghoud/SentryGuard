@@ -12,4 +12,8 @@ export class AlertApiRepository implements AlertRepositoryRequirements {
   public async clearAlerts(): Promise<{ success: boolean }> {
     return this.client.request<{ success: boolean }>('/alerts', { method: 'DELETE' });
   }
+
+  public async deleteAlert(alertId: string): Promise<{ success: boolean }> {
+    return this.client.request<{ success: boolean }>(`/alerts/${alertId}`, { method: 'DELETE' });
+  }
 }

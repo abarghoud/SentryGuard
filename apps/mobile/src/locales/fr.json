@@ -1,6 +1,10 @@
 {
   "alerts.empty": "Aucune alerte pour le moment.",
   "alerts.clear": "Effacer",
+  "alerts.clearConfirmTitle": "Tout effacer ?",
+  "alerts.clearConfirmMessage": "{{count}} alerte(s) seront définitivement supprimées.",
+  "alerts.delete": "Supprimer",
+  "alerts.unread": "Alerte non lue",
   "alerts.error": "Impossible de charger les alertes.",
   "alerts.event.break_in.message": "Une tentative d’intrusion a été détectée.",
   "alerts.event.break_in.title": "Alerte intrusion",

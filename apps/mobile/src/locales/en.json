@@ -1,6 +1,10 @@
 {
   "alerts.empty": "No alerts yet.",
   "alerts.clear": "Clear",
+  "alerts.clearConfirmTitle": "Clear all alerts?",
+  "alerts.clearConfirmMessage": "{{count}} alert(s) will be permanently deleted.",
+  "alerts.delete": "Delete",
+  "alerts.unread": "Unread alert",
   "alerts.error": "Unable to load alerts.",
   "alerts.event.break_in.message": "A break-in attempt was detected.",
   "alerts.event.break_in.title": "Intrusion alert",

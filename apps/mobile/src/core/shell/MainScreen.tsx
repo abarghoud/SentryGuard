@@ -1,5 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useQuery } from '@tanstack/react-query';
 import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
@@ -9,6 +10,9 @@ import { AppTabParamList, MainStackParamList } from '../navigation';
 import { useTheme } from '../theme';
 import { GlassBackground } from '../ui';
 import { Icon } from '../ui/Icon';
+import { getAlertsUseCase } from '../../features/alerts/di';
+import { countUnreadAlerts } from '../../screens/alerts/alerts.helpers';
+import { useAlertsSeen } from '../../screens/alerts/use-alerts-seen';
 import { AlertsScreen } from '../../screens/AlertsScreen';
 import { DashboardScreen } from '../../screens/DashboardScreen';
 import { DeleteAccountScreen } from '../../screens/DeleteAccountScreen';
@@ -48,6 +52,13 @@ export function MainScreen({ onLogout }: { onLogout(): Promise<void> }): JSX.Ele
 function AppTabs({ onLogout }: { onLogout(): Promise<void> }): JSX.Element {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
+  const { lastSeenAt } = useAlertsSeen();
+  const alertsQuery = useQuery({
+    queryFn: () => getAlertsUseCase.execute(),
+    queryKey: ['alerts'],
+    refetchInterval: 30000,
+  });
+  const unreadAlertCount = countUnreadAlerts(alertsQuery.data ?? [], lastSeenAt);
 
   return (
     <Tabs.Navigator
@@ -73,6 +84,8 @@ function AppTabs({ onLogout }: { onLogout(): Promise<void> }): JSX.Element {
         component={AlertsScreen}
         options={{
           title: t('tabs.alerts'),
+          tabBarBadge: unreadAlertCount > 0 ? unreadAlertCount : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.criticalFill, color: colors.onCritical },
           tabBarIcon: ({ color, size }) => <Icon name="bell.fill" color={color} size={size} />,
         }}
       />

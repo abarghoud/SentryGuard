@@ -1,5 +1,9 @@
+import { Alert, Platform } from 'react-native';
+
 import { ThemeColors } from '../../core/theme';
 import { AlertEvent, AlertEventSeverity } from '../../features/alerts/domain/entities';
+
+type TranslationFunction = (key: string, options?: Record<string, unknown>) => string;
 
 export enum AlertFilter {
   All = 'all',
@@ -59,4 +63,31 @@ export function resolveAlertTitleKey(alert: AlertEvent): string {
 
 export function resolveAlertMessageKey(alert: AlertEvent): string {
   return `alerts.event.${alert.type}.message`;
+}
+
+export function isAlertUnread(alert: AlertEvent, lastSeenAt: string | null): boolean {
+  if (!lastSeenAt) {
+    return true;
+  }
+
+  return new Date(alert.created_at).getTime() > new Date(lastSeenAt).getTime();
+}
+
+export function countUnreadAlerts(alerts: AlertEvent[], lastSeenAt: string | null): number {
+  return alerts.filter((alert) => isAlertUnread(alert, lastSeenAt)).length;
+}
+
+export function confirmClearAlerts(alertCount: number, onConfirm: () => void, t: TranslationFunction): void {
+  if (Platform.OS === 'web') {
+    if (globalThis.confirm(t('alerts.clearConfirmMessage', { count: alertCount }))) {
+      onConfirm();
+    }
+
+    return;
+  }
+
+  Alert.alert(t('alerts.clearConfirmTitle'), t('alerts.clearConfirmMessage', { count: alertCount }), [
+    { text: t('common.cancel'), style: 'cancel' },
+    { text: t('alerts.clear'), style: 'destructive', onPress: onConfirm },
+  ]);
 }

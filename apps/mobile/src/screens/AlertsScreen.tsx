@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect } from '@react-navigation/native';
 import type { JSX } from 'react';
 import { useCallback, useMemo, useState } from 'react';
@@ -7,29 +7,32 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-n
 
 import { screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
+import { useHaptics } from '../core/design/use-haptics';
 import { useScreenTopInset } from '../core/design/use-screen-inset';
 import { useThemeColors } from '../core/theme';
-import { AppText, Icon, SegmentedControl, Surface } from '../core/ui';
-import { clearAlertsUseCase, getAlertsUseCase } from '../features/alerts/di';
+import { AppText, SegmentedControl, Surface } from '../core/ui';
+import { clearAlertsUseCase, deleteAlertUseCase, getAlertsUseCase } from '../features/alerts/di';
+import { AlertEvent } from '../features/alerts/domain/entities';
+import { AlertCard } from './alerts/components/AlertCard';
 import {
   AlertFilter,
+  confirmClearAlerts,
   filterAlerts,
-  formatAlertDate,
+  isAlertUnread,
   resolveAlertError,
-  resolveAlertIcon,
-  resolveAlertMessageKey,
-  resolveAlertTitleKey,
-  resolveAlertTone,
   resolveFilterLabelKey,
 } from './alerts/alerts.helpers';
+import { useAlertsSeen } from './alerts/use-alerts-seen';
 
 export function AlertsScreen(): JSX.Element {
   const { i18n, t } = useTranslation();
   const queryClient = useQueryClient();
+  const haptics = useHaptics();
   const [activeFilter, setActiveFilter] = useState(AlertFilter.All);
   const [isClearingAlerts, setIsClearingAlerts] = useState(false);
   const colors = useThemeColors();
   const topInset = useScreenTopInset();
+  const { lastSeenAt, markAlertsSeen } = useAlertsSeen();
   const alertsQuery = useQuery({
     queryFn: () => getAlertsUseCase.execute(),
     queryKey: ['alerts'],
@@ -43,8 +46,33 @@ export function AlertsScreen(): JSX.Element {
   useFocusEffect(
     useCallback(() => {
       void refetchAlerts();
-    }, [refetchAlerts])
+      return () => {
+        void markAlertsSeen();
+      };
+    }, [markAlertsSeen, refetchAlerts])
   );
+
+  const deleteAlertMutation = useMutation({
+    mutationFn: (alertId: string) => deleteAlertUseCase.execute(alertId),
+    onMutate: async (alertId) => {
+      await queryClient.cancelQueries({ queryKey: ['alerts'] });
+      const previous = queryClient.getQueryData<AlertEvent[]>(['alerts']);
+      queryClient.setQueryData<AlertEvent[]>(['alerts'], (current) => (current ?? []).filter((alert) => alert.id !== alertId));
+      return { previous };
+    },
+    onError: (_error, _alertId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['alerts'], context.previous);
+      }
+      haptics.error();
+    },
+    onSuccess: () => {
+      haptics.success();
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['alerts'] });
+    },
+  });
 
   const clearAlerts = async (): Promise<void> => {
     setIsClearingAlerts(true);
@@ -55,6 +83,10 @@ export function AlertsScreen(): JSX.Element {
     } finally {
       setIsClearingAlerts(false);
     }
+  };
+
+  const onClearPress = (): void => {
+    confirmClearAlerts(alerts.length, () => void clearAlerts(), t);
   };
 
   const isEmpty = !alertsQuery.isLoading && !alertsQuery.error && filteredAlerts.length === 0;
@@ -72,7 +104,7 @@ export function AlertsScreen(): JSX.Element {
           accessibilityRole="button"
           disabled={!hasClearableAlerts || isClearingAlerts}
           hitSlop={10}
-          onPress={() => void clearAlerts()}
+          onPress={onClearPress}
         >
           <AppText variant={TextVariant.Body} color={hasClearableAlerts && !isClearingAlerts ? colors.accent : colors.tertiaryLabel}>
             {t('alerts.clear')}
@@ -91,33 +123,16 @@ export function AlertsScreen(): JSX.Element {
       {isEmpty ? <StateCard text={t('alerts.empty')} /> : null}
 
       <View style={styles.list}>
-        {filteredAlerts.map((item) => {
-          const tone = resolveAlertTone(item, colors);
-
-          return (
-            <Surface key={item.id} style={styles.card}>
-              <View style={[styles.iconWrap, { backgroundColor: tone.background }]}>
-                <Icon name={resolveAlertIcon(item)} size={18} color={tone.icon} />
-              </View>
-              <View style={styles.cardText}>
-                <View style={styles.cardHeader}>
-                  <AppText variant={TextVariant.Headline} style={styles.cardTitle}>
-                    {t(resolveAlertTitleKey(item))}
-                  </AppText>
-                  <AppText variant={TextVariant.Caption1} color={colors.secondaryLabel}>
-                    {formatAlertDate(item.created_at, i18n.language)}
-                  </AppText>
-                </View>
-                <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
-                  {t(resolveAlertMessageKey(item))}
-                </AppText>
-                <AppText variant={TextVariant.Caption1} color={colors.secondaryLabel}>
-                  {item.vehicle_display_name ?? item.vin}
-                </AppText>
-              </View>
-            </Surface>
-          );
-        })}
+        {filteredAlerts.map((item) => (
+          <AlertCard
+            key={item.id}
+            alert={item}
+            isUnread={isAlertUnread(item, lastSeenAt)}
+            language={i18n.language}
+            onDelete={() => deleteAlertMutation.mutate(item.id)}
+            t={t}
+          />
+        ))}
       </View>
     </ScrollView>
   );
@@ -136,35 +151,11 @@ function StateCard({ text }: { text: string }): JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  cardHeader: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: spacing.sm,
-    justifyContent: 'space-between',
-  },
-  cardText: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  cardTitle: {
-    flex: 1,
-  },
   content: {
     gap: spacing.lg,
     paddingBottom: spacing.xxl * 3,
     paddingHorizontal: screenPadding,
     paddingTop: spacing.sm,
-  },
-  iconWrap: {
-    alignItems: 'center',
-    borderRadius: 10,
-    height: 36,
-    justifyContent: 'center',
-    width: 36,
   },
   list: {
     gap: spacing.md,
