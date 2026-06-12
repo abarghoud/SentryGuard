@@ -8,7 +8,7 @@ WebBrowser.maybeCompleteAuthSession();
 import { screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
 import { useThemeColors } from '../core/theme';
-import { AppSwitch, AppText, GlassButton, GlassButtonVariant, Icon, ListRow, ListSection, SegmentedControl, Surface } from '../core/ui';
+import { AppSwitch, AppText, GlassButton, GlassButtonVariant, Icon, ListRow, ListSection, SegmentedControl, Surface, VinMask } from '../core/ui';
 import {
   confirmTelemetryDeletion,
   openVirtualKey,
@@ -62,9 +62,7 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
         </View>
         <View style={styles.statusText}>
           <AppText variant={TextVariant.Headline}>{isProtected ? t('common.protected') : t('common.toConfigure')}</AppText>
-          <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
-            {vehicle.vin}
-          </AppText>
+          <VinMask vin={vehicle.vin} />
         </View>
       </Surface>
 

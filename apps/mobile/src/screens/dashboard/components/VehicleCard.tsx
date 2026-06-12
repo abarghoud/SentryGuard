@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { spacing } from '../../../core/design/metrics';
 import { TextVariant } from '../../../core/design/typography';
 import { useThemeColors } from '../../../core/theme';
-import { AppText, Icon, Surface } from '../../../core/ui';
+import { AppText, Icon, Surface, VinMask } from '../../../core/ui';
 import { Vehicle } from '../../../features/vehicles/domain/entities';
 import { TranslationFunction, isVehicleProtected } from '../dashboard.helpers';
 
@@ -29,9 +29,7 @@ export function VehicleCard({
           <View style={styles.header}>
             <View style={styles.titleBlock}>
               <AppText variant={TextVariant.Headline}>{vehicle.display_name ?? vehicle.model ?? t('common.vehicleFallback')}</AppText>
-              <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
-                {vehicle.vin}
-              </AppText>
+              <VinMask vin={vehicle.vin} />
             </View>
             <View style={[styles.badge, { backgroundColor: badgeSurface }]}>
               <AppText variant={TextVariant.Caption1} color={badgeLabel} style={styles.badgeText}>
