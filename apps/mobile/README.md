@@ -10,7 +10,9 @@ React Native app (Expo SDK 54) for iOS and Android that lets Tesla owners monito
 - **Dashboard** — vehicle list, monitored/unprotected counters, virtual key banner, vehicle detail
 - **Vehicle detail** — enable/disable Sentry alert, enable/disable intrusion alert (beta), horn offensive response (requires `vehicle_cmds` scope), virtual key pairing, telemetry deletion with confirmation
 - **Alerts** — paginated alert history with All / Critical / Warning filters
-- **Settings** — profile display, theme switcher (light/dark), language switcher (FR/EN synced with `/user/language`), push/Telegram/critical-only notification toggles, in-app Telegram linking, logout
+- **Settings** — profile display, theme switcher (light/dark), language switcher (FR/EN synced with `/user/language`), push/Telegram/critical-only notification toggles, navigate to Telegram settings, navigate to delete account, logout
+- **Telegram Settings** — dedicated screen for Telegram bot status, deep-linking, and sending test messages
+- **Delete Account** — self-service user account deletion with a confirmation cooldown step
 - **Push notifications** — native Expo push with `sentryguard-alerts` Android channel, foreground display, device token registration
 - **Hidden advanced settings** — tap "SentryGuard" 5 times on the login screen to reveal custom API URL and virtual key URL fields
 - **i18n** — French (default) and English, synced with the API
@@ -45,38 +47,46 @@ apps/mobile/
 ├── tsconfig.app.json
 └── src/
     ├── core/
+    │   ├── api/                     # requestApi<T>, token-store, api-url-store
+    │   ├── config/                  # app domain configs & virtual key store
+    │   ├── design/                  # typography, metrics & haptics
+    │   ├── hooks/                   # sync hooks (Telegram status, push token)
+    │   ├── session/                 # useSession hook for JWT loading/storage
+    │   ├── shell/                   # MainScreen (tab pager) & navigation theme
+    │   ├── storage/                 # SecureStorage abstraction
+    │   ├── ui/                      # reusable UI components (Surface, GlassButton, index.ts, etc.)
     │   ├── App.tsx                  # QueryClientProvider, ThemeProvider, init flow
     │   ├── MobileShell.tsx          # Auth/onboarding/main routing, tab pager, back handler
-    │   ├── navigation.ts           # AppTab enum, RootStackParamList types
-    │   ├── theme.tsx               # ThemeProvider, useTheme, ThemeMode, ThemeColors
-    │   ├── theme-storage.ts        # SecureStore/localStorage persistence for theme
-    │   └── i18n.ts                 # i18next init (fallback: fr)
-    ├── screens/
-    │   ├── AuthScreen.tsx          # Tesla OAuth + hidden advanced settings
-    │   ├── OnboardingScreen.tsx    # Step-by-step onboarding flow
-    │   ├── DashboardScreen.tsx     # Vehicle list, virtual key banner, summary tiles
-    │   ├── VehicleDetailScreen.tsx # Sentry/intrusion/offensive toggles, key pairing
-    │   ├── AlertsScreen.tsx        # Alert history with severity filters
-    │   └── SettingsScreen.tsx      # Profile, theme, language, notifications, logout
-    ├── services/
-    │   ├── api/
-    │   │   ├── api-client.ts       # requestApi<T>, ApiError, JWT refresh, URL config
-    │   │   ├── api-url-storage.ts  # SecureStore/localStorage for API URL + virtual key URL
-    │   │   ├── token-state.ts      # In-memory access token + subscriber pattern
-    │   │   ├── auth-api.ts         # getTeslaLoginUrl, getTeslaScopeChangeUrl, getAuthProfile
-    │   │   ├── alerts-api.ts       # getAlerts
-    │   │   ├── consent-api.ts      # getConsentStatus, getConsentText, acceptConsent
-    │   │   ├── notifications-api.ts # getNotificationPreferences, updateNotificationPreferences, registerPushToken
-    │   │   ├── onboarding-api.ts  # getOnboardingStatus, completeOnboarding, skipOnboarding
-    │   │   ├── telegram-api.ts    # getTelegramStatus, generateTelegramLink, sendTelegramTestMessage
-    │   │   ├── user-language-api.ts # getUserLanguage, updateUserLanguage
-    │   │   ├── vehicles-api.ts    # getVehicles, configureTelemetry, deleteTelemetryConfig, toggleBreakInMonitoring, updateOffensiveResponse
-    │   │   └── virtual-key.ts     # resolveVirtualKeyUrl, getCustomVirtualKeyPairingUrl, initializeVirtualKeyPairingUrl
-    │   ├── notifications/
-    │   │   └── push-notifications.ts # configurePushNotifications, requestExpoPushToken
-    │   └── session/
-    │       ├── useSession.ts       # React hook: load/store/clear JWT, isReady state
-    │       └── token-storage.ts   # SecureStore/localStorage for JWT
+    │   ├── navigation.ts            # AppTab enum, RootStackParamList types
+    │   ├── theme.tsx                # ThemeProvider, useTheme, ThemeMode, ThemeColors
+    │   └── i18n.ts                  # i18next init (fallback: fr)
+    ├── features/                    # Domain features (Clean Architecture: data/domain/use-cases/di)
+    │   ├── alerts/                  # Alerts seen storage, alert api-repository
+    │   ├── auth/                    # Auth repository & use cases
+    │   ├── consent/                 # Consent repository & use cases
+    │   ├── notifications/           # Push notification service, dnd-policy-access, notification repository
+    │   ├── onboarding/              # Onboarding status, onboarding api-repository
+    │   ├── telegram/                # Telegram bot link helpers, telegram repository
+    │   ├── user/                    # User preferences and user api-repository
+    │   └── vehicles/                # Telemetry configuration, vehicle api-repository
+    ├── screens/                     # App screens (with helper modules & hooks)
+    │   ├── alerts/                  # AlertsScreen helpers, hooks, AlertCard component
+    │   ├── auth/                    # AuthScreen helpers
+    │   ├── consent/                 # ConsentScreen helpers, hooks
+    │   ├── dashboard/               # DashboardScreen components (VehicleCard, VirtualKeyBanner, EmptyState)
+    │   ├── delete-account/          # DeleteAccountScreen helpers, cooldown hooks
+    │   ├── onboarding/              # OnboardingScreen components (StepList, NotificationStep, OnboardingFrame)
+    │   ├── settings/                # SettingsScreen helpers, hooks
+    │   ├── telegram-settings/       # TelegramSettingsScreen helpers, hooks
+    │   ├── vehicle-detail/          # VehicleDetailScreen helpers, hooks, types
+    │   ├── AuthScreen.tsx           # Authentication screen
+    │   ├── AlertsScreen.tsx         # Alerts history screen
+    │   ├── ConsentScreen.tsx        # Terms and conditions consent screen
+    │   ├── DashboardScreen.tsx      # Main dashboard screen
+    │   ├── DeleteAccountScreen.tsx  # User account deletion screen
+    │   ├── OnboardingScreen.tsx     # Step-by-step onboarding screen
+    │   ├── SettingsScreen.tsx       # App settings screen
+    │   └── TelegramSettingsScreen.tsx # Telegram integration settings screen
     └── locales/
         ├── en.json
         └── fr.json
@@ -161,9 +171,9 @@ If undefined and no custom URL is set in the hidden advanced settings, the virtu
 
 ### API Client
 
-`requestApi<T>(endpoint, options)` in `api-client.ts`:
+`requestApi<T>(endpoint, options)` in [api-client.ts](file:///Users/abarghoud-merci/WebstormProjects/TeslaGuard/apps/mobile/src/core/api/api-client.ts):
 
-1. Reads the in-memory access token from `token-state.ts`
+1. Reads the in-memory access token from [token-store.ts](file:///Users/abarghoud-merci/WebstormProjects/TeslaGuard/apps/mobile/src/core/api/token-store.ts)
 2. Prepends the configured API URL to the endpoint
 3. Attaches `Authorization: Bearer <token>` when present
 4. On `401`: attempts `/auth/refresh-session`; on success stores the new JWT and replays the original request; on failure clears the session
@@ -178,7 +188,7 @@ Refresh → POST /auth/refresh-session → stores new JWT → updates in-memory 
 Logout → removes stored JWT → clears in-memory token → resets React state
 ```
 
-`token-state.ts` exposes a subscriber pattern (`subscribeAccessToken`) so `useSession` stays in sync with refresh operations from `api-client.ts`.
+`token-store.ts` exposes a subscriber pattern (`subscribe`) so `useSession` stays in sync with refresh operations from `api-client.ts`.
 
 ### Platform-Conditional Storage
 
@@ -458,28 +468,30 @@ Storage: SecureStore (native) or localStorage (web).
 | `/auth/tesla/login` | GET | AuthScreen |
 | `/auth/tesla/scope-change` | GET | VehicleDetailScreen |
 | `/auth/refresh-session` | POST | api-client (automatic on 401) |
-| `/auth/profile` | GET | MobileShell, Settings, VehicleDetail |
-| `/auth/vehicle-commands-authorized` | GET | VehicleDetail |
-| `/user/language` | GET | MobileShell, Settings |
-| `/user/language` | PATCH | Settings |
-| `/consent/current` | GET | OnboardingScreen |
-| `/consent/text` | GET | OnboardingScreen |
-| `/consent/accept` | POST | OnboardingScreen |
-| `/onboarding/status` | GET | MobileShell, OnboardingScreen |
+| `/auth/profile` | GET | MobileShell, SettingsScreen, VehicleDetailScreen |
+| `/auth/vehicle-commands-authorized` | GET | VehicleDetailScreen |
+| `/user/language` | GET | MobileShell, SettingsScreen |
+| `/user/language` | PATCH | SettingsScreen |
+| `/consent/current` | GET | ConsentScreen |
+| `/consent/text` | GET | ConsentScreen |
+| `/consent/accept` | POST | ConsentScreen |
+| `/consent/revoke` | POST | DeleteAccountScreen |
+| `/onboarding/status` | GET | MobileShell |
 | `/onboarding/complete` | POST | OnboardingScreen |
 | `/onboarding/skip` | POST | OnboardingScreen |
-| `/telegram/status` | GET | SettingsScreen |
-| `/telegram/generate-link` | POST | SettingsScreen |
-| `/telegram/test-message` | POST | — (available in repo, no caller) |
-| `/telemetry-config/vehicles` | GET | Dashboard, VehicleDetail, Onboarding |
-| `/telemetry-config/configure/:vin` | POST | VehicleDetail, Onboarding |
-| `/telemetry-config/:vin` | DELETE | VehicleDetail |
-| `/telemetry-config/break-in-monitoring/:vin/:action` | POST | VehicleDetail |
-| `/offensive-response/:vin` | PATCH | VehicleDetail |
+| `/telegram/status` | GET | SettingsScreen, TelegramSettingsScreen |
+| `/telegram/generate-link` | POST | TelegramSettingsScreen |
+| `/telegram/test-message` | POST | TelegramSettingsScreen |
+| `/telegram/unlink` | DELETE | TelegramSettingsScreen |
+| `/telemetry-config/vehicles` | GET | DashboardScreen, VehicleDetailScreen, OnboardingScreen |
+| `/telemetry-config/configure/:vin` | POST | VehicleDetailScreen, OnboardingScreen |
+| `/telemetry-config/:vin` | DELETE | VehicleDetailScreen |
+| `/telemetry-config/break-in-monitoring/:vin/:action` | POST | VehicleDetailScreen |
+| `/offensive-response/:vin` | PATCH | VehicleDetailScreen |
 | `/alerts` | GET | AlertsScreen |
-| `/notifications/preferences` | GET | Settings |
-| `/notifications/preferences` | POST | Settings |
-| `/notifications/push-token` | POST | Settings |
+| `/notifications/preferences` | GET | SettingsScreen |
+| `/notifications/preferences` | POST | SettingsScreen |
+| `/notifications/push-token` | POST | settings/use-settings.ts (sync) |
 
 ## CORS in Development
 
