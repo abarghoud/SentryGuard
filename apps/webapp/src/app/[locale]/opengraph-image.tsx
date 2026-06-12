@@ -33,10 +33,7 @@ export default async function OpengraphImage({ params }: OgImageProps) {
   };
 
   const logoBuffer = fs.readFileSync(resolveLogoPath());
-  const logoArrayBuffer = logoBuffer.buffer.slice(
-    logoBuffer.byteOffset,
-    logoBuffer.byteOffset + logoBuffer.byteLength
-  );
+  const logoSrc = `data:image/png;base64,${logoBuffer.toString('base64')}`;
 
   return new ImageResponse(
     (
@@ -55,7 +52,7 @@ export default async function OpengraphImage({ params }: OgImageProps) {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
           <img
-            src={logoArrayBuffer}
+            src={logoSrc}
             alt="SentryGuard Logo"
             width={104}
             height={104}
