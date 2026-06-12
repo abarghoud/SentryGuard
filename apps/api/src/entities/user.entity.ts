@@ -20,12 +20,6 @@ export class User {
   @Column({ type: 'varchar', length: 255, nullable: true })
   full_name?: string;
 
-  @Column({ type: 'text', nullable: true })
-  jwt_token?: string | null;
-
-  @Column({ type: 'timestamp', nullable: true })
-  jwt_expires_at?: Date | null;
-
   @Column({ type: 'text' })
   access_token!: string;
 

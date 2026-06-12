@@ -90,8 +90,6 @@ export class UserRegistrationService {
     user.refresh_token = encryptedRefreshToken;
     user.expires_at = tokens.expiresAt;
     user.full_name = profile?.full_name;
-    user.jwt_token = null;
-    user.jwt_expires_at = null;
 
     const userId = user.userId;
     user.token_revoked_at = null;
@@ -133,8 +131,6 @@ export class UserRegistrationService {
       access_token: encryptedAccessToken,
       refresh_token: encryptedRefreshToken,
       expires_at: tokens.expiresAt,
-      jwt_token: null,
-      jwt_expires_at: null,
       preferred_language: userLocale,
       token_revoked_at: null,
       refresh_token_updated_at: now,

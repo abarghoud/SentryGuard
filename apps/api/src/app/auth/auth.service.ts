@@ -155,8 +155,6 @@ export class AuthService {
       return;
     }
 
-    user.jwt_token = null;
-    user.jwt_expires_at = null;
     user.token_revoked_at = new Date();
 
     await this.userRepository.save(user);
