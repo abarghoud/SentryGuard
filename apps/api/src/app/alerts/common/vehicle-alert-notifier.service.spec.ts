@@ -159,5 +159,77 @@ describe('The VehicleAlertNotifierService class', () => {
       expect(telemetryMessage.calculateEndToEndLatency).toHaveBeenCalled();
       expect(telemetryMessage.isProcessingDelayed).toHaveBeenCalled();
     });
+
+    describe('When executing with multiple users', () => {
+      beforeEach(() => {
+        mockVehicleRepository.find.mockResolvedValue([
+          { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
+          { userId: 'user-2', display_name: 'My Tesla' } as Vehicle,
+        ]);
+        mockUserLanguageService.getUserLanguage.mockImplementation(async (userId) => {
+          return userId === 'user-1' ? 'en' : 'fr';
+        });
+      });
+
+      it('should record the alert for each user in the alerts service', async () => {
+        await service.dispatch(config);
+
+        expect(mockAlertsService.record).toHaveBeenCalledTimes(2);
+        expect(mockAlertsService.record).toHaveBeenCalledWith(
+          'user-1',
+          'TEST_VIN_123',
+          AlertEventType.BreakIn,
+          AlertEventSeverity.Critical,
+          'My Tesla'
+        );
+        expect(mockAlertsService.record).toHaveBeenCalledWith(
+          'user-2',
+          'TEST_VIN_123',
+          AlertEventType.BreakIn,
+          AlertEventSeverity.Critical,
+          'My Tesla'
+        );
+      });
+
+      it('should trigger push notifications for each user', async () => {
+        await service.dispatch(config);
+
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledTimes(2);
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
+          'user-1',
+          AlertEventSeverity.Critical,
+          AlertEventType.BreakIn,
+          'en'
+        );
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
+          'user-2',
+          AlertEventSeverity.Critical,
+          AlertEventType.BreakIn,
+          'fr'
+        );
+      });
+    });
+
+    describe('When telegram notifications are disabled in preferences', () => {
+      beforeEach(() => {
+        mockVehicleRepository.find.mockResolvedValue([
+          { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
+        ]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+        mockNotificationsService.shouldSendTelegram.mockResolvedValue(false);
+      });
+
+      it('should not notify via Telegram but still send push alert', async () => {
+        await service.dispatch(config);
+
+        expect(mockTelegramNotifier).not.toHaveBeenCalled();
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
+          'user-1',
+          AlertEventSeverity.Critical,
+          AlertEventType.BreakIn,
+          'en'
+        );
+      });
+    });
   });
 });
