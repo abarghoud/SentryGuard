@@ -63,20 +63,21 @@ export class TelegramBotService implements OnModuleInit {
     this.bot?.help(handler);
   }
 
-  async getBotUsername(): Promise<string | null> {
+  async getBotUsername(): Promise<string> {
+    const fallbackUsername = process.env.TELEGRAM_BOT_USERNAME || 'SentryGuard_Bot';
     if (!this.bot) {
-      return process.env.TELEGRAM_BOT_USERNAME || null;
+      return fallbackUsername;
     }
 
     try {
       const botProfile = await this.bot.telegram.getMe();
-      return botProfile.username || null;
+      return botProfile.username || fallbackUsername;
     } catch (error) {
       this.logger.error(
         '❌ Error while trying to get bot username:',
         error
       );
-      return process.env.TELEGRAM_BOT_USERNAME || null;
+      return fallbackUsername;
     }
   }
 

@@ -95,7 +95,8 @@ export class OnboardingService {
     const user = await this.userRepository.findOne({
       where: { userId },
       relations: {
-        telegramConfig: true
+        telegramConfig: true,
+        pushDeviceTokens: true,
       },
     });
 
@@ -111,14 +112,20 @@ export class OnboardingService {
     const isTelegramLinked =
       user.telegramConfig?.status === TelegramLinkStatus.LINKED;
 
+    const hasPushToken =
+      user.pushDeviceTokens &&
+      user.pushDeviceTokens.some((token) => token.push_enabled === true);
+
     const vehiclesWithStatus = await this.telemetryConfigService.getVehicles(userId);
     const isVirtualKeyPaired = vehiclesWithStatus.some((vehicle) => vehicle.key_paired);
     const isTelemetryEnabled =
       vehiclesWithStatus.some((vehicle) => vehicle.sentry_mode_monitoring_enabled) ||
       vehiclesWithStatus.some((vehicle) => vehicle.break_in_monitoring_enabled);
 
-    if (!isTelegramLinked) {
-      throw new BadRequestException('Telegram account not linked');
+    if (!isTelegramLinked && !hasPushToken) {
+      throw new BadRequestException(
+        'Either Telegram account must be linked or push notifications configured'
+      );
     }
 
     if (!isVirtualKeyPaired) {

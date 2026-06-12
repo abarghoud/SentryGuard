@@ -1,0 +1,33 @@
+{
+  "cli": {
+    "version": ">= 18.1.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "corepack": true,
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "corepack": true,
+      "distribution": "internal"
+    },
+    "production": {
+      "corepack": true,
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "preview": {
+      "android": {
+        "track": "internal"
+      }
+    },
+    "production": {
+      "android": {
+        "track": "production"
+      }
+    }
+  }
+}

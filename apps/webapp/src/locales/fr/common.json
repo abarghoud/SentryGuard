@@ -432,5 +432,7 @@
   "Receive alerts on Telegram when an intrusion is detected": "Recevez des alertes sur Telegram lors de la détection d'une intrusion",
   "Enable Sentry Mode Monitoring": "Activer la surveillance du mode Sentinelle",
   "Activate Sentry Mode Monitoring": "Activer la surveillance du mode Sentinelle",
-  "✅ Security monitoring enabled! Your setup is complete.": "✅ Surveillance de sécurité activée ! Votre configuration est terminée."
+  "✅ Security monitoring enabled! Your setup is complete.": "✅ Surveillance de sécurité activée ! Votre configuration est terminée.",
+  "Privacy Policy": "Politique de confidentialité",
+  "Terms of Service": "Conditions d’utilisation"
 }

@@ -111,5 +111,8 @@
       }
     }
   },
-  "nxCloudId": "6911048fa1e2b655df0106cd"
+  "nxCloudId": "6911048fa1e2b655df0106cd",
+  "sync": {
+    "applyChanges": true
+  }
 }

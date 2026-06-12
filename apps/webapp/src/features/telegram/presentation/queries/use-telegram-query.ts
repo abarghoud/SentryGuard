@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { TelegramStatus, TelegramLinkInfo } from '../../domain/entities';
 import {
+  TelegramStatus,
+  TelegramLinkInfo,
   GenerateTelegramLinkRequirements,
   GetTelegramStatusRequirements,
   UnlinkTelegramRequirements,
   SendTestMessageRequirements,
-} from '../../domain/use-cases/telegram.use-cases.requirements';
+} from '@sentryguard/telegram-domain';
 import { hasToken } from '../../../../core/api/token-manager';
 import { useState, useCallback, useEffect } from 'react';
 

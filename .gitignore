@@ -54,6 +54,17 @@ test-output
 .next
 out
 
+# Expo local state
+.expo
+apps/*/.expo
+apps/mobile/ios/
+apps/mobile/android/
+
+
+# Local native build outputs
+*.apk
+*.aab
+
 # Environment variables
 .env
 .env.local
@@ -70,6 +81,7 @@ error.log
 *.pem
 *.key
 *.cert
+apps/mobile/google-services.json
 
 # Fleet Telemetry certs (generated, never commit)
 fleet-telemetry/certs/

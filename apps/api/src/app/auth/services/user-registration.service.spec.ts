@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { JwtService } from '@nestjs/jwt';
 import { UserRegistrationService } from './user-registration.service';
 import { User } from '../../../entities/user.entity';
 import type { WaitlistServiceRequirements } from '../../waitlist/interfaces/waitlist-service.requirements';
@@ -28,10 +27,6 @@ describe('The UserRegistrationService class', () => {
     save: jest.fn(),
   };
 
-  const mockJwtService = {
-    signAsync: jest.fn(),
-  };
-
   beforeEach(async () => {
     mockWaitlistService = mock<WaitlistServiceRequirements>();
     mockWaitlistService.isApproved.mockResolvedValue(true);
@@ -43,10 +38,6 @@ describe('The UserRegistrationService class', () => {
         {
           provide: getRepositoryToken(User),
           useValue: mockUserRepository,
-        },
-        {
-          provide: JwtService,
-          useValue: mockJwtService,
         },
         {
           provide: waitlistServiceRequirementsSymbol,
@@ -70,7 +61,6 @@ describe('The UserRegistrationService class', () => {
     });
 
     mockedEncrypt.mockReturnValue('encrypted-value');
-    mockJwtService.signAsync.mockResolvedValue('new-jwt-token');
   });
 
   describe('The createOrUpdateUser() method', () => {
@@ -188,11 +178,7 @@ describe('The UserRegistrationService class', () => {
       });
 
       it('should add the user to the waitlist with locale', async () => {
-        try {
-          await act();
-        } catch {
-          // expected
-        }
+        await act().catch(() => undefined);
 
         expect(mockWaitlistService.addToWaitlist).toHaveBeenCalledWith(
           'waitlisted@tesla.com',

@@ -1,5 +1,9 @@
-import { TelegramRepositoryRequirements } from '../domain/telegram.repository.requirements';
-import { TelegramLinkInfo, TelegramStatus, TelegramActionResponse } from '../domain/entities';
+import {
+  TelegramRepositoryRequirements,
+  TelegramLinkInfo,
+  TelegramStatus,
+  TelegramActionResponse,
+} from '@sentryguard/telegram-domain';
 import { ApiClientRequirements } from '../../../core/api/api-client';
 
 export class TelegramApiRepository implements TelegramRepositoryRequirements {

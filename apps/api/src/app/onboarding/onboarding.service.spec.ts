@@ -100,7 +100,7 @@ describe('The OnboardingService class', () => {
   });
 
   describe('The completeOnboarding() method', () => {
-    describe('When all conditions are met', () => {
+    describe('When all conditions are met with Telegram linked', () => {
       const fakeUser = {
         userId: fakeUserId,
         onboarding_completed: false,
@@ -108,6 +108,50 @@ describe('The OnboardingService class', () => {
         telegramConfig: {
           status: TelegramLinkStatus.LINKED,
         } as TelegramConfig,
+        pushDeviceTokens: [],
+      } as User;
+
+      const fakeVehiclesWithStatus = [
+        {
+          vin: 'VIN123',
+          key_paired: true,
+          sentry_mode_monitoring_enabled: true,
+        },
+      ];
+
+      let result: any;
+
+      beforeEach(async () => {
+        mockUserRepository.findOne.mockResolvedValue(fakeUser);
+        mockTelemetryConfigService.getVehicles.mockResolvedValue(fakeVehiclesWithStatus as any);
+        mockUserRepository.update.mockResolvedValue(undefined as any);
+
+        result = await service.completeOnboarding(fakeUserId);
+      });
+
+      it('should update user onboarding status', () => {
+        expect(mockUserRepository.update).toHaveBeenCalledWith(fakeUserId, {
+          onboarding_completed: true,
+          onboarding_skipped: false,
+        });
+      });
+
+      it('should return success response', () => {
+        expect(result).toStrictEqual({ success: true });
+      });
+    });
+
+    describe('When all conditions are met with Push notifications enabled', () => {
+      const fakeUser = {
+        userId: fakeUserId,
+        onboarding_completed: false,
+        onboarding_skipped: false,
+        telegramConfig: null,
+        pushDeviceTokens: [
+          {
+            push_enabled: true,
+          },
+        ],
       } as User;
 
       const fakeVehiclesWithStatus = [
@@ -164,15 +208,16 @@ describe('The OnboardingService class', () => {
       });
     });
 
-    describe('When telegram is not linked', () => {
+    describe('When neither Telegram nor Push notifications are configured', () => {
       const fakeUser = {
         userId: fakeUserId,
         onboarding_completed: false,
         onboarding_skipped: false,
         telegramConfig: null,
+        pushDeviceTokens: [],
       } as User;
 
-      const expectedError = 'Telegram account not linked';
+      const expectedError = 'Either Telegram account must be linked or push notifications configured';
       let act: () => Promise<void>;
 
       beforeEach(() => {
@@ -200,6 +245,7 @@ describe('The OnboardingService class', () => {
         telegramConfig: {
           status: TelegramLinkStatus.LINKED,
         } as TelegramConfig,
+        pushDeviceTokens: [],
       } as User;
 
       const expectedError = 'Virtual key not paired';
@@ -230,6 +276,7 @@ describe('The OnboardingService class', () => {
         telegramConfig: {
           status: TelegramLinkStatus.LINKED,
         } as TelegramConfig,
+        pushDeviceTokens: [],
       } as User;
 
       const fakeVehiclesWithStatus = [

@@ -1,0 +1,77 @@
+{
+  "name": "mobile",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/mobile/src",
+  "projectType": "application",
+  "tags": ["scope:mobile", "type:app"],
+  "targets": {
+    "start": {
+      "executor": "@nx/expo:start",
+      "dependsOn": ["sync-deps"],
+      "options": {
+        "port": 8081
+      }
+    },
+    "serve": {
+      "executor": "@nx/expo:serve",
+      "dependsOn": ["sync-deps"],
+      "options": {
+        "port": 3002
+      }
+    },
+    "run-ios": {
+      "executor": "@nx/expo:run",
+      "dependsOn": ["sync-deps"],
+      "options": {
+        "platform": "ios"
+      }
+    },
+    "run-android": {
+      "executor": "@nx/expo:run",
+      "dependsOn": ["sync-deps"],
+      "options": {
+        "platform": "android"
+      }
+    },
+    "build": {
+      "executor": "@nx/expo:build",
+      "dependsOn": ["sync-deps"],
+      "options": {}
+    },
+    "export": {
+      "executor": "@nx/expo:export",
+      "dependsOn": ["sync-deps"],
+      "outputs": ["{options.outputDir}"],
+      "options": {
+        "platform": "all",
+        "outputDir": "apps/mobile/dist"
+      }
+    },
+    "prebuild": {
+      "executor": "@nx/expo:prebuild",
+      "dependsOn": ["sync-deps"],
+      "options": {}
+    },
+    "install": {
+      "executor": "@nx/expo:install",
+      "options": {}
+    },
+    "sync-deps": {
+      "executor": "@nx/expo:sync-deps",
+      "options": {}
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --project apps/mobile/tsconfig.app.json --noEmit"
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/apps/mobile"],
+      "options": {
+        "jestConfig": "apps/mobile/jest.config.js"
+      }
+    }
+  }
+}

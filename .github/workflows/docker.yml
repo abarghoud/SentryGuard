@@ -10,36 +10,40 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ${{ matrix.platform.runner }}
     permissions:
       contents: read
       packages: write
 
     strategy:
+      fail-fast: false
       matrix:
-        include:
-          - app: api
+        app:
+          - name: api
             dockerfile: apps/api/Dockerfile
-            image_suffix: api
-          - app: webapp
+          - name: webapp
             dockerfile: apps/webapp/Dockerfile
-            image_suffix: webapp
-          - app: fleet-telemetry
+          - name: fleet-telemetry
             dockerfile: fleet-telemetry/Dockerfile
-            image_suffix: fleet-telemetry
-          - app: vehicle-command
+          - name: vehicle-command
             dockerfile: vehicle-command-proxy/Dockerfile
-            image_suffix: vehicle-command
+        platform:
+          - docker: linux/amd64
+            runner: ubuntu-latest
+            slug: amd64
+          - docker: linux/arm64
+            runner: ubuntu-24.04-arm
+            slug: arm64
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Enable Corepack
-        if: matrix.app == 'api' || matrix.app == 'webapp'
-        run: corepack enable
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      - name: Resolve image name
+        id: image
+        run: echo "name=${IMAGE_NAME,,}" >> "$GITHUB_OUTPUT"
+        env:
+          IMAGE_NAME: ${{ env.REGISTRY }}/${{ github.repository }}-${{ matrix.app.name }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -55,20 +59,90 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository }}-${{ matrix.image_suffix }}
+          images: ${{ steps.image.outputs.name }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.app.dockerfile }}
+          platforms: ${{ matrix.platform.docker }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ steps.image.outputs.name }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.app.name }}-${{ matrix.platform.slug }}
+          cache-to: type=gha,scope=${{ matrix.app.name }}-${{ matrix.platform.slug }},mode=max
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.app.name }}-${{ matrix.platform.slug }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - api
+          - webapp
+          - fleet-telemetry
+          - vehicle-command
+
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-${{ matrix.app }}-*
+          merge-multiple: true
+
+      - name: Resolve image name
+        id: image
+        run: echo "name=${IMAGE_NAME,,}" >> "$GITHUB_OUTPUT"
+        env:
+          IMAGE_NAME: ${{ env.REGISTRY }}/${{ github.repository }}-${{ matrix.app }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.name }}
           tags: |
             type=sha,prefix=
             type=ref,event=branch
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ${{ matrix.dockerfile }}
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ steps.image.outputs.name }}@sha256:%s ' *)
+
+      - name: Inspect image
+        run: docker buildx imagetools inspect ${{ steps.image.outputs.name }}:${{ steps.meta.outputs.version }}

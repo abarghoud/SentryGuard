@@ -20,6 +20,7 @@ import {
 } from '../interfaces/oauth-provider.requirements';
 
 interface StatePayload {
+  mobileRedirectUri?: string;
   type: 'oauth_state';
   userLocale: 'en' | 'fr';
   nonce: string;
@@ -61,14 +62,15 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
   }
 
   generateLoginUrl(
-    userLocale: 'en' | 'fr' = 'en'
+    userLocale: 'en' | 'fr' = 'en',
+    mobileRedirectUri?: string
   ): { url: string; state: string } {
     const clientId = process.env.TESLA_CLIENT_ID;
     if (!clientId) {
       throw new Error('TESLA_CLIENT_ID not defined');
     }
 
-    const state = this.createSignedState(userLocale);
+    const state = this.createSignedState(userLocale, mobileRedirectUri);
 
     const params = new URLSearchParams({
       client_id: clientId,
@@ -89,14 +91,15 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
 
   generateScopeChangeUrl(
     userLocale: 'en' | 'fr' = 'en',
-    missingScopes?: TeslaScopes[]
+    missingScopes?: TeslaScopes[],
+    mobileRedirectUri?: string
   ): { url: string; state: string } {
     const clientId = process.env.TESLA_CLIENT_ID;
     if (!clientId) {
       throw new Error('TESLA_CLIENT_ID not defined');
     }
 
-    const state = this.createSignedState(userLocale);
+    const state = this.createSignedState(userLocale, mobileRedirectUri);
 
     const baseScopes = [
       TeslaScopes.OPENID,
@@ -132,14 +135,14 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
     code: string,
     state: string
   ): Promise<OAuthAuthenticationResult> {
-    const userLocale = this.validateOAuthState(state);
+    const validatedState = this.validateOAuthState(state);
     const tokens = await this.exchangeCodeForTokens(code);
     const profile = await this.fetchUserProfile(tokens.access_token);
 
-    return { tokens, profile, userLocale };
+    return { tokens, profile, userLocale: validatedState.userLocale, mobileRedirectUri: validatedState.mobileRedirectUri };
   }
 
-  private validateOAuthState(state: string): 'en' | 'fr' {
+  private validateOAuthState(state: string): { mobileRedirectUri?: string; userLocale: 'en' | 'fr' } {
     try {
       const secret = process.env.JWT_OAUTH_STATE_SECRET;
 
@@ -152,7 +155,10 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
         throw new UnauthorizedException('Invalid or expired state');
       }
 
-      return decoded.userLocale || 'en';
+      return {
+        mobileRedirectUri: this.resolveMobileRedirectUri(decoded.mobileRedirectUri),
+        userLocale: decoded.userLocale || 'en',
+      };
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         throw error;
@@ -255,8 +261,9 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
     }
   }
 
-  private createSignedState(userLocale: 'en' | 'fr'): string {
+  private createSignedState(userLocale: 'en' | 'fr', mobileRedirectUri?: string): string {
     const payload: StatePayload = {
+      mobileRedirectUri: this.resolveMobileRedirectUri(mobileRedirectUri),
       type: 'oauth_state',
       userLocale,
       nonce: crypto.randomBytes(16).toString('hex'),
@@ -268,5 +275,21 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
       expiresIn: '5m',
       secret,
     });
+  }
+
+  private resolveMobileRedirectUri(mobileRedirectUri?: string): string | undefined {
+    if (!mobileRedirectUri) {
+      return undefined;
+    }
+
+    if (mobileRedirectUri.startsWith('sentryguard://') || mobileRedirectUri.startsWith('exp://')) {
+      return mobileRedirectUri;
+    }
+
+    if (/^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?\//.test(mobileRedirectUri)) {
+      return mobileRedirectUri;
+    }
+
+    return undefined;
   }
 }

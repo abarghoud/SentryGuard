@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { And, Or, Repository, IsNull, LessThanOrEqual, MoreThan, DataSource, EntityManager } from 'typeorm';
 import axios from 'axios';
 import { User } from '../../../entities/user.entity';
+import { UserSession } from '../../../entities/user-session.entity';
 import { encrypt, decrypt } from '../../../common/utils/crypto.util';
 
 export const REFRESH_TOKEN_LIFETIME_DAYS = 90;
@@ -165,8 +166,9 @@ export class TeslaTokenRefreshService {
   private async invalidateUserTokens(manager: EntityManager, userId: string): Promise<void> {
     await manager.update(User, { userId }, {
       token_revoked_at: new Date(),
-      jwt_token: null,
-      jwt_expires_at: null,
+    });
+    await manager.update(UserSession, { userId, revoked_at: IsNull() }, {
+      revoked_at: new Date(),
     });
   }
 

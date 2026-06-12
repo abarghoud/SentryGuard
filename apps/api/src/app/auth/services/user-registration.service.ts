@@ -1,7 +1,6 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
 import { User } from '../../../entities/user.entity';
 import { encrypt } from '../../../common/utils/crypto.util';
@@ -16,14 +15,11 @@ import {
 
 @Injectable()
 export class UserRegistrationService {
-  private static readonly DEFAULT_JWT_EXPIRY_IN_DAYS = 30;
-
   private readonly logger = new Logger(UserRegistrationService.name);
 
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private readonly jwtService: JwtService,
     @Inject(waitlistServiceRequirementsSymbol)
     private readonly waitlistService: WaitlistServiceRequirements
   ) {}
@@ -96,10 +92,6 @@ export class UserRegistrationService {
     user.full_name = profile?.full_name;
 
     const userId = user.userId;
-
-    const jwtData = await this.generateJwtToken(userId, user.email || '');
-    user.jwt_token = jwtData.token;
-    user.jwt_expires_at = tokens.expiresAt;
     user.token_revoked_at = null;
 
     const now = new Date();
@@ -113,9 +105,6 @@ export class UserRegistrationService {
     await this.userRepository.save(user);
 
     this.logger.log(`User updated in database: ${userId}`);
-    this.logger.log(
-      `JWT token generated, expires at: ${jwtData.expiresAt.toISOString()}`
-    );
 
     return userId;
   }
@@ -128,11 +117,6 @@ export class UserRegistrationService {
     userLocale: 'en' | 'fr'
   ): Promise<string> {
     const userId = crypto.randomBytes(16).toString('hex');
-
-    const jwtData = await this.generateJwtToken(
-      userId,
-      profile?.email || ''
-    );
 
     const now = new Date();
     const refreshTokenExpiresAt = new Date(now);
@@ -147,8 +131,6 @@ export class UserRegistrationService {
       access_token: encryptedAccessToken,
       refresh_token: encryptedRefreshToken,
       expires_at: tokens.expiresAt,
-      jwt_token: jwtData.token,
-      jwt_expires_at: tokens.expiresAt,
       preferred_language: userLocale,
       token_revoked_at: null,
       refresh_token_updated_at: now,
@@ -160,47 +142,7 @@ export class UserRegistrationService {
     this.logger.log(
       `New user created in database: ${userId} with locale: ${userLocale}`
     );
-    this.logger.log(
-      `JWT token generated, expires at: ${jwtData.expiresAt.toISOString()}`
-    );
 
     return userId;
-  }
-
-  private async generateJwtToken(
-    userId: string,
-    email: string
-  ): Promise<{ token: string; expiresAt: Date }> {
-    const payload = {
-      sub: userId,
-      email: email,
-    };
-
-    const token = await this.jwtService.signAsync(payload);
-
-    const expiresIn = process.env.JWT_EXPIRATION || '30d';
-    const expiresAt = new Date();
-
-    const match = expiresIn.match(/^(\d+)([dhm])$/);
-    if (match) {
-      const value = parseInt(match[1]);
-      const unit = match[2];
-
-      switch (unit) {
-        case 'd':
-          expiresAt.setDate(expiresAt.getDate() + value);
-          break;
-        case 'h':
-          expiresAt.setHours(expiresAt.getHours() + value);
-          break;
-        case 'm':
-          expiresAt.setMinutes(expiresAt.getMinutes() + value);
-          break;
-      }
-    } else {
-      expiresAt.setDate(expiresAt.getDate() + UserRegistrationService.DEFAULT_JWT_EXPIRY_IN_DAYS);
-    }
-
-    return { token, expiresAt };
   }
 }

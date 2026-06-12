@@ -59,6 +59,9 @@ This is an Nx monorepo containing:
 
 - **`apps/api`** - NestJS backend API with TypeORM + PostgreSQL
 - **`apps/webapp`** - Next.js 15 frontend with App Router (SEO-optimized)
+- **`apps/mobile`** - Expo / React Native mobile app for iOS, Android and Expo Web
+
+Mobile documentation: [apps/mobile/README.md](apps/mobile/README.md)
 
 ### Tech Stack
 

@@ -230,7 +230,7 @@ describe('TelemetryConfigService', () => {
       );
     });
 
-    it('should upsert with sentry_mode_monitoring_enabled true when config is not null', async () => {
+    it('should upsert with sentry_mode_monitoring_enabled true when SentryMode is configured', async () => {
       const userId = 'test-user-id';
       const mockVehicles = [{ vin: 'VIN123', display_name: 'Tesla Model 3' }];
 
@@ -256,6 +256,47 @@ describe('TelemetryConfigService', () => {
           display_name: 'Tesla Model 3',
           sentry_mode_monitoring_enabled: true,
           break_in_monitoring_enabled: false,
+        },
+        { conflictPaths: ['userId', 'vin'], skipUpdateIfNoValuesChanged: true }
+      );
+    });
+
+    it('should keep sentry_mode_monitoring_enabled false when only break-in fields are configured', async () => {
+      const userId = 'test-user-id';
+      const mockVehicles = [{ vin: 'VIN123', display_name: 'Tesla Model 3' }];
+
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('user-token');
+      mockAxiosInstance.get
+        .mockResolvedValueOnce({
+          data: { response: mockVehicles },
+        })
+        .mockResolvedValueOnce({
+          data: {
+            response: {
+              config: {
+                hostname: 'test.com',
+                fields: {
+                  CenterDisplay: { interval_seconds: 30 },
+                  ChargePortLatch: { interval_seconds: 30 },
+                },
+              },
+            },
+          },
+        });
+
+      mockVehicleRepository.find.mockResolvedValue([
+        { vin: 'VIN123', display_name: 'Tesla Model 3', sentry_mode_monitoring_enabled: false },
+      ]);
+
+      await service.getVehicles(userId);
+
+      expect(mockVehicleRepository.upsert).toHaveBeenCalledWith(
+        {
+          userId,
+          vin: 'VIN123',
+          display_name: 'Tesla Model 3',
+          sentry_mode_monitoring_enabled: false,
+          break_in_monitoring_enabled: true,
         },
         { conflictPaths: ['userId', 'vin'], skipUpdateIfNoValuesChanged: true }
       );

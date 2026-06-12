@@ -272,8 +272,6 @@ describe('The TeslaTokenRefreshService class', () => {
           { userId: fakeUserId },
           {
             token_revoked_at: expect.any(Date),
-            jwt_token: null,
-            jwt_expires_at: null,
           }
         );
       });

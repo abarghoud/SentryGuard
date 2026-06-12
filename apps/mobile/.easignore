@@ -1,0 +1,8 @@
+node_modules
+.expo
+build-*.apk
+android/.gradle
+android/build
+android/app/build
+android/local.properties
+ios/build
