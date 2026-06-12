@@ -10,34 +10,21 @@ import { UserNotApprovedException } from '../../common/exceptions/user-not-appro
 import { AuthService } from './auth.service';
 import { OAuthProviderRequirements, oauthProviderRequirementsSymbol } from './interfaces/oauth-provider.requirements';
 import { UserRegistrationService } from './services/user-registration.service';
+import { UserSessionService } from './services/user-session.service';
 
 describe('The AuthService class', () => {
   let service: AuthService;
   let mockOAuthProvider: MockProxy<OAuthProviderRequirements>;
   let mockUserRegistrationService: MockProxy<UserRegistrationService>;
+  let mockUserSessionService: MockProxy<UserSessionService>;
 
   const mockUserRepository = {
-    findOne: jest.fn(),
-    save: jest.fn(),
-  };
-  const mockUserSessionRepository = {
-    create: jest.fn((session) => session),
-    createQueryBuilder: jest.fn(),
-    find: jest.fn(),
     findOne: jest.fn(),
     save: jest.fn(),
   };
   const mockJwtService = {
     signAsync: jest.fn(),
     verifyAsync: jest.fn(),
-  };
-  const mockQueryBuilder = {
-    andWhere: jest.fn(),
-    execute: jest.fn(),
-    set: jest.fn(),
-    update: jest.fn(),
-    where: jest.fn(),
-    whereInIds: jest.fn(),
   };
   const fakeUser = {
     userId: 'user-123',
@@ -50,13 +37,7 @@ describe('The AuthService class', () => {
   beforeEach(async () => {
     mockOAuthProvider = mock<OAuthProviderRequirements>();
     mockUserRegistrationService = mock<UserRegistrationService>();
-    mockQueryBuilder.update.mockReturnValue(mockQueryBuilder);
-    mockQueryBuilder.set.mockReturnValue(mockQueryBuilder);
-    mockQueryBuilder.where.mockReturnValue(mockQueryBuilder);
-    mockQueryBuilder.andWhere.mockReturnValue(mockQueryBuilder);
-    mockQueryBuilder.whereInIds.mockReturnValue(mockQueryBuilder);
-    mockQueryBuilder.execute.mockResolvedValue(undefined);
-    mockUserSessionRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+    mockUserSessionService = mock<UserSessionService>();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -64,10 +45,6 @@ describe('The AuthService class', () => {
         {
           provide: getRepositoryToken(User),
           useValue: mockUserRepository,
-        },
-        {
-          provide: getRepositoryToken(UserSession),
-          useValue: mockUserSessionRepository,
         },
         {
           provide: JwtService,
@@ -81,6 +58,10 @@ describe('The AuthService class', () => {
           provide: UserRegistrationService,
           useValue: mockUserRegistrationService,
         },
+        {
+          provide: UserSessionService,
+          useValue: mockUserSessionService,
+        },
       ],
     }).compile();
 
@@ -89,11 +70,17 @@ describe('The AuthService class', () => {
     jest.clearAllMocks();
     mockUserRepository.findOne.mockResolvedValue(fakeUser);
     mockUserRepository.save.mockImplementation((user) => Promise.resolve(user));
-    mockUserSessionRepository.find.mockResolvedValue([]);
-    mockUserSessionRepository.findOne.mockResolvedValue(null);
-    mockUserSessionRepository.save.mockImplementation((session) => Promise.resolve(session));
     mockJwtService.signAsync.mockResolvedValue('signed-jwt');
     mockJwtService.verifyAsync.mockResolvedValue({ sub: fakeUser.userId });
+    mockUserSessionService.createSession.mockResolvedValue({} as any);
+    mockUserSessionService.findSession.mockResolvedValue(null);
+    mockUserSessionService.validateSession.mockResolvedValue(null);
+    mockUserSessionService.touchSession.mockResolvedValue(undefined);
+    mockUserSessionService.revokeSession.mockResolvedValue(undefined);
+    mockUserSessionService.revokeAllSessions.mockResolvedValue(undefined);
+    mockUserSessionService.enforceSessionLimits.mockResolvedValue(undefined);
+    mockUserSessionService.hashJwt.mockImplementation((jwt) => `hashed-${jwt}`);
+    mockUserSessionService.updateSession.mockImplementation((session) => Promise.resolve(session));
   });
 
   describe('The exchangeCodeForTokens() method', () => {
@@ -125,20 +112,15 @@ describe('The AuthService class', () => {
       });
 
       it('should store the hashed JWT in a session', () => {
-        expect(mockUserSessionRepository.create).toHaveBeenCalledWith(
-          expect.objectContaining({
-            jwt_hash: expect.not.stringContaining('signed-jwt'),
-            userId: fakeUser.userId,
-          })
+        expect(mockUserSessionService.createSession).toHaveBeenCalledWith(
+          fakeUser.userId,
+          'signed-jwt',
+          expect.any(Date)
         );
       });
 
       it('should enforce the active session limit', () => {
-        expect(mockUserSessionRepository.find).toHaveBeenCalledWith(
-          expect.objectContaining({
-            order: { created_at: 'DESC' },
-          })
-        );
+        expect(mockUserSessionService.enforceSessionLimits).toHaveBeenCalledWith(fakeUser.userId);
       });
     });
 
@@ -194,11 +176,11 @@ describe('The AuthService class', () => {
       let result: User | null;
 
       beforeEach(async () => {
-        mockUserSessionRepository.findOne.mockResolvedValue({
+        mockUserSessionService.validateSession.mockResolvedValue({
           expires_at: new Date(Date.now() + 3600000),
           revoked_at: null,
           user: fakeUser,
-        });
+        } as any);
         result = await service.validateJwtToken('valid-jwt');
       });
 
@@ -211,6 +193,7 @@ describe('The AuthService class', () => {
       let result: User | null;
 
       beforeEach(async () => {
+        mockUserSessionService.validateSession.mockResolvedValue(null);
         result = await service.validateJwtToken('valid-jwt');
       });
 
@@ -225,10 +208,10 @@ describe('The AuthService class', () => {
       let result: User | null;
 
       beforeEach(async () => {
-        mockUserSessionRepository.findOne.mockResolvedValue({
+        mockUserSessionService.findSession.mockResolvedValue({
           revoked_at: null,
           user: fakeUser,
-        });
+        } as any);
         result = await service.getRefreshableJwtUser('expired-jwt');
       });
 
@@ -241,13 +224,13 @@ describe('The AuthService class', () => {
       let result: User | null;
 
       beforeEach(async () => {
-        mockUserSessionRepository.findOne.mockResolvedValue({
+        mockUserSessionService.findSession.mockResolvedValue({
           revoked_at: null,
           user: {
             ...fakeUser,
             refresh_token_expires_at: new Date(Date.now() - 3600000),
           },
-        });
+        } as any);
         result = await service.getRefreshableJwtUser('expired-jwt');
       });
 
@@ -267,7 +250,7 @@ describe('The AuthService class', () => {
       let result: { jwt: string; jwt_expires_at: Date } | null;
 
       beforeEach(async () => {
-        mockUserSessionRepository.findOne.mockResolvedValue(fakeSession);
+        mockUserSessionService.findSession.mockResolvedValue(fakeSession);
         result = await service.refreshJwtSession(fakeUser.userId, 'old-jwt');
       });
 
@@ -276,9 +259,9 @@ describe('The AuthService class', () => {
       });
 
       it('should update the session hash', () => {
-        expect(mockUserSessionRepository.save).toHaveBeenCalledWith(
+        expect(mockUserSessionService.updateSession).toHaveBeenCalledWith(
           expect.objectContaining({
-            jwt_hash: expect.not.stringContaining('signed-jwt'),
+            jwt_hash: 'hashed-signed-jwt',
           })
         );
       });
@@ -287,22 +270,12 @@ describe('The AuthService class', () => {
 
   describe('The revokeJwtToken() method', () => {
     describe('When a current session token is provided', () => {
-      const fakeSession = {
-        userId: fakeUser.userId,
-        revoked_at: null,
-      } as UserSession;
-
       beforeEach(async () => {
-        mockUserSessionRepository.findOne.mockResolvedValue(fakeSession);
         await service.revokeJwtToken(fakeUser.userId, 'current-jwt');
       });
 
       it('should revoke only the current session', () => {
-        expect(mockUserSessionRepository.save).toHaveBeenCalledWith(
-          expect.objectContaining({
-            revoked_at: expect.any(Date),
-          })
-        );
+        expect(mockUserSessionService.revokeSession).toHaveBeenCalledWith(fakeUser.userId, 'current-jwt');
       });
     });
 
@@ -312,7 +285,7 @@ describe('The AuthService class', () => {
       });
 
       it('should revoke every active session for the user', () => {
-        expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('"revoked_at" IS NULL');
+        expect(mockUserSessionService.revokeAllSessions).toHaveBeenCalledWith(fakeUser.userId);
       });
     });
   });
@@ -332,7 +305,7 @@ describe('The AuthService class', () => {
       });
 
       it('should revoke every active session for the user', () => {
-        expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('"revoked_at" IS NULL');
+        expect(mockUserSessionService.revokeAllSessions).toHaveBeenCalledWith(fakeUser.userId);
       });
     });
   });

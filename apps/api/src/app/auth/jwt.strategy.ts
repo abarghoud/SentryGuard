@@ -1,11 +1,8 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { User } from '../../entities/user.entity';
-import { UserSession } from '../../entities/user-session.entity';
-import * as crypto from 'crypto';
+import { UserSessionService } from './services/user-session.service';
 
 export interface JwtPayload {
   sub: string;
@@ -23,8 +20,7 @@ interface JwtRequest {
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    @InjectRepository(UserSession)
-    private readonly userSessionRepository: Repository<UserSession>,
+    private readonly userSessionService: UserSessionService,
   ) {
     const jwtSecret = process.env.JWT_SECRET;
 
@@ -40,26 +36,23 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(request: JwtRequest, payload: JwtPayload): Promise<User> {
-    const session = await this.userSessionRepository.findOne({
-      relations: { user: true },
-      where: { jwt_hash: this.hashJwt(this.extractBearerToken(request) || '') },
-    });
-    const user = session?.user;
-
-    if (!user) {
+  public async validate(request: JwtRequest, payload: JwtPayload): Promise<User> {
+    const token = this.extractBearerToken(request);
+    if (!token) {
       throw new UnauthorizedException('User not found');
     }
 
-    if (user.userId !== payload.sub || this.isInvalidToken(session)) {
+    const session = await this.userSessionService.findSession(token);
+    if (!session?.user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const validatedSession = await this.userSessionService.validateSession(token);
+    if (!validatedSession || session.user.userId !== payload.sub) {
       throw new UnauthorizedException('Token expired or invalid');
     }
 
-    return user;
-  }
-
-  private isInvalidToken(session: UserSession): boolean {
-    return !!session.revoked_at || !!session.user.token_revoked_at || this.isExpired(session);
+    return session.user;
   }
 
   private extractBearerToken(request: JwtRequest): string | null {
@@ -70,13 +63,5 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     return authorization.slice('Bearer '.length);
-  }
-
-  private isExpired(session: UserSession): boolean {
-    return new Date() > session.expires_at;
-  }
-
-  private hashJwt(jwt: string): string {
-    return crypto.createHash('sha256').update(jwt).digest('hex');
   }
 }

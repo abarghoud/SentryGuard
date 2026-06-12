@@ -17,6 +17,7 @@ import { JwtStrategy } from './jwt.strategy';
 import { User } from '../../entities/user.entity';
 import { UserSession } from '../../entities/user-session.entity';
 import { WaitlistModule } from '../waitlist/waitlist.module';
+import { UserSessionService } from './services/user-session.service';
 
 const jwtSecret = process.env.JWT_SECRET;
 const jwtExpiresIn = (process.env.JWT_EXPIRATION || '30d') as JwtSignOptions['expiresIn'];
@@ -54,6 +55,7 @@ if (!jwtSecret) {
     TeslaTokenRefreshSchedulerService,
     DistributedLockService,
     JwtStrategy,
+    UserSessionService,
   ],
   exports: [
     AuthService,
@@ -62,6 +64,7 @@ if (!jwtSecret) {
     TeslaTokenRefreshService,
     JwtStrategy,
     PassportModule,
+    UserSessionService,
   ],
 })
 export class AuthModule {}

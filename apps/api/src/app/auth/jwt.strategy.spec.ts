@@ -1,12 +1,12 @@
 import { mock, MockProxy } from 'jest-mock-extended';
-import { Repository } from 'typeorm';
 import { User } from '../../entities/user.entity';
 import { UserSession } from '../../entities/user-session.entity';
 import { JwtPayload, JwtStrategy } from './jwt.strategy';
+import { UserSessionService } from './services/user-session.service';
 
 describe('The JwtStrategy class', () => {
   let strategy: JwtStrategy;
-  let mockUserSessionRepository: MockProxy<Repository<UserSession>>;
+  let mockUserSessionService: MockProxy<UserSessionService>;
 
   const fakeUserId = 'user-123';
   const fakePayload: JwtPayload = { sub: fakeUserId, email: 'test@example.com' };
@@ -28,8 +28,8 @@ describe('The JwtStrategy class', () => {
 
   beforeEach(() => {
     process.env.JWT_SECRET = 'test-secret-for-unit-tests';
-    mockUserSessionRepository = mock<Repository<UserSession>>();
-    strategy = new JwtStrategy(mockUserSessionRepository);
+    mockUserSessionService = mock<UserSessionService>();
+    strategy = new JwtStrategy(mockUserSessionService);
   });
 
   describe('The validate() method', () => {
@@ -38,7 +38,7 @@ describe('The JwtStrategy class', () => {
       let act: () => Promise<User>;
 
       beforeEach(() => {
-        mockUserSessionRepository.findOne.mockResolvedValue(null);
+        mockUserSessionService.findSession.mockResolvedValue(null);
         act = () => strategy.validate(fakeRequest, fakePayload);
       });
 
@@ -52,10 +52,8 @@ describe('The JwtStrategy class', () => {
       let act: () => Promise<User>;
 
       beforeEach(() => {
-        mockUserSessionRepository.findOne.mockResolvedValue({
-          ...fakeSession,
-          revoked_at: new Date(),
-        });
+        mockUserSessionService.findSession.mockResolvedValue(fakeSession);
+        mockUserSessionService.validateSession.mockResolvedValue(null);
         act = () => strategy.validate(fakeRequest, fakePayload);
       });
 
@@ -69,10 +67,11 @@ describe('The JwtStrategy class', () => {
       let act: () => Promise<User>;
 
       beforeEach(() => {
-        mockUserSessionRepository.findOne.mockResolvedValue({
+        mockUserSessionService.findSession.mockResolvedValue({
           ...fakeSession,
           user: { ...fakeUser, token_revoked_at: new Date() } as User,
-        });
+        } as UserSession);
+        mockUserSessionService.validateSession.mockResolvedValue(null);
         act = () => strategy.validate(fakeRequest, fakePayload);
       });
 
@@ -86,10 +85,11 @@ describe('The JwtStrategy class', () => {
       let act: () => Promise<User>;
 
       beforeEach(() => {
-        mockUserSessionRepository.findOne.mockResolvedValue({
+        mockUserSessionService.findSession.mockResolvedValue({
           ...fakeSession,
           expires_at: new Date(Date.now() - 1000),
-        });
+        } as UserSession);
+        mockUserSessionService.validateSession.mockResolvedValue(null);
         act = () => strategy.validate(fakeRequest, fakePayload);
       });
 
@@ -103,10 +103,14 @@ describe('The JwtStrategy class', () => {
       let act: () => Promise<User>;
 
       beforeEach(() => {
-        mockUserSessionRepository.findOne.mockResolvedValue({
+        mockUserSessionService.findSession.mockResolvedValue({
           ...fakeSession,
           user: { ...fakeUser, userId: 'other-user' } as User,
-        });
+        } as UserSession);
+        mockUserSessionService.validateSession.mockResolvedValue({
+          ...fakeSession,
+          user: { ...fakeUser, userId: 'other-user' } as User,
+        } as UserSession);
         act = () => strategy.validate(fakeRequest, fakePayload);
       });
 
@@ -119,7 +123,8 @@ describe('The JwtStrategy class', () => {
       let result: User;
 
       beforeEach(async () => {
-        mockUserSessionRepository.findOne.mockResolvedValue(fakeSession);
+        mockUserSessionService.findSession.mockResolvedValue(fakeSession);
+        mockUserSessionService.validateSession.mockResolvedValue(fakeSession);
         result = await strategy.validate(fakeRequest, fakePayload);
       });
 
