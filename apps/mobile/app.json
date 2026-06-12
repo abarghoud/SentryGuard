@@ -51,7 +51,6 @@
       },
       "package": "com.sentryguard.mobile",
       "edgeToEdgeEnabled": true,
-      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.ACCESS_NOTIFICATION_POLICY",
         "POST_NOTIFICATIONS"
