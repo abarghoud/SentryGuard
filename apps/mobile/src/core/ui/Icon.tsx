@@ -41,6 +41,8 @@ const ioniconsFallback: Record<string, keyof typeof Ionicons.glyphMap> = {
   'paperplane.fill': 'paper-plane',
   'trash.fill': 'trash',
   'link': 'link',
+  'eye': 'eye-outline',
+  'eye.slash': 'eye-off-outline',
 };
 
 const useNativeSymbols = Platform.OS === 'ios';

@@ -7,3 +7,4 @@ export { ListRow } from './ListRow';
 export { ListSection } from './ListSection';
 export { SegmentedControl, type SegmentOption } from './SegmentedControl';
 export { Surface } from './Surface';
+export { VinMask } from './VinMask';

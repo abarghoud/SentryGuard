@@ -128,6 +128,8 @@
   "vehicle.offensiveFartEnabledDescription": "The fart command triggers when an intrusion attempt is detected.",
   "vehicle.openingTesla": "Opening Tesla...",
   "vehicle.openTesla": "Open Tesla",
+  "vehicle.showVin": "Show VIN",
+  "vehicle.hideVin": "Hide VIN",
   "vehicle.scopeCancelled": "Tesla authorization was cancelled or the token is missing.",
   "vehicle.scopeDescription": "Authorize SentryGuard to send a vehicle command before enabling the horn.",
   "vehicle.sentryDisabledDescription": "Enable the data collection required for Sentry alerts.",

@@ -128,6 +128,8 @@
   "vehicle.offensiveFartEnabledDescription": "La commande de pet (boombox) se déclenche en cas de tentative d’intrusion détectée.",
   "vehicle.openingTesla": "Ouverture Tesla...",
   "vehicle.openTesla": "Ouvrir Tesla",
+  "vehicle.showVin": "Afficher le VIN",
+  "vehicle.hideVin": "Masquer le VIN",
   "vehicle.scopeCancelled": "Autorisation Tesla annulée ou token absent.",
   "vehicle.scopeDescription": "Autorise SentryGuard à envoyer une commande au véhicule avant d’activer le klaxon.",
   "vehicle.sentryDisabledDescription": "Active la collecte nécessaire aux alertes Sentinelle.",
