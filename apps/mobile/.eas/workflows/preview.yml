@@ -20,7 +20,7 @@ jobs:
     type: build
     params:
       platform: ios
-      profile: production
+      profile: preview
 
   submit_android:
     name: Submit Android to Internal Track

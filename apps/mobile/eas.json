@@ -11,7 +11,12 @@
     },
     "preview": {
       "corepack": true,
-      "distribution": "internal"
+      "android": {
+        "distribution": "internal"
+      },
+      "ios": {
+        "distribution": "store"
+      }
     },
     "production": {
       "corepack": true,
