@@ -1,0 +1,35 @@
+name: Mobile Preview Builds
+on:
+  push:
+    branches:
+      - main
+      - testing
+
+jobs:
+  build_android:
+    type: build
+    params:
+      platform: android
+      profile: preview
+
+  build_ios:
+    type: build
+    params:
+      platform: ios
+      profile: preview
+
+  submit_android:
+    type: submit
+    needs: [build_android]
+    params:
+      platform: android
+      profile: preview
+      build_id: ${{ needs.build_android.outputs.build_id }}
+
+  submit_ios:
+    type: submit
+    needs: [build_ios]
+    params:
+      platform: ios
+      profile: preview
+      build_id: ${{ needs.build_ios.outputs.build_id }}

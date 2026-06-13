@@ -1,0 +1,34 @@
+name: Mobile Production Releases
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build_android:
+    type: build
+    params:
+      platform: android
+      profile: production
+
+  build_ios:
+    type: build
+    params:
+      platform: ios
+      profile: production
+
+  submit_android:
+    type: submit
+    needs: [build_android]
+    params:
+      platform: android
+      profile: production
+      build_id: ${{ needs.build_android.outputs.build_id }}
+
+  submit_ios:
+    type: submit
+    needs: [build_ios]
+    params:
+      platform: ios
+      profile: production
+      build_id: ${{ needs.build_ios.outputs.build_id }}
