@@ -11,6 +11,7 @@
     },
     "preview": {
       "corepack": true,
+      "autoIncrement": true,
       "android": {
         "distribution": "internal"
       },
