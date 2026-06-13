@@ -4,6 +4,10 @@ on:
     tags:
       - 'v*'
 
+defaults:
+  tools:
+    corepack: true
+
 jobs:
   build_android:
     name: Build Android (Production)
