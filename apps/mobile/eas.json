@@ -12,6 +12,7 @@
     "preview": {
       "corepack": true,
       "autoIncrement": true,
+      "environment": "preview",
       "android": {
         "distribution": "internal"
       },
@@ -21,7 +22,8 @@
     },
     "production": {
       "corepack": true,
-      "autoIncrement": true
+      "autoIncrement": true,
+      "environment": "production"
     }
   },
   "submit": {
