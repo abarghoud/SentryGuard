@@ -13,6 +13,10 @@ permissions:
 jobs:
   main:
     runs-on: ubuntu-latest
+    env:
+      # Enables the Nx Cloud distributed cache when the secret is set.
+      # Tasks still run normally if it is absent (just without remote caching).
+      NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,10 +40,18 @@ jobs:
       - name: Lint
         run: yarn nx run-many -t lint
 
-      # Run tests (only api has tests)
+      # Typecheck the mobile app (scoped: not every project is typecheck-clean yet)
+      - name: Typecheck (mobile)
+        run: yarn nx typecheck mobile
+
+      # Run tests on all projects (api, webapp, mobile, domains)
       - name: Test
         run: yarn nx run-many -t test --skip-nx-cache
 
       # Build all projects (mobile excluded — requires Android SDK/EAS)
       - name: Build
         run: yarn nx run-many -t build --projects=!mobile
+
+      # Verify the mobile JS bundle (Metro) compiles for all platforms.
+      - name: Export mobile JS bundle
+        run: yarn nx run-many -t export
