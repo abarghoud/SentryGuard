@@ -58,7 +58,7 @@
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./assets/favicon.ico"
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-notifications",
