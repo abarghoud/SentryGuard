@@ -63,7 +63,7 @@
     "typecheck": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "tsc --project apps/mobile/tsconfig.app.json --noEmit"
+        "command": "tsc --build apps/mobile/tsconfig.app.json"
       }
     },
     "test": {
