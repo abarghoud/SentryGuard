@@ -1,9 +1,7 @@
 /**
  * Legal content (Privacy Policy + Terms of Service), EN/FR.
  *
- * DRAFT — to be reviewed by legal counsel before publication.
- * Kept as structured data (rather than i18n keys) so the full documents stay
- * readable and easy to hand to a lawyer.
+ * Kept as structured data (rather than i18n keys) so the full documents stay readable.
  */
 
 export interface LegalSection {
@@ -22,10 +20,11 @@ export type LegalLocale = 'en' | 'fr';
 
 const CONTACT_EMAIL = 'hello@sentryguard.org';
 const LAST_UPDATED = '2026-06-04';
+const PRIVACY_LAST_UPDATED = '2026-06-15';
 
 const privacyEn: LegalDocument = {
   title: 'Privacy Policy',
-  lastUpdated: LAST_UPDATED,
+  lastUpdated: PRIVACY_LAST_UPDATED,
   intro:
     'SentryGuard ("we", "us") provides real-time Tesla Sentry Mode monitoring and security alerts. This Privacy Policy explains what personal data we process, why, and the rights you have. SentryGuardOrg is the data controller.',
   sections: [
@@ -66,36 +65,45 @@ const privacyEn: LegalDocument = {
       heading: '5. Data retention',
       paragraphs: [
         'We keep your personal data only as long as needed to provide the service. Security alert history is automatically deleted after a defined retention period.',
-        'When you delete your account, your profile, vehicles, encrypted tokens and consent records are deleted.',
+        'When you close your account, the associated data is erased as described in "Account and data deletion" below.',
       ],
     },
     {
-      heading: '6. International transfers',
+      heading: '6. Account and data deletion',
+      paragraphs: [
+        'You can delete your account at any time, directly from the app: open Settings, choose "Delete my account" and confirm. Deletion takes effect immediately and cannot be undone.',
+        `If you cannot access the app, you can also request deletion by emailing ${CONTACT_EMAIL} from the address associated with your account; we will verify your identity before processing the request.`,
+        'When your account is deleted, we erase the personal data associated with it: your profile (email and display name), your encrypted Tesla access tokens, your vehicles and their monitoring configuration (VIN, Sentry Mode telemetry settings), your push notification tokens and notification preferences, any linked Telegram configuration, your security alert history, your sessions, and your consent records. The vehicle telemetry configuration registered with the Tesla Fleet API is removed as well.',
+        'A limited set of data may be retained only where necessary to comply with legal, accounting or security obligations (for example minimal technical logs and encrypted backups), strictly for the duration those obligations require and for the time it remains present in our backup rotation, after which it is deleted or anonymized. We do not keep your data to re-create your account.',
+      ],
+    },
+    {
+      heading: '7. International transfers',
       paragraphs: [
         'Some providers may process data outside your country. Where required, such transfers are covered by appropriate safeguards (e.g., Standard Contractual Clauses).',
       ],
     },
     {
-      heading: '7. Security',
+      heading: '8. Security',
       paragraphs: [
         'We apply administrative, technical and physical safeguards, including encryption of data in transit and encryption of sensitive tokens at rest. No password is ever stored: authentication is delegated to Tesla.',
       ],
     },
     {
-      heading: '8. Your rights',
+      heading: '9. Your rights',
       paragraphs: [
         'Subject to applicable law (including the GDPR), you may request access to, correction of, or deletion of your personal data, and you may withdraw your consent at any time.',
         'You can delete your account and all associated data directly from the app settings, or by contacting us.',
       ],
     },
     {
-      heading: '9. Children',
+      heading: '10. Children',
       paragraphs: [
         'SentryGuard is not directed to children and is intended for Tesla account holders.',
       ],
     },
     {
-      heading: '10. Changes & contact',
+      heading: '11. Changes & contact',
       paragraphs: [
         'We may update this policy; we will indicate the latest revision date above.',
         `Questions or requests: ${CONTACT_EMAIL}.`,
@@ -106,7 +114,7 @@ const privacyEn: LegalDocument = {
 
 const privacyFr: LegalDocument = {
   title: 'Politique de confidentialité',
-  lastUpdated: LAST_UPDATED,
+  lastUpdated: PRIVACY_LAST_UPDATED,
   intro:
     'SentryGuard (« nous ») fournit une surveillance en temps réel du mode Sentinelle Tesla et des alertes de sécurité. La présente politique explique quelles données personnelles nous traitons, pourquoi, et vos droits. SentryGuardOrg est le responsable du traitement.',
   sections: [
@@ -147,36 +155,45 @@ const privacyFr: LegalDocument = {
       heading: '5. Durée de conservation',
       paragraphs: [
         'Nous conservons vos données personnelles uniquement le temps nécessaire à la fourniture du service. L’historique des alertes de sécurité est automatiquement supprimé au-delà d’une durée de conservation définie.',
-        'Lorsque vous supprimez votre compte, votre profil, vos véhicules, vos jetons chiffrés et vos enregistrements de consentement sont supprimés.',
+        'Lorsque vous clôturez votre compte, les données associées sont effacées comme décrit à la section « Suppression du compte et des données » ci-dessous.',
       ],
     },
     {
-      heading: '6. Transferts internationaux',
+      heading: '6. Suppression du compte et des données',
+      paragraphs: [
+        'Vous pouvez supprimer votre compte à tout moment, directement depuis l’application : ouvrez les Réglages, choisissez « Supprimer mon compte » puis confirmez. La suppression prend effet immédiatement et est irréversible.',
+        `Si vous n’avez pas accès à l’application, vous pouvez aussi demander la suppression en écrivant à ${CONTACT_EMAIL} depuis l’adresse e-mail associée à votre compte ; nous vérifions votre identité avant de traiter la demande.`,
+        'Lorsque votre compte est supprimé, nous effaçons les données personnelles associées : votre profil (e-mail et nom d’affichage), vos jetons d’accès Tesla chiffrés, vos véhicules et leur configuration de surveillance (VIN, paramètres de télémétrie du mode Sentinelle), vos jetons de notification push et vos préférences de notification, votre configuration Telegram éventuelle, l’historique de vos alertes de sécurité, vos sessions et vos enregistrements de consentement. La configuration de télémétrie enregistrée auprès de l’API Tesla Fleet est également supprimée.',
+        'Des données limitées peuvent être conservées uniquement lorsque cela est nécessaire pour respecter des obligations légales, comptables ou de sécurité (par exemple des journaux techniques minimaux et des sauvegardes chiffrées), strictement pour la durée imposée par ces obligations et le temps où elles subsistent dans notre rotation de sauvegardes, après quoi elles sont supprimées ou anonymisées. Nous ne conservons pas vos données pour recréer votre compte.',
+      ],
+    },
+    {
+      heading: '7. Transferts internationaux',
       paragraphs: [
         'Certains prestataires peuvent traiter des données hors de votre pays. Lorsque requis, ces transferts sont encadrés par des garanties appropriées (par exemple des Clauses Contractuelles Types).',
       ],
     },
     {
-      heading: '7. Sécurité',
+      heading: '8. Sécurité',
       paragraphs: [
         'Nous appliquons des mesures administratives, techniques et physiques, incluant le chiffrement des données en transit et le chiffrement des jetons sensibles au repos. Aucun mot de passe n’est stocké : l’authentification est déléguée à Tesla.',
       ],
     },
     {
-      heading: '8. Vos droits',
+      heading: '9. Vos droits',
       paragraphs: [
         'Sous réserve de la loi applicable (notamment le RGPD), vous pouvez demander l’accès, la rectification ou la suppression de vos données personnelles, et retirer votre consentement à tout moment.',
         'Vous pouvez supprimer votre compte et toutes les données associées directement depuis les réglages de l’application, ou en nous contactant.',
       ],
     },
     {
-      heading: '9. Mineurs',
+      heading: '10. Mineurs',
       paragraphs: [
         'SentryGuard ne s’adresse pas aux enfants et est destiné aux titulaires d’un compte Tesla.',
       ],
     },
     {
-      heading: '10. Modifications & contact',
+      heading: '11. Modifications & contact',
       paragraphs: [
         'Nous pouvons mettre à jour cette politique ; la date de dernière révision figure ci-dessus.',
         `Questions ou demandes : ${CONTACT_EMAIL}.`,
