@@ -1,0 +1,207 @@
+name: Mobile Build
+
+# Two layers, both running on GitHub-hosted runners with NO EAS Build credits
+# (everything compiles on the runner via `--local`):
+#
+#  * Pull requests  -> unsigned compile check (no secrets, safe for fork PRs).
+#  * Manual run (Actions -> "Mobile Build" -> Run workflow) -> signed builds via
+#    `eas build --local`, using EAS-managed credentials (keystore / cert + provisioning
+#    profile) fetched with EXPO_TOKEN. Artifacts are uploaded for download / TestFlight.
+#
+# Prerequisites for the SIGNED jobs (one-time):
+#  1. `cd apps/mobile && npx eas-cli credentials`  -> create iOS cert+profile and
+#     Android keystore on EAS (requires your Apple login, done once locally).
+#  2. Add an `EXPO_TOKEN` repository secret (expo.dev -> Access tokens).
+#  3. In the EAS `preview` environment (expo.dev -> project -> Environment variables):
+#       - the required EXPO_PUBLIC_* vars (the runner has no local .env.local), and
+#       - GOOGLE_SERVICES_JSON as a FILE-type variable (apps/mobile/app.config.js
+#         reads it; the file is gitignored so it is not in the checkout).
+#
+# The unsigned PR check generates a throwaway placeholder google-services.json so
+# Android prebuild can run without any secret (safe for fork PRs).
+
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/mobile-build.yml'
+      - 'yarn.lock'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Unsigned compile check (pull requests) — secret-free, debug / simulator.
+  # ---------------------------------------------------------------------------
+  check-android:
+    name: Check Android (debug)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Generate placeholder google-services.json (compile check only)
+        run: echo '{"project_info":{"project_number":"000000000000","project_id":"ci-placeholder"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000","android_client_info":{"package_name":"com.sentryguard.mobile"}},"api_key":[{"current_key":"ci-placeholder"}],"oauth_client":[],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > "$RUNNER_TEMP/google-services.json"
+
+      - name: Prebuild (Android)
+        working-directory: apps/mobile
+        env:
+          GOOGLE_SERVICES_JSON: ${{ runner.temp }}/google-services.json
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Compile (Gradle assembleDebug)
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+
+  check-ios:
+    name: Check iOS (simulator, no signing)
+    if: github.event_name == 'pull_request'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Prebuild (iOS)
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Install CocoaPods
+        working-directory: apps/mobile/ios
+        run: pod install
+
+      - name: Compile (xcodebuild, iphonesimulator)
+        working-directory: apps/mobile
+        run: |
+          xcodebuild \
+            -workspace ios/SentryGuard.xcworkspace \
+            -scheme SentryGuard \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+  # ---------------------------------------------------------------------------
+  # Signed builds (manual only — Actions -> Run workflow) — eas build --local.
+  # EAS injects the managed credentials; the build still runs on the runner,
+  # so no EAS Build credits are consumed. If the EXPO_TOKEN secret is missing,
+  # the `guard` job below emits a warning and the build jobs are skipped (the
+  # run does not fail).
+  # ---------------------------------------------------------------------------
+  guard:
+    name: Check EXPO_TOKEN
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      has_token: ${{ steps.check.outputs.has_token }}
+    steps:
+      - name: Verify EXPO_TOKEN is set
+        id: check
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -n "$EXPO_TOKEN" ]; then
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=EXPO_TOKEN missing::Signed mobile builds skipped: the EXPO_TOKEN secret is not set. Add it in Settings -> Secrets and variables -> Actions to enable them."
+          fi
+
+  build-android:
+    name: Build Android (signed)
+    needs: guard
+    if: needs.guard.outputs.has_token == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Build signed APK (local, no EAS credits)
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx eas-cli build --platform android --profile preview --local --non-interactive --output build.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mobile-android
+          path: apps/mobile/build.apk
+          if-no-files-found: error
+
+  build-ios:
+    name: Build iOS (signed, store)
+    needs: guard
+    if: needs.guard.outputs.has_token == 'true'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build signed IPA (local, no EAS credits)
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx eas-cli build --platform ios --profile preview --local --non-interactive --output build.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mobile-ios
+          path: apps/mobile/build.ipa
+          if-no-files-found: error
