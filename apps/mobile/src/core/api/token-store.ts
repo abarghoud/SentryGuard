@@ -6,6 +6,7 @@ export interface TokenStoreRequirements {
   clear(): Promise<void>;
   getToken(): string | null;
   hasToken(): boolean;
+  isDemo(): boolean;
   loadFromStorage(): Promise<string | null>;
   setToken(token: string | null): void;
   store(token: string): Promise<void>;
@@ -25,6 +26,10 @@ export class TokenStore implements TokenStoreRequirements {
 
   public hasToken(): boolean {
     return this.accessToken !== null;
+  }
+
+  public isDemo(): boolean {
+    return this.accessToken === 'demo-token';
   }
 
   public setToken(token: string | null): void {

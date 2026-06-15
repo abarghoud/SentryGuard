@@ -15,3 +15,7 @@ export interface GetAuthProfileRequirements {
 export interface GetVehicleCommandsAuthorizationRequirements {
   execute(): Promise<VehicleCommandsAuthorization>;
 }
+
+export interface DemoLoginRequirements {
+  execute(credentials: { email?: string; password?: string }): Promise<{ jwt: string }>;
+}
