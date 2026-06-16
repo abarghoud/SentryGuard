@@ -74,6 +74,16 @@ export class CallbackController {
         return;
       }
 
+      if (error instanceof MissingPermissionsException && error.mobileRedirectUri) {
+        this.logger.log('↩️ Redirecting missing-permissions error back to the mobile app');
+        const params = new URLSearchParams({
+          error: 'missing_permissions',
+          missing: error.missingScopes.join(','),
+        });
+        res.redirect(`${error.mobileRedirectUri}?${params.toString()}`);
+        return;
+      }
+
       if (!(error instanceof MissingPermissionsException)) {
         this.logger.error('❌ Error processing callback:', errorMessage);
       }

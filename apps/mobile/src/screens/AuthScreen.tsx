@@ -23,6 +23,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
   const {
     message,
     isAuthenticating,
+    missingScopes,
     isAdvancedVisible,
     apiUrl,
     virtualKeyPairingUrl,
@@ -32,6 +33,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
     isDemoLoggingIn,
     scrollViewRef,
     openTeslaLogin,
+    fixPermissions,
     handleDemoSubmit,
     revealAdvancedSettings,
     saveAdvancedSettings,
@@ -64,6 +66,23 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
           </View>
 
           <View style={styles.actions}>
+            {missingScopes ? (
+              <Surface style={styles.advanced}>
+                <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
+                  {t('auth.permissions.label').toUpperCase()}
+                </AppText>
+                <AppText variant={TextVariant.Body} color={colors.secondaryLabel}>
+                  {t('auth.permissions.description')}
+                </AppText>
+                <GlassButton
+                  label={isAuthenticating ? t('auth.loginPending') : t('auth.permissions.fix')}
+                  icon="bolt.car.fill"
+                  disabled={isAuthenticating}
+                  onPress={fixPermissions}
+                />
+              </Surface>
+            ) : null}
+
             <GlassButton
               label={isAuthenticating ? t('auth.loginPending') : t('auth.login')}
               icon="bolt.car.fill"
