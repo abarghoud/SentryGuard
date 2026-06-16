@@ -88,6 +88,22 @@ describe('The AlertsOffensiveResponseService class', () => {
       });
     });
 
+    describe('When break-in offensive response is FART', () => {
+      beforeEach(() => {
+        mockVehicleRepository.findOne.mockResolvedValue({
+          ...fakeVehicle,
+          break_in_offensive_response: OffensiveResponse.FART,
+        });
+        mockTeslaVehicleCommandService.remoteBoombox.mockResolvedValue({ success: true });
+      });
+
+      it('should trigger remote boombox only', async () => {
+        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1']);
+
+        expect(mockTeslaVehicleCommandService.remoteBoombox).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1', 1);
+      });
+    });
+
     describe('When first userId is disabled and second userId is HONK', () => {
       beforeEach(() => {
         mockVehicleRepository.findOne

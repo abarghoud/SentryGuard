@@ -13,14 +13,15 @@ export class AlertsOffensiveResponseService {
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>,
     private readonly teslaVehicleCommandService: TeslaVehicleCommandService,
-  ) { }
+  ) {}
 
   async handleBreakInOffensiveResponse(vin: string, userIds: string[]): Promise<void> {
     for (const userId of userIds) {
       const vehicle = await this.findVehicleByVin(vin, userId);
 
       if (
-        vehicle?.break_in_offensive_response === OffensiveResponse.HONK &&
+        vehicle &&
+        vehicle.break_in_offensive_response !== OffensiveResponse.DISABLED &&
         await this.executeOffensiveResponse(vehicle)
       ) {
         return;
@@ -35,20 +36,27 @@ export class AlertsOffensiveResponseService {
   }
 
   private async executeOffensiveResponse(vehicle: Vehicle): Promise<boolean> {
-    const { vin, userId } = vehicle;
+    const { vin, userId, break_in_offensive_response } = vehicle;
 
     try {
-      const result = await this.teslaVehicleCommandService.honkHorn(vin, userId);
+      let result;
+      if (break_in_offensive_response === OffensiveResponse.HONK) {
+        result = await this.teslaVehicleCommandService.honkHorn(vin, userId);
+      } else if (break_in_offensive_response === OffensiveResponse.FART) {
+        result = await this.teslaVehicleCommandService.remoteBoombox(vin, userId, 1);
+      } else {
+        return false;
+      }
 
       if (result.success) {
-        this.logger.log(`[OFFENSIVE] Honk horn triggered for VIN ${vin}`);
+        this.logger.log(`[OFFENSIVE] ${break_in_offensive_response} triggered for VIN ${vin}`);
         return true;
       }
 
-      this.logger.warn(`[OFFENSIVE] Honk horn failed for VIN ${vin}: ${result.message}`);
+      this.logger.warn(`[OFFENSIVE] ${break_in_offensive_response} failed for VIN ${vin}: ${result.message}`);
       return false;
     } catch (error: unknown) {
-      this.logger.error(`[OFFENSIVE] Error triggering honk horn for VIN ${vin}`, error);
+      this.logger.error(`[OFFENSIVE] Error triggering ${break_in_offensive_response} for VIN ${vin}`, error);
       return false;
     }
   }
