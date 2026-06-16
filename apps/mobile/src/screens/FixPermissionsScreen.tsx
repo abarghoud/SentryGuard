@@ -1,12 +1,14 @@
 import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
 import { useThemeColors } from '../core/theme';
-import { AppText, GlassButton, GlassButtonVariant, Icon } from '../core/ui';
+import { AppText, GlassButton, GlassButtonVariant } from '../core/ui';
+
+const appLogo = require('../../assets/icon.png');
 
 interface FixPermissionsScreenProps {
   isAuthenticating: boolean;
@@ -24,9 +26,7 @@ export function FixPermissionsScreen({ isAuthenticating, message, onFix, onBackT
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.hero}>
-          <View style={[styles.icon, { backgroundColor: colors.fill }]}>
-            <Icon name="exclamationmark.shield.fill" size={36} color={colors.accent} />
-          </View>
+          <Image source={appLogo} style={styles.logo} resizeMode="contain" />
           <AppText variant={TextVariant.Title1} style={styles.centerText}>
             {t('auth.permissions.title')}
           </AppText>
@@ -81,12 +81,9 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
       alignItems: 'center',
       gap: spacing.md,
     },
-    icon: {
-      alignItems: 'center',
-      borderRadius: 22,
-      height: 88,
-      justifyContent: 'center',
-      width: 88,
+    logo: {
+      height: 96,
+      width: 96,
     },
   });
 }
