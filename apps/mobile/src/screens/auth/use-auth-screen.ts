@@ -27,6 +27,7 @@ export interface UseAuthScreenResult {
   scrollViewRef: React.RefObject<ScrollView | null>;
   openTeslaLogin(): Promise<void>;
   fixPermissions(): Promise<void>;
+  cancelPermissionsFix(): void;
   handleDemoSubmit(): Promise<void>;
   revealAdvancedSettings(): void;
   saveAdvancedSettings(): Promise<void>;
@@ -133,6 +134,11 @@ export function useAuthScreen({ onAuthenticated }: UseAuthScreenParams): UseAuth
     }
   };
 
+  const cancelPermissionsFix = (): void => {
+    setMissingScopes(null);
+    setMessage(null);
+  };
+
   const handleDemoSubmit = async (): Promise<void> => {
     try {
       setIsDemoLoggingIn(true);
@@ -227,6 +233,7 @@ export function useAuthScreen({ onAuthenticated }: UseAuthScreenParams): UseAuth
     scrollViewRef,
     openTeslaLogin,
     fixPermissions,
+    cancelPermissionsFix,
     handleDemoSubmit,
     revealAdvancedSettings,
     saveAdvancedSettings,
