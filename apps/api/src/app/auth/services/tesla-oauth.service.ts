@@ -136,10 +136,17 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
     state: string
   ): Promise<OAuthAuthenticationResult> {
     const validatedState = this.validateOAuthState(state);
-    const tokens = await this.exchangeCodeForTokens(code);
-    const profile = await this.fetchUserProfile(tokens.access_token);
+    try {
+      const tokens = await this.exchangeCodeForTokens(code);
+      const profile = await this.fetchUserProfile(tokens.access_token);
 
-    return { tokens, profile, userLocale: validatedState.userLocale, mobileRedirectUri: validatedState.mobileRedirectUri };
+      return { tokens, profile, userLocale: validatedState.userLocale, mobileRedirectUri: validatedState.mobileRedirectUri };
+    } catch (error) {
+      if (error instanceof MissingPermissionsException) {
+        error.mobileRedirectUri = validatedState.mobileRedirectUri;
+      }
+      throw error;
+    }
   }
 
   private validateOAuthState(state: string): { mobileRedirectUri?: string; userLocale: 'en' | 'fr' } {

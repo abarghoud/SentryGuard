@@ -6,8 +6,8 @@ import { Platform, ScrollView } from 'react-native';
 
 import { apiUrlStore, virtualKeyStore } from '../../core/api';
 import { normalizeDomain } from '../../core/config/app-domain';
-import { getTeslaLoginUrlUseCase, demoLoginUseCase } from '../../features/auth/di';
-import { extractTokenFromCallbackUrl } from './auth.helpers';
+import { getTeslaLoginUrlUseCase, getTeslaScopeChangeUrlUseCase, demoLoginUseCase } from '../../features/auth/di';
+import { extractMissingScopesFromCallbackUrl, extractTokenFromCallbackUrl } from './auth.helpers';
 
 export interface UseAuthScreenParams {
   onAuthenticated(token: string): Promise<void>;
@@ -16,6 +16,7 @@ export interface UseAuthScreenParams {
 export interface UseAuthScreenResult {
   message: string | null;
   isAuthenticating: boolean;
+  missingScopes: string[] | null;
   isAdvancedVisible: boolean;
   apiUrl: string;
   virtualKeyPairingUrl: string;
@@ -25,6 +26,8 @@ export interface UseAuthScreenResult {
   isDemoLoggingIn: boolean;
   scrollViewRef: React.RefObject<ScrollView | null>;
   openTeslaLogin(): Promise<void>;
+  fixPermissions(): Promise<void>;
+  cancelPermissionsFix(): void;
   handleDemoSubmit(): Promise<void>;
   revealAdvancedSettings(): void;
   saveAdvancedSettings(): Promise<void>;
@@ -41,6 +44,7 @@ export function useAuthScreen({ onAuthenticated }: UseAuthScreenParams): UseAuth
   const { t } = useTranslation();
   const [message, setMessage] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [missingScopes, setMissingScopes] = useState<string[] | null>(null);
   const [isAdvancedVisible, setIsAdvancedVisible] = useState(false);
   const [advancedTapCount, setAdvancedTapCount] = useState(0);
   const [apiUrl, setApiUrl] = useState(apiUrlStore.getCustomUrl());
@@ -53,12 +57,23 @@ export function useAuthScreen({ onAuthenticated }: UseAuthScreenParams): UseAuth
 
   useEffect(() => {
     const authenticateFromUrl = (url: string | null): void => {
-      const token = extractTokenFromCallbackUrl(url ?? '');
+      const callbackUrl = url ?? '';
+      const token = extractTokenFromCallbackUrl(callbackUrl);
       if (token) {
         if (Platform.OS === 'ios') {
           void WebBrowser.dismissBrowser();
         }
+        setMissingScopes(null);
         void onAuthenticated(token);
+        return;
+      }
+
+      const missing = extractMissingScopesFromCallbackUrl(callbackUrl);
+      if (missing) {
+        if (Platform.OS === 'ios') {
+          void WebBrowser.dismissBrowser();
+        }
+        setMissingScopes(missing);
       }
     };
 
@@ -100,6 +115,28 @@ export function useAuthScreen({ onAuthenticated }: UseAuthScreenParams): UseAuth
       },
     });
     return openBrowser();
+  };
+
+  const fixPermissions = async (): Promise<void> => {
+    if (!missingScopes) {
+      return;
+    }
+    try {
+      setIsAuthenticating(true);
+      setMessage(null);
+      const redirectUri = Linking.createURL('callback');
+      const login = await getTeslaScopeChangeUrlUseCase.execute(missingScopes, redirectUri);
+      await openTeslaAuthUrl(login.url);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : t('auth.error.login'));
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const cancelPermissionsFix = (): void => {
+    setMissingScopes(null);
+    setMessage(null);
   };
 
   const handleDemoSubmit = async (): Promise<void> => {
@@ -185,6 +222,7 @@ export function useAuthScreen({ onAuthenticated }: UseAuthScreenParams): UseAuth
   return {
     message,
     isAuthenticating,
+    missingScopes,
     isAdvancedVisible,
     apiUrl,
     virtualKeyPairingUrl,
@@ -194,6 +232,8 @@ export function useAuthScreen({ onAuthenticated }: UseAuthScreenParams): UseAuth
     isDemoLoggingIn,
     scrollViewRef,
     openTeslaLogin,
+    fixPermissions,
+    cancelPermissionsFix,
     handleDemoSubmit,
     revealAdvancedSettings,
     saveAdvancedSettings,

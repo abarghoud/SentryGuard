@@ -7,6 +7,7 @@ import { radius, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant, textStyle } from '../core/design/typography';
 import { useThemeColors } from '../core/theme';
 import { AppText, GlassButton, GlassButtonVariant, Surface } from '../core/ui';
+import { FixPermissionsScreen } from './FixPermissionsScreen';
 import { useAuthScreen } from './auth/use-auth-screen';
 
 const appLogo = require('../../assets/icon.png');
@@ -23,6 +24,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
   const {
     message,
     isAuthenticating,
+    missingScopes,
     isAdvancedVisible,
     apiUrl,
     virtualKeyPairingUrl,
@@ -32,6 +34,8 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
     isDemoLoggingIn,
     scrollViewRef,
     openTeslaLogin,
+    fixPermissions,
+    cancelPermissionsFix,
     handleDemoSubmit,
     revealAdvancedSettings,
     saveAdvancedSettings,
@@ -43,6 +47,17 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
     setVirtualKeyPairingUrl,
     scrollToAdvancedSettings,
   } = useAuthScreen({ onAuthenticated });
+
+  if (missingScopes) {
+    return (
+      <FixPermissionsScreen
+        isAuthenticating={isAuthenticating}
+        message={message}
+        onFix={fixPermissions}
+        onBackToLogin={cancelPermissionsFix}
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
