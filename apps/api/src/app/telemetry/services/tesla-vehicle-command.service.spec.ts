@@ -77,13 +77,13 @@ describe('The TeslaVehicleCommandService class', () => {
       });
 
       it('should attempt to send remote_boombox command with payload', async () => {
-        const result = await service.remoteBoombox('TESTVIN1234567890', 'user-1', 0);
+        const result = await service.remoteBoombox('TESTVIN1234567890', 'user-1', 1);
 
         expect(mockAccessTokenService.getAccessTokenForUserId).toHaveBeenCalledWith('user-1');
         expect(result.success).toBe(true);
         expect((service as any).teslaApi.post).toHaveBeenCalledWith(
           '/api/1/vehicles/TESTVIN1234567890/command/remote_boombox',
-          { sound: 0 },
+          { sound: 1 },
           expect.any(Object),
         );
       });
