@@ -6,6 +6,8 @@ export enum AlertEventSeverity {
 export enum AlertEventType {
   BreakIn = 'break_in',
   Sentry = 'sentry',
+  Alarm = 'alarm',
+  IntrusionAttempt = 'intrusion_attempt',
 }
 
 export interface AlertEvent {
