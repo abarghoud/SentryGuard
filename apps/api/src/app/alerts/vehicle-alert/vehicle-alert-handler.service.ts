@@ -1,10 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { KafkaMessage } from 'kafkajs';
 import { randomBytes } from 'crypto';
 
 import { MessageHandler } from '../../messaging/kafka/interfaces/message-handler.interface';
 import { TelegramService } from '../../telegram/telegram.service';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
+import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-offensive-response.service';
+import { Vehicle } from '../../../entities/vehicle.entity';
 import { AlertEventType } from '../../../entities/alert-event.entity';
 import { RawVehicleAlertMessage, VehicleAlert, VehicleAlertMessage } from './vehicle-alert-message.model';
 import { VEHICLE_ALERT_ALLOWLIST, VehicleAlertDefinition } from './vehicle-alert.constants';
@@ -16,6 +20,9 @@ export class VehicleAlertHandlerService implements MessageHandler {
   constructor(
     private readonly telegramService: TelegramService,
     private readonly alertNotifier: VehicleAlertNotifierService,
+    private readonly offensiveResponseService: AlertsOffensiveResponseService,
+    @InjectRepository(Vehicle)
+    private readonly vehicleRepository: Repository<Vehicle>,
   ) {}
 
   public async handleMessage(message: KafkaMessage, commit: () => Promise<void>): Promise<void> {
@@ -47,13 +54,27 @@ export class VehicleAlertHandlerService implements MessageHandler {
   }
 
   private async processAlerts(alertMessage: VehicleAlertMessage): Promise<void> {
-    for (const alert of alertMessage.alerts) {
-      const definition = VEHICLE_ALERT_ALLOWLIST[alert.name];
+    const activeAlerts = alertMessage.alerts.filter(
+      alert => VEHICLE_ALERT_ALLOWLIST[alert.name] && alertMessage.isActive(alert),
+    );
 
-      if (definition && alertMessage.isActive(alert)) {
-        await this.dispatchAlert(alertMessage, alert, definition);
-      }
+    if (activeAlerts.length === 0) {
+      return;
     }
+
+    if (!(await this.isBreakInMonitoringEnabled(alertMessage.vin))) {
+      this.logger.log(`[VEHICLE_ALERT] Skipped for VIN ${alertMessage.vin} - break-in monitoring disabled`);
+      return;
+    }
+
+    for (const alert of activeAlerts) {
+      await this.dispatchAlert(alertMessage, alert, VEHICLE_ALERT_ALLOWLIST[alert.name]);
+    }
+  }
+
+  private async isBreakInMonitoringEnabled(vin: string): Promise<boolean> {
+    const count = await this.vehicleRepository.count({ where: { vin, break_in_monitoring_enabled: true } });
+    return count > 0;
   }
 
   private async dispatchAlert(
@@ -63,7 +84,7 @@ export class VehicleAlertHandlerService implements MessageHandler {
   ): Promise<void> {
     this.logger.log(`[VEHICLE_ALERT] ${alert.name} for VIN: ${alertMessage.vin}`);
 
-    await this.alertNotifier.dispatch({
+    const { userIds } = await this.alertNotifier.dispatch({
       telemetryMessage: alertMessage,
       alertName: alert.name,
       latencyLabel: 'VEHICLE_ALERT_LATENCY',
@@ -71,6 +92,24 @@ export class VehicleAlertHandlerService implements MessageHandler {
       telegramNotifier: this.buildTelegramNotifier(definition.type),
       type: definition.type,
     });
+
+    this.triggerOffensiveResponse(alertMessage, definition, userIds);
+  }
+
+  private triggerOffensiveResponse(
+    alertMessage: VehicleAlertMessage,
+    definition: VehicleAlertDefinition,
+    userIds: string[],
+  ): void {
+    if (definition.type !== AlertEventType.IntrusionAttempt) {
+      return;
+    }
+
+    this.offensiveResponseService
+      .handleBreakInOffensiveResponse(alertMessage.vin, userIds, alertMessage.createdAt)
+      .catch((error: unknown) => {
+        this.logger.warn(`[OFFENSIVE] Failed to execute offensive response for VIN ${alertMessage.vin}`, error);
+      });
   }
 
   private buildTelegramNotifier(type: AlertEventType) {

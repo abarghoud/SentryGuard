@@ -208,7 +208,8 @@ export class TelemetryConfigService {
       }
 
       const alertTypes = this.getConfiguredAlertTypes();
-      if (alertTypes.length > 0) {
+      const isBreakInConfigured = 'CenterDisplay' in configPayload.fields;
+      if (alertTypes.length > 0 && isBreakInConfigured) {
         configPayload.alert_types = alertTypes;
       } else {
         delete configPayload.alert_types;

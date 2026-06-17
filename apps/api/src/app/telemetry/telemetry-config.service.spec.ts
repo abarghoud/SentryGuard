@@ -316,10 +316,10 @@ describe('TelemetryConfigService', () => {
       mockAxiosInstance.post.mockResolvedValueOnce({ data: { response: {} } });
     });
 
-    describe('When TELEMETRY_ALERT_TYPES is configured', () => {
+    describe('When TELEMETRY_ALERT_TYPES is configured and break-in monitoring is configured', () => {
       beforeEach(async () => {
         process.env.TELEMETRY_ALERT_TYPES = 'service';
-        await service.patchTelemetryConfig(vin, userId, { SentryMode: { interval_seconds: 30 } });
+        await service.patchTelemetryConfig(vin, userId, { CenterDisplay: { interval_seconds: 30 } });
       });
 
       it('should include alert_types in the pushed config', () => {
@@ -333,10 +333,27 @@ describe('TelemetryConfigService', () => {
       });
     });
 
+    describe('When TELEMETRY_ALERT_TYPES is configured but break-in monitoring is not', () => {
+      beforeEach(async () => {
+        process.env.TELEMETRY_ALERT_TYPES = 'service';
+        await service.patchTelemetryConfig(vin, userId, { SentryMode: { interval_seconds: 30 } });
+      });
+
+      it('should not include alert_types in the pushed config', () => {
+        expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({
+            config: expect.not.objectContaining({ alert_types: expect.anything() }),
+          }),
+          expect.anything()
+        );
+      });
+    });
+
     describe('When TELEMETRY_ALERT_TYPES is not set', () => {
       beforeEach(async () => {
         delete process.env.TELEMETRY_ALERT_TYPES;
-        await service.patchTelemetryConfig(vin, userId, { SentryMode: { interval_seconds: 30 } });
+        await service.patchTelemetryConfig(vin, userId, { CenterDisplay: { interval_seconds: 30 } });
       });
 
       it('should not include alert_types in the pushed config', () => {
