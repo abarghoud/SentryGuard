@@ -6,13 +6,20 @@ import { Repository } from 'typeorm';
 import { UserLanguageService } from '../../user/user-language.service';
 import { KafkaLogContextService } from '../../../common/services/kafka-log-context.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
-import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
 import { AlertsService } from '../alerts.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 
+export interface AlertNotificationSource {
+  vin: string;
+  createdAt: string;
+  correlationId?: string;
+  calculateEndToEndLatency(): number | null;
+  isProcessingDelayed(processingTimeMs: number, thresholdMs?: number): boolean;
+}
+
 export interface AlertDispatchConfig {
-  telemetryMessage: TelemetryMessage;
+  telemetryMessage: AlertNotificationSource;
   alertName: string;
   latencyLabel: string;
   severity: AlertEventSeverity;
@@ -168,7 +175,7 @@ export class VehicleAlertNotifierService {
     }
   }
 
-  private logAlertLatency(telemetryMessage: TelemetryMessage, handlerStartTime: number, latencyLabel: string): void {
+  private logAlertLatency(telemetryMessage: AlertNotificationSource, handlerStartTime: number, latencyLabel: string): void {
     if (!telemetryMessage.correlationId) {
       return;
     }

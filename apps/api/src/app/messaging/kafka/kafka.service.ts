@@ -4,12 +4,13 @@ import {
   OnModuleInit,
   OnModuleDestroy,
   Inject,
+  Optional,
 } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { Kafka, Consumer, KafkaMessage, Batch } from 'kafkajs';
 import type { MessageHandler } from './interfaces/message-handler.interface';
 import pLimit from 'p-limit';
-import { kafkaMessageHandler } from './interfaces/message-handler.interface';
+import { kafkaAlertsMessageHandler, kafkaMessageHandler } from './interfaces/message-handler.interface';
 import { RetryManager } from '../../shared/retry-manager.service';
 import { KafkaConfigFactory } from './kafka-config.factory';
 
@@ -22,6 +23,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   private readonly kafkaClientId = process.env.KAFKA_CLIENT_ID || 'sentry-guard-api';
   private readonly kafkaGroupId = process.env.KAFKA_GROUP_ID || 'sentry-guard-consumer-group';
   private readonly kafkaTopic = process.env.KAFKA_TOPIC || 'TeslaLogger_V';
+  private readonly kafkaAlertsTopic = process.env.KAFKA_ALERTS_TOPIC || '';
   private readonly messageLimit = pLimit(parseInt(process.env.KAFKA_MESSAGE_CONCURRENCY_LIMIT || '10', 10));
 
   private readonly maxRetries = parseInt(process.env.KAFKA_MAX_RETRIES || '10');
@@ -31,7 +33,8 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     @Inject(kafkaMessageHandler) private readonly messageHandler: MessageHandler,
-    private readonly retryManager: RetryManager
+    private readonly retryManager: RetryManager,
+    @Optional() @Inject(kafkaAlertsMessageHandler) private readonly alertsMessageHandler?: MessageHandler
   ) {
     this.kafka = new Kafka(KafkaConfigFactory.createKafkaConfig());
 
@@ -106,6 +109,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       eachBatch: async ({ batch, resolveOffset, heartbeat, commitOffsetsIfNecessary }) => {
         const batchStartTime = Date.now();
         const batchSize = batch.messages.length;
+        const handler = this.resolveHandler(batch.topic);
 
         await Promise.all(batch.messages.map(message =>
           this.messageLimit(async () => {
@@ -115,7 +119,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
             }
 
             try {
-              await this.messageHandler.handleMessage(
+              await handler.handleMessage(
                 message,
                 async () => {
                   resolveOffset(message.offset);
@@ -146,7 +150,24 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       topic: this.kafkaTopic,
       fromBeginning: false,
     });
+
+    if (this.alertsMessageHandler && this.kafkaAlertsTopic) {
+      await this.consumer.subscribe({
+        topic: this.kafkaAlertsTopic,
+        fromBeginning: false,
+      });
+      this.logger.log(`Subscribed to Kafka alerts topic: ${this.kafkaAlertsTopic}`);
+    }
+
     this.logger.log('Resubscribed to Kafka topic');
+  }
+
+  private resolveHandler(topic: string): MessageHandler {
+    if (this.alertsMessageHandler && topic === this.kafkaAlertsTopic) {
+      return this.alertsMessageHandler;
+    }
+
+    return this.messageHandler;
   }
 
   async onModuleInit() {

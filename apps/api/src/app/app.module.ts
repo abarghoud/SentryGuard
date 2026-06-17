@@ -13,11 +13,12 @@ import { SentryAlertHandlerService } from './alerts/sentry/sentry-alert-handler.
 import { BreakInAlertHandlerService } from './alerts/break-in/break-in-alert-handler.service';
 import { ChargePortLatchTrackerService } from './alerts/break-in/charge-port-latch-tracker.service';
 import { VehicleAlertNotifierService } from './alerts/common/vehicle-alert-notifier.service';
+import { VehicleAlertHandlerService } from './alerts/vehicle-alert/vehicle-alert-handler.service';
 import { OffensiveResponseModule } from './offensive-response/offensive-response.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { TelemetryEventHandlerSymbol } from './telemetry/interfaces/telemetry-event-handler.interface';
-import { kafkaMessageHandler } from './messaging/kafka/interfaces/message-handler.interface';
+import { kafkaAlertsMessageHandler, kafkaMessageHandler } from './messaging/kafka/interfaces/message-handler.interface';
 import { AuthModule } from './auth/auth.module';
 import { ConsentModule } from './consent/consent.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
@@ -80,6 +81,11 @@ import { RetryManager } from './shared/retry-manager.service';
     {
       provide: kafkaMessageHandler,
       useClass: TelemetryMessageHandlerService,
+    },
+    VehicleAlertHandlerService,
+    {
+      provide: kafkaAlertsMessageHandler,
+      useClass: VehicleAlertHandlerService,
     },
     {
       provide: TelemetryEventHandlerSymbol,

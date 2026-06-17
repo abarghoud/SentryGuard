@@ -79,6 +79,7 @@ describe('TelemetryConfigService', () => {
     delete process.env.ACCESS_TOKEN;
     delete process.env.LETS_ENCRYPT_CERTIFICATE;
     delete process.env.TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME;
+    delete process.env.TELEMETRY_ALERT_TYPES;
   });
 
   it('should be defined', () => {
@@ -304,6 +305,51 @@ describe('TelemetryConfigService', () => {
   });
 
 
+
+  describe('patchTelemetryConfig', () => {
+    const userId = 'user-123';
+    const vin = 'VIN1234567890';
+
+    beforeEach(() => {
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('user-token');
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: { response: { config: null } } });
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: { response: {} } });
+    });
+
+    describe('When TELEMETRY_ALERT_TYPES is configured', () => {
+      beforeEach(async () => {
+        process.env.TELEMETRY_ALERT_TYPES = 'service';
+        await service.patchTelemetryConfig(vin, userId, { SentryMode: { interval_seconds: 30 } });
+      });
+
+      it('should include alert_types in the pushed config', () => {
+        expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({
+            config: expect.objectContaining({ alert_types: ['service'] }),
+          }),
+          expect.anything()
+        );
+      });
+    });
+
+    describe('When TELEMETRY_ALERT_TYPES is not set', () => {
+      beforeEach(async () => {
+        delete process.env.TELEMETRY_ALERT_TYPES;
+        await service.patchTelemetryConfig(vin, userId, { SentryMode: { interval_seconds: 30 } });
+      });
+
+      it('should not include alert_types in the pushed config', () => {
+        expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({
+            config: expect.not.objectContaining({ alert_types: expect.anything() }),
+          }),
+          expect.anything()
+        );
+      });
+    });
+  });
 
   describe('updateVehicleTelemetryStatus', () => {
     it('should update telemetry status to enabled', async () => {

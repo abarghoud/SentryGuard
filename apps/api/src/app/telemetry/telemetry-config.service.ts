@@ -207,6 +207,13 @@ export class TelemetryConfigService {
         return { success: true, skippedVehicle: null, response: { response: {} } } as unknown as ConfigureTelemetryResult;
       }
 
+      const alertTypes = this.getConfiguredAlertTypes();
+      if (alertTypes.length > 0) {
+        configPayload.alert_types = alertTypes;
+      } else {
+        delete configPayload.alert_types;
+      }
+
       return await this.pushTelemetryConfig(vin, userId, configPayload);
     } catch (error: unknown) {
       this.logger.error(`Error patching telemetry config for ${vin}:`, extractErrorDetails(error));
@@ -368,6 +375,13 @@ export class TelemetryConfigService {
     }
   }
 
+
+  private getConfiguredAlertTypes(): string[] {
+    return (process.env.TELEMETRY_ALERT_TYPES ?? '')
+      .split(',')
+      .map(alertType => alertType.trim())
+      .filter(Boolean);
+  }
 
   private async pushTelemetryConfig(
     vin: string,

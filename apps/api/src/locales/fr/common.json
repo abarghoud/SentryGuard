@@ -8,6 +8,12 @@
   "TESLA SENTRY ALERT": "ALERTE SENTINELLE TESLA",
   "TESLA BREAK-IN ALERT": "ALERTE EFFRACTION TESLA",
   "Break-in attempt detected. Check your vehicle immediately!": "Tentative d'effraction détectée. Vérifiez votre véhicule immédiatement !",
+  "TESLA ALARM TRIGGERED": "ALARME TESLA DÉCLENCHÉE",
+  "TESLA INTRUSION ATTEMPT": "TENTATIVE D'INTRUSION TESLA",
+  "TESLA SECURITY ALERT": "ALERTE SÉCURITÉ TESLA",
+  "Your vehicle alarm is sounding. Check your vehicle immediately!": "L'alarme de votre véhicule retentit. Vérifiez votre véhicule immédiatement !",
+  "Someone tried to open your vehicle. Check your vehicle!": "Quelqu'un a tenté d'ouvrir votre véhicule. Vérifiez votre véhicule !",
+  "A security event was detected. Check your vehicle!": "Un événement de sécurité a été détecté. Vérifiez votre véhicule !",
   "This token has expired": "⏰ Ce token a expiré. Veuillez générer un nouveau lien depuis l'application.",
   "Vehicle": "Véhicule",
   "Welcome to SentryGuard Bot": "🚗 Bienvenue sur le bot SentryGuard !\n\nPour lier votre compte, utilisez le lien fourni dans l'application web.",
@@ -75,5 +81,9 @@
   "Intrusion alert": "Alerte intrusion",
   "A break-in attempt was detected.": "Une tentative d’intrusion a été détectée.",
   "Sentry alert": "Alerte Sentinelle",
-  "A Sentry event was detected.": "Un événement Sentinelle a été détecté."
+  "A Sentry event was detected.": "Un événement Sentinelle a été détecté.",
+  "Alarm triggered": "Alarme déclenchée",
+  "Your vehicle alarm is sounding.": "L'alarme de votre véhicule retentit.",
+  "Intrusion attempt": "Tentative d'intrusion",
+  "Someone tried to open your vehicle.": "Quelqu'un a tenté d'ouvrir votre véhicule."
 }

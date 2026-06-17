@@ -83,14 +83,22 @@ export class NotificationsService {
   }
 
   private resolveAlertTexts(type: AlertEventType, lng: 'en' | 'fr'): { body: string; title: string } {
-    if (type === AlertEventType.BreakIn) {
-      return {
+    const textsByType: Partial<Record<AlertEventType, { body: string; title: string }>> = {
+      [AlertEventType.BreakIn]: {
         body: i18n.t('A break-in attempt was detected.', { lng }),
         title: i18n.t('Intrusion alert', { lng }),
-      };
-    }
+      },
+      [AlertEventType.Alarm]: {
+        body: i18n.t('Your vehicle alarm is sounding.', { lng }),
+        title: i18n.t('Alarm triggered', { lng }),
+      },
+      [AlertEventType.IntrusionAttempt]: {
+        body: i18n.t('Someone tried to open your vehicle.', { lng }),
+        title: i18n.t('Intrusion attempt', { lng }),
+      },
+    };
 
-    return {
+    return textsByType[type] ?? {
       body: i18n.t('A Sentry event was detected.', { lng }),
       title: i18n.t('Sentry alert', { lng }),
     };

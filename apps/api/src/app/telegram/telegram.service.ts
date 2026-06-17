@@ -9,6 +9,7 @@ import { telegramFailureHandler } from './interfaces/telegram-failure-handler.in
 import type { ITelegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import { telegramRetryManager } from './telegram-retry-manager.token';
 import { RetryManager } from '../shared/retry-manager.service';
+import { AlertEventType } from '../../entities/alert-event.entity';
 
 type TelegramKeyboard = {
   inline_keyboard?: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
@@ -152,6 +153,64 @@ export class TelegramService implements OnModuleDestroy {
     }
   }
 
+  async sendSecurityAlert(
+    userId: string,
+    alertInfo: { vin: string, display_name?: string },
+    userLanguage: 'en' | 'fr',
+    type: AlertEventType,
+    keyboard?: TelegramKeyboard,
+  ) {
+    const message = this.formatSecurityAlertMessage(alertInfo, userLanguage, type);
+
+    if (await this.telegramMuteService.checkIsNotificationMuted(userId)) {
+      this.logger.log(`🔕 Security alert suppressed for muted user ${userId}`);
+      return false;
+    }
+
+    const chatId = await this.telegramContextService.getChatIdFromUserId(userId);
+
+    if (!chatId) {
+      this.logger.warn(`⚠️ No chat_id found for user: ${userId}`);
+      return false;
+    }
+
+    await this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage);
+
+    if (this.shouldSimulateMessage(alertInfo.vin)) {
+      return await this.simulateMessage(userId, 'alert', alertInfo.vin);
+    }
+
+    const options = keyboard ? { keyboard } : undefined;
+
+    try {
+      return await this.telegramBotService.sendMessage(chatId, message, options);
+    } catch (error) {
+      if (this.failureHandler.canHandle(error as Error)) {
+        await this.failureHandler.handleFailure(error as Error, userId);
+        this.logger.log(`[TELEGRAM_FAILURE_HANDLED] Error handled for user ${userId}`);
+
+        return false;
+      }
+
+      if (this.isRetryableTelegramError(error)) {
+        const correlationId = `telegram-alert-security-${userId}-${Date.now()}`;
+        this.retryManager.addToRetry(
+          async () => {
+            await this.telegramBotService.sendMessage(chatId, message, options);
+          },
+          error as Error,
+          correlationId
+        );
+
+        return false;
+      }
+
+      this.logError(userId, 'alert', error);
+
+      throw error;
+    }
+  }
+
   onModuleDestroy() {
     this.retryManager.stop();
   }
@@ -218,5 +277,39 @@ export class TelegramService implements OnModuleDestroy {
 
 <i>${i18n.t('Break-in attempt detected. Check your vehicle immediately!', { lng })}</i>
     `.trim();
+  }
+
+  private formatSecurityAlertMessage(
+    { display_name, vin }: { vin: string, display_name?: string },
+    lng: 'en' | 'fr',
+    type: AlertEventType,
+  ): string {
+    const { title, body } = this.resolveSecurityAlertText(type, lng);
+
+    return `
+🚨 <b>${title}</b> 🚨
+
+🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${display_name ?? vin}
+
+<i>${body}</i>
+    `.trim();
+  }
+
+  private resolveSecurityAlertText(type: AlertEventType, lng: 'en' | 'fr'): { title: string; body: string } {
+    const textsByType: Partial<Record<AlertEventType, { title: string; body: string }>> = {
+      [AlertEventType.Alarm]: {
+        title: i18n.t('TESLA ALARM TRIGGERED', { lng }),
+        body: i18n.t('Your vehicle alarm is sounding. Check your vehicle immediately!', { lng }),
+      },
+      [AlertEventType.IntrusionAttempt]: {
+        title: i18n.t('TESLA INTRUSION ATTEMPT', { lng }),
+        body: i18n.t('Someone tried to open your vehicle. Check your vehicle!', { lng }),
+      },
+    };
+
+    return textsByType[type] ?? {
+      title: i18n.t('TESLA SECURITY ALERT', { lng }),
+      body: i18n.t('A security event was detected. Check your vehicle!', { lng }),
+    };
   }
 }

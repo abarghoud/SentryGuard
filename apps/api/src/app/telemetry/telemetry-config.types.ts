@@ -18,6 +18,7 @@ export interface TelemetryConfig {
         interval_seconds: number;
       };
     };
+    alert_types?: string[];
     [key: string]: unknown;
   } | null;
   key_paired?: boolean;
@@ -33,6 +34,7 @@ export interface TelemetryConfigRequest {
     hostname: string;
     port: number;
     fields: Record<string, { interval_seconds: number }>;
+    alert_types?: string[];
   };
   vins: string[];
 }
