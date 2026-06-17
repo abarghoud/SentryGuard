@@ -107,4 +107,26 @@ describe('The TokenStore class', () => {
       });
     });
   });
+
+  describe('The isDemo() method', () => {
+    describe('When the token is demo-token', () => {
+      beforeEach(() => {
+        tokenStore.setToken('demo-token');
+      });
+
+      it('should return true', () => {
+        expect(tokenStore.isDemo()).toBe(true);
+      });
+    });
+
+    describe('When the token is not demo-token', () => {
+      beforeEach(() => {
+        tokenStore.setToken(fakeToken);
+      });
+
+      it('should return false', () => {
+        expect(tokenStore.isDemo()).toBe(false);
+      });
+    });
+  });
 });

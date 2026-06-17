@@ -5,6 +5,7 @@ import {
   GetTeslaLoginUrlRequirements,
   GetTeslaScopeChangeUrlRequirements,
   GetVehicleCommandsAuthorizationRequirements,
+  DemoLoginRequirements,
 } from './auth.use-cases.requirements';
 
 export class GetTeslaLoginUrlUseCase implements GetTeslaLoginUrlRequirements {
@@ -36,5 +37,13 @@ export class GetVehicleCommandsAuthorizationUseCase implements GetVehicleCommand
 
   public async execute(): Promise<VehicleCommandsAuthorization> {
     return this.repository.getVehicleCommandsAuthorization();
+  }
+}
+
+export class DemoLoginUseCase implements DemoLoginRequirements {
+  public constructor(private readonly repository: AuthRepositoryRequirements) {}
+
+  public async execute(credentials: { email?: string; password?: string }): Promise<{ jwt: string }> {
+    return this.repository.demoLogin(credentials);
   }
 }
