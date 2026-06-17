@@ -4,7 +4,8 @@ import { StyleSheet } from 'react-native';
 
 import { TextVariant } from '../core/design/typography';
 import { useThemeColors } from '../core/theme';
-import { AppText } from '../core/ui';
+import { AppText, SegmentedControl } from '../core/ui';
+import { OffensiveResponse } from '../features/vehicles/domain/entities';
 import { OnboardingFrame } from './onboarding/components/OnboardingFrame';
 import { PrimaryButton } from './onboarding/components/PrimaryButton';
 import { SecondaryButton } from './onboarding/components/SecondaryButton';
@@ -20,6 +21,8 @@ interface OnboardingScreenProps {
 export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Element {
   const colors = useThemeColors();
   const [hasConfirmedNotifications, setHasConfirmedNotifications] = useState(false);
+  const [hasReviewedBreakIn, setHasReviewedBreakIn] = useState(false);
+  const [hasReviewedOffensive, setHasReviewedOffensive] = useState(false);
   const {
     acceptConsentMutation,
     completeMutation,
@@ -30,11 +33,16 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
     isPushActive,
     isTelegramLinked,
     message,
+    monitoredVehicle,
+    offensiveResponseMutation,
     onboardingQuery,
+    scopeMutation,
     setMessage,
     t,
     telemetryMutation,
     telemetryVehicle,
+    toggleBreakInMutation,
+    vehicleCommandsAuthorized,
     vehicles,
     vehiclesQuery,
   } = useOnboarding(onComplete);
@@ -136,6 +144,70 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
               vehicle: resolveVehicleName(vehicle, t),
             })
           )}
+        />
+      </OnboardingFrame>
+    );
+  }
+
+  if (monitoredVehicle && !monitoredVehicle.break_in_monitoring_enabled && !hasReviewedBreakIn) {
+    return (
+      <OnboardingFrame
+        title={t('onboarding.breakInTitle')}
+        subtitle={t('onboarding.breakInSubtitle')}
+        t={t}
+        message={message}
+        actions={
+          <>
+            <PrimaryButton
+              disabled={toggleBreakInMutation.isPending}
+              label={toggleBreakInMutation.isPending ? t('onboarding.activating') : t('onboarding.breakInActivate')}
+              onPress={() => toggleBreakInMutation.mutate(monitoredVehicle.vin, { onSuccess: () => setHasReviewedBreakIn(true) })}
+            />
+            <SecondaryButton label={t('onboarding.skip')} onPress={() => setHasReviewedBreakIn(true)} />
+          </>
+        }
+      />
+    );
+  }
+
+  if (monitoredVehicle && monitoredVehicle.break_in_monitoring_enabled && !hasReviewedOffensive) {
+    if (!vehicleCommandsAuthorized) {
+      return (
+        <OnboardingFrame
+          title={t('onboarding.offensiveTitle')}
+          subtitle={t('vehicle.scopeDescription')}
+          t={t}
+          message={message}
+          actions={
+            <>
+              <PrimaryButton
+                disabled={scopeMutation.isPending}
+                label={scopeMutation.isPending ? t('vehicle.openingTesla') : t('vehicle.authorizeOffensive')}
+                onPress={() => scopeMutation.mutate()}
+              />
+              <SecondaryButton label={t('onboarding.skip')} onPress={() => setHasReviewedOffensive(true)} />
+            </>
+          }
+        />
+      );
+    }
+
+    return (
+      <OnboardingFrame
+        title={t('onboarding.offensiveTitle')}
+        subtitle={t('onboarding.offensiveSubtitle')}
+        t={t}
+        message={message}
+        actions={<PrimaryButton label={t('onboarding.continue')} onPress={() => setHasReviewedOffensive(true)} />}
+      >
+        <SegmentedControl
+          value={(monitoredVehicle.break_in_offensive_response as OffensiveResponse) ?? OffensiveResponse.Disabled}
+          onChange={(value) => offensiveResponseMutation.mutate({ vin: monitoredVehicle.vin, response: value })}
+          options={[
+            { label: t('vehicle.offensiveDisabled'), value: OffensiveResponse.Disabled },
+            { label: t('vehicle.offensiveHonk'), value: OffensiveResponse.Honk },
+            { label: t('vehicle.offensiveFart'), value: OffensiveResponse.Fart },
+          ]}
         />
       </OnboardingFrame>
     );
