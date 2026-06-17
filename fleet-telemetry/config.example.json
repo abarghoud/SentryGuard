@@ -16,7 +16,7 @@
     "message_limit": 1000
   },
   "records": {
-    "alerts": ["logger"],
+    "alerts": ["logger", "kafka"],
     "errors": ["logger"],
     "V": ["kafka"],
     "connectivity": ["logger"]

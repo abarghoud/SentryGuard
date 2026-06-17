@@ -49,6 +49,7 @@ SentryGuard is a comprehensive security monitoring solution for Tesla vehicles. 
 - 🚗 **Multi-Vehicle Support** - Monitor all your Tesla vehicles
 - 📊 **Real-time Telemetry** - Track Sentry Mode and break-in events, receive instant Telegram notifications when security events occur
 - 🚨 **Break-in Offensive Response** - Automatically honk the horn when a break-in alert is triggered, configurable per vehicle via webapp or Telegram
+- 🛡️ **Vehicle Alerts** - Detect the vehicle **alarm triggering** and **unauthorized door-handle pulls** via Tesla's Vehicle Alerts stream, independent of the Sentry Mode screen state (see [docs/VEHICLE-ALERTS.md](docs/VEHICLE-ALERTS.md))
 - 🌐 **SEO-Friendly WebApp** - Next.js with server-side rendering
 - 🔒 **Secure by Design** - Encrypted token storage, secure communication
 - 🎨 **Modern UI** - Responsive interface with Tailwind CSS
@@ -106,7 +107,7 @@ Mobile documentation: [apps/mobile/README.md](apps/mobile/README.md)
 
 ### 4. Receive Alerts
 
-- When Sentry Mode or a break-in is detected, you'll receive an instant Telegram notification
+- When Sentry Mode, a break-in, the **vehicle alarm**, or an **unauthorized door-handle pull** is detected, you'll receive an instant Telegram + push notification
 
 ### 5. Configure Break-in Offensive Response
 

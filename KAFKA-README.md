@@ -22,6 +22,17 @@ docker compose version
 └─────────────────┘    └──────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
+### Topics
+
+The Fleet Telemetry server publishes two record types, each on its own topic (`<namespace>_<recordType>`):
+
+| Topic | Record type | Consumed by | Purpose |
+|-------|-------------|-------------|---------|
+| `FleetTelemetry_V` | telemetry signals | `KafkaService` (default) | Sentry Mode + break-in detection |
+| `FleetTelemetry_alerts` | named vehicle alerts | `VehicleAlertHandlerService` | Alarm + intrusion-attempt alerts (opt-in via `KAFKA_ALERTS_TOPIC`) |
+
+The alerts topic is only consumed when `KAFKA_ALERTS_TOPIC` is set. See [docs/VEHICLE-ALERTS.md](docs/VEHICLE-ALERTS.md).
+
 ## 🚀 Quick Start
 
 ### 1. Start Kafka

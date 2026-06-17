@@ -13,6 +13,7 @@ An example config is provided in [`config.example.json`](config.example.json). K
 - **`kafka.bootstrap.servers`** should be `kafka:29092` when using docker-compose (internal Docker network)
 - **`tls.server_cert`** and **`tls.server_key`** must stay as-is — the entrypoint writes the decoded certificates to these paths
 - **`records.V`** must include `"kafka"` for telemetry data to reach SentryGuard
+- **`records.alerts`** must include `"kafka"` to enable [Vehicle Alerts](../docs/VEHICLE-ALERTS.md) (alarm & intrusion-attempt detection); keep `"logger"` alongside it to also see decoded alerts in the server logs
 
 To use it:
 

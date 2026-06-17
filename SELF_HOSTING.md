@@ -382,29 +382,13 @@ openssl ec -in private-key.pem -pubout -out public-key.pem
 
 ### 7.3 Generate the Fleet Telemetry Config
 
-Create the `config.json` file for fleet-telemetry. The cert paths reference the files decoded by the container's entrypoint from your base64 env vars:
+Use the provided [`fleet-telemetry/config.example.json`](fleet-telemetry/config.example.json) as your `config.json` — it uses the `records`/`namespace` schema, routes telemetry (`V`) and Vehicle Alerts (`alerts`) to Kafka, and references the cert paths the container's entrypoint writes from your base64 env vars:
 
 ```bash
-cat > fleet-telemetry/config.json << 'EOF'
-{
-  "port": 8443,
-  "kafka": {
-    "brokers": ["kafka:29092"],
-    "topic": "FleetTelemetry_V"
-  },
-  "logger": {
-    "level": "info"
-  },
-  "tls": {
-    "server_cert": "/etc/fleet-telemetry/certs/fullchain.pem",
-    "server_key": "/etc/fleet-telemetry/certs/privkey.pem"
-  },
-  "metrics": {
-    "port": 9090
-  }
-}
-EOF
+cp fleet-telemetry/config.example.json fleet-telemetry/config.json
 ```
+
+> The `records.alerts: ["logger", "kafka"]` entry enables [Vehicle Alerts](docs/VEHICLE-ALERTS.md) (alarm & intrusion-attempt detection). Remove `"kafka"` (keep `"logger"`) if you don't want them. The API side is controlled by `KAFKA_ALERTS_TOPIC` and `TELEMETRY_ALERT_TYPES` in your `.env`.
 
 ---
 
