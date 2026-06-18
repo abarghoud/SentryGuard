@@ -6,7 +6,7 @@ name: Mobile Build
 #  * Pull requests  -> unsigned compile check (no secrets, safe for fork PRs).
 #  * Manual run (Actions -> "Mobile Build" -> Run workflow) -> signed builds via
 #    `eas build --local`, using EAS-managed credentials (keystore / cert + provisioning
-#    profile) fetched with EXPO_TOKEN. Artifacts are uploaded for download / TestFlight.
+#    profile) fetched with EXPO_TOKEN. Once built, they are submitted directly to Apple TestFlight / Google Play.
 #
 # Prerequisites for the SIGNED jobs (one-time):
 #  1. `cd apps/mobile && npx eas-cli credentials`  -> create iOS cert+profile and
@@ -163,17 +163,17 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Build signed APK (local, no EAS credits)
+      - name: Build signed App Bundle (local, no EAS credits)
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npx eas-cli build --platform android --profile preview --local --non-interactive --output build.apk
+        run: npx eas-cli build --platform android --profile preview --local --non-interactive --output build.aab
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: mobile-android
-          path: apps/mobile/build.apk
-          if-no-files-found: error
+      - name: Submit to Google Play (Internal Sharing)
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx eas-cli submit --platform android --path build.aab --profile preview --non-interactive
 
   build-ios:
     name: Build iOS (signed, store)
@@ -200,8 +200,8 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: npx eas-cli build --platform ios --profile preview --local --non-interactive --output build.ipa
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: mobile-ios
-          path: apps/mobile/build.ipa
-          if-no-files-found: error
+      - name: Submit to Apple TestFlight
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx eas-cli submit --platform ios --path build.ipa --profile preview --non-interactive
