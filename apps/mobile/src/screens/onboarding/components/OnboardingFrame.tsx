@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { radius, screenPadding, spacing } from '../../../core/design/metrics';
@@ -13,6 +13,7 @@ export function OnboardingFrame({
   children,
   kicker,
   message,
+  onSkip,
   subtitle,
   t,
   title,
@@ -21,6 +22,7 @@ export function OnboardingFrame({
   children?: JSX.Element;
   kicker?: string;
   message?: string | null;
+  onSkip?: () => void;
   subtitle: string;
   t: TranslationFunction;
   title: string;
@@ -48,6 +50,13 @@ export function OnboardingFrame({
           </View>
         ) : null}
         {actions ? <View style={styles.actions}>{actions}</View> : null}
+        {onSkip ? (
+          <Pressable accessibilityRole="button" onPress={onSkip} style={styles.skip}>
+            <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel} style={styles.skipText}>
+              {t('onboarding.skipSetup')}
+            </AppText>
+          </Pressable>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -78,5 +87,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.md,
     width: '100%',
+  },
+  skip: {
+    alignSelf: 'center',
+    paddingVertical: spacing.sm,
+  },
+  skipText: {
+    textAlign: 'center',
+    textDecorationLine: 'underline',
   },
 });

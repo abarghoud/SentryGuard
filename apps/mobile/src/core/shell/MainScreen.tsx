@@ -16,6 +16,7 @@ import { useAlertsSeen } from '../../screens/alerts/use-alerts-seen';
 import { AlertsScreen } from '../../screens/AlertsScreen';
 import { DashboardScreen } from '../../screens/DashboardScreen';
 import { DeleteAccountScreen } from '../../screens/DeleteAccountScreen';
+import { OnboardingScreen } from '../../screens/OnboardingScreen';
 import { SettingsScreen } from '../../screens/SettingsScreen';
 import { TelegramSettingsScreen } from '../../screens/TelegramSettingsScreen';
 import { VehicleDetailScreen } from '../../screens/VehicleDetailScreen';
@@ -25,6 +26,7 @@ const MainStack = createNativeStackNavigator<MainStackParamList>();
 
 export function MainScreen({ onLogout }: { onLogout(): Promise<void> }): JSX.Element {
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <MainStack.Navigator
@@ -39,6 +41,9 @@ export function MainScreen({ onLogout }: { onLogout(): Promise<void> }): JSX.Ele
     >
       <MainStack.Screen name="Tabs" options={{ headerShown: false }}>
         {() => <AppTabs onLogout={onLogout} />}
+      </MainStack.Screen>
+      <MainStack.Screen name="Onboarding" options={{ headerShown: true, presentation: 'card', title: t('onboarding.resumeTitle') }}>
+        {({ navigation }) => <OnboardingScreen onComplete={() => navigation.goBack()} />}
       </MainStack.Screen>
       <MainStack.Screen name="VehicleDetail" component={VehicleDetailScreen} options={{ headerShown: true, presentation: 'card' }} />
       <MainStack.Screen name="TelegramSettings" component={TelegramSettingsScreen} options={{ headerShown: true, presentation: 'card' }} />

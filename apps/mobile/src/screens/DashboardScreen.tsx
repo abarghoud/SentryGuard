@@ -1,5 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useQuery } from '@tanstack/react-query';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,8 +12,10 @@ import { useScreenTopInset } from '../core/design/use-screen-inset';
 import { useThemeColors } from '../core/theme';
 import { AppText } from '../core/ui';
 import { MainStackParamList } from '../core/navigation';
+import { getOnboardingStatusUseCase } from '../features/onboarding/di';
 import { useVehiclesQuery } from '../features/vehicles/di';
 import { EmptyState } from './dashboard/components/EmptyState';
+import { OnboardingBanner } from './dashboard/components/OnboardingBanner';
 import { VehicleCard } from './dashboard/components/VehicleCard';
 import { VirtualKeyBanner } from './dashboard/components/VirtualKeyBanner';
 import { openVirtualKey, resolveSubtitle } from './dashboard/dashboard.helpers';
@@ -24,6 +27,11 @@ export function DashboardScreen(): JSX.Element {
   const colors = useThemeColors();
   const topInset = useScreenTopInset();
   const vehiclesQuery = useVehiclesQuery();
+  const onboardingQuery = useQuery({
+    queryFn: () => getOnboardingStatusUseCase.execute(),
+    queryKey: ['onboarding-status'],
+  });
+  const isOnboardingIncomplete = onboardingQuery.data?.isSkipped === true;
 
   return (
     <FlatList
@@ -42,6 +50,12 @@ export function DashboardScreen(): JSX.Element {
               {resolveSubtitle(vehiclesQuery.data, t)}
             </AppText>
           </View>
+
+          <OnboardingBanner
+            isVisible={isOnboardingIncomplete}
+            onResume={() => navigation.navigate('Onboarding')}
+            t={t}
+          />
 
           <VirtualKeyBanner
             message={virtualKeyMessage}
