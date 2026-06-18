@@ -28,4 +28,11 @@ export class AuthApiRepository implements AuthRepositoryRequirements {
   public async getVehicleCommandsAuthorization(): Promise<VehicleCommandsAuthorization> {
     return this.client.request<VehicleCommandsAuthorization>('/auth/vehicle-commands-authorized');
   }
+
+  public async demoLogin(credentials: { email?: string; password?: string }): Promise<{ jwt: string }> {
+    return this.client.request<{ jwt: string }>('/auth/demo/login', {
+      body: JSON.stringify(credentials),
+      method: 'POST',
+    });
+  }
 }

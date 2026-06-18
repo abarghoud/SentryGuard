@@ -11,8 +11,16 @@ import { getNotificationPreferencesUseCase } from '../../features/notifications/
 import { getTelegramStatusUseCase } from '../../features/telegram/di';
 import { getUserLanguageUseCase, updateUserLanguageUseCase } from '../../features/user/di';
 import { UserLanguage } from '../../features/user/domain/entities';
-import { configureTelemetryUseCase, getVehiclesUseCase } from '../../features/vehicles/di';
+import {
+  configureTelemetryUseCase,
+  getVehiclesUseCase,
+  toggleBreakInMonitoringUseCase,
+  updateOffensiveResponseUseCase,
+} from '../../features/vehicles/di';
+import { OffensiveResponse, Vehicle } from '../../features/vehicles/domain/entities';
+import { getVehicleCommandsAuthorizationUseCase } from '../../features/auth/di';
 import { registerDeviceForPush } from '../settings/settings.helpers';
+import { requestVehicleCommandsScope } from '../vehicle-detail/vehicle-detail.helpers';
 
 export function useOnboarding(onComplete: () => void) {
   const { t } = useTranslation();
@@ -56,6 +64,13 @@ export function useOnboarding(onComplete: () => void) {
     queryKey: ['notification-preferences', pushToken],
   });
 
+  const vehicleCommandsQuery = useQuery({
+    enabled: consentStatusQuery.data?.hasConsent === true,
+    queryFn: () => getVehicleCommandsAuthorizationUseCase.execute(),
+    queryKey: ['auth', 'vehicle-commands-authorized'],
+    staleTime: 5 * 60 * 1000,
+  });
+
   const acceptConsentMutation = useMutation({
     mutationFn: acceptConsentUseCase.execute.bind(acceptConsentUseCase),
     onSuccess: async () => {
@@ -86,6 +101,55 @@ export function useOnboarding(onComplete: () => void) {
       onComplete();
     },
   });
+  const toggleBreakInMutation = useMutation({
+    mutationFn: (vin: string) => toggleBreakInMonitoringUseCase.execute(vin, true),
+    onMutate: async (vin: string) => {
+      await queryClient.cancelQueries({ queryKey: ['vehicles'] });
+      const previous = queryClient.getQueryData<Vehicle[]>(['vehicles']);
+      queryClient.setQueryData<Vehicle[]>(['vehicles'], (current) =>
+        (current ?? []).map((entry) => (entry.vin === vin ? { ...entry, break_in_monitoring_enabled: true } : entry))
+      );
+      return { previous };
+    },
+    onError: (error: Error, _vin, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['vehicles'], context.previous);
+      }
+      setMessage(error.message);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+    },
+  });
+  const offensiveResponseMutation = useMutation({
+    mutationFn: ({ vin, response }: { vin: string; response: OffensiveResponse }) =>
+      updateOffensiveResponseUseCase.execute(vin, response),
+    onMutate: async ({ vin, response }: { vin: string; response: OffensiveResponse }) => {
+      await queryClient.cancelQueries({ queryKey: ['vehicles'] });
+      const previous = queryClient.getQueryData<Vehicle[]>(['vehicles']);
+      queryClient.setQueryData<Vehicle[]>(['vehicles'], (current) =>
+        (current ?? []).map((entry) => (entry.vin === vin ? { ...entry, break_in_offensive_response: response } : entry))
+      );
+      return { previous };
+    },
+    onError: (error: Error, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['vehicles'], context.previous);
+      }
+      setMessage(error.message);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+    },
+  });
+  const scopeMutation = useMutation({
+    mutationFn: () => requestVehicleCommandsScope(t),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['auth', 'vehicle-commands-authorized'] });
+      setMessage(null);
+    },
+    onError: (error: Error) => setMessage(error.message),
+  });
 
   const handleEnablePush = async (): Promise<void> => {
     setMessage(null);
@@ -102,6 +166,7 @@ export function useOnboarding(onComplete: () => void) {
 
   const vehicles = vehiclesQuery.data ?? [];
   const telemetryVehicle = vehicles.find((vehicle) => !vehicle.sentry_mode_monitoring_enabled) ?? vehicles[0] ?? null;
+  const monitoredVehicle = vehicles.find((vehicle) => vehicle.sentry_mode_monitoring_enabled) ?? vehicles[0] ?? null;
 
   const isTelegramLinked = telegramStatusQuery.data?.linked === true;
   const isPushEnabled = preferencesQuery.data?.push_enabled === true;
@@ -128,12 +193,17 @@ export function useOnboarding(onComplete: () => void) {
     isPushActive: isPushEnabled,
     isTelegramLinked,
     message,
+    monitoredVehicle,
+    offensiveResponseMutation,
     onboardingQuery,
+    scopeMutation,
     setMessage,
     skipMutation,
     t,
     telemetryMutation,
     telemetryVehicle,
+    toggleBreakInMutation,
+    vehicleCommandsAuthorized: vehicleCommandsQuery.data?.authorized === true,
     vehicles,
     vehiclesQuery,
   };
