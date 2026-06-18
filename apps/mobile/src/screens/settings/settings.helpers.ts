@@ -70,12 +70,6 @@ export function resolveSettingsError(error: unknown, t: (key: string) => string)
   return error instanceof Error ? error.message : t('settings.error');
 }
 
-const donationUrl = 'https://buymeacoffee.com/sentryguardorg';
-
-export async function openDonation(): Promise<void> {
-  await Linking.openURL(donationUrl);
-}
-
 const fallbackDomain = 'sentryguard.org';
 
 function resolveLegalLocalePath(locale: string): string {
