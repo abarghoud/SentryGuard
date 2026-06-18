@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { JSX } from 'react';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +16,7 @@ import { ConsentScreen } from '../screens/ConsentScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { shouldRequestConsent } from '../screens/consent/consent-gate.helpers';
 import { getConsentStatusUseCase } from '../features/consent/di';
+import { deletePushTokenUseCase, pushNotificationService } from '../features/notifications/di';
 import { getOnboardingStatusUseCase } from '../features/onboarding/di';
 import { getUserLanguageUseCase } from '../features/user/di';
 import { useSession } from './session/use-session';
@@ -42,6 +43,19 @@ export function MobileShell(): JSX.Element {
     queryKey: ['user-language'],
   });
 
+  const handleLogout = useCallback(async () => {
+    try {
+      const pushToken = await pushNotificationService.getCachedExpoPushToken();
+      if (pushToken) {
+        await deletePushTokenUseCase.execute(pushToken);
+      }
+      await pushNotificationService.clearCachedExpoPushToken();
+    } catch {
+      // best-effort: never block logout on push-token cleanup
+    }
+    await session.clearToken();
+  }, [session.clearToken]);
+
   const isOnboardingComplete = onboardingQuery.data?.isComplete === true;
   const isConsentRequestNeeded = shouldRequestConsent(consentQuery.data, isOnboardingComplete);
 
@@ -66,11 +80,11 @@ export function MobileShell(): JSX.Element {
         {session.token ? (
           isConsentRequestNeeded ? (
             <Stack.Screen name="Main" options={{ animation: 'none' }}>
-              {() => <ConsentScreen onLogout={session.clearToken} />}
+              {() => <ConsentScreen onLogout={handleLogout} />}
             </Stack.Screen>
           ) : onboardingQuery.data?.isComplete ? (
             <Stack.Screen name="Main" options={{ animation: 'none' }}>
-              {() => <MainScreen onLogout={session.clearToken} />}
+              {() => <MainScreen onLogout={handleLogout} />}
             </Stack.Screen>
           ) : (
             <Stack.Screen name="Main" options={{ animation: 'none' }}>

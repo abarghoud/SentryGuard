@@ -9,6 +9,7 @@ import { lightColors } from '../../../core/theme';
 import { DndPolicyAccessRequirements } from './dnd-policy-access';
 
 export interface PushNotificationServiceRequirements {
+  clearCachedExpoPushToken(): Promise<void>;
   configure(): Promise<void>;
   getCachedExpoPushToken(): Promise<string | null>;
   getGrantedExpoPushToken(): Promise<string | null>;
@@ -28,6 +29,15 @@ export class PushNotificationService implements PushNotificationServiceRequireme
     }
 
     return SecureStore.getItemAsync(this.pushTokenStorageKey);
+  }
+
+  public async clearCachedExpoPushToken(): Promise<void> {
+    if (Platform.OS === 'web') {
+      globalThis.localStorage?.removeItem(this.pushTokenStorageKey);
+      return;
+    }
+
+    await SecureStore.deleteItemAsync(this.pushTokenStorageKey);
   }
 
   private async storeExpoPushToken(token: string): Promise<void> {

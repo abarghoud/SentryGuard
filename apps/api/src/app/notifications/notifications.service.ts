@@ -63,6 +63,11 @@ export class NotificationsService {
     return { success: true };
   }
 
+  public async removePushToken(userId: string, token: string): Promise<{ success: boolean }> {
+    await this.pushDeviceTokenRepository.delete({ token, userId });
+    return { success: true };
+  }
+
   public async shouldSendTelegram(userId: string, _severity: AlertEventSeverity): Promise<boolean> {
     const preferences = await this.findOrCreatePreferences(userId);
     return preferences.telegram_enabled;
@@ -239,7 +244,7 @@ export class NotificationsService {
     }
 
     if (result.data?.details?.error === 'DeviceNotRegistered') {
-      await this.disablePushDevice(device);
+      await this.removePushDevice(device);
     }
   }
 
@@ -251,8 +256,7 @@ export class NotificationsService {
     }
   }
 
-  private async disablePushDevice(device: PushDeviceToken): Promise<void> {
-    device.push_enabled = false;
-    await this.pushDeviceTokenRepository.save(device);
+  private async removePushDevice(device: PushDeviceToken): Promise<void> {
+    await this.pushDeviceTokenRepository.delete({ id: device.id });
   }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -48,5 +48,15 @@ export class NotificationsController {
     }
 
     return await this.notificationsService.registerPushToken(user.userId, body.token, body.platform);
+  }
+
+  @Throttle(ThrottleOptions.authenticatedWrite())
+  @Delete('push-token')
+  public async removePushToken(@CurrentUser() user: User, @Body() body: RegisterPushTokenBody): Promise<{ success: boolean }> {
+    if (!body.token) {
+      return { success: false };
+    }
+
+    return await this.notificationsService.removePushToken(user.userId, body.token);
   }
 }
