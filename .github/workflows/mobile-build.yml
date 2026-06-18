@@ -23,7 +23,15 @@ name: Mobile Build
 on:
   pull_request:
     paths:
-      - 'apps/mobile/**'
+      - 'apps/mobile/app.json'
+      - 'apps/mobile/app.config.js'
+      - 'apps/mobile/package.json'
+      - 'apps/mobile/eas.json'
+      - 'apps/mobile/metro.config.js'
+      - 'apps/mobile/tsconfig*.json'
+      - 'apps/mobile/android/**'
+      - 'apps/mobile/ios/**'
+      - 'apps/mobile/modules/**'
       - '.github/workflows/mobile-build.yml'
       - 'yarn.lock'
   workflow_dispatch:
