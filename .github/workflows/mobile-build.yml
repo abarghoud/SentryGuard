@@ -171,6 +171,12 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      - name: Create google-services.json from secret
+        working-directory: apps/mobile
+        env:
+          GOOGLE_SERVICES_JSON_DATA: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: echo "$GOOGLE_SERVICES_JSON_DATA" > google-services.json
+
       - name: Build signed App Bundle (local, no EAS credits)
         working-directory: apps/mobile
         env:
