@@ -152,6 +152,90 @@ export class TelegramService implements OnModuleDestroy {
     }
   }
 
+  async sendSentryPresenceAlert(
+    userId: string,
+    alertInfo: { vin: string, display_name?: string },
+    userLanguage: 'en' | 'fr',
+    keyboard?: TelegramKeyboard,
+  ) {
+    const message = this.formatSentryPresenceMessage(alertInfo, userLanguage);
+    return this.sendFormattedAlert(userId, alertInfo, userLanguage, message, keyboard);
+  }
+
+  async sendSentryPanicAlert(
+    userId: string,
+    alertInfo: { vin: string, display_name?: string },
+    userLanguage: 'en' | 'fr',
+    keyboard?: TelegramKeyboard,
+  ) {
+    const message = this.formatSentryPanicMessage(alertInfo, userLanguage);
+    return this.sendFormattedAlert(userId, alertInfo, userLanguage, message, keyboard);
+  }
+
+  async sendSentryPresenceFinalAlert(
+    userId: string,
+    alertInfo: { vin: string, display_name?: string },
+    userLanguage: 'en' | 'fr',
+    keyboard?: TelegramKeyboard,
+  ) {
+    const message = this.formatSentryPresenceFinalMessage(alertInfo, userLanguage);
+    return this.sendFormattedAlert(userId, alertInfo, userLanguage, message, keyboard);
+  }
+
+  private async sendFormattedAlert(
+    userId: string,
+    alertInfo: { vin: string, display_name?: string },
+    userLanguage: 'en' | 'fr',
+    message: string,
+    keyboard?: TelegramKeyboard,
+  ): Promise<boolean> {
+    if (await this.telegramMuteService.checkIsNotificationMuted(userId)) {
+      this.logger.log(`🔕 Alert suppressed for muted user ${userId}`);
+      return false;
+    }
+
+    const chatId = await this.telegramContextService.getChatIdFromUserId(userId);
+
+    if (!chatId) {
+      this.logger.warn(`⚠️ No chat_id found for user: ${userId}`);
+      return false;
+    }
+
+    await this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage);
+
+    if (this.shouldSimulateMessage(alertInfo.vin)) {
+      return await this.simulateMessage(userId, 'alert', alertInfo.vin);
+    }
+
+    const options = keyboard ? { keyboard } : undefined;
+
+    try {
+      return await this.telegramBotService.sendMessage(chatId, message, options);
+    } catch (error) {
+      if (this.failureHandler.canHandle(error as Error)) {
+        await this.failureHandler.handleFailure(error as Error, userId);
+        return false;
+      }
+
+      if (this.isRetryableTelegramError(error)) {
+        const correlationId = `telegram-alert-${userId}-${Date.now()}`;
+        this.retryManager.addToRetry(
+          async () => {
+            await this.telegramBotService.sendMessage(chatId, message, options);
+          },
+          error as Error,
+          correlationId
+        );
+
+        return false;
+      }
+
+      this.logError(userId, 'alert', error);
+
+      throw error;
+    }
+  }
+
   onModuleDestroy() {
     this.retryManager.stop();
   }
@@ -217,6 +301,45 @@ export class TelegramService implements OnModuleDestroy {
 🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${display_name ?? vin}
 
 <i>${i18n.t('Break-in attempt detected. Check your vehicle immediately!', { lng })}</i>
+    `.trim();
+  }
+
+  private formatSentryPresenceMessage(
+    { display_name, vin }: { vin: string, display_name?: string },
+    lng: 'en' | 'fr'
+  ): string {
+    return `
+🚨 <b>${i18n.t('SOMEONE IS AROUND YOUR TESLA', { lng })}</b> 🚨
+
+🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${display_name ?? vin}
+
+<i>${i18n.t('Someone has been lingering around your vehicle for a while. Check your cameras!', { lng })}</i>
+    `.trim();
+  }
+
+  private formatSentryPanicMessage(
+    { display_name, vin }: { vin: string, display_name?: string },
+    lng: 'en' | 'fr'
+  ): string {
+    return `
+🚨 <b>${i18n.t('TESLA ALARM TRIGGERED', { lng })}</b> 🚨
+
+🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${display_name ?? vin}
+
+<i>${i18n.t('Sentry Mode panic - your vehicle alarm may be sounding!', { lng })}</i>
+    `.trim();
+  }
+
+  private formatSentryPresenceFinalMessage(
+    { display_name, vin }: { vin: string, display_name?: string },
+    lng: 'en' | 'fr'
+  ): string {
+    return `
+🚨 <b>${i18n.t('LAST REMINDER', { lng })}</b> 🚨
+
+🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${display_name ?? vin}
+
+<i>${i18n.t('Someone is still around your vehicle. You will not receive further alerts for this incident - check your cameras.', { lng })}</i>
     `.trim();
   }
 }

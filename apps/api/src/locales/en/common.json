@@ -8,6 +8,10 @@
   "TESLA SENTRY ALERT": "TESLA SENTRY ALERT",
   "TESLA BREAK-IN ALERT": "TESLA BREAK-IN ALERT",
   "Break-in attempt detected. Check your vehicle immediately!": "Break-in attempt detected. Check your vehicle immediately!",
+  "SOMEONE IS AROUND YOUR TESLA": "SOMEONE IS AROUND YOUR TESLA",
+  "Someone has been lingering around your vehicle for a while. Check your cameras!": "Someone has been lingering around your vehicle for a while. Check your cameras!",
+  "TESLA ALARM TRIGGERED": "TESLA ALARM TRIGGERED",
+  "Sentry Mode panic - your vehicle alarm may be sounding!": "Sentry Mode panic - your vehicle alarm may be sounding!",
   "This token has expired": "This token has expired",
   "Vehicle": "Vehicle",
   "Welcome to SentryGuard Bot": "Welcome to SentryGuard Bot",
@@ -75,5 +79,13 @@
   "Intrusion alert": "Intrusion alert",
   "A break-in attempt was detected.": "A break-in attempt was detected.",
   "Sentry alert": "Sentry alert",
-  "A Sentry event was detected.": "A Sentry event was detected."
+  "A Sentry event was detected.": "A Sentry event was detected.",
+  "Someone is lingering": "Someone is lingering",
+  "Someone has been around your vehicle for a while.": "Someone has been around your vehicle for a while.",
+  "Alarm triggered": "Alarm triggered",
+  "Your vehicle alarm may be sounding.": "Your vehicle alarm may be sounding.",
+  "LAST REMINDER": "LAST REMINDER",
+  "Someone is still around your vehicle. You will not receive further alerts for this incident - check your cameras.": "Someone is still around your vehicle. You will not receive further alerts for this incident - check your cameras.",
+  "Last reminder - someone still around": "Last reminder - someone still around",
+  "Someone is still around your vehicle. No more alerts for this incident.": "Someone is still around your vehicle. No more alerts for this incident."
 }

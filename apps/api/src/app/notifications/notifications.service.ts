@@ -83,17 +83,30 @@ export class NotificationsService {
   }
 
   private resolveAlertTexts(type: AlertEventType, lng: 'en' | 'fr'): { body: string; title: string } {
-    if (type === AlertEventType.BreakIn) {
-      return {
+    const textsByType: Record<AlertEventType, { body: string; title: string }> = {
+      [AlertEventType.BreakIn]: {
         body: i18n.t('A break-in attempt was detected.', { lng }),
         title: i18n.t('Intrusion alert', { lng }),
-      };
-    }
-
-    return {
-      body: i18n.t('A Sentry event was detected.', { lng }),
-      title: i18n.t('Sentry alert', { lng }),
+      },
+      [AlertEventType.Sentry]: {
+        body: i18n.t('A Sentry event was detected.', { lng }),
+        title: i18n.t('Sentry alert', { lng }),
+      },
+      [AlertEventType.SustainedPresence]: {
+        body: i18n.t('Someone has been around your vehicle for a while.', { lng }),
+        title: i18n.t('Someone is lingering', { lng }),
+      },
+      [AlertEventType.SustainedPresenceFinal]: {
+        body: i18n.t('Someone is still around your vehicle. No more alerts for this incident.', { lng }),
+        title: i18n.t('Last reminder - someone still around', { lng }),
+      },
+      [AlertEventType.Panic]: {
+        body: i18n.t('Your vehicle alarm may be sounding.', { lng }),
+        title: i18n.t('Alarm triggered', { lng }),
+      },
     };
+
+    return textsByType[type];
   }
 
   private async findOrCreatePreferences(userId: string): Promise<NotificationPreferences> {
