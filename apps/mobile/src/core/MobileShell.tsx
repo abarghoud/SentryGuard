@@ -48,8 +48,8 @@ export function MobileShell(): JSX.Element {
       const pushToken = await pushNotificationService.getCachedExpoPushToken();
       if (pushToken) {
         await deletePushTokenUseCase.execute(pushToken);
+        await pushNotificationService.clearCachedExpoPushToken();
       }
-      await pushNotificationService.clearCachedExpoPushToken();
     } catch {
       // best-effort: never block logout on push-token cleanup
     }
