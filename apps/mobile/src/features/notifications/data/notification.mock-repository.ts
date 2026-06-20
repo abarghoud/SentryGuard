@@ -17,6 +17,10 @@ export class NotificationMockRepository implements NotificationRepositoryRequire
     return { success: true };
   }
 
+  public async deletePushToken(): Promise<{ success: boolean }> {
+    return { success: true };
+  }
+
   public async updateNotificationPreferences(
     preferences: Partial<NotificationPreferences>
   ): Promise<NotificationPreferences> {

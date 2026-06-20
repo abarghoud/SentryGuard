@@ -26,4 +26,11 @@ export class NotificationApiRepository implements NotificationRepositoryRequirem
       method: 'POST',
     });
   }
+
+  public async deletePushToken(token: string): Promise<{ success: boolean }> {
+    return this.client.request<{ success: boolean }>('/notifications/push-token', {
+      body: JSON.stringify({ token }),
+      method: 'DELETE',
+    });
+  }
 }

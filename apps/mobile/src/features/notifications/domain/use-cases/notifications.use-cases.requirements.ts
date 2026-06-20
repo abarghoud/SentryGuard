@@ -11,3 +11,7 @@ export interface UpdateNotificationPreferencesRequirements {
 export interface RegisterPushTokenRequirements {
   execute(token: string, platform: string): Promise<{ success: boolean }>;
 }
+
+export interface DeletePushTokenRequirements {
+  execute(token: string): Promise<{ success: boolean }>;
+}
