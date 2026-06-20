@@ -21,6 +21,13 @@
         "distribution": "store"
       }
     },
+    "preview-apk": {
+      "extends": "preview",
+      "android": {
+        "distribution": "internal",
+        "buildType": "apk"
+      }
+    },
     "production": {
       "corepack": true,
       "autoIncrement": true,

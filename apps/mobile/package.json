@@ -68,6 +68,8 @@
     "android": "expo run:android",
     "eas:build:preview": "sh -c 'set -a && . ./.env.local && set +a && NODE_ENV=production npx eas-cli build -p android --profile preview'",
     "eas:build:preview:local": "sh -c 'set -a && . ./.env.local && set +a && NODE_ENV=production npx eas-cli build -p android --profile preview --local'",
+    "eas:build:preview:apk": "sh -c 'set -a && . ./.env.local && set +a && NODE_ENV=production npx eas-cli build -p android --profile preview-apk'",
+    "eas:build:preview:apk:local": "sh -c 'set -a && . ./.env.local && set +a && NODE_ENV=production npx eas-cli build -p android --profile preview-apk --local'",
     "ios": "expo run:ios"
   },
   "expo": {
