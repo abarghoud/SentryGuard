@@ -31,11 +31,17 @@
     "preview": {
       "android": {
         "track": "internal"
+      },
+      "ios": {
+        "ascAppId": "6779729590"
       }
     },
     "production": {
       "android": {
         "track": "production"
+      },
+      "ios": {
+        "ascAppId": "6779729590"
       }
     }
   }

@@ -14,7 +14,6 @@ import { UserLanguage } from '../features/user/domain/entities';
 import { resolveTelegramStatusKey } from './telegram-settings/telegram-settings.helpers';
 import {
   openAndroidDoNotDisturbAccessSettings,
-  openDonation,
   openPrivacyPolicy,
   openTermsOfService,
   resolveSettingsError,
@@ -155,16 +154,6 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
             }
           />
         ) : null}
-      </ListSection>
-
-      <ListSection header={t('settings.supportSection')} footer={t('settings.supportFooter')}>
-        <ListRow
-          icon="cup.and.saucer.fill"
-          iconColor={colors.secondaryLabel}
-          title={t('settings.support')}
-          showChevron
-          onPress={() => void openDonation()}
-        />
       </ListSection>
 
       <ListSection header={t('settings.legalSection')}>
