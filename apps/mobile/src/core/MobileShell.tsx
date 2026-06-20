@@ -57,6 +57,7 @@ export function MobileShell(): JSX.Element {
   }, [session.clearToken]);
 
   const isOnboardingComplete = onboardingQuery.data?.isComplete === true;
+  const isOnboardingResolved = isOnboardingComplete || onboardingQuery.data?.isSkipped === true;
   const isConsentRequestNeeded = shouldRequestConsent(consentQuery.data, isOnboardingComplete);
 
   useEffect(() => {
@@ -82,7 +83,7 @@ export function MobileShell(): JSX.Element {
             <Stack.Screen name="Main" options={{ animation: 'none' }}>
               {() => <ConsentScreen onLogout={handleLogout} />}
             </Stack.Screen>
-          ) : onboardingQuery.data?.isComplete ? (
+          ) : isOnboardingResolved ? (
             <Stack.Screen name="Main" options={{ animation: 'none' }}>
               {() => <MainScreen onLogout={handleLogout} />}
             </Stack.Screen>

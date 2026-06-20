@@ -38,6 +38,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
     onboardingQuery,
     scopeMutation,
     setMessage,
+    skipMutation,
     t,
     telemetryMutation,
     telemetryVehicle,
@@ -47,11 +48,13 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
     vehiclesQuery,
   } = useOnboarding(onComplete);
 
+  const skipSetup = (): void => skipMutation.mutate();
+
   if (flags.isLoading) {
     return <OnboardingFrame title={t('onboarding.loadingTitle')} subtitle={t('onboarding.loadingSubtitle')} t={t} />;
   }
 
-  if (onboardingQuery.data?.isComplete) {
+  if (onboardingQuery.data?.isComplete && !onboardingQuery.data?.isSkipped) {
     return (
       <OnboardingFrame
         title={t('onboarding.doneTitle')}
@@ -94,6 +97,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
         title={t('onboarding.vehiclesTitle')}
         subtitle={t('onboarding.vehiclesSubtitle')}
         t={t}
+        onSkip={skipSetup}
         message={resolveError(vehiclesQuery.error)}
         actions={<SecondaryButton label={t('onboarding.refresh')} onPress={() => void vehiclesQuery.refetch()} />}
       >
@@ -108,6 +112,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
         title={t('onboarding.virtualKeyTitle')}
         subtitle={t('onboarding.virtualKeySubtitle')}
         t={t}
+        onSkip={skipSetup}
         message={message}
         actions={
           <>
@@ -129,6 +134,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
         title={t('vehicle.alertSentry')}
         subtitle={t('onboarding.sentrySubtitle')}
         t={t}
+        onSkip={skipSetup}
         message={message}
         actions={
           <PrimaryButton
@@ -219,6 +225,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
         title={t('onboarding.notificationsTitle')}
         subtitle={t('onboarding.notificationsSubtitle')}
         t={t}
+        onSkip={skipSetup}
         message={message}
         actions={
           flags.isNotificationConfigMissing ? (
