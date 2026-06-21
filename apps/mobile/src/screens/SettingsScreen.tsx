@@ -109,29 +109,6 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
           title={t('settings.push')}
           accessory={<AppSwitch accessibilityLabel={t('settings.push')} disabled={isBusy} value={preferences.push_enabled} onValueChange={(value) => void updatePreference({ push_enabled: value })} />}
         />
-        <ListRow
-          title={t('settings.criticalOnly')}
-          accessory={
-            <AppSwitch
-              accessibilityLabel={t('settings.criticalOnly')}
-              disabled={isBusy || !preferences.push_enabled}
-              value={preferences.critical_only}
-              onValueChange={(value) => void updatePreference({ critical_only: value })}
-            />
-          }
-        />
-        <ListRow
-          title={t('settings.criticalAlerts')}
-          subtitle={t('settings.criticalAlertsDescription')}
-          accessory={
-            <AppSwitch
-              accessibilityLabel={t('settings.criticalAlerts')}
-              disabled={isBusy || !preferences.push_enabled}
-              value={preferences.critical_alerts_enabled}
-              onValueChange={(value) => void updatePreference({ critical_alerts_enabled: value })}
-            />
-          }
-        />
       </ListSection>
 
       <ListSection header={t('settings.telegramSection')} footer={isTelegramLinked ? undefined : t('settings.telegramConnectSubtitle')}>
