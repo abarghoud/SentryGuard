@@ -9,6 +9,7 @@ import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-conf
 import { FeatureAnnouncement } from '../../entities/feature-announcement.entity';
 import { UserDismissedAnnouncement } from '../../entities/user-dismissed-announcement.entity';
 import { TelemetryConfigService } from '../telemetry/telemetry-config.service';
+import { MailingService } from '../mailing/services/mailing.service';
 
 describe('The OnboardingService class', () => {
   let service: OnboardingService;
@@ -16,14 +17,22 @@ describe('The OnboardingService class', () => {
   let mockFeatureAnnouncementRepository: MockProxy<Repository<FeatureAnnouncement>>;
   let mockUserDismissedAnnouncementRepository: MockProxy<Repository<UserDismissedAnnouncement>>;
   let mockTelemetryConfigService: MockProxy<TelemetryConfigService>;
+  let mockMailingService: MockProxy<MailingService>;
+  const originalEnv = process.env;
 
   const fakeUserId = 'user-123';
 
   beforeEach(async () => {
+    process.env = {
+      ...originalEnv,
+      ZEPTOMAIL_TEMPLATE_ONBOARDING_COMPLETE_EN: 'onboarding-complete-en-template',
+    };
+
     mockUserRepository = mock<Repository<User>>();
     mockFeatureAnnouncementRepository = mock<Repository<FeatureAnnouncement>>();
     mockUserDismissedAnnouncementRepository = mock<Repository<UserDismissedAnnouncement>>();
     mockTelemetryConfigService = mock<TelemetryConfigService>();
+    mockMailingService = mock<MailingService>();
 
     mockFeatureAnnouncementRepository.find.mockResolvedValue([]);
     mockUserDismissedAnnouncementRepository.find.mockResolvedValue([]);
@@ -47,10 +56,18 @@ describe('The OnboardingService class', () => {
           provide: TelemetryConfigService,
           useValue: mockTelemetryConfigService,
         },
+        {
+          provide: MailingService,
+          useValue: mockMailingService,
+        },
       ],
     }).compile();
 
     service = module.get<OnboardingService>(OnboardingService);
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
   });
 
   describe('The getOnboardingStatus() method', () => {
@@ -122,9 +139,16 @@ describe('The OnboardingService class', () => {
       let result: any;
 
       beforeEach(async () => {
-        mockUserRepository.findOne.mockResolvedValue(fakeUser);
+        const fakeUserWithDetails = {
+          ...fakeUser,
+          email: 'test@example.com',
+          preferred_language: 'en',
+          full_name: 'Test Name',
+        };
+        mockUserRepository.findOne.mockResolvedValue(fakeUserWithDetails as User);
         mockTelemetryConfigService.getVehicles.mockResolvedValue(fakeVehiclesWithStatus as any);
         mockUserRepository.update.mockResolvedValue(undefined as any);
+        mockMailingService.sendOnboardingCompleteEmail.mockResolvedValue(undefined);
 
         result = await service.completeOnboarding(fakeUserId);
       });
@@ -138,6 +162,16 @@ describe('The OnboardingService class', () => {
 
       it('should return success response', () => {
         expect(result).toStrictEqual({ success: true });
+      });
+
+      it('should send the onboarding completed email', () => {
+        expect(mockMailingService.sendOnboardingCompleteEmail).toHaveBeenCalledWith(
+          'test@example.com',
+          'en',
+          {
+            name: 'Test Name',
+          }
+        );
       });
     });
 

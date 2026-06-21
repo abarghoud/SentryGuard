@@ -11,12 +11,15 @@ import { AuthService } from './auth.service';
 import { OAuthProviderRequirements, oauthProviderRequirementsSymbol } from './interfaces/oauth-provider.requirements';
 import { UserRegistrationService } from './services/user-registration.service';
 import { UserSessionService } from './services/user-session.service';
+import { MailingService } from '../mailing/services/mailing.service';
 
 describe('The AuthService class', () => {
   let service: AuthService;
   let mockOAuthProvider: MockProxy<OAuthProviderRequirements>;
   let mockUserRegistrationService: MockProxy<UserRegistrationService>;
   let mockUserSessionService: MockProxy<UserSessionService>;
+  let mockMailingService: MockProxy<MailingService>;
+  const originalEnv = process.env;
 
   const mockUserRepository = {
     findOne: jest.fn(),
@@ -32,12 +35,21 @@ describe('The AuthService class', () => {
     refresh_token: 'refresh-token',
     refresh_token_expires_at: new Date(Date.now() + 3600000),
     token_revoked_at: null,
+    preferred_language: 'en',
   } as User;
 
   beforeEach(async () => {
+    process.env = {
+      ...originalEnv,
+      ZEPTOMAIL_TEMPLATE_TOKEN_REVOKED_EN: 'token-revoked-en-template',
+      WEBAPP_URL: 'https://sentryguard.test',
+    };
+
     mockOAuthProvider = mock<OAuthProviderRequirements>();
     mockUserRegistrationService = mock<UserRegistrationService>();
     mockUserSessionService = mock<UserSessionService>();
+    mockMailingService = mock<MailingService>();
+    mockMailingService.sendTeslaDisconnectedEmail.mockResolvedValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -61,6 +73,10 @@ describe('The AuthService class', () => {
         {
           provide: UserSessionService,
           useValue: mockUserSessionService,
+        },
+        {
+          provide: MailingService,
+          useValue: mockMailingService,
         },
       ],
     }).compile();
@@ -290,9 +306,14 @@ describe('The AuthService class', () => {
     });
   });
 
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
   describe('The invalidateUserTokens() method', () => {
     describe('When the user exists', () => {
       beforeEach(async () => {
+        mockMailingService.sendTeslaDisconnectedEmail.mockResolvedValue(undefined);
         await service.invalidateUserTokens(fakeUser.userId);
       });
 
@@ -306,6 +327,16 @@ describe('The AuthService class', () => {
 
       it('should revoke every active session for the user', () => {
         expect(mockUserSessionService.revokeAllSessions).toHaveBeenCalledWith(fakeUser.userId);
+      });
+
+      it('should send connection lost email template', () => {
+        expect(mockMailingService.sendTeslaDisconnectedEmail).toHaveBeenCalledWith(
+          fakeUser.email,
+          'en',
+          {
+            name: fakeUser.full_name || '',
+          }
+        );
       });
     });
   });

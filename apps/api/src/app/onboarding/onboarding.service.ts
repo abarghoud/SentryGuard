@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../../entities/user.entity';
@@ -6,6 +6,7 @@ import { TelegramLinkStatus } from '../../entities/telegram-config.entity';
 import { FeatureAnnouncement } from '../../entities/feature-announcement.entity';
 import { UserDismissedAnnouncement } from '../../entities/user-dismissed-announcement.entity';
 import { TelemetryConfigService } from '../telemetry/telemetry-config.service';
+import { MailingService } from '../mailing/services/mailing.service';
 
 export interface OnboardingStatus {
   isComplete: boolean;
@@ -25,6 +26,7 @@ export class OnboardingService {
     @InjectRepository(UserDismissedAnnouncement)
     private readonly userDismissedAnnouncementRepository: Repository<UserDismissedAnnouncement>,
     private readonly telemetryConfigService: TelemetryConfigService,
+    private readonly mailingService: MailingService,
   ) {}
 
   public async getOnboardingStatus(userId: string): Promise<OnboardingStatus> {
@@ -142,6 +144,18 @@ export class OnboardingService {
     });
 
     this.logger.log(`Onboarding completed for user ${userId}`);
+
+    if (user.email) {
+      await this.mailingService.sendOnboardingCompleteEmail(
+        user.email,
+        user.preferred_language,
+        {
+          name: user.full_name || '',
+        }
+      ).catch((error) => {
+        this.logger.error(`Failed to send onboarding complete email to ${user.email}: ${error.message}`);
+      });
+    }
 
     return { success: true };
   }

@@ -6,14 +6,17 @@ import { UserDismissedAnnouncement } from '../../entities/user-dismissed-announc
 import { OnboardingService } from './onboarding.service';
 import { OnboardingController } from './onboarding.controller';
 import { TelemetryModule } from '../telemetry/telemetry.module';
+import { MailingModule } from '../mailing/mailing.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, FeatureAnnouncement, UserDismissedAnnouncement]),
     TelemetryModule,
+    MailingModule,
   ],
   providers: [OnboardingService],
   controllers: [OnboardingController],
   exports: [OnboardingService],
 })
 export class OnboardingModule {}
+

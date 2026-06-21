@@ -17,6 +17,7 @@ import { JwtStrategy } from './jwt.strategy';
 import { User } from '../../entities/user.entity';
 import { UserSession } from '../../entities/user-session.entity';
 import { WaitlistModule } from '../waitlist/waitlist.module';
+import { MailingModule } from '../mailing/mailing.module';
 import { UserSessionService } from './services/user-session.service';
 
 const jwtSecret = process.env.JWT_SECRET;
@@ -39,6 +40,7 @@ if (!jwtSecret) {
       },
     }),
     WaitlistModule,
+    MailingModule,
   ],
   controllers: [AuthController, CallbackController],
   providers: [

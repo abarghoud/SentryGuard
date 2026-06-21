@@ -1,53 +1,57 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
-import type { Transporter } from 'nodemailer';
 import type { EmailServiceRequirements } from '../interfaces/email-service.requirements';
 
 @Injectable()
 export class ZeptomailService implements EmailServiceRequirements {
   private readonly logger = new Logger(ZeptomailService.name);
-  private readonly transporter: Transporter;
   private readonly fromEmail: string;
   private readonly fromName: string;
+  private readonly apiKey: string;
 
   constructor() {
-    const apiKey = this.getRequiredEnv('ZEPTOMAIL_API_KEY');
-    const transporterPort = parseInt(this.getRequiredEnv('ZEPTOMAIL_PORT'), 10);
+    this.apiKey = this.getRequiredEnv('ZEPTOMAIL_API_KEY');
     this.fromEmail = this.getRequiredEnv('ZEPTOMAIL_FROM_EMAIL');
     this.fromName = process.env.ZEPTOMAIL_FROM_NAME || 'SentryGuard';
-
-    this.transporter = this.createTransporter(apiKey, transporterPort);
   }
 
-  public async sendEmail(
+  public async sendTemplateEmail(
     to: string,
-    subject: string,
-    htmlBody: string
+    templateKey: string,
+    mergeInfo: Record<string, string>
   ): Promise<void> {
     try {
-      await this.transporter.sendMail({
-        from: `"${this.fromName}" <${this.fromEmail}>`,
-        to: to,
-        subject: subject,
-        html: htmlBody,
+      const response = await fetch('https://api.zeptomail.com/v1.1/email/template', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Zoho-enczapikey ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: {
+            address: this.fromEmail,
+            name: this.fromName,
+          },
+          to: [
+            {
+              email_address: {
+                address: to,
+              },
+            },
+          ],
+          template_key: templateKey,
+          merge_info: mergeInfo,
+        }),
       });
 
-      this.logger.log(`Email sent to: ${to}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Zeptomail API returned status ${response.status}: ${errorText}`);
+      }
+
+      this.logger.log(`Template email sent successfully to ${to} using template ${templateKey}`);
     } catch (error) {
       this.logAndRethrowError(error, to);
     }
-  }
-
-  private createTransporter(apiKey: string, port: number): Transporter {
-    return nodemailer.createTransport({
-      host: 'smtp.zeptomail.com',
-      port,
-      secure: false,
-      auth: {
-        user: 'emailapikey',
-        pass: apiKey,
-      },
-    });
   }
 
   private logAndRethrowError(error: unknown, email: string): never {

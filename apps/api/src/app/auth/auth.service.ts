@@ -16,6 +16,7 @@ import type { OAuthProviderRequirements } from './interfaces/oauth-provider.requ
 import { oauthProviderRequirementsSymbol } from './interfaces/oauth-provider.requirements';
 import { UserRegistrationService } from './services/user-registration.service';
 import { UserSessionService } from './services/user-session.service';
+import { MailingService } from '../mailing/services/mailing.service';
 
 @Injectable()
 export class AuthService {
@@ -28,7 +29,8 @@ export class AuthService {
     @Inject(oauthProviderRequirementsSymbol)
     private readonly oauthProvider: OAuthProviderRequirements,
     private readonly userRegistrationService: UserRegistrationService,
-    private readonly userSessionService: UserSessionService
+    private readonly userSessionService: UserSessionService,
+    private readonly mailingService: MailingService
   ) {}
 
   public async exchangeCodeForTokens(
@@ -163,6 +165,14 @@ export class AuthService {
     this.logger.warn(
       `All tokens invalidated for user ${userId} due to Tesla token revocation`
     );
+
+    if (user.email) {
+      await this.mailingService.sendTeslaDisconnectedEmail(user.email, user.preferred_language, {
+        name: user.full_name || '',
+      }).catch((error) => {
+        this.logger.error(`Failed to send token revoked email to ${user.email}: ${error.message}`);
+      });
+    }
   }
 
   private hasRefreshableSession(user: User): boolean {
