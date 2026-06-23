@@ -2,11 +2,9 @@ import { Injectable, Logger, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, Not } from 'typeorm';
 import { Waitlist, WaitlistStatus } from '../../../entities/waitlist.entity';
-import type { EmailServiceRequirements } from '../interfaces/email-service.requirements';
-import { emailServiceRequirementsSymbol } from '../interfaces/email-service.requirements';
+import { MailingService } from '../../mailing/services/mailing.service';
 import type { WaitlistServiceRequirements } from '../interfaces/waitlist-service.requirements';
 import { waitlistEmailBatchSizeToken } from '../../../config/waitlist-cron.config';
-import { EmailContentBuilderService } from './email-content-builder.service';
 
 @Injectable()
 export class WaitlistService implements WaitlistServiceRequirements {
@@ -15,9 +13,7 @@ export class WaitlistService implements WaitlistServiceRequirements {
   constructor(
     @InjectRepository(Waitlist)
     private readonly waitlistRepository: Repository<Waitlist>,
-    @Inject(emailServiceRequirementsSymbol)
-    private readonly emailService: EmailServiceRequirements,
-    private readonly emailContentBuilder: EmailContentBuilderService,
+    private readonly mailingService: MailingService,
     @Inject(waitlistEmailBatchSizeToken)
     private readonly emailBatchSize: number
   ) {}
@@ -34,6 +30,12 @@ export class WaitlistService implements WaitlistServiceRequirements {
     }
 
     await this.createWaitlistEntry(email, fullName, preferredLanguage);
+
+    await this.mailingService.sendWaitlistConfirmationEmail(email, preferredLanguage, {
+      name: fullName || '',
+    }).catch((error) => {
+      this.logger.error(`Failed to send waitlist confirmation email to ${email}: ${error.message}`);
+    });
   }
 
   public async isApproved(email: string): Promise<boolean> {
@@ -57,16 +59,9 @@ export class WaitlistService implements WaitlistServiceRequirements {
       `Starting to send welcome email to ${entry.email} (entry: ${entry.id})`
     );
 
-    const content = this.emailContentBuilder.buildWelcomeEmail(
-      entry.fullName,
-      entry.preferredLanguage
-    );
-
-    await this.emailService.sendEmail(
-      entry.email,
-      content.subject,
-      content.body
-    );
+    await this.mailingService.sendWelcomeEmail(entry.email, entry.preferredLanguage, {
+      name: entry.fullName || '',
+    });
 
     this.logger.log(
       `Welcome email sent successfully to ${entry.email} (entry: ${entry.id})`

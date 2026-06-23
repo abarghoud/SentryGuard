@@ -5,9 +5,13 @@ import type { EmailServiceRequirements } from '../interfaces/email-service.requi
 export class NoopEmailService implements EmailServiceRequirements {
   private readonly logger = new Logger(NoopEmailService.name);
 
-  public async sendEmail(): Promise<void> {
+  public async sendTemplateEmail(
+    to: string,
+    templateKey: string,
+    mergeInfo: Record<string, string>
+  ): Promise<void> {
     this.logger.warn(
-      'Email sending is disabled (ZEPTOMAIL_API_KEY not configured)'
+      `Email sending is disabled. Mock call details: to=${to}, templateKey=${templateKey}, mergeInfo=${JSON.stringify(mergeInfo)}`
     );
   }
 }

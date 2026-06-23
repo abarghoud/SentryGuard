@@ -5,6 +5,7 @@ import axios from 'axios';
 import { User } from '../../../entities/user.entity';
 import { UserSession } from '../../../entities/user-session.entity';
 import { encrypt, decrypt } from '../../../common/utils/crypto.util';
+import { MailingService } from '../../mailing/services/mailing.service';
 
 export const REFRESH_TOKEN_LIFETIME_DAYS = 90;
 
@@ -34,6 +35,7 @@ export class TeslaTokenRefreshService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly dataSource: DataSource,
+    private readonly mailingService: MailingService
   ) {}
 
   public async findUsersWithExpiringRefreshTokens(): Promise<Pick<User, 'userId'>[]> {
@@ -164,12 +166,25 @@ export class TeslaTokenRefreshService {
   }
 
   private async invalidateUserTokens(manager: EntityManager, userId: string): Promise<void> {
+    const user = await manager.findOne(User, {
+      where: { userId },
+      select: { email: true, full_name: true, preferred_language: true },
+    });
+
     await manager.update(User, { userId }, {
       token_revoked_at: new Date(),
     });
     await manager.update(UserSession, { userId, revoked_at: IsNull() }, {
       revoked_at: new Date(),
     });
+
+    if (user?.email) {
+      await this.mailingService.sendTeslaDisconnectedEmail(user.email, user.preferred_language, {
+        name: user.full_name || '',
+      }).catch((error) => {
+        this.logger.error(`Failed to send token revoked email to ${user.email}: ${error.message}`);
+      });
+    }
   }
 
   private async requestTokenRefresh(

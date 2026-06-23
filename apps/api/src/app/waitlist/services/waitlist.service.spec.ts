@@ -3,12 +3,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { UpdateResult } from 'typeorm';
 import { WaitlistService } from './waitlist.service';
 import { Waitlist, WaitlistStatus } from '../../../entities/waitlist.entity';
-import {
-  emailServiceRequirementsSymbol,
-  EmailServiceRequirements,
-} from '../interfaces/email-service.requirements';
+import { MailingService } from '../../mailing/services/mailing.service';
 import { waitlistEmailBatchSizeToken } from '../../../config/waitlist-cron.config';
-import { EmailContentBuilderService } from './email-content-builder.service';
 import { mock, MockProxy } from 'jest-mock-extended';
 
 const mockWaitlistRepository = {
@@ -21,14 +17,12 @@ const mockWaitlistRepository = {
 
 describe('The WaitlistService class', () => {
   let service: WaitlistService;
-  let mockEmailService: MockProxy<EmailServiceRequirements>;
-  let mockEmailContentBuilder: MockProxy<EmailContentBuilderService>;
+  let mockMailingService: MockProxy<MailingService>;
   let loggerLogSpy: jest.SpyInstance;
   const emailBatchSize = 20;
 
   beforeEach(async () => {
-    mockEmailService = mock<EmailServiceRequirements>();
-    mockEmailContentBuilder = mock<EmailContentBuilderService>();
+    mockMailingService = mock<MailingService>();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -38,12 +32,8 @@ describe('The WaitlistService class', () => {
           useValue: mockWaitlistRepository,
         },
         {
-          provide: emailServiceRequirementsSymbol,
-          useValue: mockEmailService,
-        },
-        {
-          provide: EmailContentBuilderService,
-          useValue: mockEmailContentBuilder,
+          provide: MailingService,
+          useValue: mockMailingService,
         },
         {
           provide: waitlistEmailBatchSizeToken,
@@ -80,6 +70,7 @@ describe('The WaitlistService class', () => {
         mockWaitlistRepository.findOne.mockResolvedValue(null);
         mockWaitlistRepository.create.mockReturnValue(mockEntry);
         mockWaitlistRepository.save.mockResolvedValue(mockEntry);
+        mockMailingService.sendWaitlistConfirmationEmail.mockResolvedValue(undefined);
 
         await service.addToWaitlist(email, fullName, preferredLanguage);
       });
@@ -101,6 +92,34 @@ describe('The WaitlistService class', () => {
 
       it('should save the new entry', () => {
         expect(mockWaitlistRepository.save).toHaveBeenCalledWith(mockEntry);
+      });
+
+      it('should send the waitlist confirmation email', () => {
+        expect(mockMailingService.sendWaitlistConfirmationEmail).toHaveBeenCalledWith(
+          email,
+          'en',
+          {
+            name: fullName,
+          }
+        );
+      });
+    });
+
+    describe('When preferred language is French', () => {
+      beforeEach(async () => {
+        mockWaitlistRepository.findOne.mockResolvedValue(null);
+        mockMailingService.sendWaitlistConfirmationEmail.mockResolvedValue(undefined);
+        await service.addToWaitlist(email, fullName, 'fr');
+      });
+
+      it('should send the French waitlist confirmation email', () => {
+        expect(mockMailingService.sendWaitlistConfirmationEmail).toHaveBeenCalledWith(
+          email,
+          'fr',
+          {
+            name: fullName,
+          }
+        );
       });
     });
 
@@ -279,28 +298,19 @@ describe('The WaitlistService class', () => {
 
     describe('When email is sent successfully', () => {
       beforeEach(async () => {
-        mockEmailContentBuilder.buildWelcomeEmail.mockReturnValue({
-          subject: 'Welcome to SentryGuard',
-          body: '<h1>Welcome, Test User!</h1>',
-        });
-        mockEmailService.sendEmail.mockResolvedValue(undefined);
+        mockMailingService.sendWelcomeEmail.mockResolvedValue(undefined);
         mockWaitlistRepository.update.mockResolvedValue({ affected: 1 } as UpdateResult);
 
         await service.sendWelcomeEmailAndMarkSent(mockEntry);
       });
 
-      it('should build welcome email content', () => {
-        expect(mockEmailContentBuilder.buildWelcomeEmail).toHaveBeenCalledWith(
-          mockEntry.fullName,
-          mockEntry.preferredLanguage
-        );
-      });
-
       it('should send email with correct parameters', () => {
-        expect(mockEmailService.sendEmail).toHaveBeenCalledWith(
+        expect(mockMailingService.sendWelcomeEmail).toHaveBeenCalledWith(
           mockEntry.email,
-          'Welcome to SentryGuard',
-          '<h1>Welcome, Test User!</h1>'
+          'en',
+          {
+            name: 'Test User',
+          }
         );
       });
 
@@ -330,16 +340,32 @@ describe('The WaitlistService class', () => {
       });
     });
 
+    describe('When preferred language is French', () => {
+      beforeEach(async () => {
+        mockMailingService.sendWelcomeEmail.mockResolvedValue(undefined);
+        mockWaitlistRepository.update.mockResolvedValue({ affected: 1 } as UpdateResult);
+
+        await service.sendWelcomeEmailAndMarkSent({
+          ...mockEntry,
+          preferredLanguage: 'fr',
+        });
+      });
+
+      it('should use the French language parameter', () => {
+        expect(mockMailingService.sendWelcomeEmail).toHaveBeenCalledWith(
+          mockEntry.email,
+          'fr',
+          expect.any(Object)
+        );
+      });
+    });
+
     describe('When email sending fails', () => {
       const expectedError = new Error('Email send failed');
       let act: () => Promise<void>;
 
       beforeEach(() => {
-        mockEmailContentBuilder.buildWelcomeEmail.mockReturnValue({
-          subject: 'Welcome to SentryGuard',
-          body: '<h1>Welcome, Test User!</h1>',
-        });
-        mockEmailService.sendEmail.mockRejectedValue(expectedError);
+        mockMailingService.sendWelcomeEmail.mockRejectedValue(expectedError);
 
         act = () => service.sendWelcomeEmailAndMarkSent(mockEntry);
       });

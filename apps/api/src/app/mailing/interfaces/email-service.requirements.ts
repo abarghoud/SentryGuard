@@ -1,9 +1,9 @@
 export const emailServiceRequirementsSymbol = Symbol('EmailServiceRequirements');
 
 export interface EmailServiceRequirements {
-  sendEmail(
+  sendTemplateEmail(
     to: string,
-    subject: string,
-    htmlBody: string
+    templateKey: string,
+    mergeInfo: Record<string, string>
   ): Promise<void>;
 }
