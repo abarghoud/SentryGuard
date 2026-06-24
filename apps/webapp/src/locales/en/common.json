@@ -435,5 +435,15 @@
   "Receive alerts on Telegram when an intrusion is detected": "Receive alerts on Telegram when an intrusion is detected",
   "Enable Sentry Mode Monitoring": "Enable Sentry Mode Monitoring",
   "Activate Sentry Mode Monitoring": "Activate Sentry Mode Monitoring",
-  "✅ Security monitoring enabled! Your setup is complete.": "✅ Security monitoring enabled! Your setup is complete."
+  "✅ Security monitoring enabled! Your setup is complete.": "✅ Security monitoring enabled! Your setup is complete.",
+  "Three critical features the Tesla App is missing.": "Three critical features the Tesla App is missing.",
+  "3. Active Deterrent": "3. Active Deterrent",
+  "Automatically scare off intruders by triggering your vehicle's horn or boombox sound the moment a break-in is detected.": "Automatically scare off intruders by triggering your vehicle's horn or boombox sound the moment a break-in is detected.",
+  "Stays passive and silent. The intruder can continue their attempt without any immediate local deterrent.": "Stays passive and silent. The intruder can continue their attempt without any immediate local deterrent.",
+  "Triggers a loud sound deterrent within seconds to alert bystanders and scare away the intruder.": "Smart deterrent. Sound alerts are only triggered by actual threats (like door handle pulls), preventing annoying false alarms.",
+  "Active Defense": "Active Defense",
+  "What is the Active Deterrent (Offensive Response) and how does it work?": "What is the Active Deterrent (Offensive Response) and how does it work?",
+  "Active deterrent explanation": "The Active Deterrent is a security feature that automatically triggers a sound action from your vehicle (horn or boombox fart sound) when a real, physical intrusion is detected (like a door handle pull). Unlike other apps that honk for any camera motion detection (causing constant false alarms), our system uses telemetry to react only to actual threats. This feature is completely optional, disabled by default, and can be fully configured or disabled at any time for each vehicle from your dashboard.",
+  "Do I have to grant write permissions (vehicle commands) to SentryGuard?": "Do I have to grant write permissions (vehicle commands) to SentryGuard?",
+  "Write permissions requirement explanation": "No. SentryGuard works perfectly in a purely passive (read-only) mode if you only want to receive Telegram alert notifications. The permission to send control commands is only requested and required if you explicitly choose to enable the Active Deterrent feature to trigger the horn or boombox sound during an intrusion. If you do not activate this feature, SentryGuard requires absolutely no write access to your Tesla."
 }

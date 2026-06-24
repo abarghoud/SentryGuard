@@ -141,7 +141,7 @@ export default async function HomePage({ params }: HomePageProps) {
       <div className="bg-gray-50 py-16 md:py-24 border-y border-gray-200 overflow-hidden">
         <div className="container mx-auto px-6">
           <div className="text-center max-w-3xl mx-auto mb-16 md:mb-24">
-            <h3 className="text-3xl md:text-4xl font-bold mb-4">{t('Two critical features the Tesla App is missing.')}</h3>
+            <h3 className="text-3xl md:text-4xl font-bold mb-4">{t('Three critical features the Tesla App is missing.')}</h3>
             <p className="text-lg text-gray-600">
               {t('The official app leaves gaps in your security. We fill them with instant Telegram alerts.')}
             </p>
@@ -202,6 +202,34 @@ export default async function HomePage({ params }: HomePageProps) {
               </div>
               <div className="order-2 md:order-2 relative rounded-2xl overflow-hidden shadow-xl border border-gray-100 bg-white">
                  <LocalizedImage baseSrc="/images/hero-alert" locale={locale} alt="Break-in alert comparison" width={600} height={600} className="w-full h-auto object-cover" />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              <div className="order-2 md:order-1 relative rounded-2xl overflow-hidden shadow-xl border border-gray-100 bg-white">
+                 <LocalizedImage baseSrc="/images/offensive-response" locale={locale} alt="Active deterrent comparison" width={600} height={600} className="w-full h-auto object-cover" />
+              </div>
+              <div className="order-1 md:order-2 space-y-8">
+                <div>
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-sm font-semibold mb-4 border border-indigo-100">
+                    {t('Active Defense')}
+                  </div>
+                  <h4 className="text-3xl font-bold mb-4">{t('3. Active Deterrent')}</h4>
+                  <p className="text-lg text-gray-600">{t('Automatically scare off intruders by triggering your vehicle\'s horn or boombox sound the moment a break-in is detected.')}</p>
+                </div>
+
+                <div className="space-y-6">
+                  <ComparisonItem 
+                    isPositive={false} 
+                    title={t('Tesla App')} 
+                    description={t('Stays passive and silent. The intruder can continue their attempt without any immediate local deterrent.')} 
+                  />
+                  <ComparisonItem 
+                    isPositive={true} 
+                    title={t('SentryGuard')} 
+                    description={t('Triggers a loud sound deterrent within seconds to alert bystanders and scare away the intruder.')} 
+                  />
+                </div>
               </div>
             </div>
 
