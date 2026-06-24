@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { Repository } from 'typeorm';
 
+import { SupportedLanguage } from '../../../common/utils/language.util';
 import { UserLanguageService } from '../../user/user-language.service';
 import { KafkaLogContextService } from '../../../common/services/kafka-log-context.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
@@ -16,7 +17,7 @@ export interface AlertDispatchConfig {
   alertName: string;
   latencyLabel: string;
   severity: AlertEventSeverity;
-  telegramNotifier: (userId: string, alertInfo: { vin: string; display_name?: string }, userLanguage: 'en' | 'fr') => Promise<void>;
+  telegramNotifier: (userId: string, alertInfo: { vin: string; display_name?: string }, userLanguage: SupportedLanguage) => Promise<void>;
   type: AlertEventType;
 }
 

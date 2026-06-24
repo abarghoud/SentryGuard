@@ -4,7 +4,7 @@ import {
   renderRichTranslation,
   stripRichTextTags,
 } from '@/core/i18n/server-i18n';
-import { SUPPORTED_LOCALES } from '@/core/i18n/i18n-config';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '@/core/i18n/i18n-config';
 import { faqCategories } from '@/core/faq/faq-data';
 import PublicLayout from '@/components/PublicLayout';
 import { ContactSection } from '@/components/faq/ContactSection';
@@ -43,9 +43,8 @@ export async function generateMetadata({
     alternates: {
       canonical: `/${locale}/faq`,
       languages: {
-        'en': '/en/faq',
-        'fr': '/fr/faq',
-        'x-default': '/en/faq',
+        ...Object.fromEntries(SUPPORTED_LOCALES.map((alt) => [alt, `/${alt}/faq`])),
+        'x-default': `/${DEFAULT_LOCALE}/faq`,
       },
     },
   };

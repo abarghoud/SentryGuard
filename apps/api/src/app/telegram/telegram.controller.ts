@@ -22,6 +22,7 @@ import { ConsentGuard } from '../../common/guards/consent.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { User } from '../../entities/user.entity';
 import i18n from '../../i18n';
+import { SupportedLanguage } from '../../common/utils/language.util';
 import { ThrottleOptions } from '../../config/throttle.config';
 
 @Controller('telegram')
@@ -175,7 +176,7 @@ export class TelegramController {
   @Post('test-message')
   async sendTestMessage(@CurrentUser() user: User) {
     const userId = user.userId;
-    const lng = (user.preferred_language ?? 'en') as 'en' | 'fr';
+    const lng = (user.preferred_language ?? 'en') as SupportedLanguage;
     const message = i18n.t('🧪 Test message from SentryGuard API', { lng });
 
     this.logger.log(`📤 Sending test message to: ${userId} (${user.email})`);

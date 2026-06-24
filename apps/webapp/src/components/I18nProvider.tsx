@@ -10,6 +10,13 @@ import { DEFAULT_LOCALE, setLocaleCookie } from '../core/i18n/i18n-config';
 const localeLoaders: Record<string, () => Promise<Record<string, string>>> = {
   en: () => import('../locales/en/common.json').then((m) => m.default),
   fr: () => import('../locales/fr/common.json').then((m) => m.default),
+  de: () => import('../locales/de/common.json').then((m) => m.default),
+  nl: () => import('../locales/nl/common.json').then((m) => m.default),
+  no: () => import('../locales/no/common.json').then((m) => m.default),
+  es: () => import('../locales/es/common.json').then((m) => m.default),
+  it: () => import('../locales/it/common.json').then((m) => m.default),
+  sv: () => import('../locales/sv/common.json').then((m) => m.default),
+  da: () => import('../locales/da/common.json').then((m) => m.default),
 };
 
 export const i18n: I18n = createInstance();

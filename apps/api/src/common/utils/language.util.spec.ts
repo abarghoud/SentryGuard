@@ -17,10 +17,20 @@ describe('Language Utilities', () => {
       expect(extractPreferredLanguage('en-GB')).toBe('en');
     });
 
-    it('should return "en" for other languages', () => {
-      expect(extractPreferredLanguage('es-ES')).toBe('en');
-      expect(extractPreferredLanguage('de-DE')).toBe('en');
+    it('should return the matching language for newly supported locales', () => {
+      expect(extractPreferredLanguage('de-DE')).toBe('de');
+      expect(extractPreferredLanguage('nl-NL')).toBe('nl');
+      expect(extractPreferredLanguage('no')).toBe('no');
+      expect(extractPreferredLanguage('es-ES')).toBe('es');
+      expect(extractPreferredLanguage('it-IT')).toBe('it');
+      expect(extractPreferredLanguage('sv-SE')).toBe('sv');
+      expect(extractPreferredLanguage('da-DK')).toBe('da');
+    });
+
+    it('should return "en" for unsupported languages', () => {
       expect(extractPreferredLanguage('ja-JP')).toBe('en');
+      expect(extractPreferredLanguage('pt-BR')).toBe('en');
+      expect(extractPreferredLanguage('zh-CN')).toBe('en');
     });
 
     it('should return "en" for undefined header', () => {
@@ -50,6 +60,16 @@ describe('Language Utilities', () => {
 
     it('should convert "fr" to "fr-FR"', () => {
       expect(normalizeTeslaLocale('fr')).toBe('fr-FR');
+    });
+
+    it('should map newly supported languages to their Tesla locale', () => {
+      expect(normalizeTeslaLocale('de')).toBe('de-DE');
+      expect(normalizeTeslaLocale('nl')).toBe('nl-NL');
+      expect(normalizeTeslaLocale('no')).toBe('nb-NO');
+      expect(normalizeTeslaLocale('es')).toBe('es-ES');
+      expect(normalizeTeslaLocale('it')).toBe('it-IT');
+      expect(normalizeTeslaLocale('sv')).toBe('sv-SE');
+      expect(normalizeTeslaLocale('da')).toBe('da-DK');
     });
   });
 });

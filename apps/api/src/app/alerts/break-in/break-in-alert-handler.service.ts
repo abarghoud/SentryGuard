@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { SupportedLanguage } from '../../../common/utils/language.util';
 import { TelegramService } from '../../telegram/telegram.service';
 import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { TelemetryEventHandler } from '../../telemetry/interfaces/telemetry-event-handler.interface';
@@ -73,7 +74,7 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
     }
   }
 
-  private readonly telegramNotifier = async (userId: string, alertInfo: { vin: string; display_name?: string }, userLanguage: 'en' | 'fr') => {
+  private readonly telegramNotifier = async (userId: string, alertInfo: { vin: string; display_name?: string }, userLanguage: SupportedLanguage) => {
     const keyboard = this.keyboardBuilder.buildBreakInAlertKeyboard(userId, userLanguage);
     await this.telegramService.sendBreakInAlert(userId, alertInfo, userLanguage, keyboard);
   };

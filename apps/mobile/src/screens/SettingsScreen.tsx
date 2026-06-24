@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { JSX } from 'react';
+import { useMemo, type JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -9,7 +9,7 @@ import { TextVariant } from '../core/design/typography';
 import { useScreenTopInset } from '../core/design/use-screen-inset';
 import { MainStackParamList } from '../core/navigation';
 import { ThemeMode, useTheme } from '../core/theme';
-import { AppSwitch, AppText, GlassButton, GlassButtonVariant, ListRow, ListSection, SegmentedControl, Surface } from '../core/ui';
+import { AppSwitch, AppText, GlassButton, GlassButtonVariant, Icon, ListRow, ListSection, SegmentedControl, Surface } from '../core/ui';
 import { UserLanguage } from '../features/user/domain/entities';
 import { resolveTelegramStatusKey } from './telegram-settings/telegram-settings.helpers';
 import {
@@ -24,12 +24,25 @@ interface SettingsScreenProps {
   onLogout(): Promise<void>;
 }
 
+const LANGUAGE_OPTIONS: { label: string; value: UserLanguage }[] = [
+  { label: 'English', value: UserLanguage.English },
+  { label: 'Français', value: UserLanguage.French },
+  { label: 'Deutsch', value: UserLanguage.German },
+  { label: 'Nederlands', value: UserLanguage.Dutch },
+  { label: 'Norsk', value: UserLanguage.Norwegian },
+  { label: 'Español', value: UserLanguage.Spanish },
+  { label: 'Italiano', value: UserLanguage.Italian },
+  { label: 'Svenska', value: UserLanguage.Swedish },
+  { label: 'Dansk', value: UserLanguage.Danish },
+];
+
 export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
   const { t, i18n } = useTranslation();
   const { colors, mode, setMode } = useTheme();
   const topInset = useScreenTopInset();
   const {
     isDndAccessModalOpen,
+    isLanguageModalOpen,
     isTelegramLinked,
     languageMutation,
     languageQuery,
@@ -39,11 +52,16 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
     preferencesQuery,
     profile,
     setIsDndAccessModalOpen,
+    setIsLanguageModalOpen,
     updatePreference,
   } = useSettings();
 
   const isBusy = preferencesMutation.isPending;
   const language = languageQuery.data?.language ?? UserLanguage.French;
+  const currentLanguageOption = useMemo(
+    () => LANGUAGE_OPTIONS.find((option) => option.value === language) ?? LANGUAGE_OPTIONS[0],
+    [language]
+  );
 
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const statusMessage =
@@ -90,19 +108,13 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         />
       </Surface>
 
-      <Surface style={styles.selectorCard}>
-        <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
-          {t('settings.language')}
-        </AppText>
-        <SegmentedControl
-          value={language}
-          onChange={(next) => languageMutation.mutate(next)}
-          options={[
-            { label: 'Français', value: UserLanguage.French },
-            { label: 'English', value: UserLanguage.English },
-          ]}
+      <ListSection header={t('settings.language')}>
+        <ListRow
+          title={currentLanguageOption.label}
+          showChevron
+          onPress={() => setIsLanguageModalOpen(true)}
         />
-      </Surface>
+      </ListSection>
 
       <ListSection header={t('settings.notifications')}>
         <ListRow
@@ -147,6 +159,30 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         onPress={() => void onLogout()}
         style={styles.logout}
       />
+
+      <Modal animationType="fade" onRequestClose={() => setIsLanguageModalOpen(false)} transparent visible={isLanguageModalOpen}>
+        <View style={[styles.modalBackdrop, { backgroundColor: colors.overlay }]}>
+          <Surface style={styles.modalCard}>
+            <AppText variant={TextVariant.Title3}>{t('settings.language')}</AppText>
+            {LANGUAGE_OPTIONS.map((option) => (
+              <ListRow
+                key={option.value}
+                title={option.label}
+                onPress={() => {
+                  languageMutation.mutate(option.value);
+                  setIsLanguageModalOpen(false);
+                }}
+                accessory={
+                  option.value === language ? (
+                    <Icon name="checkmark" size={16} color={colors.accent} weight="semibold" />
+                  ) : null
+                }
+              />
+            ))}
+            <GlassButton label={t('common.cancel')} variant={GlassButtonVariant.Plain} onPress={() => setIsLanguageModalOpen(false)} />
+          </Surface>
+        </View>
+      </Modal>
 
       <Modal animationType="fade" onRequestClose={() => setIsDndAccessModalOpen(false)} transparent visible={isDndAccessModalOpen}>
         <View style={[styles.modalBackdrop, { backgroundColor: colors.overlay }]}>

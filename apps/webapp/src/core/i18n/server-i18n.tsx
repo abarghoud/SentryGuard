@@ -3,9 +3,26 @@ import { ReactNode } from 'react';
 
 import en from '../../locales/en/common.json';
 import fr from '../../locales/fr/common.json';
-import { DEFAULT_LOCALE } from './i18n-config';
+import de from '../../locales/de/common.json';
+import nl from '../../locales/nl/common.json';
+import no from '../../locales/no/common.json';
+import es from '../../locales/es/common.json';
+import it from '../../locales/it/common.json';
+import sv from '../../locales/sv/common.json';
+import da from '../../locales/da/common.json';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from './i18n-config';
 
-const translations: Record<string, Record<string, string>> = { en, fr };
+const translations: Record<string, Record<string, string>> = {
+  en,
+  fr,
+  de,
+  nl,
+  no,
+  es,
+  it,
+  sv,
+  da,
+};
 
 export async function getLocale(): Promise<string> {
   const cookieStore = await cookies();
@@ -18,11 +35,33 @@ export async function getLocale(): Promise<string> {
   const headerStore = await headers();
   const acceptLanguage = headerStore.get('accept-language') || '';
 
-  if (acceptLanguage.toLowerCase().startsWith('fr')) {
-    return 'fr';
+  const detectedLocale = detectLocaleFromAcceptLanguage(acceptLanguage);
+
+  if (detectedLocale) {
+    return detectedLocale;
   }
 
   return DEFAULT_LOCALE;
+}
+
+function detectLocaleFromAcceptLanguage(
+  acceptLanguage: string
+): string | undefined {
+  const requestedCodes = acceptLanguage
+    .toLowerCase()
+    .split(',')
+    .map((part) => part.split(';')[0].trim().split('-')[0])
+    .filter((code) => code.length > 0);
+
+  for (const requestedCode of requestedCodes) {
+    const match = SUPPORTED_LOCALES.find((locale) => locale === requestedCode);
+
+    if (match) {
+      return match;
+    }
+  }
+
+  return undefined;
 }
 
 export function getTranslation(locale: string) {

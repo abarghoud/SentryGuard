@@ -1,6 +1,7 @@
 import { Injectable, Logger, Inject, OnModuleDestroy } from '@nestjs/common';
 import { TelegramError } from 'telegraf';
 import i18n from '../../i18n';
+import { SupportedLanguage } from '../../common/utils/language.util';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramMuteService } from './telegram-mute.service';
 import { TelegramContextService } from './telegram-context.service';
@@ -33,7 +34,7 @@ export class TelegramService implements OnModuleDestroy {
   async sendSentryAlert(
     userId: string,
     alertInfo: { vin: string, display_name?: string },
-    userLanguage: 'en' | 'fr',
+    userLanguage: SupportedLanguage,
     keyboard?: TelegramKeyboard,
   ) {
     this.logger.debug(`[OPTIMIZATION] Using provided language: ${userLanguage} for user: ${userId}`);
@@ -94,7 +95,7 @@ export class TelegramService implements OnModuleDestroy {
   async sendBreakInAlert(
     userId: string,
     alertInfo: { vin: string, display_name?: string },
-    userLanguage: 'en' | 'fr',
+    userLanguage: SupportedLanguage,
     keyboard?: TelegramKeyboard,
   ) {
     this.logger.debug(`[OPTIMIZATION] Using provided language: ${userLanguage} for user: ${userId}`);
@@ -196,7 +197,7 @@ export class TelegramService implements OnModuleDestroy {
 
   private formatSentryAlertMessage(
     { display_name, vin }: { vin: string, display_name?: string },
-    lng: 'en' | 'fr'
+    lng: SupportedLanguage
   ): string {
     return `
 🚨 <b>${i18n.t('TESLA SENTRY ALERT', { lng })}</b> 🚨
@@ -209,7 +210,7 @@ export class TelegramService implements OnModuleDestroy {
 
   private formatBreakInAlertMessage(
     { display_name, vin }: { vin: string, display_name?: string },
-    lng: 'en' | 'fr'
+    lng: SupportedLanguage
   ): string {
     return `
 🚨 <b>${i18n.t('TESLA BREAK-IN ALERT', { lng })}</b> 🚨

@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
 import { User } from '../../../entities/user.entity';
 import { encrypt } from '../../../common/utils/crypto.util';
+import { SupportedLanguage } from '../../../common/utils/language.util';
 import { UserNotApprovedException } from '../../../common/exceptions/user-not-approved.exception';
 import type { WaitlistServiceRequirements } from '../../waitlist/interfaces/waitlist-service.requirements';
 import { waitlistServiceRequirementsSymbol } from '../../waitlist/interfaces/waitlist-service.requirements';
@@ -27,7 +28,7 @@ export class UserRegistrationService {
   async createOrUpdateUser(
     tokens: OAuthTokensResponse,
     profile: OAuthUserProfile,
-    userLocale: 'en' | 'fr'
+    userLocale: SupportedLanguage
   ): Promise<string> {
     const encryptedAccessToken = encrypt(tokens.access_token);
     const encryptedRefreshToken = encrypt(tokens.refresh_token);
@@ -61,7 +62,7 @@ export class UserRegistrationService {
 
   private async verifyWaitlistApproval(
     profile: OAuthUserProfile,
-    userLocale: 'en' | 'fr'
+    userLocale: SupportedLanguage
   ): Promise<void> {
     if (!profile.email) {
       return;
@@ -114,7 +115,7 @@ export class UserRegistrationService {
     profile: OAuthUserProfile,
     encryptedAccessToken: string,
     encryptedRefreshToken: string,
-    userLocale: 'en' | 'fr'
+    userLocale: SupportedLanguage
   ): Promise<string> {
     const userId = crypto.randomBytes(16).toString('hex');
 
