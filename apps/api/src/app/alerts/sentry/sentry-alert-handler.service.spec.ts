@@ -3,7 +3,6 @@ import { plainToInstance } from 'class-transformer';
 import { mock, MockProxy } from 'jest-mock-extended';
 
 import { SentryAlertHandlerService } from './sentry-alert-handler.service';
-import { SentryPresenceTrackerService } from './sentry-presence-tracker.service';
 import { TelegramService } from '../../telegram/telegram.service';
 import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
@@ -23,13 +22,11 @@ describe('The SentryAlertHandlerService class', () => {
   let mockTelegramService: MockProxy<TelegramService>;
   let mockKeyboardBuilder: MockProxy<TelegramKeyboardBuilderService>;
   let mockAlertNotifier: MockProxy<VehicleAlertNotifierService>;
-  let mockPresenceTracker: MockProxy<SentryPresenceTrackerService>;
 
   beforeEach(async () => {
     mockTelegramService = mock<TelegramService>();
     mockKeyboardBuilder = mock<TelegramKeyboardBuilderService>();
     mockAlertNotifier = mock<VehicleAlertNotifierService>();
-    mockPresenceTracker = mock<SentryPresenceTrackerService>();
     mockAlertNotifier.dispatch.mockResolvedValue({ userIds: ['user-1'] });
 
     const module: TestingModule = await Test.createTestingModule({
@@ -38,7 +35,6 @@ describe('The SentryAlertHandlerService class', () => {
         { provide: TelegramService, useValue: mockTelegramService },
         { provide: TelegramKeyboardBuilderService, useValue: mockKeyboardBuilder },
         { provide: VehicleAlertNotifierService, useValue: mockAlertNotifier },
-        { provide: SentryPresenceTrackerService, useValue: mockPresenceTracker },
       ],
     }).compile();
 
@@ -72,46 +68,7 @@ describe('The SentryAlertHandlerService class', () => {
           expect.objectContaining({
             alertName: 'SENTRY_ALERT',
             severity: AlertEventSeverity.Warning,
-          })
-        );
-      });
-
-      it('should also start watching for sustained presence', () => {
-        expect(mockPresenceTracker.watch).toHaveBeenCalledWith('TEST_VIN_123', expect.any(Function));
-      });
-    });
-
-    describe('When the sustained-presence watch fires (not final)', () => {
-      beforeEach(async () => {
-        await service.handle(buildMessage(SentryModeState.Aware));
-        const onSustained = mockPresenceTracker.watch.mock.calls[0][1];
-        await onSustained(false);
-      });
-
-      it('should dispatch a critical sustained-presence alert', () => {
-        expect(mockAlertNotifier.dispatch).toHaveBeenCalledWith(
-          expect.objectContaining({
-            alertName: 'SENTRY_SUSTAINED_PRESENCE',
-            severity: AlertEventSeverity.Critical,
-            type: AlertEventType.SustainedPresence,
-          })
-        );
-      });
-    });
-
-    describe('When the final sustained-presence watch fires', () => {
-      beforeEach(async () => {
-        await service.handle(buildMessage(SentryModeState.Aware));
-        const onSustained = mockPresenceTracker.watch.mock.calls[0][1];
-        await onSustained(true);
-      });
-
-      it('should dispatch the final sustained-presence alert', () => {
-        expect(mockAlertNotifier.dispatch).toHaveBeenCalledWith(
-          expect.objectContaining({
-            alertName: 'SENTRY_SUSTAINED_PRESENCE_FINAL',
-            severity: AlertEventSeverity.Critical,
-            type: AlertEventType.SustainedPresenceFinal,
+            type: AlertEventType.Sentry,
           })
         );
       });
@@ -120,10 +77,6 @@ describe('The SentryAlertHandlerService class', () => {
     describe('When SentryMode is Panic', () => {
       beforeEach(async () => {
         await service.handle(buildMessage(SentryModeState.Panic));
-      });
-
-      it('should clear the presence watch', () => {
-        expect(mockPresenceTracker.clear).toHaveBeenCalledWith('TEST_VIN_123');
       });
 
       it('should dispatch a critical panic alert', () => {
@@ -140,10 +93,6 @@ describe('The SentryAlertHandlerService class', () => {
     describe('When SentryMode is Armed (neither Aware nor Panic)', () => {
       beforeEach(async () => {
         await service.handle(buildMessage(SentryModeState.Armed));
-      });
-
-      it('should clear the presence watch', () => {
-        expect(mockPresenceTracker.clear).toHaveBeenCalledWith('TEST_VIN_123');
       });
 
       it('should not dispatch any alert', () => {

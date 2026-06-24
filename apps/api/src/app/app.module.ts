@@ -10,7 +10,6 @@ import { KafkaService } from './messaging/kafka/kafka.service';
 import { TelemetryMessageHandlerService } from './telemetry/handlers/telemetry-message-handler.service';
 import { TelemetryValidationService } from './telemetry/services/telemetry-validation.service';
 import { SentryAlertHandlerService } from './alerts/sentry/sentry-alert-handler.service';
-import { SentryPresenceTrackerService } from './alerts/sentry/sentry-presence-tracker.service';
 import { BreakInAlertHandlerService } from './alerts/break-in/break-in-alert-handler.service';
 import { ChargePortLatchTrackerService } from './alerts/break-in/charge-port-latch-tracker.service';
 import { VehicleAlertNotifierService } from './alerts/common/vehicle-alert-notifier.service';
@@ -76,7 +75,6 @@ import { RetryManager } from './shared/retry-manager.service';
     TelemetryValidationService,
     VehicleAlertNotifierService,
     SentryAlertHandlerService,
-    SentryPresenceTrackerService,
     BreakInAlertHandlerService,
     ChargePortLatchTrackerService,
     {

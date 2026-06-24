@@ -86,34 +86,6 @@ describe('The NotificationsService class', () => {
       });
     });
 
-    describe('When an English user receives a sustained-presence alert', () => {
-      beforeEach(async () => {
-        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.SustainedPresence, 'en');
-      });
-
-      it('should send the sustained-presence title', () => {
-        expect(lastPushPayload().title).toBe('Someone is lingering');
-      });
-
-      it('should send the sustained-presence body', () => {
-        expect(lastPushPayload().body).toBe('Someone has been around your vehicle for a while.');
-      });
-    });
-
-    describe('When an English user receives a final sustained-presence alert', () => {
-      beforeEach(async () => {
-        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.SustainedPresenceFinal, 'en');
-      });
-
-      it('should send the final-reminder title', () => {
-        expect(lastPushPayload().title).toBe('Last reminder - someone still around');
-      });
-
-      it('should send the final-reminder body', () => {
-        expect(lastPushPayload().body).toBe('Someone is still around your vehicle. No more alerts for this incident.');
-      });
-    });
-
     describe('When an English user receives a panic alert', () => {
       beforeEach(async () => {
         await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.Panic, 'en');

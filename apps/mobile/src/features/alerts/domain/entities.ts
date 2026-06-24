@@ -6,8 +6,6 @@ export enum AlertEventSeverity {
 export enum AlertEventType {
   BreakIn = 'break_in',
   Sentry = 'sentry',
-  SustainedPresence = 'sustained_presence',
-  SustainedPresenceFinal = 'sustained_presence_final',
   Panic = 'panic',
 }
 

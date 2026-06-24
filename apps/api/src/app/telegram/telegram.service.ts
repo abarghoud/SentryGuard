@@ -152,16 +152,6 @@ export class TelegramService implements OnModuleDestroy {
     }
   }
 
-  async sendSentryPresenceAlert(
-    userId: string,
-    alertInfo: { vin: string, display_name?: string },
-    userLanguage: 'en' | 'fr',
-    keyboard?: TelegramKeyboard,
-  ) {
-    const message = this.formatSentryPresenceMessage(alertInfo, userLanguage);
-    return this.sendFormattedAlert(userId, alertInfo, userLanguage, message, keyboard);
-  }
-
   async sendSentryPanicAlert(
     userId: string,
     alertInfo: { vin: string, display_name?: string },
@@ -169,16 +159,6 @@ export class TelegramService implements OnModuleDestroy {
     keyboard?: TelegramKeyboard,
   ) {
     const message = this.formatSentryPanicMessage(alertInfo, userLanguage);
-    return this.sendFormattedAlert(userId, alertInfo, userLanguage, message, keyboard);
-  }
-
-  async sendSentryPresenceFinalAlert(
-    userId: string,
-    alertInfo: { vin: string, display_name?: string },
-    userLanguage: 'en' | 'fr',
-    keyboard?: TelegramKeyboard,
-  ) {
-    const message = this.formatSentryPresenceFinalMessage(alertInfo, userLanguage);
     return this.sendFormattedAlert(userId, alertInfo, userLanguage, message, keyboard);
   }
 
@@ -304,19 +284,6 @@ export class TelegramService implements OnModuleDestroy {
     `.trim();
   }
 
-  private formatSentryPresenceMessage(
-    { display_name, vin }: { vin: string, display_name?: string },
-    lng: 'en' | 'fr'
-  ): string {
-    return `
-🚨 <b>${i18n.t('SOMEONE IS AROUND YOUR TESLA', { lng })}</b> 🚨
-
-🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${display_name ?? vin}
-
-<i>${i18n.t('Someone has been lingering around your vehicle for a while. Check your cameras!', { lng })}</i>
-    `.trim();
-  }
-
   private formatSentryPanicMessage(
     { display_name, vin }: { vin: string, display_name?: string },
     lng: 'en' | 'fr'
@@ -327,19 +294,6 @@ export class TelegramService implements OnModuleDestroy {
 🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${display_name ?? vin}
 
 <i>${i18n.t('Sentry Mode panic - your vehicle alarm may be sounding!', { lng })}</i>
-    `.trim();
-  }
-
-  private formatSentryPresenceFinalMessage(
-    { display_name, vin }: { vin: string, display_name?: string },
-    lng: 'en' | 'fr'
-  ): string {
-    return `
-🚨 <b>${i18n.t('LAST REMINDER', { lng })}</b> 🚨
-
-🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${display_name ?? vin}
-
-<i>${i18n.t('Someone is still around your vehicle. You will not receive further alerts for this incident - check your cameras.', { lng })}</i>
     `.trim();
   }
 }

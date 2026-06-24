@@ -50,14 +50,6 @@ describe('The resolveAlertTitleKey() function', () => {
     });
   });
 
-  describe('When the alert is a sustained presence', () => {
-    it('should return the sustained-presence title key', () => {
-      expect(resolveAlertTitleKey(createAlert(AlertEventType.SustainedPresence, AlertEventSeverity.Critical))).toBe(
-        'alerts.event.sustained_presence.title'
-      );
-    });
-  });
-
   describe('When the alert is a panic', () => {
     it('should return the panic title key', () => {
       expect(resolveAlertTitleKey(createAlert(AlertEventType.Panic, AlertEventSeverity.Critical))).toBe(
@@ -66,13 +58,6 @@ describe('The resolveAlertTitleKey() function', () => {
     });
   });
 
-  describe('When the alert is a final sustained presence', () => {
-    it('should return the final sustained-presence title key', () => {
-      expect(resolveAlertTitleKey(createAlert(AlertEventType.SustainedPresenceFinal, AlertEventSeverity.Critical))).toBe(
-        'alerts.event.sustained_presence_final.title'
-      );
-    });
-  });
 });
 
 describe('The resolveAlertMessageKey() function', () => {
@@ -92,14 +77,6 @@ describe('The resolveAlertMessageKey() function', () => {
     });
   });
 
-  describe('When the alert is a sustained presence', () => {
-    it('should return the sustained-presence message key', () => {
-      expect(resolveAlertMessageKey(createAlert(AlertEventType.SustainedPresence, AlertEventSeverity.Critical))).toBe(
-        'alerts.event.sustained_presence.message'
-      );
-    });
-  });
-
   describe('When the alert is a panic', () => {
     it('should return the panic message key', () => {
       expect(resolveAlertMessageKey(createAlert(AlertEventType.Panic, AlertEventSeverity.Critical))).toBe(
@@ -108,13 +85,6 @@ describe('The resolveAlertMessageKey() function', () => {
     });
   });
 
-  describe('When the alert is a final sustained presence', () => {
-    it('should return the final sustained-presence message key', () => {
-      expect(resolveAlertMessageKey(createAlert(AlertEventType.SustainedPresenceFinal, AlertEventSeverity.Critical))).toBe(
-        'alerts.event.sustained_presence_final.message'
-      );
-    });
-  });
 });
 
 describe('The resolveAlertTone() function', () => {
