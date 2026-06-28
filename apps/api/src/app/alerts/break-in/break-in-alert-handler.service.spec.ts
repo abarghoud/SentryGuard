@@ -119,9 +119,9 @@ describe('The BreakInAlertHandlerService class', () => {
         mockChargeTracker.hasLatchEventAround.mockReturnValue(true);
       });
 
-      it('should delay the verification by 3 seconds to ensure subsequent ChargePortLatch events have time to arrive, then prevent alert dispatch', async () => {
+      it('should delay the verification by 2 seconds to ensure subsequent ChargePortLatch events have time to arrive, then prevent alert dispatch', async () => {
         await service.handle(message);
-        jest.advanceTimersByTime(3000);
+        jest.advanceTimersByTime(2000);
 
         await Promise.resolve();
 
@@ -144,11 +144,11 @@ describe('The BreakInAlertHandlerService class', () => {
         mockAlertNotifier.dispatch.mockResolvedValue({ userIds: ['user-1'] });
       });
 
-      it('should delay the verification by 3 seconds to account for telemetry lag, then dispatch the alert via alertNotifier', async () => {
+      it('should delay the verification by 2 seconds to account for telemetry lag, then dispatch the alert via alertNotifier', async () => {
         await service.handle(message);
         expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
 
-        jest.advanceTimersByTime(3000);
+        jest.advanceTimersByTime(2000);
 
         await Promise.resolve();
 
@@ -160,9 +160,24 @@ describe('The BreakInAlertHandlerService class', () => {
         }));
       });
 
+      it('should respect a custom delay specified via environment variable', async () => {
+        process.env.BREAK_IN_ALERT_CHECK_DELAY_MS = '1500';
+        try {
+          await service.handle(message);
+          jest.advanceTimersByTime(1400);
+          expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
+
+          jest.advanceTimersByTime(100);
+          await Promise.resolve();
+          expect(mockAlertNotifier.dispatch).toHaveBeenCalled();
+        } finally {
+          delete process.env.BREAK_IN_ALERT_CHECK_DELAY_MS;
+        }
+      });
+
       it('should trigger offensive response for the VIN with userIds', async () => {
         await service.handle(message);
-        jest.advanceTimersByTime(3000);
+        jest.advanceTimersByTime(2000);
         await Promise.resolve();
 
         expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).toHaveBeenCalledWith('123', ['user-1'], message.createdAt);
@@ -170,7 +185,7 @@ describe('The BreakInAlertHandlerService class', () => {
 
       it('should construct and send telegram message when notifier callback is invoked', async () => {
         await service.handle(message);
-        jest.advanceTimersByTime(3000);
+        jest.advanceTimersByTime(2000);
         await Promise.resolve();
 
         const dispatchCall = mockAlertNotifier.dispatch.mock.calls[0][0];

@@ -43,9 +43,10 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
   }
 
   private scheduleAlertVerification(telemetryMessage: TelemetryMessage): void {
+    const delay = parseInt(process.env.BREAK_IN_ALERT_CHECK_DELAY_MS || '2000', 10);
     setTimeout(async () => {
       await this.verifyAndDispatchAlert(telemetryMessage);
-    }, 3000);
+    }, delay);
   }
 
   private async verifyAndDispatchAlert(telemetryMessage: TelemetryMessage): Promise<void> {
