@@ -43,6 +43,7 @@ export class MailingService {
 
     await this.emailService.sendTemplateEmail(to, templateKey, {
       name: variables.name,
+      discordUrl: process.env.DISCORD_INVITE_URL || '',
     });
   }
 
@@ -61,6 +62,7 @@ export class MailingService {
 
     await this.emailService.sendTemplateEmail(to, templateKey, {
       name: variables.name,
+      discordUrl: process.env.DISCORD_INVITE_URL || '',
     });
   }
 
@@ -82,6 +84,7 @@ export class MailingService {
     await this.emailService.sendTemplateEmail(to, templateKey, {
       name: variables.name,
       reconnectUrl,
+      discordUrl: process.env.DISCORD_INVITE_URL || '',
     });
   }
 }
