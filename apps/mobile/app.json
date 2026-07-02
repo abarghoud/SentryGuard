@@ -68,6 +68,12 @@
           "color": "#dc2626"
         }
       ],
+      [
+        "./plugins/withLargeNotificationIcon",
+        {
+          "image": "./assets/notification-large-icon.png"
+        }
+      ],
       "expo-secure-store",
       [
         "expo-splash-screen",
