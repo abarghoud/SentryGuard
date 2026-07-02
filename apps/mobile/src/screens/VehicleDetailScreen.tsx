@@ -1,6 +1,5 @@
 import * as WebBrowser from 'expo-web-browser';
 import type { JSX } from 'react';
-import { useLayoutEffect } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -18,7 +17,7 @@ import { VehicleAction } from './vehicle-detail/vehicle-detail.types';
 import { useVehicleDetail } from './vehicle-detail/use-vehicle-detail';
 import type { VehicleDetailScreenProps } from '../core/navigation';
 
-export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenProps): JSX.Element {
+export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.Element {
   const colors = useThemeColors();
   const {
     actionMutation,
@@ -30,11 +29,6 @@ export function VehicleDetailScreen({ route, navigation }: VehicleDetailScreenPr
     vehicle,
     vehicleCommandsAuthorized,
   } = useVehicleDetail(route.params.vehicleId);
-
-  const headerTitle = vehicle?.display_name ?? vehicle?.model ?? t('common.vehicleFallback');
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerShown: true, title: headerTitle });
-  }, [navigation, headerTitle]);
 
   if (!vehicle) {
     return (
