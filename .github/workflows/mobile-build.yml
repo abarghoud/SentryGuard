@@ -35,6 +35,15 @@ on:
       - '.github/workflows/mobile-build.yml'
       - 'yarn.lock'
   workflow_dispatch:
+    inputs:
+      profile:
+        description: 'EAS Build Profile'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
 
 permissions:
   contents: read
@@ -186,13 +195,13 @@ jobs:
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npx eas-cli build --platform android --profile preview --local --non-interactive --output build.aab
+        run: npx eas-cli build --platform android --profile ${{ inputs.profile }} --local --non-interactive --output build.aab
 
       - name: Submit to Google Play (Internal Sharing)
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npx eas-cli submit --platform android --path build.aab --profile preview --non-interactive
+        run: npx eas-cli submit --platform android --path build.aab --profile ${{ inputs.profile }} --non-interactive
 
   build-ios:
     name: Build iOS (signed, store)
@@ -222,10 +231,10 @@ jobs:
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npx eas-cli build --platform ios --profile preview --local --non-interactive --output build.ipa
+        run: npx eas-cli build --platform ios --profile ${{ inputs.profile }} --local --non-interactive --output build.ipa
 
       - name: Submit to Apple TestFlight
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npx eas-cli submit --platform ios --path build.ipa --profile preview --non-interactive
+        run: npx eas-cli submit --platform ios --path build.ipa --profile ${{ inputs.profile }} --non-interactive
