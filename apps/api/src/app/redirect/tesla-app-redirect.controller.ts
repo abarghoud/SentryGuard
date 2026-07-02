@@ -10,7 +10,8 @@ export class TeslaAppRedirectController {
   teslaRedirect(
     @Res() res: Response,
     @Query('userId') userId?: string,
-    @Query('lang') lang?: string
+    @Query('lang') lang?: string,
+    @Query('skipDeepLink') skipDeepLink?: string
   ) {
     const supportedLanguages = ['en', 'fr'];
     const detectedLang = supportedLanguages.includes(lang ?? '') ? (lang as string) : 'fr';
@@ -30,6 +31,7 @@ export class TeslaAppRedirectController {
       iosStore: i18n.t('iOS App Store', { lng: detectedLang }),
       androidStore: i18n.t('Android Play Store', { lng: detectedLang }),
     };
+    const teslaDeepLinkAttempt = skipDeepLink === 'true' ? '' : "window.location.href = 'tesla://';";
 
     const html = `<!DOCTYPE html>
 <html lang="${detectedLang}">
@@ -155,7 +157,7 @@ export class TeslaAppRedirectController {
             });
 
             try {
-                window.location.href = 'tesla://';
+                ${teslaDeepLinkAttempt}
             } catch (e) {
                 console.log("An error occurred while trying to open the app", e);
             }

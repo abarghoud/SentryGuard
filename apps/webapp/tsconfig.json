@@ -39,6 +39,9 @@
   "exclude": ["out-tsc", "dist", "node_modules", ".next"],
   "references": [
     {
+      "path": "../../libs/telegram/domain"
+    },
+    {
       "path": "../../libs/beta/domain"
     }
   ]

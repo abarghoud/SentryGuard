@@ -8,6 +8,7 @@ import { useOnboardingStep } from '../../features/onboarding/presentation/hooks/
 import TelegramLinkStep from './TelegramLinkStep';
 import VirtualKeySetupStep from './VirtualKeySetupStep';
 import TelemetryActivationStep from './TelemetryActivationStep';
+import FeatureDiscoveryStep from './FeatureDiscoveryStep';
 import OnboardingLoadingScreen from './OnboardingLoadingScreen';
 import OnboardingSuccessScreen from './OnboardingSuccessScreen';
 import SkipOnboardingButton from './SkipOnboardingButton';
@@ -20,6 +21,13 @@ export default function OnboardingWizard() {
   const { query, skipOnboardingMutation } = useOnboardingQuery();
   const { data: onboardingData, isLoading: isOnboardingLoading, refetch: checkStatus } = query;
   const isComplete = onboardingData?.isComplete ?? false;
+  const pendingAnnouncementKey = onboardingData?.pendingAnnouncementKey ?? null;
+
+  const wasAlreadyCompleteRef = useRef<boolean | null>(null);
+  if (!isOnboardingLoading && onboardingData && wasAlreadyCompleteRef.current === null) {
+    wasAlreadyCompleteRef.current = isComplete;
+  }
+  const wasAlreadyComplete = wasAlreadyCompleteRef.current ?? false;
 
   const skipOnboarding = async () => {
     try {
@@ -35,16 +43,19 @@ export default function OnboardingWizard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const hasRedirected = useRef(false);
 
+  const shouldRedirect = isComplete && pendingAnnouncementKey === null;
+
   useEffect(() => {
-    if (isComplete && !hasRedirected.current) {
+    if (shouldRedirect && !hasRedirected.current) {
       hasRedirected.current = true;
+      const delay = wasAlreadyComplete ? 0 : REDIRECT_DELAY_MS;
       const timer = setTimeout(() => {
         router.push('/dashboard');
-      }, REDIRECT_DELAY_MS);
+      }, delay);
       return () => clearTimeout(timer);
     }
     return undefined;
-  }, [isComplete, router]);
+  }, [shouldRedirect, wasAlreadyComplete, router]);
 
   const handleSkipOnboarding = useCallback(async () => {
     setIsSkipping(true);
@@ -68,6 +79,15 @@ export default function OnboardingWizard() {
   }, [checkStatus, refreshAll]);
 
   const renderStep = () => {
+    if (pendingAnnouncementKey !== null) {
+      return (
+        <FeatureDiscoveryStep
+          announcementKey={pendingAnnouncementKey}
+          onDismissed={handleContinue}
+        />
+      );
+    }
+
     if (currentStep === OnboardingStep.TELEGRAM_LINK) {
       return <TelegramLinkStep onContinue={handleContinue} />;
     }
@@ -83,12 +103,18 @@ export default function OnboardingWizard() {
     return null;
   };
 
-  const renderStepWithSkip = () => (
-    <>
-      {renderStep()}
-      <SkipOnboardingButton disabled={isSkipping} onSkip={handleSkipOnboarding} />
-    </>
-  );
+  const renderContent = () => {
+    if (pendingAnnouncementKey !== null) {
+      return renderStep();
+    }
+
+    return (
+      <>
+        {renderStep()}
+        <SkipOnboardingButton disabled={isSkipping} onSkip={handleSkipOnboarding} />
+      </>
+    );
+  };
 
   if (isOnboardingLoading || isStepLoading || isRefreshing) {
     return <OnboardingLoadingScreen />;
@@ -99,7 +125,7 @@ export default function OnboardingWizard() {
       <OnboardingWizardHeader />
       <div className="min-h-[calc(100vh-100px)] py-8">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-          {isComplete ? <OnboardingSuccessScreen /> : renderStepWithSkip()}
+          {shouldRedirect && !wasAlreadyComplete ? <OnboardingSuccessScreen /> : renderContent()}
         </div>
       </div>
     </div>

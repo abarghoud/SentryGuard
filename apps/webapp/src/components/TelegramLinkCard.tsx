@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { TelegramLinkInfo, TelegramStatus } from '../features/telegram/domain/entities';
+import type { TelegramLinkInfo, TelegramStatus } from '@sentryguard/telegram-domain';
 
 interface TelegramLinkCardProps {
   status: TelegramStatus | null;

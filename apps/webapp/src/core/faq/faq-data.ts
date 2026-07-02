@@ -23,6 +23,14 @@ export const faqCategories: FaqCategoryData[] = [
         answerKey: 'SentryGuard requires active Sentry Mode',
       },
       {
+        questionKey: 'Does SentryGuard protect my car when Sentry Mode is OFF?',
+        answerKey: 'Break-in detection explanation',
+      },
+      {
+        questionKey: 'What is the Active Deterrent (Offensive Response) and how does it work?',
+        answerKey: 'Active deterrent explanation',
+      },
+      {
         questionKey: 'Why Telegram?',
         answerKey: 'Why we chose Telegram',
       },
@@ -72,6 +80,10 @@ export const faqCategories: FaqCategoryData[] = [
       {
         questionKey: 'What permissions does SentryGuard need?',
         answerKey: 'What permissions SentryGuard needs',
+      },
+      {
+        questionKey: 'Do I have to grant write permissions (vehicle commands) to SentryGuard?',
+        answerKey: 'Write permissions requirement explanation',
       },
       {
         questionKey: 'How do I link my Telegram account?',
@@ -159,45 +171,6 @@ export const faqCategories: FaqCategoryData[] = [
         questionKey:
           'Why does the app crash when I use browser translation?',
         answerKey: 'Browser translation issue explanation',
-      },
-    ],
-  },
-  {
-    titleKey: 'Waitlist',
-    items: [
-      {
-        questionKey: 'Why is there a waitlist?',
-        answerKey: 'Why is there a waitlist answer',
-      },
-      {
-        questionKey: 'How long does waitlist approval take?',
-        answerKey: 'How long does waitlist approval take answer',
-      },
-      {
-        questionKey: "What happens after I'm approved?",
-        answerKey: "What happens after I'm approved answer",
-      },
-      {
-        questionKey:
-          "I signed up but didn't receive an approval email",
-        answerKey:
-          "I signed up but didn't receive an approval email answer",
-      },
-      {
-        questionKey: 'Can I check my waitlist status?',
-        answerKey: 'Can I check my waitlist status answer',
-      },
-      {
-        questionKey:
-          'Can I use SentryGuard while on the waitlist?',
-        answerKey:
-          'Can I use SentryGuard while on the waitlist answer',
-      },
-      {
-        questionKey:
-          'What if I try to log in before being approved?',
-        answerKey:
-          'What if I try to log in before being approved answer',
       },
     ],
   },

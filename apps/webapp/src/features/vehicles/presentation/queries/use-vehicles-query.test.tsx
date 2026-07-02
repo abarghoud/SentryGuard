@@ -8,6 +8,7 @@ import {
   ConfigureTelemetryRequirements,
   DeleteTelemetryConfigRequirements,
   ToggleBreakInMonitoringRequirements,
+  UpdateOffensiveResponseRequirements,
 } from '../../domain/use-cases/vehicles.use-cases.requirements';
 import { Vehicle } from '../../domain/entities';
 import React from 'react';
@@ -20,6 +21,7 @@ let mockGetVehiclesUseCase!: MockProxy<GetVehiclesRequirements>;
 let mockConfigureTelemetryUseCase!: MockProxy<ConfigureTelemetryRequirements>;
 let mockDeleteTelemetryConfigUseCase!: MockProxy<DeleteTelemetryConfigRequirements>;
 let mockToggleBreakInMonitoringUseCase!: MockProxy<ToggleBreakInMonitoringRequirements>;
+let mockUpdateOffensiveResponseUseCase!: MockProxy<UpdateOffensiveResponseRequirements>;
 
 const wrapper = ({ children }: { children: React.ReactNode }) => {
   const queryClient = new QueryClient({
@@ -32,17 +34,21 @@ describe('The useVehiclesQuery() hook', () => {
   let useVehiclesQuery: ReturnType<typeof createUseVehiclesQuery>;
 
   beforeEach(() => {
+    (hasToken as jest.Mock).mockReset();
+    (hasToken as jest.Mock).mockReturnValue(false);
     jest.clearAllMocks();
     mockGetVehiclesUseCase = mock<GetVehiclesRequirements>();
     mockConfigureTelemetryUseCase = mock<ConfigureTelemetryRequirements>();
     mockDeleteTelemetryConfigUseCase = mock<DeleteTelemetryConfigRequirements>();
     mockToggleBreakInMonitoringUseCase = mock<ToggleBreakInMonitoringRequirements>();
+    mockUpdateOffensiveResponseUseCase = mock<UpdateOffensiveResponseRequirements>();
     
     useVehiclesQuery = createUseVehiclesQuery({
       getVehiclesUseCase: mockGetVehiclesUseCase,
       configureTelemetryUseCase: mockConfigureTelemetryUseCase,
       deleteTelemetryConfigUseCase: mockDeleteTelemetryConfigUseCase,
       toggleBreakInMonitoringUseCase: mockToggleBreakInMonitoringUseCase,
+      updateOffensiveResponseUseCase: mockUpdateOffensiveResponseUseCase,
     });
   });
 

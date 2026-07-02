@@ -8,6 +8,7 @@ import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.serv
 import { TelegramContextService } from './telegram-context.service';
 import { UserLanguageService } from '../user/user-language.service';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
+import { User } from '../../entities/user.entity';
 import { CURRENT_BOT_UI_VERSION } from './telegram.types';
 
 jest.mock('../../i18n', () => ({
@@ -26,6 +27,9 @@ describe('The TelegramAccountLinkingService class', () => {
   const mockTelegramConfigRepository = {
     findOne: jest.fn(),
     save: jest.fn(),
+  };
+  const mockUserRepository = {
+    findOne: jest.fn(),
   };
   const mockBotService: MockProxy<TelegramBotService> = mock<TelegramBotService>();
   const mockKeyboardBuilderService: MockProxy<TelegramKeyboardBuilderService> = mock<TelegramKeyboardBuilderService>();
@@ -46,11 +50,13 @@ describe('The TelegramAccountLinkingService class', () => {
     mockContextService.getUserLanguageFromChatId.mockResolvedValue('en');
     mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
     mockKeyboardBuilderService.buildMainMenuKeyboard.mockReturnValue({});
+    mockUserRepository.findOne.mockResolvedValue({ onboarding_completed: false } as User);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TelegramAccountLinkingService,
         { provide: getRepositoryToken(TelegramConfig), useValue: mockTelegramConfigRepository },
+        { provide: getRepositoryToken(User), useValue: mockUserRepository },
         { provide: TelegramBotService, useValue: mockBotService },
         { provide: TelegramKeyboardBuilderService, useValue: mockKeyboardBuilderService },
         { provide: TelegramContextService, useValue: mockContextService },
@@ -242,6 +248,15 @@ describe('The TelegramAccountLinkingService class', () => {
           'telegramLinkedFollowUp',
           undefined
         );
+      });
+
+      it('should not send the follow-up message when the user setup is already complete', async () => {
+        mockUserRepository.findOne.mockResolvedValue({ onboarding_completed: true } as User);
+        const ctx = buildCtx(`/start ${fakeLinkToken}`);
+
+        await registeredStartHandler(ctx);
+
+        expect(ctx.reply).not.toHaveBeenCalledWith('telegramLinkedFollowUp', expect.anything());
       });
     });
 

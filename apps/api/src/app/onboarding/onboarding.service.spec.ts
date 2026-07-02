@@ -6,18 +6,36 @@ import { BadRequestException } from '@nestjs/common';
 import { OnboardingService } from './onboarding.service';
 import { User } from '../../entities/user.entity';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
+import { FeatureAnnouncement } from '../../entities/feature-announcement.entity';
+import { UserDismissedAnnouncement } from '../../entities/user-dismissed-announcement.entity';
 import { TelemetryConfigService } from '../telemetry/telemetry-config.service';
+import { MailingService } from '../mailing/services/mailing.service';
 
 describe('The OnboardingService class', () => {
   let service: OnboardingService;
   let mockUserRepository: MockProxy<Repository<User>>;
+  let mockFeatureAnnouncementRepository: MockProxy<Repository<FeatureAnnouncement>>;
+  let mockUserDismissedAnnouncementRepository: MockProxy<Repository<UserDismissedAnnouncement>>;
   let mockTelemetryConfigService: MockProxy<TelemetryConfigService>;
+  let mockMailingService: MockProxy<MailingService>;
+  const originalEnv = process.env;
 
   const fakeUserId = 'user-123';
 
   beforeEach(async () => {
+    process.env = {
+      ...originalEnv,
+      ZEPTOMAIL_TEMPLATE_ONBOARDING_COMPLETE_EN: 'onboarding-complete-en-template',
+    };
+
     mockUserRepository = mock<Repository<User>>();
+    mockFeatureAnnouncementRepository = mock<Repository<FeatureAnnouncement>>();
+    mockUserDismissedAnnouncementRepository = mock<Repository<UserDismissedAnnouncement>>();
     mockTelemetryConfigService = mock<TelemetryConfigService>();
+    mockMailingService = mock<MailingService>();
+
+    mockFeatureAnnouncementRepository.find.mockResolvedValue([]);
+    mockUserDismissedAnnouncementRepository.find.mockResolvedValue([]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -27,13 +45,29 @@ describe('The OnboardingService class', () => {
           useValue: mockUserRepository,
         },
         {
+          provide: getRepositoryToken(FeatureAnnouncement),
+          useValue: mockFeatureAnnouncementRepository,
+        },
+        {
+          provide: getRepositoryToken(UserDismissedAnnouncement),
+          useValue: mockUserDismissedAnnouncementRepository,
+        },
+        {
           provide: TelemetryConfigService,
           useValue: mockTelemetryConfigService,
+        },
+        {
+          provide: MailingService,
+          useValue: mockMailingService,
         },
       ],
     }).compile();
 
     service = module.get<OnboardingService>(OnboardingService);
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
   });
 
   describe('The getOnboardingStatus() method', () => {
@@ -56,6 +90,7 @@ describe('The OnboardingService class', () => {
         expect(result).toStrictEqual({
           isComplete: true,
           isSkipped: false,
+          pendingAnnouncementKey: null,
         });
       });
     });
@@ -82,7 +117,7 @@ describe('The OnboardingService class', () => {
   });
 
   describe('The completeOnboarding() method', () => {
-    describe('When all conditions are met', () => {
+    describe('When all conditions are met with Telegram linked', () => {
       const fakeUser = {
         userId: fakeUserId,
         onboarding_completed: false,
@@ -90,6 +125,67 @@ describe('The OnboardingService class', () => {
         telegramConfig: {
           status: TelegramLinkStatus.LINKED,
         } as TelegramConfig,
+        pushDeviceTokens: [],
+      } as User;
+
+      const fakeVehiclesWithStatus = [
+        {
+          vin: 'VIN123',
+          key_paired: true,
+          sentry_mode_monitoring_enabled: true,
+        },
+      ];
+
+      let result: any;
+
+      beforeEach(async () => {
+        const fakeUserWithDetails = {
+          ...fakeUser,
+          email: 'test@example.com',
+          preferred_language: 'en',
+          full_name: 'Test Name',
+        };
+        mockUserRepository.findOne.mockResolvedValue(fakeUserWithDetails as User);
+        mockTelemetryConfigService.getVehicles.mockResolvedValue(fakeVehiclesWithStatus as any);
+        mockUserRepository.update.mockResolvedValue(undefined as any);
+        mockMailingService.sendOnboardingCompleteEmail.mockResolvedValue(undefined);
+
+        result = await service.completeOnboarding(fakeUserId);
+      });
+
+      it('should update user onboarding status', () => {
+        expect(mockUserRepository.update).toHaveBeenCalledWith(fakeUserId, {
+          onboarding_completed: true,
+          onboarding_skipped: false,
+        });
+      });
+
+      it('should return success response', () => {
+        expect(result).toStrictEqual({ success: true });
+      });
+
+      it('should send the onboarding completed email', () => {
+        expect(mockMailingService.sendOnboardingCompleteEmail).toHaveBeenCalledWith(
+          'test@example.com',
+          'en',
+          {
+            name: 'Test Name',
+          }
+        );
+      });
+    });
+
+    describe('When all conditions are met with Push notifications enabled', () => {
+      const fakeUser = {
+        userId: fakeUserId,
+        onboarding_completed: false,
+        onboarding_skipped: false,
+        telegramConfig: null,
+        pushDeviceTokens: [
+          {
+            push_enabled: true,
+          },
+        ],
       } as User;
 
       const fakeVehiclesWithStatus = [
@@ -146,15 +242,16 @@ describe('The OnboardingService class', () => {
       });
     });
 
-    describe('When telegram is not linked', () => {
+    describe('When neither Telegram nor Push notifications are configured', () => {
       const fakeUser = {
         userId: fakeUserId,
         onboarding_completed: false,
         onboarding_skipped: false,
         telegramConfig: null,
+        pushDeviceTokens: [],
       } as User;
 
-      const expectedError = 'Telegram account not linked';
+      const expectedError = 'Either Telegram account must be linked or push notifications configured';
       let act: () => Promise<void>;
 
       beforeEach(() => {
@@ -182,6 +279,7 @@ describe('The OnboardingService class', () => {
         telegramConfig: {
           status: TelegramLinkStatus.LINKED,
         } as TelegramConfig,
+        pushDeviceTokens: [],
       } as User;
 
       const expectedError = 'Virtual key not paired';
@@ -212,6 +310,7 @@ describe('The OnboardingService class', () => {
         telegramConfig: {
           status: TelegramLinkStatus.LINKED,
         } as TelegramConfig,
+        pushDeviceTokens: [],
       } as User;
 
       const fakeVehiclesWithStatus = [
@@ -219,10 +318,11 @@ describe('The OnboardingService class', () => {
           vin: 'VIN123',
           key_paired: true,
           sentry_mode_monitoring_enabled: false,
+          break_in_monitoring_enabled: false,
         },
       ];
 
-      const expectedError = 'Telemetry not enabled for any vehicle';
+      const expectedError = 'Telemetry or break-in monitoring not enabled for any vehicle';
       let act: () => Promise<void>;
 
       beforeEach(() => {
@@ -336,4 +436,77 @@ describe('The OnboardingService class', () => {
       });
     });
   });
+
+  describe('The dismissAnnouncement() method', () => {
+    const fakeAnnouncementKey = 'break_in_offensive_response_v1';
+    const fakeAnnouncement = { key: fakeAnnouncementKey, is_active: true } as FeatureAnnouncement;
+
+    describe('When announcement exists and has not been dismissed', () => {
+      let result: any;
+
+      beforeEach(async () => {
+        mockFeatureAnnouncementRepository.findOne.mockResolvedValue(fakeAnnouncement);
+        mockUserDismissedAnnouncementRepository.findOne.mockResolvedValue(null);
+        mockUserDismissedAnnouncementRepository.save.mockResolvedValue(undefined as any);
+
+        result = await service.dismissAnnouncement(fakeUserId, fakeAnnouncementKey);
+      });
+
+      it('should save the dismissal record', () => {
+        expect(mockUserDismissedAnnouncementRepository.save).toHaveBeenCalledWith({
+          user_id: fakeUserId,
+          announcement_key: fakeAnnouncementKey,
+        });
+      });
+
+      it('should return success response', () => {
+        expect(result).toStrictEqual({ success: true });
+      });
+    });
+
+    describe('When announcement has already been dismissed', () => {
+      const fakeDismissedAnnouncement = {
+        user_id: fakeUserId,
+        announcement_key: fakeAnnouncementKey,
+      } as UserDismissedAnnouncement;
+
+      let result: any;
+
+      beforeEach(async () => {
+        mockFeatureAnnouncementRepository.findOne.mockResolvedValue(fakeAnnouncement);
+        mockUserDismissedAnnouncementRepository.findOne.mockResolvedValue(fakeDismissedAnnouncement);
+
+        result = await service.dismissAnnouncement(fakeUserId, fakeAnnouncementKey);
+      });
+
+      it('should return success without saving again', () => {
+        expect(result).toStrictEqual({ success: true });
+      });
+
+      it('should not call save', () => {
+        expect(mockUserDismissedAnnouncementRepository.save).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When announcement does not exist', () => {
+      const expectedError = 'Announcement not found';
+      let act: () => Promise<void>;
+
+      beforeEach(() => {
+        mockFeatureAnnouncementRepository.findOne.mockResolvedValue(null);
+        act = async () => {
+          await service.dismissAnnouncement(fakeUserId, fakeAnnouncementKey);
+        };
+      });
+
+      it('should throw BadRequestException', async () => {
+        await expect(act()).rejects.toThrow(BadRequestException);
+      });
+
+      it('should throw error with correct message', async () => {
+        await expect(act()).rejects.toThrow(expectedError);
+      });
+    });
+  });
+
 });

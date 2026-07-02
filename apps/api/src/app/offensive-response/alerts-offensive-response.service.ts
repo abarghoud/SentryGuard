@@ -15,7 +15,37 @@ export class AlertsOffensiveResponseService {
     private readonly teslaVehicleCommandService: TeslaVehicleCommandService,
   ) {}
 
-  async handleBreakInOffensiveResponse(vin: string, userIds: string[]): Promise<void> {
+  public async handleBreakInOffensiveResponse(
+    vin: string,
+    userIds: string[],
+    createdAt: string,
+  ): Promise<void> {
+    if (this.isLatencyTooHigh(createdAt)) {
+      this.logBypassedResponse(vin, createdAt);
+      return;
+    }
+
+    await this.processOffensiveResponseForUsers(vin, userIds);
+  }
+
+  private isLatencyTooHigh(createdAt: string): boolean {
+    const threshold = parseInt(process.env.OFFENSIVE_RESPONSE_LATENCY_THRESHOLD_MS || '60000', 10);
+    return this.calculateLatency(createdAt) > threshold;
+  }
+
+  private calculateLatency(createdAt: string): number {
+    return Date.now() - new Date(createdAt).getTime();
+  }
+
+  private logBypassedResponse(vin: string, createdAt: string): void {
+    const latency = this.calculateLatency(createdAt);
+    const threshold = process.env.OFFENSIVE_RESPONSE_LATENCY_THRESHOLD_MS || '60000';
+    this.logger.warn(
+      `[OFFENSIVE_LATENCY_ALERT] Offensive response bypassed for VIN ${vin} due to high latency: ${latency}ms (threshold: ${threshold}ms)`,
+    );
+  }
+
+  private async processOffensiveResponseForUsers(vin: string, userIds: string[]): Promise<void> {
     for (const userId of userIds) {
       const vehicle = await this.findVehicleByVin(vin, userId);
 
@@ -27,8 +57,9 @@ export class AlertsOffensiveResponseService {
         return;
       }
     }
-
-    this.logger.debug(`[OFFENSIVE] No eligible user found for break-in offensive response on VIN ${vin}`);
+    this.logger.debug(
+      `[OFFENSIVE] No eligible user found for break-in offensive response on VIN ${vin}`,
+    );
   }
 
   private async findVehicleByVin(vin: string, userId: string): Promise<Vehicle | null> {

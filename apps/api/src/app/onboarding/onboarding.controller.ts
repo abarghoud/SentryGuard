@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Param,
   UseGuards,
   Logger,
 } from '@nestjs/common';
@@ -21,14 +22,14 @@ export class OnboardingController {
   @Get('status')
   @UseGuards(JwtAuthGuard)
   @Throttle(ThrottleOptions.authenticatedRead())
-  async getOnboardingStatus(@CurrentUser() user: User): Promise<OnboardingStatus> {
+  public async getOnboardingStatus(@CurrentUser() user: User): Promise<OnboardingStatus> {
     return await this.onboardingService.getOnboardingStatus(user.userId);
   }
 
   @Post('complete')
   @UseGuards(JwtAuthGuard)
   @Throttle(ThrottleOptions.authenticatedWrite())
-  async completeOnboarding(@CurrentUser() user: User): Promise<{ success: boolean }> {
+  public async completeOnboarding(@CurrentUser() user: User): Promise<{ success: boolean }> {
     this.logger.log(`User ${user.userId} completing onboarding`);
     return await this.onboardingService.completeOnboarding(user.userId);
   }
@@ -36,8 +37,19 @@ export class OnboardingController {
   @Post('skip')
   @UseGuards(JwtAuthGuard)
   @Throttle(ThrottleOptions.authenticatedWrite())
-  async skipOnboarding(@CurrentUser() user: User): Promise<{ success: boolean }> {
+  public async skipOnboarding(@CurrentUser() user: User): Promise<{ success: boolean }> {
     this.logger.log(`User ${user.userId} skipping onboarding`);
     return await this.onboardingService.skipOnboarding(user.userId);
+  }
+
+  @Post('dismiss-announcement/:key')
+  @UseGuards(JwtAuthGuard)
+  @Throttle(ThrottleOptions.authenticatedWrite())
+  public async dismissAnnouncement(
+    @CurrentUser() user: User,
+    @Param('key') key: string,
+  ): Promise<{ success: boolean }> {
+    this.logger.log(`User ${user.userId} dismissing announcement ${key}`);
+    return await this.onboardingService.dismissAnnouncement(user.userId, key);
   }
 }

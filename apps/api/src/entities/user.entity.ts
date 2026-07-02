@@ -7,6 +7,7 @@ import {
   OneToMany,
   OneToOne,
 } from 'typeorm';
+import type { UserSession } from './user-session.entity';
 
 @Entity('users')
 export class User {
@@ -18,12 +19,6 @@ export class User {
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   full_name?: string;
-
-  @Column({ type: 'text', nullable: true })
-  jwt_token?: string | null;
-
-  @Column({ type: 'timestamp', nullable: true })
-  jwt_expires_at?: Date | null;
 
   @Column({ type: 'text' })
   access_token!: string;
@@ -72,4 +67,16 @@ export class User {
 
   @OneToMany('UserConsent', 'user')
   consents!: any[];
+
+  @OneToMany('UserSession', 'user')
+  sessions!: UserSession[];
+
+  @OneToOne('NotificationPreferences', 'user')
+  notificationPreferences!: any;
+
+  @OneToMany('PushDeviceToken', 'user')
+  pushDeviceTokens!: any[];
+
+  @OneToMany('AlertEvent', 'user')
+  alertEvents!: any[];
 }

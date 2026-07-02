@@ -7,7 +7,7 @@ import {
 } from '../entities';
 
 export interface GetConsentTextRequirements {
-  execute(version?: string, locale?: string): Promise<ConsentTextResponse>;
+  execute(locale?: string): Promise<ConsentTextResponse>;
 }
 
 export interface GetConsentStatusRequirements {

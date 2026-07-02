@@ -15,7 +15,10 @@ import { TeslaTokenRefreshSchedulerService } from './services/tesla-token-refres
 import { DistributedLockService } from '../../common/services/distributed-lock.service';
 import { JwtStrategy } from './jwt.strategy';
 import { User } from '../../entities/user.entity';
+import { UserSession } from '../../entities/user-session.entity';
 import { WaitlistModule } from '../waitlist/waitlist.module';
+import { MailingModule } from '../mailing/mailing.module';
+import { UserSessionService } from './services/user-session.service';
 
 const jwtSecret = process.env.JWT_SECRET;
 const jwtExpiresIn = (process.env.JWT_EXPIRATION || '30d') as JwtSignOptions['expiresIn'];
@@ -28,7 +31,7 @@ if (!jwtSecret) {
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, UserSession]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: jwtSecret,
@@ -37,6 +40,7 @@ if (!jwtSecret) {
       },
     }),
     WaitlistModule,
+    MailingModule,
   ],
   controllers: [AuthController, CallbackController],
   providers: [
@@ -53,6 +57,7 @@ if (!jwtSecret) {
     TeslaTokenRefreshSchedulerService,
     DistributedLockService,
     JwtStrategy,
+    UserSessionService,
   ],
   exports: [
     AuthService,
@@ -61,6 +66,7 @@ if (!jwtSecret) {
     TeslaTokenRefreshService,
     JwtStrategy,
     PassportModule,
+    UserSessionService,
   ],
 })
 export class AuthModule {}

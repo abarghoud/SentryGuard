@@ -5,6 +5,7 @@ import * as crypto from 'crypto';
 import { Context } from 'telegraf';
 import i18n from '../../i18n';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
+import { User } from '../../entities/user.entity';
 import { UserLanguageService } from '../user/user-language.service';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
@@ -19,6 +20,8 @@ export class TelegramAccountLinkingService implements OnModuleInit {
   constructor(
     @InjectRepository(TelegramConfig)
     private readonly telegramConfigRepository: Repository<TelegramConfig>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly userLanguageService: UserLanguageService,
     private readonly botService: TelegramBotService,
     private readonly keyboardBuilderService: TelegramKeyboardBuilderService,
@@ -109,7 +112,13 @@ export class TelegramAccountLinkingService implements OnModuleInit {
     }
 
     await this.saveLinkConfig(config, chatId);
-    await this.sendLinkSuccessMessages(ctx, lng);
+    const isSetupComplete = await this.isUserSetupComplete(config.userId);
+    await this.sendLinkSuccessMessages(ctx, lng, isSetupComplete);
+  }
+
+  private async isUserSetupComplete(userId: string): Promise<boolean> {
+    const user = await this.userRepository.findOne({ where: { userId } });
+    return user?.onboarding_completed === true;
   }
 
   private async saveLinkConfig(config: TelegramConfig, chatId: string): Promise<void> {
@@ -123,9 +132,16 @@ export class TelegramAccountLinkingService implements OnModuleInit {
     this.logger.log(`✅ Account linked: userId=${config.userId}, chatId=${chatId}`);
   }
 
-  private async sendLinkSuccessMessages(ctx: Context, lng: 'en' | 'fr'): Promise<void> {
+  private async sendLinkSuccessMessages(ctx: Context, lng: 'en' | 'fr', isSetupComplete: boolean): Promise<void> {
+    const mainMenuKeyboard = this.keyboardBuilderService.buildMainMenuKeyboard(lng);
+
+    if (isSetupComplete) {
+      await this.safeReply(ctx, i18n.t('Your SentryGuard account has been linked successfully!', { lng }), mainMenuKeyboard);
+      return;
+    }
+
     await this.safeReply(ctx, i18n.t('Your SentryGuard account has been linked successfully!', { lng }));
-    await this.safeReply(ctx, i18n.t('telegramLinkedFollowUp', { lng }), this.keyboardBuilderService.buildMainMenuKeyboard(lng));
+    await this.safeReply(ctx, i18n.t('telegramLinkedFollowUp', { lng }), mainMenuKeyboard);
   }
 
   private async safeReply(ctx: Context, message: string, options?: TelegramMessageOptions): Promise<void> {

@@ -11,6 +11,12 @@
     },
     {
       "path": "./libs/beta/domain"
+    },
+    {
+      "path": "./apps/mobile"
+    },
+    {
+      "path": "./libs/telegram/domain"
     }
   ]
 }

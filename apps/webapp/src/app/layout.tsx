@@ -7,8 +7,10 @@ import I18nProvider from '../components/I18nProvider';
 import BuyMeACoffeeWidget from '../components/BuyMeACoffeeWidget';
 import { getLocale } from '../core/i18n/server-i18n';
 import { QueryProvider } from '../core/api/query-provider';
+import { SITE_URL } from '../core/site';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: 'SentryGuard - Protect Your Tesla',
   description:
     'Monitor and protect your Tesla vehicle with real-time alerts and telemetry',

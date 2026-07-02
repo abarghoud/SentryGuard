@@ -21,7 +21,7 @@ export default function ConsentPage() {
     const loadConsentText = async () => {
       try {
         const locale = i18n.language || 'en';
-        const text = await getConsentTextUseCase.execute('v1', locale);
+        const text = await getConsentTextUseCase.execute(locale);
         setConsentText(text);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load consent text');

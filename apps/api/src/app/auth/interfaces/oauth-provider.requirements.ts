@@ -13,16 +13,18 @@ export interface OAuthTokensResponse {
 }
 
 export interface OAuthAuthenticationResult {
+  mobileRedirectUri?: string;
   tokens: OAuthTokensResponse;
   profile: OAuthUserProfile;
   userLocale: 'en' | 'fr';
 }
 
 export interface OAuthProviderRequirements {
-  generateLoginUrl(userLocale: 'en' | 'fr'): { url: string; state: string };
+  generateLoginUrl(userLocale: 'en' | 'fr', mobileRedirectUri?: string): { url: string; state: string };
   generateScopeChangeUrl(
     userLocale: 'en' | 'fr',
-    missingScopes?: string[]
+    missingScopes?: string[],
+    mobileRedirectUri?: string
   ): { url: string; state: string };
   authenticateWithCode(
     code: string,

@@ -9,11 +9,15 @@ describe('The AuthController class', () => {
   let controller: AuthController;
 
   const mockAuthService = {
+    getActiveJwtSession: jest.fn(),
+    getRefreshableJwtUser: jest.fn(),
+    refreshJwtSession: jest.fn(),
     validateJwtToken: jest.fn(),
     revokeJwtToken: jest.fn(),
   };
 
   const mockAccessTokenService = {
+    getAccessTokenForUserId: jest.fn(),
     hasVehicleCommandsScope: jest.fn(),
   };
 
@@ -62,7 +66,7 @@ describe('The AuthController class', () => {
       expect(result.url).toBe(mockUrl);
       expect(result.state).toBe(mockState);
       expect(result.message).toBe('Use this URL to authenticate with Tesla');
-      expect(mockOAuthProvider.generateLoginUrl).toHaveBeenCalled();
+      expect(mockOAuthProvider.generateLoginUrl).toHaveBeenCalledWith('en', undefined);
     });
   });
 
@@ -82,7 +86,7 @@ describe('The AuthController class', () => {
       expect(result.url).toBe(mockUrl);
       expect(result.state).toBe(mockState);
       expect(result.message).toBe('Use this URL to grant additional permissions to SentryGuard');
-      expect(mockOAuthProvider.generateScopeChangeUrl).toHaveBeenCalledWith('en', undefined);
+      expect(mockOAuthProvider.generateScopeChangeUrl).toHaveBeenCalledWith('en', undefined, undefined);
     });
 
     it('should return a scope change URL with missing scopes', () => {
@@ -101,7 +105,24 @@ describe('The AuthController class', () => {
       expect(result.url).toBe(mockUrl);
       expect(result.state).toBe(mockState);
       expect(result.message).toBe('Use this URL to grant additional permissions to SentryGuard');
-      expect(mockOAuthProvider.generateScopeChangeUrl).toHaveBeenCalledWith('en', ['vehicle_device_data', 'offline_access']);
+      expect(mockOAuthProvider.generateScopeChangeUrl).toHaveBeenCalledWith('en', ['vehicle_device_data', 'offline_access'], undefined);
+    });
+
+    it('should return a scope change URL with mobile redirect URI', () => {
+      const mockUrl =
+        'https://auth.tesla.com/oauth2/v3/authorize?prompt_missing_scopes=true&state=test-state';
+      const mockState = 'test-state';
+      const redirectUri = 'sentryguard://callback';
+
+      mockOAuthProvider.generateScopeChangeUrl.mockReturnValue({
+        url: mockUrl,
+        state: mockState,
+      });
+
+      const result = controller.scopeChangeWithTesla(undefined, 'vehicle_cmds', redirectUri);
+
+      expect(result.url).toBe(mockUrl);
+      expect(mockOAuthProvider.generateScopeChangeUrl).toHaveBeenCalledWith('en', ['vehicle_cmds'], redirectUri);
     });
   });
 
@@ -109,19 +130,23 @@ describe('The AuthController class', () => {
     it('should return the status for an authenticated user', async () => {
       const mockUser = {
         userId: 'test-user-id',
-        jwt_expires_at: new Date('2025-12-31'),
         expires_at: new Date('2025-12-31'),
         created_at: new Date('2025-01-01'),
         email: 'test@example.com',
       } as User;
+      const jwtExpiresAt = new Date('2025-12-31');
 
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2025-06-15'));
+      mockAuthService.getActiveJwtSession.mockResolvedValue({
+        expires_at: jwtExpiresAt,
+      });
 
-      const result = await controller.getAuthStatus(mockUser);
+      const result = await controller.getAuthStatus(mockUser, 'Bearer valid-jwt');
 
       expect(result.authenticated).toBe(true);
       expect(result.expires_at).toEqual(mockUser.expires_at);
+      expect(result.jwt_expires_at).toEqual(jwtExpiresAt);
       expect(result.has_profile).toBe(true);
       expect(result.message).toBe('Valid JWT token');
 
@@ -131,30 +156,16 @@ describe('The AuthController class', () => {
     it('should return unauthenticated for a user without a token', async () => {
       const mockUser = {
         userId: 'test-user-id',
-        jwt_expires_at: null,
+        expires_at: new Date('2025-12-31'),
+        created_at: new Date('2025-01-01'),
       } as User;
 
-      const result = await controller.getAuthStatus(mockUser);
+      mockAuthService.getActiveJwtSession.mockResolvedValue(null);
+
+      const result = await controller.getAuthStatus(mockUser, 'Bearer invalid-jwt');
 
       expect(result.authenticated).toBe(false);
       expect(result.message).toBe('JWT token expired, please re-authenticate');
-    });
-
-    it('should detect an expired token', async () => {
-      const mockUser = {
-        userId: 'test-user-id',
-        jwt_expires_at: new Date('2025-01-01'),
-      } as User;
-
-      jest.useFakeTimers();
-      jest.setSystemTime(new Date('2026-01-01'));
-
-      const result = await controller.getAuthStatus(mockUser);
-
-      expect(result.authenticated).toBe(false);
-      expect(result.message).toBe('JWT token expired, please re-authenticate');
-
-      jest.useRealTimers();
     });
   });
 
@@ -210,6 +221,36 @@ describe('The AuthController class', () => {
 
       expect(result.authorized).toBe(false);
       expect(mockAccessTokenService.hasVehicleCommandsScope).toHaveBeenCalledWith('test-user-id');
+    });
+  });
+
+  describe('The refreshSession() method', () => {
+    it('should return a refreshed session', async () => {
+      const mockUser = {
+        userId: 'test-user-id',
+      } as User;
+      const jwtExpiresAt = new Date('2026-01-01');
+
+      mockAuthService.getRefreshableJwtUser.mockResolvedValue(mockUser);
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('tesla-token');
+      mockAuthService.refreshJwtSession.mockResolvedValue({
+        jwt: 'new-jwt',
+        jwt_expires_at: jwtExpiresAt,
+      });
+
+      const result = await controller.refreshSession('Bearer old-jwt');
+
+      expect(mockAuthService.refreshJwtSession).toHaveBeenCalledWith('test-user-id', 'old-jwt');
+      expect(result).toStrictEqual({
+        success: true,
+        userId: 'test-user-id',
+        jwt: 'new-jwt',
+        jwt_expires_at: jwtExpiresAt,
+      });
+    });
+
+    it('should reject missing bearer tokens', async () => {
+      await expect(controller.refreshSession()).rejects.toThrow('No Bearer token provided');
     });
   });
 });

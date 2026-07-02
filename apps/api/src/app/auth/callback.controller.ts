@@ -51,7 +51,7 @@ export class CallbackController {
 
 
     try {
-      const { jwt, userId } = await this.authService.exchangeCodeForTokens(
+      const { jwt, mobileRedirectUri, userId } = await this.authService.exchangeCodeForTokens(
         code,
         state
       );
@@ -60,7 +60,8 @@ export class CallbackController {
       this.logger.log(`🔐 JWT token generated for secure session`);
 
       const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
-      const redirectUrl = `${webappUrl}/callback#token=${encodeURIComponent(jwt)}`;
+      const callbackUrl = mobileRedirectUri || `${webappUrl}/callback`;
+      const redirectUrl = `${callbackUrl}#token=${encodeURIComponent(jwt)}`;
       res.redirect(redirectUrl);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -70,6 +71,16 @@ export class CallbackController {
         const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
         const redirectUrl = `${webappUrl}/waitlist?email=${encodeURIComponent(error.email)}`;
         res.redirect(redirectUrl);
+        return;
+      }
+
+      if (error instanceof MissingPermissionsException && error.mobileRedirectUri) {
+        this.logger.log('↩️ Redirecting missing-permissions error back to the mobile app');
+        const params = new URLSearchParams({
+          error: 'missing_permissions',
+          missing: error.missingScopes.join(','),
+        });
+        res.redirect(`${error.mobileRedirectUri}?${params.toString()}`);
         return;
       }
 

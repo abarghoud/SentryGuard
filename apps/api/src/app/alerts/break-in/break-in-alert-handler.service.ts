@@ -6,6 +6,7 @@ import { TelemetryEventHandler } from '../../telemetry/interfaces/telemetry-even
 import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
 import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-offensive-response.service';
+import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
 
 import { ChargePortLatchTrackerService } from './charge-port-latch-tracker.service';
 
@@ -19,7 +20,7 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
     private readonly alertNotifier: VehicleAlertNotifierService,
     private readonly chargeTracker: ChargePortLatchTrackerService,
     private readonly offensiveResponseService: AlertsOffensiveResponseService,
-  ) { }
+  ) {}
 
   public async handle(telemetryMessage: TelemetryMessage): Promise<void> {
     this.trackChargePortEvents(telemetryMessage);
@@ -42,9 +43,10 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
   }
 
   private scheduleAlertVerification(telemetryMessage: TelemetryMessage): void {
+    const delay = parseInt(process.env.BREAK_IN_ALERT_CHECK_DELAY_MS || '2000', 10);
     setTimeout(async () => {
       await this.verifyAndDispatchAlert(telemetryMessage);
-    }, 3000);
+    }, delay);
   }
 
   private async verifyAndDispatchAlert(telemetryMessage: TelemetryMessage): Promise<void> {
@@ -59,10 +61,12 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
         telemetryMessage,
         alertName: 'BREAK_IN_ALERT',
         latencyLabel: 'BREAK_IN_LATENCY',
+        severity: AlertEventSeverity.Critical,
         telegramNotifier: this.telegramNotifier,
+        type: AlertEventType.BreakIn,
       });
 
-      this.offensiveResponseService.handleBreakInOffensiveResponse(telemetryMessage.vin, userIds).catch((error: unknown) => {
+      this.offensiveResponseService.handleBreakInOffensiveResponse(telemetryMessage.vin, userIds, telemetryMessage.createdAt).catch((error: unknown) => {
         this.logger.warn(`[OFFENSIVE] Failed to execute offensive response for VIN ${telemetryMessage.vin}`, error);
       });
     } catch (error) {

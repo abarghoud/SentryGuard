@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Logger, UseGuards, Headers, Query } from '@nestjs/common';
+import { Controller, Get, Inject, Logger, Post, UnauthorizedException, UseGuards, Headers, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { AccessTokenService } from './services/access-token.service';
@@ -25,12 +25,13 @@ export class AuthController {
   @Throttle(ThrottleOptions.publicSensitive())
   @Get('tesla/login')
   loginWithTesla(
-    @Headers('accept-language') acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
+    @Query('redirect_uri') mobileRedirectUri?: string
   ): { url: string; state: string; message: string } {
     const userLocale = extractPreferredLanguage(acceptLanguage);
     this.logger.log(`New Tesla OAuth login request with locale: ${userLocale}`);
 
-    const { url, state } = this.oauthProvider.generateLoginUrl(userLocale);
+    const { url, state } = this.oauthProvider.generateLoginUrl(userLocale, mobileRedirectUri);
 
     return {
       url,
@@ -43,14 +44,15 @@ export class AuthController {
   @Get('tesla/scope-change')
   scopeChangeWithTesla(
     @Headers('accept-language') acceptLanguage?: string,
-    @Query('missing') missing?: string
+    @Query('missing') missing?: string,
+    @Query('redirect_uri') mobileRedirectUri?: string
   ): { url: string; state: string; message: string } {
     const userLocale = extractPreferredLanguage(acceptLanguage);
     const missingScopes = missing ? missing.split(',').map(s => s.trim()) : undefined;
 
     this.logger.log(`New Tesla OAuth scope change request with locale: ${userLocale}${missingScopes ? ` (missing: ${missingScopes.join(', ')})` : ''}`);
 
-    const { url, state } = this.oauthProvider.generateScopeChangeUrl(userLocale, missingScopes as TeslaScopes[]);
+    const { url, state } = this.oauthProvider.generateScopeChangeUrl(userLocale, missingScopes as TeslaScopes[], mobileRedirectUri);
 
     return {
       url,
@@ -62,18 +64,22 @@ export class AuthController {
   @Throttle(ThrottleOptions.authenticatedRead())
   @Get('status')
   @UseGuards(JwtAuthGuard)
-  async getAuthStatus(@CurrentUser() user: User) {
+  async getAuthStatus(
+    @CurrentUser() user: User,
+    @Headers('authorization') authorization?: string
+  ) {
     this.logger.log(`Checking JWT status for user: ${user.userId}`);
 
-    const now = new Date();
-    const isValid = !!user.jwt_expires_at && now < user.jwt_expires_at;
+    const jwt = this.extractBearerJwt(authorization);
+    const session = await this.authService.getActiveJwtSession(jwt);
+    const isValid = !!session;
 
     return {
       authenticated: isValid,
       userId: user.userId,
       email: user.email,
       expires_at: user.expires_at,
-      jwt_expires_at: user.jwt_expires_at,
+      jwt_expires_at: session?.expires_at ?? null,
       created_at: user.created_at,
       has_profile: !!(user.email || user.full_name),
       message: isValid
@@ -105,6 +111,30 @@ export class AuthController {
         isBetaTester: user.is_beta_tester,
       },
     };
+  }
+
+  @Throttle(ThrottleOptions.authenticatedRead())
+  @Post('refresh-session')
+  async refreshSession(@Headers('authorization') authorization?: string): Promise<{
+    jwt: string;
+    jwt_expires_at: Date;
+    success: boolean;
+    userId: string;
+  }> {
+    const jwt = this.extractBearerJwt(authorization);
+    const user = await this.authService.getRefreshableJwtUser(jwt);
+
+    if (!user || !(await this.accessTokenService.getAccessTokenForUserId(user.userId))) {
+      throw new UnauthorizedException('Session cannot be refreshed');
+    }
+
+    const session = await this.authService.refreshJwtSession(user.userId, jwt);
+
+    if (!session) {
+      throw new UnauthorizedException('Session cannot be refreshed');
+    }
+
+    return { success: true, userId: user.userId, ...session };
   }
 
   @Throttle(ThrottleOptions.authenticatedRead())
@@ -164,17 +194,28 @@ export class AuthController {
   @Throttle(ThrottleOptions.authenticatedWrite())
   @Get('logout')
   @UseGuards(JwtAuthGuard)
-  async logout(@CurrentUser() user: User): Promise<{
+  async logout(
+    @CurrentUser() user: User,
+    @Headers('authorization') authorization?: string
+  ): Promise<{
     success: boolean;
     message: string;
   }> {
     this.logger.log(`Logging out user: ${user.userId}`);
 
-    await this.authService.revokeJwtToken(user.userId);
+    await this.authService.revokeJwtToken(user.userId, this.extractBearerJwt(authorization));
 
     return {
       success: true,
       message: 'Successfully logged out',
     };
+  }
+
+  private extractBearerJwt(authorization?: string): string {
+    if (!authorization?.startsWith('Bearer ')) {
+      throw new UnauthorizedException('No Bearer token provided');
+    }
+
+    return authorization.substring(7);
   }
 }

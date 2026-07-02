@@ -7,6 +7,8 @@ import {
 } from './tesla-token-refresh.service';
 import { User } from '../../../entities/user.entity';
 import axios from 'axios';
+import { MailingService } from '../../mailing/services/mailing.service';
+import { mock, MockProxy } from 'jest-mock-extended';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -34,6 +36,8 @@ const mockUserRepository = {
 
 describe('The TeslaTokenRefreshService class', () => {
   let service: TeslaTokenRefreshService;
+  let mockMailingService: MockProxy<MailingService>;
+  const originalEnv = process.env;
 
   const fakeUserId = 'user-123';
   const fakeDecryptedRefreshToken = 'decrypted-refresh-token';
@@ -49,13 +53,24 @@ describe('The TeslaTokenRefreshService class', () => {
 
   const fakeUser = {
     userId: fakeUserId,
+    email: 'test@example.com',
     token_revoked_at: undefined,
     refresh_token: 'encrypted-token',
     refresh_token_expires_at: null,
     refresh_token_updated_at: null,
+    preferred_language: 'en',
   } as User;
 
   beforeEach(async () => {
+    process.env = {
+      ...originalEnv,
+      ZEPTOMAIL_TEMPLATE_TOKEN_REVOKED_EN: 'revocation-en-template',
+      WEBAPP_URL: 'https://sentryguard.test',
+    };
+
+    mockMailingService = mock<MailingService>();
+    mockMailingService.sendTeslaDisconnectedEmail.mockResolvedValue(undefined);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TeslaTokenRefreshService,
@@ -66,6 +81,10 @@ describe('The TeslaTokenRefreshService class', () => {
         {
           provide: DataSource,
           useValue: mockDataSource,
+        },
+        {
+          provide: MailingService,
+          useValue: mockMailingService,
         },
       ],
     }).compile();
@@ -80,6 +99,10 @@ describe('The TeslaTokenRefreshService class', () => {
 
     mockedDecrypt.mockReturnValue(fakeDecryptedRefreshToken);
     mockedEncrypt.mockReturnValue(fakeEncryptedAccessToken);
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
   });
 
   describe('The findUsersWithExpiringRefreshTokens() method', () => {
@@ -272,8 +295,16 @@ describe('The TeslaTokenRefreshService class', () => {
           { userId: fakeUserId },
           {
             token_revoked_at: expect.any(Date),
-            jwt_token: null,
-            jwt_expires_at: null,
+          }
+        );
+      });
+
+      it('should send connection lost email template', () => {
+        expect(mockMailingService.sendTeslaDisconnectedEmail).toHaveBeenCalledWith(
+          fakeUser.email,
+          fakeUser.preferred_language,
+          {
+            name: '',
           }
         );
       });
