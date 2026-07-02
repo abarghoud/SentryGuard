@@ -86,6 +86,30 @@ describe('The NotificationsService class', () => {
       });
     });
 
+    describe('When an English user receives a panic alert', () => {
+      beforeEach(async () => {
+        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.Panic, 'en');
+      });
+
+      it('should send the panic title', () => {
+        expect(lastPushPayload().title).toBe('Alarm triggered');
+      });
+
+      it('should send the panic body', () => {
+        expect(lastPushPayload().body).toBe('Your vehicle alarm may be sounding.');
+      });
+    });
+
+    describe('When a French user receives a panic alert', () => {
+      beforeEach(async () => {
+        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.Panic, 'fr');
+      });
+
+      it('should send the localized French title', () => {
+        expect(lastPushPayload().title).toBe('Alarme déclenchée');
+      });
+    });
+
     describe('When the user has no eligible device', () => {
       beforeEach(async () => {
         mockPushDeviceTokenRepository.find.mockResolvedValue([]);

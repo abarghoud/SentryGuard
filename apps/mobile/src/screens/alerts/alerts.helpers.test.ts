@@ -49,6 +49,15 @@ describe('The resolveAlertTitleKey() function', () => {
       );
     });
   });
+
+  describe('When the alert is a panic', () => {
+    it('should return the panic title key', () => {
+      expect(resolveAlertTitleKey(createAlert(AlertEventType.Panic, AlertEventSeverity.Critical))).toBe(
+        'alerts.event.panic.title'
+      );
+    });
+  });
+
 });
 
 describe('The resolveAlertMessageKey() function', () => {
@@ -67,6 +76,15 @@ describe('The resolveAlertMessageKey() function', () => {
       );
     });
   });
+
+  describe('When the alert is a panic', () => {
+    it('should return the panic message key', () => {
+      expect(resolveAlertMessageKey(createAlert(AlertEventType.Panic, AlertEventSeverity.Critical))).toBe(
+        'alerts.event.panic.message'
+      );
+    });
+  });
+
 });
 
 describe('The resolveAlertTone() function', () => {

@@ -88,17 +88,22 @@ export class NotificationsService {
   }
 
   private resolveAlertTexts(type: AlertEventType, lng: 'en' | 'fr'): { body: string; title: string } {
-    if (type === AlertEventType.BreakIn) {
-      return {
+    const textsByType: Record<AlertEventType, { body: string; title: string }> = {
+      [AlertEventType.BreakIn]: {
         body: i18n.t('A break-in attempt was detected.', { lng }),
         title: i18n.t('Intrusion alert', { lng }),
-      };
-    }
-
-    return {
-      body: i18n.t('A Sentry event was detected.', { lng }),
-      title: i18n.t('Sentry alert', { lng }),
+      },
+      [AlertEventType.Sentry]: {
+        body: i18n.t('A Sentry event was detected.', { lng }),
+        title: i18n.t('Sentry alert', { lng }),
+      },
+      [AlertEventType.Panic]: {
+        body: i18n.t('Your vehicle alarm may be sounding.', { lng }),
+        title: i18n.t('Alarm triggered', { lng }),
+      },
     };
+
+    return textsByType[type];
   }
 
   private async findOrCreatePreferences(userId: string): Promise<NotificationPreferences> {

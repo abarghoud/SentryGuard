@@ -10,6 +10,8 @@
   "alerts.event.break_in.title": "Intrusion alert",
   "alerts.event.sentry.message": "A Sentry event was detected.",
   "alerts.event.sentry.title": "Sentry alert",
+  "alerts.event.panic.message": "Your vehicle alarm may be sounding.",
+  "alerts.event.panic.title": "Alarm triggered",
   "alerts.filter.all": "All",
   "alerts.filter.critical": "Critical",
   "alerts.filter.warning": "Warning",

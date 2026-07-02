@@ -8,6 +8,7 @@ export enum AlertEventSeverity {
 export enum AlertEventType {
   BreakIn = 'break_in',
   Sentry = 'sentry',
+  Panic = 'panic',
 }
 
 @Entity('alert_events')

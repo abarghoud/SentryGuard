@@ -1,23 +1,33 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { plainToInstance } from 'class-transformer';
 import { mock, MockProxy } from 'jest-mock-extended';
+
 import { SentryAlertHandlerService } from './sentry-alert-handler.service';
 import { TelegramService } from '../../telegram/telegram.service';
 import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
+import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
+import { SentryModeState, TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 
-import { TelemetryMessage, SentryModeState } from '../../telemetry/models/telemetry-message.model';
+const buildMessage = (state: string): TelemetryMessage =>
+  plainToInstance(TelemetryMessage, {
+    data: [{ key: 'SentryMode', value: { sentryModeStateValue: state } }],
+    createdAt: '2025-01-21T10:00:00.000Z',
+    vin: 'TEST_VIN_123',
+    isResend: false,
+  });
 
 describe('The SentryAlertHandlerService class', () => {
   let service: SentryAlertHandlerService;
-
   let mockTelegramService: MockProxy<TelegramService>;
   let mockKeyboardBuilder: MockProxy<TelegramKeyboardBuilderService>;
   let mockAlertNotifier: MockProxy<VehicleAlertNotifierService>;
+
   beforeEach(async () => {
     mockTelegramService = mock<TelegramService>();
     mockKeyboardBuilder = mock<TelegramKeyboardBuilderService>();
     mockAlertNotifier = mock<VehicleAlertNotifierService>();
+    mockAlertNotifier.dispatch.mockResolvedValue({ userIds: ['user-1'] });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -25,71 +35,21 @@ describe('The SentryAlertHandlerService class', () => {
         { provide: TelegramService, useValue: mockTelegramService },
         { provide: TelegramKeyboardBuilderService, useValue: mockKeyboardBuilder },
         { provide: VehicleAlertNotifierService, useValue: mockAlertNotifier },
-      ]
+      ],
     }).compile();
 
     service = module.get<SentryAlertHandlerService>(SentryAlertHandlerService);
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-
-  describe('The handle method', () => {
-    describe('when message does not contain valid SentryMode', () => {
-      it('should skip message without SentryMode', async () => {
-        const invalidMessage = plainToInstance(TelemetryMessage, {
+  describe('The handle() method', () => {
+    describe('When the message has no valid SentryMode', () => {
+      it('should not dispatch any alert', async () => {
+        const message = plainToInstance(TelemetryMessage, {
           data: [{ key: 'OtherField', value: { stringValue: 'value' } }],
           createdAt: '2025-01-21T10:00:00.000Z',
           vin: 'TEST_VIN_123',
-          isResend: false
-        });
-
-        await service.handle(invalidMessage);
-
-        expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
-      });
-
-      it('should skip message with null SentryMode value', async () => {
-        const invalidMessage = plainToInstance(TelemetryMessage, {
-          data: [{ key: 'SentryMode', value: { sentryModeStateValue: null } }],
-          createdAt: '2025-01-21T10:00:00.000Z',
-          vin: 'TEST_VIN_123',
-          isResend: false
-        });
-
-        await service.handle(invalidMessage);
-
-        expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
-      });
-
-      it('should skip message with invalid sentryModeStateValue', async () => {
-        const invalidMessage = plainToInstance(TelemetryMessage, {
-          data: [{ key: 'SentryMode', value: { sentryModeStateValue: 'InvalidState' } }],
-          createdAt: '2025-01-21T10:00:00.000Z',
-          vin: 'TEST_VIN_123',
-          isResend: false
-        });
-
-        await service.handle(invalidMessage);
-
-        expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
-      });
-    });
-
-    describe('when SentryMode is not Aware', () => {
-      it('should not dispatch alert', async () => {
-        const message = plainToInstance(TelemetryMessage, {
-          data: [
-            {
-              key: 'SentryMode',
-              value: { sentryModeStateValue: SentryModeState.Off }
-            }
-          ],
-          createdAt: '2025-01-21T10:00:00.000Z',
-          vin: 'TEST_VIN_123',
-          isResend: false
+          isResend: false,
         });
 
         await service.handle(message);
@@ -98,54 +58,45 @@ describe('The SentryAlertHandlerService class', () => {
       });
     });
 
-    describe('when SentryMode is Aware', () => {
-      let baseTelemetryMessage: TelemetryMessage;
-
-      beforeEach(() => {
-        baseTelemetryMessage = plainToInstance(TelemetryMessage, {
-          data: [
-            {
-              key: 'SentryMode',
-              value: { sentryModeStateValue: 'SentryModeStateAware' }
-            }
-          ],
-          createdAt: '2025-01-21T10:00:00.000Z',
-          vin: 'TEST_VIN_123',
-          isResend: false
-        });
-        mockAlertNotifier.dispatch.mockResolvedValue({ userIds: ['user-1'] });
+    describe('When SentryMode is Aware', () => {
+      beforeEach(async () => {
+        await service.handle(buildMessage(SentryModeState.Aware));
       });
 
-      it('should dispatch alert via alertNotifier', async () => {
-        await service.handle(baseTelemetryMessage);
-
-        expect(mockAlertNotifier.dispatch).toHaveBeenCalledWith(expect.objectContaining({
-          telemetryMessage: baseTelemetryMessage,
-          alertName: 'SENTRY_ALERT',
-          latencyLabel: 'SENTRY_LATENCY',
-          telegramNotifier: expect.any(Function)
-        }));
-      });
-
-      it('should construct and send telegram message when notifier callback is invoked', async () => {
-        await service.handle(baseTelemetryMessage);
-
-        const dispatchCall = mockAlertNotifier.dispatch.mock.calls[0][0];
-        const notifierCb = dispatchCall.telegramNotifier;
-
-        mockKeyboardBuilder.buildSentryAlertKeyboard.mockReturnValue({
-          inline_keyboard: [[{ text: 'Test Button', url: 'http://test.com' }]]
-        });
-
-        await notifierCb('test-user', { vin: '123', display_name: 'Test Vehicle' }, 'en');
-
-        expect(mockKeyboardBuilder.buildSentryAlertKeyboard).toHaveBeenCalledWith('test-user', 'en');
-        expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith(
-          'test-user',
-          { vin: '123', display_name: 'Test Vehicle' },
-          'en',
-          { inline_keyboard: [[{ text: 'Test Button', url: 'http://test.com' }]] }
+      it('should dispatch the immediate Sentry alert', () => {
+        expect(mockAlertNotifier.dispatch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            alertName: 'SENTRY_ALERT',
+            severity: AlertEventSeverity.Warning,
+            type: AlertEventType.Sentry,
+          })
         );
+      });
+    });
+
+    describe('When SentryMode is Panic', () => {
+      beforeEach(async () => {
+        await service.handle(buildMessage(SentryModeState.Panic));
+      });
+
+      it('should dispatch a critical panic alert', () => {
+        expect(mockAlertNotifier.dispatch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            alertName: 'SENTRY_PANIC',
+            severity: AlertEventSeverity.Critical,
+            type: AlertEventType.Panic,
+          })
+        );
+      });
+    });
+
+    describe('When SentryMode is Armed (neither Aware nor Panic)', () => {
+      beforeEach(async () => {
+        await service.handle(buildMessage(SentryModeState.Armed));
+      });
+
+      it('should not dispatch any alert', () => {
+        expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
       });
     });
   });

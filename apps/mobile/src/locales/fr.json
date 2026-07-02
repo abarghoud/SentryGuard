@@ -10,6 +10,8 @@
   "alerts.event.break_in.title": "Alerte intrusion",
   "alerts.event.sentry.message": "Un événement Sentinelle a été détecté.",
   "alerts.event.sentry.title": "Alerte Sentinelle",
+  "alerts.event.panic.message": "L'alarme de votre véhicule retentit peut-être.",
+  "alerts.event.panic.title": "Alarme déclenchée",
   "alerts.filter.all": "Tout",
   "alerts.filter.critical": "Critique",
   "alerts.filter.warning": "Attention",
