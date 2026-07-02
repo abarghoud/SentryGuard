@@ -61,7 +61,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#dc2626"
+        }
+      ],
       "expo-secure-store",
       [
         "expo-splash-screen",
