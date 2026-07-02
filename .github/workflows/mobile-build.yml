@@ -43,6 +43,7 @@ on:
         type: choice
         options:
           - preview
+          - production-preview
           - production
 
 permissions:
