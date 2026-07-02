@@ -21,11 +21,23 @@ describe('The resolveSupportedLanguage() function', () => {
     it('should return English for en', () => {
       expect(resolveSupportedLanguage('en')).toBe('en');
     });
+
+    it('should return German for de', () => {
+      expect(resolveSupportedLanguage('de')).toBe('de');
+    });
+
+    it('should return Spanish for es', () => {
+      expect(resolveSupportedLanguage('es')).toBe('es');
+    });
+
+    it('should return Swedish for sv', () => {
+      expect(resolveSupportedLanguage('sv')).toBe('sv');
+    });
   });
 
   describe('When the language code is not supported', () => {
     it('should fall back to English', () => {
-      expect(resolveSupportedLanguage('de')).toBe('en');
+      expect(resolveSupportedLanguage('pt')).toBe('en');
     });
   });
 
@@ -49,9 +61,17 @@ describe('The resolveDeviceLanguage() function', () => {
     });
   });
 
+  describe('When the device locale is German', () => {
+    it('should return German', () => {
+      mockGetLocales.mockReturnValue([{ languageCode: 'de' }]);
+
+      expect(resolveDeviceLanguage()).toBe('de');
+    });
+  });
+
   describe('When the device locale is unsupported', () => {
     it('should fall back to English', () => {
-      mockGetLocales.mockReturnValue([{ languageCode: 'es' }]);
+      mockGetLocales.mockReturnValue([{ languageCode: 'pt' }]);
 
       expect(resolveDeviceLanguage()).toBe('en');
     });

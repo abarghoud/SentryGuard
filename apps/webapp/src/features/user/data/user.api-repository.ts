@@ -1,3 +1,4 @@
+import { SupportedLocale } from '../../../core/i18n/i18n-config';
 import { UserRepositoryRequirements } from '../domain/user.repository.requirements';
 import { UserLanguage, UpdateLanguageResponse } from '../domain/entities';
 import { ApiClientRequirements } from '../../../core/api/api-client';
@@ -11,7 +12,7 @@ export class UserApiRepository implements UserRepositoryRequirements {
     });
   }
 
-  async updateUserLanguage(language: 'en' | 'fr'): Promise<UpdateLanguageResponse> {
+  async updateUserLanguage(language: SupportedLocale): Promise<UpdateLanguageResponse> {
     return this.client.request<UpdateLanguageResponse>('/user/language', {
       method: 'PATCH',
       body: JSON.stringify({ language }),

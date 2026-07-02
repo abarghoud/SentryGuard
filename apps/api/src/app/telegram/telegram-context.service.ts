@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
 import { UserLanguageService } from '../user/user-language.service';
+import { SupportedLanguage } from '../../common/utils/language.util';
 
 @Injectable()
 export class TelegramContextService {
@@ -22,7 +23,7 @@ export class TelegramContextService {
     return config?.chat_id ?? null;
   }
 
-  async getUserLanguageFromChatId(chatId: string): Promise<'en' | 'fr'> {
+  async getUserLanguageFromChatId(chatId: string): Promise<SupportedLanguage> {
     try {
       const config = await this.telegramConfigRepository.findOne({
         where: { chat_id: chatId, status: TelegramLinkStatus.LINKED },

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { SupportedLocale } from '../../../../core/i18n/i18n-config';
 import { UserLanguage } from '../../domain/entities';
 import {
   GetUserLanguageRequirements,
@@ -21,7 +22,7 @@ export const createUseUserQuery = (deps: UserQueryDependencies) => () => {
   });
 
   const updateLanguageMutation = useMutation({
-    mutationFn: async (language: 'en' | 'fr') => {
+    mutationFn: async (language: SupportedLocale) => {
       const result = await deps.updateUserLanguageUseCase.execute(language);
       if (!result.success) throw new Error('Failed to update language');
       return result;

@@ -52,12 +52,12 @@ describe('The useUserQuery() hook', () => {
   describe('When updating user language', () => {
     describe('When the update is successful', () => {
       it('should return the success result', async () => {
-        mockUpdateUserLanguageUseCase.execute.mockResolvedValue({ success: true, message: '' });
+        mockUpdateUserLanguageUseCase.execute.mockResolvedValue({ success: true, language: 'en' });
 
         const { result } = renderHook(() => useUserQuery(), { wrapper });
         const response = await result.current.updateLanguageMutation.mutateAsync('en');
 
-        expect(response).toEqual({ success: true, message: '' });
+        expect(response).toEqual({ success: true, language: 'en' });
         expect(mockUpdateUserLanguageUseCase.execute).toHaveBeenCalledWith('en');
       });
     });
@@ -65,7 +65,7 @@ describe('The useUserQuery() hook', () => {
     describe('When the update fails', () => {
       it('should throw an error', async () => {
         const expectedError = 'Failed to update language';
-        mockUpdateUserLanguageUseCase.execute.mockResolvedValue({ success: false, message: expectedError });
+        mockUpdateUserLanguageUseCase.execute.mockResolvedValue({ success: false, language: 'en' });
 
         const { result } = renderHook(() => useUserQuery(), { wrapper });
 

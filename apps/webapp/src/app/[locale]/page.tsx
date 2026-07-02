@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslation } from '@/core/i18n/server-i18n';
-import { SUPPORTED_LOCALES } from '@/core/i18n/i18n-config';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '@/core/i18n/i18n-config';
 import { SITE_URL } from '@/core/site';
 import PublicLayout from '@/components/PublicLayout';
 import AuthRedirect from '@/components/AuthRedirect';
@@ -46,9 +46,8 @@ export async function generateMetadata({
     alternates: {
       canonical: `/${locale}`,
       languages: {
-        'en': '/en',
-        'fr': '/fr',
-        'x-default': '/en',
+        ...Object.fromEntries(SUPPORTED_LOCALES.map((alt) => [alt, `/${alt}`])),
+        'x-default': `/${DEFAULT_LOCALE}`,
       },
     },
   };

@@ -13,6 +13,10 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { User } from '../../entities/user.entity';
 import { UserLanguageService } from './user-language.service';
 import { ThrottleOptions } from '../../config/throttle.config';
+import {
+  SupportedLanguage,
+  SUPPORTED_LANGUAGES,
+} from '../../common/utils/language.util';
 
 interface UpdateLanguageDto {
   language: string;
@@ -44,11 +48,16 @@ export class UserController {
     @CurrentUser() user: User,
     @Body() body: UpdateLanguageDto
   ): Promise<{ success: boolean; language: string }> {
-    if (!body.language || (body.language !== 'en' && body.language !== 'fr')) {
-      throw new BadRequestException('Language must be "en" or "fr"');
+    if (
+      !body.language ||
+      !SUPPORTED_LANGUAGES.includes(body.language as SupportedLanguage)
+    ) {
+      throw new BadRequestException(
+        `Language must be one of: ${SUPPORTED_LANGUAGES.join(', ')}`
+      );
     }
 
-    const language = body.language as 'en' | 'fr';
+    const language = body.language as SupportedLanguage;
 
     this.logger.log(
       `🌍 Updating language for user ${user.userId} to ${language}`

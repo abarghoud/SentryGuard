@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Context } from 'telegraf';
 import i18n from '../../i18n';
+import { SupportedLanguage } from '../../common/utils/language.util';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
 import { Vehicle } from '../../entities/vehicle.entity';
 import { TelegramBotService } from './telegram-bot.service';
@@ -61,7 +62,7 @@ export class TelegramStatusService implements OnModuleInit {
     await ctx.reply(i18n.t('Available commands', { lng }));
   }
 
-  private buildConfigurationStatusMessage(config: TelegramConfig, vehicles: Vehicle[], lng: 'en' | 'fr'): string {
+  private buildConfigurationStatusMessage(config: TelegramConfig, vehicles: Vehicle[], lng: SupportedLanguage): string {
     return [
       i18n.t('configStatusTitle', { lng }),
       '',
@@ -71,7 +72,7 @@ export class TelegramStatusService implements OnModuleInit {
     ].join('\n');
   }
 
-  private buildTelegramSection(config: TelegramConfig, lng: 'en' | 'fr'): string {
+  private buildTelegramSection(config: TelegramConfig, lng: SupportedLanguage): string {
     const locale = lng === 'fr' ? 'fr-FR' : 'en-GB';
     const date = config.linked_at
       ? config.linked_at.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
@@ -88,7 +89,7 @@ export class TelegramStatusService implements OnModuleInit {
     return lines.join('\n');
   }
 
-  private buildVehiclesSection(vehicles: Vehicle[], lng: 'en' | 'fr'): string {
+  private buildVehiclesSection(vehicles: Vehicle[], lng: SupportedLanguage): string {
     const header = i18n.t('configStatusVehicles', { lng });
 
     if (vehicles.length === 0) {
@@ -98,7 +99,7 @@ export class TelegramStatusService implements OnModuleInit {
     return [header, ...vehicles.map((vehicle) => this.buildVehicleLine(vehicle, lng))].join('\n');
   }
 
-  private buildVehicleLine(vehicle: Vehicle, lng: 'en' | 'fr'): string {
+  private buildVehicleLine(vehicle: Vehicle, lng: SupportedLanguage): string {
     const name = vehicle.display_name || vehicle.vin;
     const telemetryKey = vehicle.sentry_mode_monitoring_enabled ? 'configStatusTelemetryActive' : 'configStatusTelemetryInactive';
 

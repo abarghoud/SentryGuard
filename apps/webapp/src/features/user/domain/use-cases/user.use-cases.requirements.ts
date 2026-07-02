@@ -1,3 +1,4 @@
+import { SupportedLocale } from '../../../../core/i18n/i18n-config';
 import { UserLanguage, UpdateLanguageResponse } from '../entities';
 
 export interface GetUserLanguageRequirements {
@@ -5,5 +6,5 @@ export interface GetUserLanguageRequirements {
 }
 
 export interface UpdateUserLanguageRequirements {
-  execute(language: 'en' | 'fr'): Promise<UpdateLanguageResponse>;
+  execute(language: SupportedLocale): Promise<UpdateLanguageResponse>;
 }

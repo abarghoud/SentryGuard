@@ -1,8 +1,45 @@
+export type SupportedLanguage =
+  | 'en'
+  | 'fr'
+  | 'de'
+  | 'nl'
+  | 'no'
+  | 'es'
+  | 'it'
+  | 'sv'
+  | 'da';
+
+export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
+  'en',
+  'fr',
+  'de',
+  'nl',
+  'no',
+  'es',
+  'it',
+  'sv',
+  'da',
+];
+
+const DEFAULT_LANGUAGE: SupportedLanguage = 'en';
+
+const TESLA_LOCALE_BY_LANGUAGE: Record<SupportedLanguage, string> = {
+  en: 'en-US',
+  fr: 'fr-FR',
+  de: 'de-DE',
+  nl: 'nl-NL',
+  no: 'nb-NO',
+  es: 'es-ES',
+  it: 'it-IT',
+  sv: 'sv-SE',
+  da: 'da-DK',
+};
+
 export function extractPreferredLanguage(
   acceptLanguageHeader?: string
-): 'en' | 'fr' {
+): SupportedLanguage {
   if (!acceptLanguageHeader) {
-    return 'en';
+    return DEFAULT_LANGUAGE;
   }
 
   const languages = acceptLanguageHeader
@@ -15,15 +52,17 @@ export function extractPreferredLanguage(
     .sort((a, b) => b.quality - a.quality);
 
   for (const lang of languages) {
-    if (lang.code === 'fr' || lang.code === 'en') {
-      return lang.code as 'en' | 'fr';
+    const match = SUPPORTED_LANGUAGES.find(
+      (supported) => supported === lang.code
+    );
+    if (match) {
+      return match;
     }
   }
 
-  return 'en';
+  return DEFAULT_LANGUAGE;
 }
 
-export function normalizeTeslaLocale(locale: 'en' | 'fr'): string {
-  return locale === 'fr' ? 'fr-FR' : 'en-US';
+export function normalizeTeslaLocale(locale: SupportedLanguage): string {
+  return TESLA_LOCALE_BY_LANGUAGE[locale] ?? TESLA_LOCALE_BY_LANGUAGE[DEFAULT_LANGUAGE];
 }
-

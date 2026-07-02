@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
+import { SupportedLanguage } from '../../common/utils/language.util';
 import { Context } from 'telegraf';
 import i18n from '../../i18n';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
@@ -87,13 +88,13 @@ export class TelegramAccountLinkingService implements OnModuleInit {
     });
   }
 
-  private async getLanguageForConfig(config: TelegramConfig | null): Promise<'en' | 'fr'> {
+  private async getLanguageForConfig(config: TelegramConfig | null): Promise<SupportedLanguage> {
     return config
       ? await this.userLanguageService.getUserLanguage(config.userId)
       : 'en';
   }
 
-  private async handleExpiredToken(ctx: Context, config: TelegramConfig, lng: 'en' | 'fr'): Promise<boolean> {
+  private async handleExpiredToken(ctx: Context, config: TelegramConfig, lng: SupportedLanguage): Promise<boolean> {
     if (config.expires_at && new Date() > config.expires_at) {
       config.status = TelegramLinkStatus.EXPIRED;
       await this.telegramConfigRepository.save(config);
@@ -103,7 +104,7 @@ export class TelegramAccountLinkingService implements OnModuleInit {
     return false;
   }
 
-  private async linkAccountToChat(ctx: Context, config: TelegramConfig, lng: 'en' | 'fr'): Promise<void> {
+  private async linkAccountToChat(ctx: Context, config: TelegramConfig, lng: SupportedLanguage): Promise<void> {
     const chatId = ctx.chat?.id?.toString();
     if (!chatId) {
       this.logger.warn('⚠️ chatId missing in Telegram update');
@@ -132,7 +133,7 @@ export class TelegramAccountLinkingService implements OnModuleInit {
     this.logger.log(`✅ Account linked: userId=${config.userId}, chatId=${chatId}`);
   }
 
-  private async sendLinkSuccessMessages(ctx: Context, lng: 'en' | 'fr', isSetupComplete: boolean): Promise<void> {
+  private async sendLinkSuccessMessages(ctx: Context, lng: SupportedLanguage, isSetupComplete: boolean): Promise<void> {
     const mainMenuKeyboard = this.keyboardBuilderService.buildMainMenuKeyboard(lng);
 
     if (isSetupComplete) {

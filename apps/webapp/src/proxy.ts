@@ -10,8 +10,18 @@ function detectLocale(request: NextRequest): string {
 
   const acceptLanguage = request.headers.get('accept-language') || '';
 
-  if (acceptLanguage.toLowerCase().startsWith('fr')) {
-    return 'fr';
+  const requestedCodes = acceptLanguage
+    .toLowerCase()
+    .split(',')
+    .map((part) => part.split(';')[0].trim().split('-')[0])
+    .filter((code) => code.length > 0);
+
+  for (const requestedCode of requestedCodes) {
+    const match = SUPPORTED_LOCALES.find((locale) => locale === requestedCode);
+
+    if (match) {
+      return match;
+    }
   }
 
   return DEFAULT_LOCALE;
@@ -52,5 +62,26 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/faq', '/en', '/fr', '/en/faq', '/fr/faq'],
+  matcher: [
+    '/',
+    '/faq',
+    '/en',
+    '/fr',
+    '/de',
+    '/nl',
+    '/no',
+    '/es',
+    '/it',
+    '/sv',
+    '/da',
+    '/en/faq',
+    '/fr/faq',
+    '/de/faq',
+    '/nl/faq',
+    '/no/faq',
+    '/es/faq',
+    '/it/faq',
+    '/sv/faq',
+    '/da/faq',
+  ],
 };
