@@ -45,7 +45,11 @@ export function MainScreen({ onLogout }: { onLogout(): Promise<void> }): JSX.Ele
       <MainStack.Screen name="Onboarding" options={{ headerShown: true, presentation: 'card', title: t('onboarding.resumeTitle') }}>
         {({ navigation }) => <OnboardingScreen onComplete={() => navigation.goBack()} />}
       </MainStack.Screen>
-      <MainStack.Screen name="VehicleDetail" component={VehicleDetailScreen} options={{ headerShown: true, presentation: 'card' }} />
+      <MainStack.Screen
+        name="VehicleDetail"
+        component={VehicleDetailScreen}
+        options={({ route }) => ({ headerShown: true, presentation: 'card', title: route.params.title ?? t('common.vehicleFallback') })}
+      />
       <MainStack.Screen name="TelegramSettings" component={TelegramSettingsScreen} options={{ headerShown: true, presentation: 'card' }} />
       <MainStack.Screen name="DeleteAccount" options={{ headerShown: true, presentation: 'card' }}>
         {() => <DeleteAccountScreen onLogout={onLogout} />}

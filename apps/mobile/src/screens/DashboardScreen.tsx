@@ -69,7 +69,7 @@ export function DashboardScreen(): JSX.Element {
       renderItem={({ item }) => (
         <VehicleCard
           vehicle={item}
-          onSelect={() => navigation.navigate('VehicleDetail', { vehicleId: item.vin })}
+          onSelect={() => navigation.navigate('VehicleDetail', { vehicleId: item.vin, title: item.display_name ?? item.model })}
           t={t}
         />
       )}
