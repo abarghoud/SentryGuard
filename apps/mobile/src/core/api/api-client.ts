@@ -109,21 +109,21 @@ export class ApiClient implements ApiClientRequirements {
   }
 
   private async refreshSessionToken(token: string): Promise<string | null> {
-    try {
-      const response = await this.fetchApi('/auth/refresh-session', { method: 'POST' }, {
-        Accept: 'application/json',
-        Authorization: `Bearer ${token}`,
-      });
+    const response = await this.fetchApi('/auth/refresh-session', { method: 'POST' }, {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    });
 
-      return this.resolveRefreshedToken(response);
-    } catch {
-      return null;
-    }
+    return this.resolveRefreshedToken(response);
   }
 
   private async resolveRefreshedToken(response: Response): Promise<string | null> {
     if (!response.ok) {
-      return null;
+      if (response.status === 401 || response.status === 403) {
+        return null;
+      }
+
+      throw new ApiError(await this.resolveErrorMessage(response), response.status);
     }
 
     const body = (await response.json()) as { jwt?: unknown };
