@@ -7,7 +7,7 @@ import { useTelegramStatusSync } from '../../core/hooks/useTelegramStatusSync';
 import { resolveDeviceLanguage } from '../../core/i18n';
 import { acceptConsentUseCase, getConsentStatusUseCase, getConsentTextUseCase } from '../../features/consent/di';
 import { completeOnboardingUseCase, getOnboardingStatusUseCase, skipOnboardingUseCase } from '../../features/onboarding/di';
-import { getNotificationPreferencesUseCase } from '../../features/notifications/di';
+import { getNotificationPreferencesUseCase, updateNotificationPreferencesUseCase } from '../../features/notifications/di';
 import { getTelegramStatusUseCase } from '../../features/telegram/di';
 import { getUserLanguageUseCase, updateUserLanguageUseCase } from '../../features/user/di';
 import { UserLanguage } from '../../features/user/domain/entities';
@@ -156,6 +156,7 @@ export function useOnboarding(onComplete: () => void) {
     try {
       const token = await registerDeviceForPush(setMessage, t);
       if (token) {
+        await updateNotificationPreferencesUseCase.execute({ push_enabled: true }, token);
         setPushToken(token);
         await queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
       }

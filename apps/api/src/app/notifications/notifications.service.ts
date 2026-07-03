@@ -56,11 +56,26 @@ export class NotificationsService {
   }
 
   public async registerPushToken(userId: string, token: string, platform?: string): Promise<{ success: boolean }> {
+    const existingDevice = await this.findPushDevice(userId, token);
+    if (existingDevice) {
+      await this.refreshPushDeviceMetadata(existingDevice, platform);
+      return { success: true };
+    }
+
     await this.pushDeviceTokenRepository.upsert(
       { userId, token, platform, push_enabled: true },
       { conflictPaths: ['token'], skipUpdateIfNoValuesChanged: true }
     );
     return { success: true };
+  }
+
+  private async refreshPushDeviceMetadata(device: PushDeviceToken, platform?: string): Promise<void> {
+    if (!platform || device.platform === platform) {
+      return;
+    }
+
+    device.platform = platform;
+    await this.pushDeviceTokenRepository.save(device);
   }
 
   public async removePushToken(userId: string, token: string): Promise<{ success: boolean }> {
