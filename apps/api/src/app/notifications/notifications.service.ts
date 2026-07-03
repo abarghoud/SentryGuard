@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { NotificationPreferences } from '../../entities/notification-preferences.entity';
 import { PushDeviceToken } from '../../entities/push-device-token.entity';
 import { AlertEventSeverity, AlertEventType } from '../../entities/alert-event.entity';
+import { DevicesService } from '../devices/devices.service';
 import i18n from '../../i18n';
 
 export interface NotificationPreferencesDto {
@@ -33,7 +34,8 @@ export class NotificationsService {
     @InjectRepository(NotificationPreferences)
     private readonly preferencesRepository: Repository<NotificationPreferences>,
     @InjectRepository(PushDeviceToken)
-    private readonly pushDeviceTokenRepository: Repository<PushDeviceToken>
+    private readonly pushDeviceTokenRepository: Repository<PushDeviceToken>,
+    private readonly devicesService: DevicesService
   ) {}
 
   public async getPreferences(userId: string, token?: string): Promise<NotificationPreferencesDto> {
@@ -55,9 +57,14 @@ export class NotificationsService {
     return this.toDto(currentPreferences, device);
   }
 
-  public async registerPushToken(userId: string, token: string, platform?: string): Promise<{ success: boolean }> {
+  public async registerPushToken(
+    userId: string,
+    token: string,
+    platform?: string,
+    installationId?: string
+  ): Promise<{ success: boolean }> {
     await this.pushDeviceTokenRepository.upsert(
-      { userId, token, platform, push_enabled: true },
+      { userId, token, platform, push_enabled: true, ...(installationId ? { installationId } : {}) },
       { conflictPaths: ['token'], skipUpdateIfNoValuesChanged: true }
     );
     return { success: true };
@@ -77,14 +84,30 @@ export class NotificationsService {
     userId: string,
     severity: AlertEventSeverity,
     type: AlertEventType,
-    userLanguage: 'en' | 'fr'
+    userLanguage: 'en' | 'fr',
+    vin: string
   ): Promise<void> {
     const { body, title } = this.resolveAlertTexts(type, userLanguage);
     const devices = await this.pushDeviceTokenRepository.find({ where: { userId, push_enabled: true } });
-    const eligibleDevices = devices.filter((device) => this.shouldSendPushToDevice(device, severity));
+    const eligibleDevices = await this.filterEligibleDevices(devices, userId, vin, severity);
     await Promise.all(
       eligibleDevices.map((device) => this.sendExpoPush(device, title, body, severity, type, device.critical_alerts_enabled, userId, userLanguage))
     );
+  }
+
+  private async filterEligibleDevices(
+    devices: PushDeviceToken[],
+    userId: string,
+    vin: string,
+    severity: AlertEventSeverity
+  ): Promise<PushDeviceToken[]> {
+    const candidates = devices.filter((device) => this.shouldSendPushToDevice(device, severity));
+    if (!candidates.some((device) => device.installationId)) {
+      return candidates;
+    }
+
+    const hiddenInstallationIds = await this.devicesService.getInstallationIdsHidingVehicle(userId, vin);
+    return candidates.filter((device) => !(device.installationId && hiddenInstallationIds.has(device.installationId)));
   }
 
   private resolveAlertTexts(type: AlertEventType, lng: 'en' | 'fr'): { body: string; title: string } {

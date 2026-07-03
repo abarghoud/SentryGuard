@@ -199,13 +199,15 @@ describe('The VehicleAlertNotifierService class', () => {
           'user-1',
           AlertEventSeverity.Critical,
           AlertEventType.BreakIn,
-          'en'
+          'en',
+          'TEST_VIN_123'
         );
         expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
           'user-2',
           AlertEventSeverity.Critical,
           AlertEventType.BreakIn,
-          'fr'
+          'fr',
+          'TEST_VIN_123'
         );
       });
     });
@@ -227,7 +229,8 @@ describe('The VehicleAlertNotifierService class', () => {
           'user-1',
           AlertEventSeverity.Critical,
           AlertEventType.BreakIn,
-          'en'
+          'en',
+          'TEST_VIN_123'
         );
       });
     });

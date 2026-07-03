@@ -16,8 +16,14 @@ export class VehicleMockRepository implements VehicleRepositoryRequirements {
     },
   ];
 
+  private hiddenVins = new Set<string>();
+
   public async getVehicles(): Promise<Vehicle[]> {
     return [...this.vehicles];
+  }
+
+  public async getHiddenVehicleVins(): Promise<string[]> {
+    return [...this.hiddenVins];
   }
 
   public async configureTelemetry(vin: string): Promise<VehicleActionResponse> {
@@ -32,6 +38,15 @@ export class VehicleMockRepository implements VehicleRepositoryRequirements {
     const v = this.vehicles.find((vehicle) => vehicle.vin === vin);
     if (v) {
       v.sentry_mode_monitoring_enabled = false;
+    }
+    return { message: 'success', success: true };
+  }
+
+  public async setVehicleHidden(vin: string, shouldHide: boolean): Promise<VehicleActionResponse> {
+    if (shouldHide) {
+      this.hiddenVins.add(vin);
+    } else {
+      this.hiddenVins.delete(vin);
     }
     return { message: 'success', success: true };
   }

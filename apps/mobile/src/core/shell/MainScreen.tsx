@@ -16,10 +16,12 @@ import { useAlertsSeen } from '../../screens/alerts/use-alerts-seen';
 import { AlertsScreen } from '../../screens/AlertsScreen';
 import { DashboardScreen } from '../../screens/DashboardScreen';
 import { DeleteAccountScreen } from '../../screens/DeleteAccountScreen';
+import { HiddenVehiclesScreen } from '../../screens/HiddenVehiclesScreen';
 import { OnboardingScreen } from '../../screens/OnboardingScreen';
 import { SettingsScreen } from '../../screens/SettingsScreen';
 import { TelegramSettingsScreen } from '../../screens/TelegramSettingsScreen';
 import { VehicleDetailScreen } from '../../screens/VehicleDetailScreen';
+import { VehicleActionsMenu } from '../../screens/vehicle-detail/components/VehicleActionsMenu';
 
 const Tabs = createBottomTabNavigator<AppTabParamList>();
 const MainStack = createNativeStackNavigator<MainStackParamList>();
@@ -45,8 +47,22 @@ export function MainScreen({ onLogout }: { onLogout(): Promise<void> }): JSX.Ele
       <MainStack.Screen name="Onboarding" options={{ headerShown: true, presentation: 'card', title: t('onboarding.resumeTitle') }}>
         {({ navigation }) => <OnboardingScreen onComplete={() => navigation.goBack()} />}
       </MainStack.Screen>
-      <MainStack.Screen name="VehicleDetail" component={VehicleDetailScreen} options={{ headerShown: true, presentation: 'card' }} />
+      <MainStack.Screen
+        name="VehicleDetail"
+        component={VehicleDetailScreen}
+        options={({ route }) => ({
+          headerShown: true,
+          presentation: 'card',
+          title: route.params.title ?? t('common.vehicleFallback'),
+          headerRight: () => <VehicleActionsMenu vehicleId={route.params.vehicleId} />,
+        })}
+      />
       <MainStack.Screen name="TelegramSettings" component={TelegramSettingsScreen} options={{ headerShown: true, presentation: 'card' }} />
+      <MainStack.Screen
+        name="HiddenVehicles"
+        component={HiddenVehiclesScreen}
+        options={{ headerShown: true, presentation: 'card', title: t('settings.hiddenSection') }}
+      />
       <MainStack.Screen name="DeleteAccount" options={{ headerShown: true, presentation: 'card' }}>
         {() => <DeleteAccountScreen onLogout={onLogout} />}
       </MainStack.Screen>

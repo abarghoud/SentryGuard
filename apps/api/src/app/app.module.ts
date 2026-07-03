@@ -16,6 +16,7 @@ import { VehicleAlertNotifierService } from './alerts/common/vehicle-alert-notif
 import { OffensiveResponseModule } from './offensive-response/offensive-response.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { DevicesModule } from './devices/devices.module';
 import { TelemetryEventHandlerSymbol } from './telemetry/interfaces/telemetry-event-handler.interface';
 import { kafkaMessageHandler } from './messaging/kafka/interfaces/message-handler.interface';
 import { AuthModule } from './auth/auth.module';
@@ -57,6 +58,7 @@ import { RetryManager } from './shared/retry-manager.service';
     OffensiveResponseModule,
     AlertsModule,
     NotificationsModule,
+    DevicesModule,
     ThrottlerModule.forRoot([getThrottleConfig()]),
   ],
   controllers: [AppController],

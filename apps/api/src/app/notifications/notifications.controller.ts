@@ -8,6 +8,7 @@ import { ThrottleOptions } from '../../config/throttle.config';
 import { NotificationPreferencesDto, NotificationsService } from './notifications.service';
 
 interface RegisterPushTokenBody {
+  installationId?: string;
   platform?: string;
   token?: string;
 }
@@ -47,7 +48,7 @@ export class NotificationsController {
       return { success: false };
     }
 
-    return await this.notificationsService.registerPushToken(user.userId, body.token, body.platform);
+    return await this.notificationsService.registerPushToken(user.userId, body.token, body.platform, body.installationId);
   }
 
   @Throttle(ThrottleOptions.authenticatedWrite())

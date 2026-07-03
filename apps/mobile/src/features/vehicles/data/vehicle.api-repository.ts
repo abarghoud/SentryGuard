@@ -1,9 +1,18 @@
 import { ApiClientRequirements } from '../../../core/api/api-client';
+import { InstallationStoreRequirements } from '../../../core/api/installation-store';
 import { OffensiveResponse, Vehicle, VehicleActionResponse } from '../domain/entities';
 import { VehicleRepositoryRequirements } from '../domain/vehicle.repository.requirements';
 
 export class VehicleApiRepository implements VehicleRepositoryRequirements {
-  public constructor(private readonly client: ApiClientRequirements) {}
+  public constructor(
+    private readonly client: ApiClientRequirements,
+    private readonly installationStore: InstallationStoreRequirements
+  ) {}
+
+  public async getHiddenVehicleVins(): Promise<string[]> {
+    const installationId = await this.installationStore.getInstallationId();
+    return this.client.request<string[]>(`/devices/${installationId}/hidden-vehicles`);
+  }
 
   public async getVehicles(): Promise<Vehicle[]> {
     return this.client.request<Vehicle[]>('/telemetry-config/vehicles');
@@ -17,6 +26,20 @@ export class VehicleApiRepository implements VehicleRepositoryRequirements {
 
   public async deleteTelemetryConfig(vin: string): Promise<VehicleActionResponse> {
     return this.client.request<VehicleActionResponse>(`/telemetry-config/${vin}`, {
+      method: 'DELETE',
+    });
+  }
+
+  public async setVehicleHidden(vin: string, shouldHide: boolean): Promise<VehicleActionResponse> {
+    const installationId = await this.installationStore.getInstallationId();
+    if (shouldHide) {
+      return this.client.request<VehicleActionResponse>(`/devices/${installationId}/hidden-vehicles`, {
+        body: JSON.stringify({ vin }),
+        method: 'POST',
+      });
+    }
+
+    return this.client.request<VehicleActionResponse>(`/devices/${installationId}/hidden-vehicles/${vin}`, {
       method: 'DELETE',
     });
   }

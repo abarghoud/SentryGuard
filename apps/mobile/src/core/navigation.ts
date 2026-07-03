@@ -13,10 +13,11 @@ export type RootStackParamList = {
 
 export type MainStackParamList = {
   DeleteAccount: undefined;
+  HiddenVehicles: undefined;
   Onboarding: undefined;
   Tabs: undefined;
   TelegramSettings: undefined;
-  VehicleDetail: { vehicleId: string };
+  VehicleDetail: { vehicleId: string; title?: string };
 };
 
 export type AppTabParamList = {

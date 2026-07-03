@@ -43,6 +43,7 @@ const ioniconsFallback: Record<string, keyof typeof Ionicons.glyphMap> = {
   'link': 'link',
   'eye': 'eye-outline',
   'eye.slash': 'eye-off-outline',
+  'ellipsis': 'ellipsis-horizontal',
 };
 
 const useNativeSymbols = Platform.OS === 'ios';

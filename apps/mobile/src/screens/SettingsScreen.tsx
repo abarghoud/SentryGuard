@@ -18,6 +18,7 @@ import {
   openTermsOfService,
   resolveSettingsError,
 } from './settings/settings.helpers';
+import { useHiddenVehicles } from './settings/use-hidden-vehicles';
 import { useSettings } from './settings/use-settings';
 
 interface SettingsScreenProps {
@@ -41,6 +42,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
     setIsDndAccessModalOpen,
     updatePreference,
   } = useSettings();
+  const { hiddenVehicles } = useHiddenVehicles();
 
   const isBusy = preferencesMutation.isPending;
   const language = languageQuery.data?.language ?? UserLanguage.French;
@@ -132,6 +134,17 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
           />
         ) : null}
       </ListSection>
+
+      {hiddenVehicles.length > 0 ? (
+        <ListSection header={t('settings.vehiclesSection')}>
+          <ListRow
+            title={t('settings.hiddenSection')}
+            value={String(hiddenVehicles.length)}
+            showChevron
+            onPress={() => navigation.navigate('HiddenVehicles')}
+          />
+        </ListSection>
+      ) : null}
 
       <ListSection header={t('settings.legalSection')}>
         <ListRow title={t('settings.privacyPolicy')} showChevron onPress={() => void openPrivacyPolicy(i18n.language)} />

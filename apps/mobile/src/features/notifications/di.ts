@@ -1,4 +1,4 @@
-import { apiClient, tokenStore } from '../../core/api';
+import { apiClient, installationStore, tokenStore } from '../../core/api';
 import { NotificationApiRepository } from './data/notification.api-repository';
 import { NotificationMockRepository } from './data/notification.mock-repository';
 import { NotificationRepositoryRequirements } from './domain/notification.repository.requirements';
@@ -43,7 +43,7 @@ class DynamicNotificationRepository implements NotificationRepositoryRequirement
 }
 
 export const notificationRepository = new DynamicNotificationRepository(
-  new NotificationApiRepository(apiClient),
+  new NotificationApiRepository(apiClient, installationStore),
   new NotificationMockRepository()
 );
 

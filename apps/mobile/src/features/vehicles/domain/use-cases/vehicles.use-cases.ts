@@ -3,7 +3,9 @@ import { VehicleRepositoryRequirements } from '../vehicle.repository.requirement
 import {
   ConfigureTelemetryRequirements,
   DeleteTelemetryConfigRequirements,
+  GetHiddenVehicleVinsRequirements,
   GetVehiclesRequirements,
+  SetVehicleHiddenRequirements,
   ToggleBreakInMonitoringRequirements,
   UpdateOffensiveResponseRequirements,
 } from './vehicles.use-cases.requirements';
@@ -29,6 +31,22 @@ export class DeleteTelemetryConfigUseCase implements DeleteTelemetryConfigRequir
 
   public async execute(vin: string): Promise<VehicleActionResponse> {
     return this.repository.deleteTelemetryConfig(vin);
+  }
+}
+
+export class GetHiddenVehicleVinsUseCase implements GetHiddenVehicleVinsRequirements {
+  public constructor(private readonly repository: VehicleRepositoryRequirements) {}
+
+  public async execute(): Promise<string[]> {
+    return this.repository.getHiddenVehicleVins();
+  }
+}
+
+export class SetVehicleHiddenUseCase implements SetVehicleHiddenRequirements {
+  public constructor(private readonly repository: VehicleRepositoryRequirements) {}
+
+  public async execute(vin: string, shouldHide: boolean): Promise<VehicleActionResponse> {
+    return this.repository.setVehicleHidden(vin, shouldHide);
   }
 }
 

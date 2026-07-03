@@ -1,17 +1,22 @@
 import { mock, MockProxy } from 'jest-mock-extended';
 
 import { ApiClientRequirements } from '../../../core/api/api-client';
+import { InstallationStoreRequirements } from '../../../core/api/installation-store';
 import { OffensiveResponse, Vehicle, VehicleActionResponse } from '../domain/entities';
 import { VehicleApiRepository } from './vehicle.api-repository';
 
 describe('The VehicleApiRepository class', () => {
   const fakeVin = 'VIN123';
+  const fakeInstallationId = 'installation-1';
   let mockClient: MockProxy<ApiClientRequirements>;
+  let mockInstallationStore: MockProxy<InstallationStoreRequirements>;
   let repository: VehicleApiRepository;
 
   beforeEach(() => {
     mockClient = mock<ApiClientRequirements>();
-    repository = new VehicleApiRepository(mockClient);
+    mockInstallationStore = mock<InstallationStoreRequirements>();
+    mockInstallationStore.getInstallationId.mockResolvedValue(fakeInstallationId);
+    repository = new VehicleApiRepository(mockClient, mockInstallationStore);
   });
 
   describe('The getVehicles() method', () => {
@@ -70,6 +75,54 @@ describe('The VehicleApiRepository class', () => {
       it('should POST to the disable endpoint', () => {
         expect(mockClient.request).toHaveBeenCalledWith(`/telemetry-config/break-in-monitoring/${fakeVin}/disable`, {
           method: 'POST',
+        });
+      });
+    });
+  });
+
+  describe('The getHiddenVehicleVins() method', () => {
+    describe('When the API returns hidden vins', () => {
+      let result: string[];
+
+      beforeEach(async () => {
+        mockClient.request.mockResolvedValue([fakeVin]);
+        result = await repository.getHiddenVehicleVins();
+      });
+
+      it('should request the device hidden-vehicles endpoint', () => {
+        expect(mockClient.request).toHaveBeenCalledWith(`/devices/${fakeInstallationId}/hidden-vehicles`);
+      });
+
+      it('should return the hidden vins', () => {
+        expect(result).toEqual([fakeVin]);
+      });
+    });
+  });
+
+  describe('The setVehicleHidden() method', () => {
+    describe('When hiding a vehicle', () => {
+      beforeEach(async () => {
+        mockClient.request.mockResolvedValue({ success: true } as VehicleActionResponse);
+        await repository.setVehicleHidden(fakeVin, true);
+      });
+
+      it('should POST the vin to the device hidden-vehicles endpoint', () => {
+        expect(mockClient.request).toHaveBeenCalledWith(`/devices/${fakeInstallationId}/hidden-vehicles`, {
+          body: JSON.stringify({ vin: fakeVin }),
+          method: 'POST',
+        });
+      });
+    });
+
+    describe('When restoring a vehicle', () => {
+      beforeEach(async () => {
+        mockClient.request.mockResolvedValue({ success: true } as VehicleActionResponse);
+        await repository.setVehicleHidden(fakeVin, false);
+      });
+
+      it('should DELETE the vin from the device hidden-vehicles endpoint', () => {
+        expect(mockClient.request).toHaveBeenCalledWith(`/devices/${fakeInstallationId}/hidden-vehicles/${fakeVin}`, {
+          method: 'DELETE',
         });
       });
     });

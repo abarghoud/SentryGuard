@@ -3,6 +3,7 @@ import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, Primary
 @Entity('push_device_tokens')
 @Index(['token'], { unique: true })
 @Index(['userId'])
+@Index(['installationId'])
 export class PushDeviceToken {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -15,6 +16,9 @@ export class PushDeviceToken {
 
   @Column({ type: 'varchar', length: 32, nullable: true })
   platform?: string | null;
+
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  installationId?: string | null;
 
   @Column({ type: 'boolean', default: true })
   push_enabled!: boolean;

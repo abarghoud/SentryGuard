@@ -2,7 +2,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import type { JSX } from 'react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
@@ -13,7 +13,7 @@ import { useThemeColors } from '../core/theme';
 import { AppText } from '../core/ui';
 import { MainStackParamList } from '../core/navigation';
 import { getOnboardingStatusUseCase } from '../features/onboarding/di';
-import { useVehiclesQuery } from '../features/vehicles/di';
+import { useHiddenVehiclesQuery, useVehiclesQuery } from '../features/vehicles/di';
 import { EmptyState } from './dashboard/components/EmptyState';
 import { OnboardingBanner } from './dashboard/components/OnboardingBanner';
 import { VehicleCard } from './dashboard/components/VehicleCard';
@@ -32,13 +32,18 @@ export function DashboardScreen(): JSX.Element {
     queryKey: ['onboarding-status'],
   });
   const isOnboardingIncomplete = onboardingQuery.data?.isSkipped === true;
+  const hiddenVehiclesQuery = useHiddenVehiclesQuery();
+  const visibleVehicles = useMemo(() => {
+    const hiddenVins = new Set(hiddenVehiclesQuery.data ?? []);
+    return (vehiclesQuery.data ?? []).filter((vehicle) => !hiddenVins.has(vehicle.vin));
+  }, [hiddenVehiclesQuery.data, vehiclesQuery.data]);
 
   return (
     <FlatList
       style={{ backgroundColor: colors.systemGroupedBackground }}
       contentContainerStyle={[styles.content, { paddingTop: topInset + spacing.sm }]}
       contentInsetAdjustmentBehavior="automatic"
-      data={vehiclesQuery.data ?? []}
+      data={visibleVehicles}
       keyExtractor={(vehicle) => vehicle.id}
       ItemSeparatorComponent={() => <View style={styles.separator} />}
       refreshControl={<RefreshControl refreshing={vehiclesQuery.isFetching} onRefresh={() => void vehiclesQuery.refetch()} />}
@@ -47,7 +52,7 @@ export function DashboardScreen(): JSX.Element {
           <View style={styles.titleBlock}>
             <AppText variant={TextVariant.LargeTitle}>{t('dashboard.title')}</AppText>
             <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
-              {resolveSubtitle(vehiclesQuery.data, t)}
+              {resolveSubtitle(vehiclesQuery.data ? visibleVehicles : undefined, t)}
             </AppText>
           </View>
 
@@ -60,7 +65,7 @@ export function DashboardScreen(): JSX.Element {
           <VirtualKeyBanner
             message={virtualKeyMessage}
             t={t}
-            vehicles={vehiclesQuery.data ?? []}
+            vehicles={visibleVehicles}
             onOpenKey={() => void openVirtualKey(setVirtualKeyMessage, t)}
           />
         </View>
@@ -69,7 +74,7 @@ export function DashboardScreen(): JSX.Element {
       renderItem={({ item }) => (
         <VehicleCard
           vehicle={item}
-          onSelect={() => navigation.navigate('VehicleDetail', { vehicleId: item.vin })}
+          onSelect={() => navigation.navigate('VehicleDetail', { vehicleId: item.vin, title: item.display_name ?? item.model })}
           t={t}
         />
       )}

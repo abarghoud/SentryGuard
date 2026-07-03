@@ -12,6 +12,14 @@ export interface DeleteTelemetryConfigRequirements {
   execute(vin: string): Promise<VehicleActionResponse>;
 }
 
+export interface GetHiddenVehicleVinsRequirements {
+  execute(): Promise<string[]>;
+}
+
+export interface SetVehicleHiddenRequirements {
+  execute(vin: string, shouldHide: boolean): Promise<VehicleActionResponse>;
+}
+
 export interface ToggleBreakInMonitoringRequirements {
   execute(vin: string, shouldEnable: boolean): Promise<VehicleActionResponse>;
 }

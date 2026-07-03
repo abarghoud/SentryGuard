@@ -78,7 +78,6 @@ export function useVehicleDetail(vehicleId: string) {
       setFeedback(null);
     },
   });
-
   return {
     actionMutation,
     feedback,
