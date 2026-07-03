@@ -142,4 +142,84 @@ describe('The NotificationsService class', () => {
       });
     });
   });
+
+  describe('The registerPushToken() method', () => {
+    const fakeToken = 'ExponentPushToken[fake]';
+
+    describe('When the device token is new', () => {
+      beforeEach(async () => {
+        mockPushDeviceTokenRepository.findOne.mockResolvedValue(null);
+        await service.registerPushToken(fakeUserId, fakeToken, 'android');
+      });
+
+      it('should create the device with push enabled', () => {
+        expect(mockPushDeviceTokenRepository.upsert).toHaveBeenCalledWith(
+          { userId: fakeUserId, token: fakeToken, platform: 'android', push_enabled: true },
+          { conflictPaths: ['token'], skipUpdateIfNoValuesChanged: true }
+        );
+      });
+    });
+
+    describe('When the device token is already registered with push disabled', () => {
+      let existingDevice: PushDeviceToken;
+
+      beforeEach(async () => {
+        existingDevice = { ...createDevice(), platform: 'android', push_enabled: false };
+        mockPushDeviceTokenRepository.findOne.mockResolvedValue(existingDevice);
+        await service.registerPushToken(fakeUserId, fakeToken, 'android');
+      });
+
+      it('should not re-enable push on the existing device', () => {
+        expect(mockPushDeviceTokenRepository.upsert).not.toHaveBeenCalled();
+      });
+
+      it('should not rewrite the unchanged device', () => {
+        expect(mockPushDeviceTokenRepository.save).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When the registered device reports a new platform', () => {
+      let existingDevice: PushDeviceToken;
+
+      beforeEach(async () => {
+        existingDevice = { ...createDevice(), platform: 'ios', push_enabled: false };
+        mockPushDeviceTokenRepository.findOne.mockResolvedValue(existingDevice);
+        await service.registerPushToken(fakeUserId, fakeToken, 'android');
+      });
+
+      it('should save the device with the new platform', () => {
+        expect(mockPushDeviceTokenRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({ platform: 'android' })
+        );
+      });
+
+      it('should keep push disabled on the saved device', () => {
+        expect(mockPushDeviceTokenRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({ push_enabled: false })
+        );
+      });
+    });
+
+    describe('When the registered device reports a new installation id', () => {
+      let existingDevice: PushDeviceToken;
+
+      beforeEach(async () => {
+        existingDevice = { ...createDevice(), platform: 'android', push_enabled: false };
+        mockPushDeviceTokenRepository.findOne.mockResolvedValue(existingDevice);
+        await service.registerPushToken(fakeUserId, fakeToken, 'android', 'installation-1');
+      });
+
+      it('should backfill the installation id on the saved device', () => {
+        expect(mockPushDeviceTokenRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({ installationId: 'installation-1' })
+        );
+      });
+
+      it('should keep push disabled on the saved device', () => {
+        expect(mockPushDeviceTokenRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({ push_enabled: false })
+        );
+      });
+    });
+  });
 });
