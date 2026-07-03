@@ -1,8 +1,10 @@
 import * as Linking from 'expo-linking';
-import { Alert, Platform } from 'react-native';
+import * as Sharing from 'expo-sharing';
+import { Alert, Platform, Share } from 'react-native';
 
 import { virtualKeyStore } from '../../core/api';
 import { buildAppUrl } from '../../core/config/app-domain';
+import { appLogger, buildLogsExportFileName, writeLogsExportFile } from '../../core/logging';
 import { dndPolicyAccess, pushNotificationService, registerPushTokenUseCase } from '../../features/notifications/di';
 import { NotificationPreferences } from '../../features/notifications/domain/entities';
 
@@ -35,11 +37,13 @@ export async function registerDeviceForPush(
 ): Promise<string | null> {
   const token = await pushNotificationService.requestExpoPushToken();
   if (!token) {
+    appLogger.warn('push', 'Push registration aborted: no token (permission denied or unsupported device)');
     setMessage?.(Platform.OS === 'web' ? t('settings.pushNativeOnly') : t('settings.pushPermissionDenied'));
     return null;
   }
 
   await registerPushTokenUseCase.execute(token, Platform.OS);
+  appLogger.info('push', `Push device registered (…${token.slice(-8)})`);
   return token;
 }
 
@@ -87,6 +91,51 @@ export async function openPrivacyPolicy(locale: string): Promise<void> {
 
 export async function openTermsOfService(locale: string): Promise<void> {
   await Linking.openURL(buildLegalUrl(locale, 'terms'));
+}
+
+export async function shareDebugLogs(t: (key: string) => string): Promise<void> {
+  try {
+    await presentDebugLogs(await appLogger.exportLogs(), t);
+  } catch {
+    return;
+  }
+}
+
+export async function clearDebugLogs(): Promise<void> {
+  await appLogger.clear();
+}
+
+async function presentDebugLogs(logs: string, t: (key: string) => string): Promise<void> {
+  if (Platform.OS === 'web') {
+    downloadLogsOnWeb(logs, t);
+    return;
+  }
+
+  if (!(await Sharing.isAvailableAsync())) {
+    await Share.share({ message: logs }, { dialogTitle: 'SentryGuard debug logs', subject: 'SentryGuard debug logs' });
+    return;
+  }
+
+  await Sharing.shareAsync(writeLogsExportFile(logs), {
+    UTI: 'public.plain-text',
+    dialogTitle: 'SentryGuard debug logs',
+    mimeType: 'text/plain',
+  });
+}
+
+function downloadLogsOnWeb(logs: string, t: (key: string) => string): void {
+  const anchor = globalThis.document?.createElement('a');
+  if (!anchor) {
+    void globalThis.navigator?.clipboard?.writeText(logs);
+    globalThis.alert?.(t('settings.logsCopied'));
+    return;
+  }
+
+  const blobUrl = URL.createObjectURL(new Blob([logs], { type: 'text/plain' }));
+  anchor.href = blobUrl;
+  anchor.download = buildLogsExportFileName();
+  anchor.click();
+  URL.revokeObjectURL(blobUrl);
 }
 
 export function confirmAccountDeletion(onConfirm: () => void, t: (key: string) => string): void {

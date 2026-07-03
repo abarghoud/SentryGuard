@@ -9987,6 +9987,7 @@ __metadata:
     expo-blur: "npm:~15.0.8"
     expo-constants: "npm:~18.0.13"
     expo-device: "npm:~8.0.10"
+    expo-file-system: "npm:~19.0.23"
     expo-font: "npm:~14.0.12"
     expo-glass-effect: "npm:~0.1.10"
     expo-haptics: "npm:~15.0.8"
@@ -9994,6 +9995,7 @@ __metadata:
     expo-localization: "npm:~17.0.9"
     expo-notifications: "npm:~0.32.17"
     expo-secure-store: "npm:~15.0.7"
+    expo-sharing: "npm:~14.0.8"
     expo-splash-screen: "npm:~31.0.11"
     expo-status-bar: "npm:~3.0.8"
     expo-symbols: "npm:~1.0.8"
@@ -16605,6 +16607,15 @@ __metadata:
   version: 1.0.7
   resolution: "expo-server@npm:1.0.7"
   checksum: 10c0/1baf6dfb07e8b6be737a10c898c25e7ad80575e2e371413cd6530e81d471575f9454b1e3751ed14a9a7d8671d3da1e2917e27ac5faebb50671e87b923f0b7b27
+  languageName: node
+  linkType: hard
+
+"expo-sharing@npm:~14.0.8":
+  version: 14.0.8
+  resolution: "expo-sharing@npm:14.0.8"
+  peerDependencies:
+    expo: "*"
+  checksum: 10c0/64c6f42272b7e762988dbb92af6eabb71bd8229366cdc675cda78513fea39c46c9a46bb250ffaf5587b8361bd824a89820e46771cb5f97fc16bbfc87e3f00518
   languageName: node
   linkType: hard
 

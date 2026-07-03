@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { spacing } from '../design/metrics';
 import { TextVariant } from '../design/typography';
 import { useHaptics } from '../design/use-haptics';
+import { appLogger } from '../logging';
 import { useThemeColors } from '../theme';
 import { AppText } from './AppText';
 import { Icon } from './Icon';
@@ -76,6 +77,7 @@ export function ListRow({
   }
 
   const handlePress = (): void => {
+    appLogger.info('ui', `Tap row "${title}"`);
     haptics.selection();
     onPress();
   };

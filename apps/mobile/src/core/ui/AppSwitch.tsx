@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import { Platform, Switch } from 'react-native';
 
 import { useHaptics } from '../design/use-haptics';
+import { appLogger } from '../logging';
 import { useThemeColors } from '../theme';
 
 interface AppSwitchProps {
@@ -17,6 +18,7 @@ export function AppSwitch({ accessibilityLabel, disabled = false, onValueChange,
   const isAndroid = Platform.OS === 'android';
 
   const handleChange = (next: boolean): void => {
+    appLogger.info('ui', `Toggle "${accessibilityLabel ?? 'switch'}" → ${next}`);
     haptics.selection();
     onValueChange(next);
   };

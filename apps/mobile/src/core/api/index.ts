@@ -1,4 +1,5 @@
 import { VirtualKeyStore } from '../config/virtual-key-store';
+import { appLogger } from '../logging';
 import { SecureStorage } from '../storage/secure-storage';
 import { ApiClient } from './api-client';
 import { ApiUrlStore } from './api-url-store';
@@ -8,7 +9,7 @@ export const secureStorage = new SecureStorage();
 export const tokenStore = new TokenStore(secureStorage);
 export const apiUrlStore = new ApiUrlStore(secureStorage);
 export const virtualKeyStore = new VirtualKeyStore(secureStorage);
-export const apiClient = new ApiClient(tokenStore, apiUrlStore);
+export const apiClient = new ApiClient(tokenStore, apiUrlStore, appLogger);
 
 export async function initializeRuntimeConfig(): Promise<void> {
   await Promise.all([apiUrlStore.initialize(), virtualKeyStore.initialize()]);

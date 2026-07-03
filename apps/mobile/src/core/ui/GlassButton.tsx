@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'rea
 import { radius, spacing } from '../design/metrics';
 import { TextVariant } from '../design/typography';
 import { useHaptics } from '../design/use-haptics';
+import { appLogger } from '../logging';
 import { ThemeColors, useTheme } from '../theme';
 import { AppText } from './AppText';
 import { Icon } from './Icon';
@@ -43,6 +44,7 @@ export function GlassButton({
   const labelColor = resolveLabelColor(variant, destructive, colors);
 
   const handlePress = (): void => {
+    appLogger.info('ui', `Tap button "${label}"`);
     haptics.selection();
     onPress();
   };

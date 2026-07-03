@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MobileShell } from './MobileShell';
 import { ThemeProvider, useTheme } from './theme';
 import { initializeRuntimeConfig, tokenStore } from './api';
+import { appLogger, installGlobalErrorLogging } from './logging';
 import { openTeslaApp } from './tesla-app-link';
 import { pushNotificationService } from '../features/notifications/di';
 import './i18n';
@@ -35,6 +36,8 @@ function ThemedAppContent(): JSX.Element {
   const [isApiReady, setIsApiReady] = useState(false);
 
   useEffect(() => {
+    void appLogger.initialize();
+    installGlobalErrorLogging(appLogger);
     void pushNotificationService.configure();
     void initializeRuntimeConfig().finally(() => setIsApiReady(true));
   }, []);
@@ -60,6 +63,7 @@ function SessionQueryBoundary(): JSX.Element {
   const queryClient = useQueryClient();
 
   useEffect(() => tokenStore.subscribe((token) => {
+    appLogger.info('auth', token ? 'Session token stored' : 'Session cleared');
     if (!token) {
       queryClient.clear();
     }
@@ -89,6 +93,7 @@ function SessionQueryBoundary(): JSX.Element {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
+        appLogger.info('app', 'App became active');
         void pushNotificationService.configure();
         void queryClient.invalidateQueries({ queryKey: ['alerts'] });
       }

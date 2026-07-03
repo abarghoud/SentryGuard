@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { radius, spacing } from '../design/metrics';
 import { TextVariant } from '../design/typography';
 import { useHaptics } from '../design/use-haptics';
+import { appLogger } from '../logging';
 import { useThemeColors } from '../theme';
 import { AppText } from './AppText';
 
@@ -33,6 +34,7 @@ export function SegmentedControl<T extends string>({ onChange, options, value }:
             accessibilityRole="button"
             accessibilityState={{ selected: isActive }}
             onPress={() => {
+              appLogger.info('ui', `Select segment "${option.value}"`);
               haptics.selection();
               onChange(option.value);
             }}

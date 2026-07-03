@@ -6,6 +6,7 @@ import { Platform, ScrollView } from 'react-native';
 
 import { apiUrlStore, virtualKeyStore } from '../../core/api';
 import { normalizeDomain } from '../../core/config/app-domain';
+import { appLogger } from '../../core/logging';
 import { getTeslaLoginUrlUseCase, getTeslaScopeChangeUrlUseCase, demoLoginUseCase } from '../../features/auth/di';
 import { extractMissingScopesFromCallbackUrl, extractTokenFromCallbackUrl } from './auth.helpers';
 
@@ -60,6 +61,7 @@ export function useAuthScreen({ onAuthenticated }: UseAuthScreenParams): UseAuth
       const callbackUrl = url ?? '';
       const token = extractTokenFromCallbackUrl(callbackUrl);
       if (token) {
+        appLogger.info('auth', 'Login callback received with a session token');
         if (Platform.OS === 'ios') {
           void WebBrowser.dismissBrowser();
         }
@@ -70,6 +72,7 @@ export function useAuthScreen({ onAuthenticated }: UseAuthScreenParams): UseAuth
 
       const missing = extractMissingScopesFromCallbackUrl(callbackUrl);
       if (missing) {
+        appLogger.warn('auth', 'Login callback reports missing Tesla scopes', missing);
         if (Platform.OS === 'ios') {
           void WebBrowser.dismissBrowser();
         }
@@ -96,6 +99,7 @@ export function useAuthScreen({ onAuthenticated }: UseAuthScreenParams): UseAuth
       const login = await getTeslaLoginUrlUseCase.execute(redirectUri);
       await openTeslaAuthUrl(login.url);
     } catch (error) {
+      appLogger.error('auth', 'Tesla login failed to open', error instanceof Error ? error.message : error);
       setMessage(error instanceof Error ? error.message : t('auth.error.login'));
     } finally {
       setIsAuthenticating(false);

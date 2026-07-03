@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 
 import { usePushTokenSync } from '../../core/hooks/usePushTokenSync';
 import { useTelegramStatusSync } from '../../core/hooks/useTelegramStatusSync';
+import { appLogger } from '../../core/logging';
 import { getAuthProfileUseCase } from '../../features/auth/di';
 import { getNotificationPreferencesUseCase, updateNotificationPreferencesUseCase } from '../../features/notifications/di';
 import { NotificationPreferences } from '../../features/notifications/domain/entities';
@@ -117,6 +118,7 @@ export function useSettings() {
 
   const updatePreference = async (updates: Partial<NotificationPreferences>): Promise<void> => {
     setPreferenceMessage(null);
+    appLogger.info('settings', 'Notification preference update', resolvePreferenceUpdates(updates));
 
     const queryKey = ['notification-preferences', pushToken];
     const previousPreferences = queryClient.getQueryData<NotificationPreferences>(queryKey) ?? defaultPreferences;

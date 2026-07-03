@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
+import { appLogger } from '../logging';
 import {
   pushNotificationService,
   registerPushTokenUseCase,
@@ -32,6 +33,7 @@ export function usePushTokenSync(): PushTokenSyncResult {
             setPushToken(freshToken);
           }
           await registerPushTokenUseCase.execute(freshToken, Platform.OS);
+          appLogger.info('push', `Push token synced (…${freshToken.slice(-8)})`);
           if (isActive) {
             void queryClient.invalidateQueries({ queryKey: ['notification-preferences', freshToken] });
           }
@@ -39,13 +41,14 @@ export function usePushTokenSync(): PushTokenSyncResult {
           if (isActive) {
             setPushToken(null);
           }
+          appLogger.warn('push', 'Push permission missing, disabling push for the cached token');
           await updateNotificationPreferencesUseCase.execute({ push_enabled: false }, cachedToken);
           if (isActive) {
             void queryClient.invalidateQueries({ queryKey: ['notification-preferences', cachedToken] });
           }
         }
       } catch (error) {
-        // Ignore errors
+        appLogger.error('push', 'Push token sync failed', error instanceof Error ? error.message : error);
       } finally {
         if (isActive) {
           setIsTokenResolved(true);
