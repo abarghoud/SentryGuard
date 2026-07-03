@@ -18,6 +18,7 @@ import {
   requiresPushDevice,
   resolvePreferenceUpdates,
   resolveSettingsError,
+  syncGrantedDeviceForPush,
 } from './settings.helpers';
 
 interface UpdateNotificationPreferencesMutation {
@@ -80,11 +81,17 @@ export function useSettings() {
       return;
     }
 
-    void registerDeviceForPush(undefined, t).then((token) => {
-      hasRegisteredPushToken.current = Boolean(token);
-      setPushToken(token);
-    });
-  }, [preferencesQuery.data?.push_enabled, t]);
+    // Silent re-registration only: prompting here would race the toggle's own
+    // permission request and burn Android's limited permission prompts.
+    void syncGrantedDeviceForPush()
+      .then((token) => {
+        if (token) {
+          hasRegisteredPushToken.current = true;
+          setPushToken(token);
+        }
+      })
+      .catch(() => undefined);
+  }, [preferencesQuery.data?.push_enabled]);
 
   const resolvePushTokenForUpdate = async (
     updates: Partial<NotificationPreferences>

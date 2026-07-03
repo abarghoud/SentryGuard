@@ -5,6 +5,7 @@ import { virtualKeyStore } from '../../core/api';
 import { buildAppUrl } from '../../core/config/app-domain';
 import { dndPolicyAccess, pushNotificationService, registerPushTokenUseCase } from '../../features/notifications/di';
 import { NotificationPreferences } from '../../features/notifications/domain/entities';
+import { PushTokenRequestStatus } from '../../features/notifications/infrastructure/push-notification.service';
 
 export const defaultPreferences: NotificationPreferences = {
   critical_alerts_enabled: false,
@@ -33,14 +34,45 @@ export async function registerDeviceForPush(
   setMessage: ((message: string | null) => void) | undefined,
   t: (key: string) => string
 ): Promise<string | null> {
-  const token = await pushNotificationService.requestExpoPushToken();
+  const request = await pushNotificationService.requestExpoPushToken();
+  if (!request.token) {
+    notifyPushTokenUnavailable(request.status, setMessage, t);
+    return null;
+  }
+
+  await registerPushTokenUseCase.execute(request.token, Platform.OS);
+  return request.token;
+}
+
+export async function syncGrantedDeviceForPush(): Promise<string | null> {
+  const token = await pushNotificationService.getGrantedExpoPushToken();
   if (!token) {
-    setMessage?.(Platform.OS === 'web' ? t('settings.pushNativeOnly') : t('settings.pushPermissionDenied'));
     return null;
   }
 
   await registerPushTokenUseCase.execute(token, Platform.OS);
   return token;
+}
+
+function notifyPushTokenUnavailable(
+  status: PushTokenRequestStatus,
+  setMessage: ((message: string | null) => void) | undefined,
+  t: (key: string) => string
+): void {
+  if (status === PushTokenRequestStatus.Blocked) {
+    setMessage?.(t('settings.pushPermissionBlocked'));
+    promptOpenNotificationSettings(t);
+    return;
+  }
+
+  setMessage?.(Platform.OS === 'web' ? t('settings.pushNativeOnly') : t('settings.pushPermissionDenied'));
+}
+
+function promptOpenNotificationSettings(t: (key: string) => string): void {
+  Alert.alert(t('settings.pushPermissionBlockedTitle'), t('settings.pushPermissionBlocked'), [
+    { style: 'cancel', text: t('common.cancel') },
+    { onPress: () => void Linking.openSettings(), text: t('settings.pushOpenSettings') },
+  ]);
 }
 
 export async function canEnableCriticalAlerts(setIsDndAccessModalOpen: (isOpen: boolean) => void): Promise<boolean> {

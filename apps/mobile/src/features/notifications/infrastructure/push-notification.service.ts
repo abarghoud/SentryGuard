@@ -8,12 +8,24 @@ import { i18n } from '../../../core/i18n';
 import { lightColors } from '../../../core/theme';
 import { DndPolicyAccessRequirements } from './dnd-policy-access';
 
+export enum PushTokenRequestStatus {
+  Blocked,
+  Denied,
+  Granted,
+  Unsupported,
+}
+
+export interface PushTokenRequestResult {
+  status: PushTokenRequestStatus;
+  token: string | null;
+}
+
 export interface PushNotificationServiceRequirements {
   clearCachedExpoPushToken(): Promise<void>;
   configure(): Promise<void>;
   getCachedExpoPushToken(): Promise<string | null>;
   getGrantedExpoPushToken(): Promise<string | null>;
-  requestExpoPushToken(): Promise<string | null>;
+  requestExpoPushToken(): Promise<PushTokenRequestResult>;
 }
 
 export class PushNotificationService implements PushNotificationServiceRequirements {
@@ -66,18 +78,18 @@ export class PushNotificationService implements PushNotificationServiceRequireme
     }
   }
 
-  public async requestExpoPushToken(): Promise<string | null> {
+  public async requestExpoPushToken(): Promise<PushTokenRequestResult> {
     if (Platform.OS === 'web' || !Device.isDevice) {
-      return null;
+      return { status: PushTokenRequestStatus.Unsupported, token: null };
     }
 
-    const finalStatus = await this.resolvePermissionStatus();
+    const permissions = await this.resolveRequestedPermissions();
 
-    if (finalStatus !== 'granted') {
-      return null;
+    if (!permissions.granted) {
+      return { status: this.resolveDeniedStatus(permissions), token: null };
     }
 
-    return this.getExpoPushToken();
+    return { status: PushTokenRequestStatus.Granted, token: await this.getExpoPushToken() };
   }
 
   public async getGrantedExpoPushToken(): Promise<string | null> {
@@ -112,13 +124,13 @@ export class PushNotificationService implements PushNotificationServiceRequireme
     );
   }
 
-  private async resolvePermissionStatus(): Promise<string> {
+  private async resolveRequestedPermissions(): Promise<Notifications.NotificationPermissionsStatus> {
     const permissions = await Notifications.getPermissionsAsync();
-    const requestedPermissions = permissions.granted
-      ? permissions
-      : await Notifications.requestPermissionsAsync();
+    return permissions.granted ? permissions : Notifications.requestPermissionsAsync();
+  }
 
-    return requestedPermissions.status;
+  private resolveDeniedStatus(permissions: Notifications.NotificationPermissionsStatus): PushTokenRequestStatus {
+    return permissions.canAskAgain ? PushTokenRequestStatus.Denied : PushTokenRequestStatus.Blocked;
   }
 
   private async getExpoPushToken(): Promise<string | null> {
