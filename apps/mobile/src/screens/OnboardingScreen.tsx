@@ -11,7 +11,7 @@ import { PrimaryButton } from './onboarding/components/PrimaryButton';
 import { SecondaryButton } from './onboarding/components/SecondaryButton';
 import { StepList } from './onboarding/components/StepList';
 import { NotificationStep } from './onboarding/components/NotificationStep';
-import { openVirtualKey, resolveError, resolveVehicleName } from './onboarding/onboarding.helpers';
+import { openVirtualKey, resolveError, resolveVehicleName, resolveVehicleStepKey } from './onboarding/onboarding.helpers';
 import { useOnboarding } from './onboarding/use-onboarding';
 
 interface OnboardingScreenProps {
@@ -146,7 +146,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
       >
         <StepList
           items={vehicles.map((vehicle) =>
-            t(vehicle.sentry_mode_monitoring_enabled ? 'onboarding.vehicleEnabled' : 'onboarding.vehicleDisabled', {
+            t(resolveVehicleStepKey(vehicle), {
               vehicle: resolveVehicleName(vehicle, t),
             })
           )}

@@ -148,6 +148,36 @@ describe('TelemetryConfigService', () => {
       ]);
     });
 
+    it('should return the key pairing state of each vehicle individually', async () => {
+      const userId = 'test-user-id';
+      const mockVehicles = [
+        { vin: 'VIN123', display_name: 'Tesla Model 3' },
+        { vin: 'VIN456', display_name: 'Tesla Model Y' },
+      ];
+
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('user-access-token');
+      mockAxiosInstance.get.mockResolvedValueOnce({
+        data: { response: mockVehicles },
+      });
+
+      jest
+        .spyOn(service, 'checkTelemetryConfig')
+        .mockImplementation(async (vin: string) =>
+          vin === 'VIN123'
+            ? { key_paired: true, config: null }
+            : { key_paired: false, config: null }
+        );
+
+      mockVehicleRepository.find.mockResolvedValue([]);
+
+      const result = await service.getVehicles(userId);
+
+      expect(result.map((vehicle) => ({ vin: vehicle.vin, key_paired: vehicle.key_paired }))).toEqual([
+        { vin: 'VIN123', key_paired: true },
+        { vin: 'VIN456', key_paired: false },
+      ]);
+    });
+
     it('should return empty array on error', async () => {
       mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('test-token');
       const loggerSpy = jest

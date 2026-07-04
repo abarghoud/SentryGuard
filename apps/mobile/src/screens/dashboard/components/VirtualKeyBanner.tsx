@@ -9,12 +9,10 @@ import { Vehicle } from '../../../features/vehicles/domain/entities';
 import { TranslationFunction } from '../dashboard.helpers';
 
 export function VirtualKeyBanner({
-  message,
   onOpenKey,
   t,
   vehicles,
 }: {
-  message: string | null;
   onOpenKey(): void;
   t: TranslationFunction;
   vehicles: Vehicle[];
@@ -34,11 +32,6 @@ export function VirtualKeyBanner({
       <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
         {t('dashboard.virtualKey.text')}
       </AppText>
-      {message ? (
-        <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
-          {message}
-        </AppText>
-      ) : null}
       <GlassButton label={t('dashboard.virtualKey.open')} icon="arrow.up.right.square" onPress={onOpenKey} variant={GlassButtonVariant.Secondary} />
     </Surface>
   );

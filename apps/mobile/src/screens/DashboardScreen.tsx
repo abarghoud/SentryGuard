@@ -58,17 +58,23 @@ export function DashboardScreen(): JSX.Element {
           />
 
           <VirtualKeyBanner
-            message={virtualKeyMessage}
             t={t}
             vehicles={vehiclesQuery.data ?? []}
             onOpenKey={() => void openVirtualKey(setVirtualKeyMessage, t)}
           />
+
+          {virtualKeyMessage ? (
+            <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
+              {virtualKeyMessage}
+            </AppText>
+          ) : null}
         </View>
       }
       ListEmptyComponent={<EmptyState isLoading={vehiclesQuery.isLoading} error={vehiclesQuery.error} t={t} />}
       renderItem={({ item }) => (
         <VehicleCard
           vehicle={item}
+          onOpenKey={() => void openVirtualKey(setVirtualKeyMessage, t)}
           onSelect={() => navigation.navigate('VehicleDetail', { vehicleId: item.vin, title: item.display_name ?? item.model })}
           t={t}
         />

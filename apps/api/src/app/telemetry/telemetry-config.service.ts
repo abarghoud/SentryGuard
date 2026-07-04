@@ -93,12 +93,6 @@ export class TelemetryConfigService {
         const telemetryConfigs = await this.syncVehiclesToDatabase(userId, vehicles);
         const dbVehicles = await this.getUserVehiclesFromDB(userId);
 
-        let keyPaired = false;
-        if (telemetryConfigs.size > 0) {
-          const firstConfig = telemetryConfigs.get(vehicles[0].vin);
-          keyPaired = firstConfig?.key_paired ?? false;
-        }
-
         return vehicles.map((teslaVehicle: TeslaVehicle): TeslaVehicleWithStatus => {
           const dbVehicle = dbVehicles.find(
             (dbV) => dbV.vin === teslaVehicle.vin
@@ -108,7 +102,7 @@ export class TelemetryConfigService {
             sentry_mode_monitoring_enabled: dbVehicle?.sentry_mode_monitoring_enabled ?? false,
             break_in_monitoring_enabled: dbVehicle?.break_in_monitoring_enabled ?? false,
             break_in_offensive_response: dbVehicle?.break_in_offensive_response ?? 'DISABLED',
-            key_paired: keyPaired,
+            key_paired: telemetryConfigs.get(teslaVehicle.vin)?.key_paired ?? false,
           };
         });
       }
