@@ -9,7 +9,6 @@ interface OnboardingProgressProps {
 
 const STEPS = [
   { id: OnboardingStep.TELEGRAM_LINK, label: 'Link Telegram' },
-  { id: OnboardingStep.VIRTUAL_KEY_SETUP, label: 'Virtual Key' },
   { id: OnboardingStep.TELEMETRY_ACTIVATION, label: 'Enable Telemetry' },
 ];
 

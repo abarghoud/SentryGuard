@@ -54,7 +54,7 @@ export class TelemetryConfigService {
     private readonly partnerAuthService: TeslaPartnerAuthService,
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>
-  ) { }
+  ) {}
 
   private async getAccessToken(userId: string): Promise<string> {
     const token = await this.accessTokenService.getAccessTokenForUserId(userId);
@@ -89,31 +89,25 @@ export class TelemetryConfigService {
 
       const vehicles = response.data.response;
 
-      if (userId && vehicles.length > 0) {
-        const telemetryConfigs = await this.syncVehiclesToDatabase(userId, vehicles);
-        const dbVehicles = await this.getUserVehiclesFromDB(userId);
-
-        return vehicles.map((teslaVehicle: TeslaVehicle): TeslaVehicleWithStatus => {
-          const dbVehicle = dbVehicles.find(
-            (dbV) => dbV.vin === teslaVehicle.vin
-          );
-          return {
-            ...teslaVehicle,
-            sentry_mode_monitoring_enabled: dbVehicle?.sentry_mode_monitoring_enabled ?? false,
-            break_in_monitoring_enabled: dbVehicle?.break_in_monitoring_enabled ?? false,
-            break_in_offensive_response: dbVehicle?.break_in_offensive_response ?? 'DISABLED',
-            key_paired: telemetryConfigs.get(teslaVehicle.vin)?.key_paired ?? false,
-          };
-        });
+      if (vehicles.length === 0) {
+        return [];
       }
 
-      return vehicles.map((vehicle): TeslaVehicleWithStatus => ({
-        ...vehicle,
-        sentry_mode_monitoring_enabled: false,
-        break_in_monitoring_enabled: false,
-        break_in_offensive_response: 'DISABLED',
-        key_paired: false,
-      }));
+      const telemetryConfigs = await this.syncVehiclesToDatabase(userId, vehicles);
+      const dbVehicles = await this.getUserVehiclesFromDB(userId);
+
+      return vehicles.map((teslaVehicle: TeslaVehicle): TeslaVehicleWithStatus => {
+        const dbVehicle = dbVehicles.find(
+          (dbV) => dbV.vin === teslaVehicle.vin
+        );
+        return {
+          ...teslaVehicle,
+          sentry_mode_monitoring_enabled: dbVehicle?.sentry_mode_monitoring_enabled ?? false,
+          break_in_monitoring_enabled: dbVehicle?.break_in_monitoring_enabled ?? false,
+          break_in_offensive_response: dbVehicle?.break_in_offensive_response ?? 'DISABLED',
+          key_paired: telemetryConfigs.get(teslaVehicle.vin)?.key_paired ?? false,
+        };
+      });
     } catch (error: unknown) {
       this.logger.error(
         ERROR_MESSAGES.ERROR_FETCHING_VEHICLES,

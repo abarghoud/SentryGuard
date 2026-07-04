@@ -226,7 +226,7 @@ export function VehiclesView({
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {vehicles.map((vehicle) => (
             <VehicleCard
-              key={vehicle.id}
+              key={vehicle.vin}
               vehicle={vehicle}
               onPairVirtualKey={() => void handlePairVirtualKey()}
               onToggleTelemetry={onConfigureTelemetry}

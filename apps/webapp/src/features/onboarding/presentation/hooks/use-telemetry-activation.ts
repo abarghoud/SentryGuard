@@ -186,6 +186,7 @@ export function useTelemetryActivation(onCompleted?: () => Promise<void>) {
   return {
     vehicles,
     isLoading,
+    refetch: vehicleQuery.refetch,
     activatingVins,
     deletingVins,
     togglingBreakInVins,

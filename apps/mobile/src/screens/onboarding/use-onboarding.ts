@@ -189,7 +189,6 @@ export function useOnboarding(onComplete: () => void) {
       isNotificationConfigMissing: !isNotificationConfigured,
       isTelemetryMissing: vehicles.length > 0 && !vehicles.some((vehicle) => vehicle.sentry_mode_monitoring_enabled),
       isVehicleMissing: vehicles.length === 0,
-      isVirtualKeyMissing: vehicles.length > 0 && !vehicles.some((vehicle) => vehicle.key_paired),
     },
     isPushActive: isPushEnabled,
     isTelegramLinked,
