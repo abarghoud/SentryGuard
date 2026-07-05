@@ -18,6 +18,7 @@ jest.mock('react-i18next', () => ({
 
 import { mock, MockProxy } from 'jest-mock-extended';
 
+import { AppLoggerRequirements } from '../logging/app-logging.requirements';
 import { ApiClient, ApiError } from './api-client';
 import { ApiUrlStoreRequirements } from './api-url-store';
 import { TokenStoreRequirements } from './token-store';
@@ -25,6 +26,7 @@ import { TokenStoreRequirements } from './token-store';
 describe('The ApiClient class', () => {
   let mockTokenStore: MockProxy<TokenStoreRequirements>;
   let mockApiUrlStore: MockProxy<ApiUrlStoreRequirements>;
+  let mockLogger: MockProxy<AppLoggerRequirements>;
   let apiClient: ApiClient;
   let fetchSpy: jest.Mock;
 
@@ -32,7 +34,8 @@ describe('The ApiClient class', () => {
     mockTokenStore = mock<TokenStoreRequirements>();
     mockApiUrlStore = mock<ApiUrlStoreRequirements>();
     mockApiUrlStore.resolveUrl.mockReturnValue('https://api.test');
-    apiClient = new ApiClient(mockTokenStore, mockApiUrlStore);
+    mockLogger = mock<AppLoggerRequirements>();
+    apiClient = new ApiClient(mockTokenStore, mockApiUrlStore, mockLogger);
 
     fetchSpy = jest.fn();
     global.fetch = fetchSpy;
