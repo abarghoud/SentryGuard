@@ -127,6 +127,7 @@ function BreakInOffensiveSelect({
 
 export default function VehicleCard({
   vehicle,
+  onPairVirtualKey,
   onToggleTelemetry,
   onToggleBreakInMonitoring,
   onUpdateBreakInOffensive,
@@ -231,6 +232,20 @@ export default function VehicleCard({
           <img src="/tesla-logo-red.svg" alt="Tesla Logo" className="w-12 h-12" />
         </div>
       </div>
+
+      {vehicle.key_paired === false && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-2">
+          <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
+            {t('Virtual Key Not Paired')}
+          </p>
+          <button
+            onClick={onPairVirtualKey}
+            className="shrink-0 inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-tesla-600 hover:bg-tesla-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tesla-500"
+          >
+            {t('Pair Virtual Key')}
+          </button>
+        </div>
+      )}
 
       <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
         <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -361,6 +376,7 @@ export default function VehicleCard({
 
 interface VehicleCardProps {
   vehicle: Vehicle;
+  onPairVirtualKey: () => void;
   onToggleTelemetry: (
     vin: string
   ) => Promise<{

@@ -33,12 +33,8 @@ export function useOnboardingStep() {
       return OnboardingStep.TELEGRAM_LINK;
     }
 
-    if (!isVirtualKeyPaired) {
-      return OnboardingStep.VIRTUAL_KEY_SETUP;
-    }
-
     return OnboardingStep.TELEMETRY_ACTIVATION;
-  }, [isTelegramLinked, isVirtualKeyPaired]);
+  }, [isTelegramLinked]);
 
   const refreshAll = useCallback(async () => {
     await Promise.all([fetchTelegramStatus(), fetchVehicles()]);

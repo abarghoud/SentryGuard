@@ -252,23 +252,6 @@ describe('The OnboardingWizard component', () => {
     });
   });
 
-  describe('When on virtual key setup step', () => {
-    beforeEach(() => {
-      mockUseOnboardingStep.mockReturnValue({
-        currentStep: OnboardingStep.VIRTUAL_KEY_SETUP,
-        isTelegramLinked: true,
-        isVirtualKeyPaired: false,
-        refreshAll: mockRefreshAll,
-        isLoading: false,
-      });
-    });
-
-    it('should display virtual key setup step', () => {
-      render(<OnboardingWizard />);
-
-      expect(screen.getByTestId('virtual-key-setup-step')).toBeInTheDocument();
-    });
-  });
 
   describe('When on telemetry activation step', () => {
     beforeEach(() => {

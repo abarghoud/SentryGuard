@@ -11,7 +11,7 @@ import { PrimaryButton } from './onboarding/components/PrimaryButton';
 import { SecondaryButton } from './onboarding/components/SecondaryButton';
 import { StepList } from './onboarding/components/StepList';
 import { NotificationStep } from './onboarding/components/NotificationStep';
-import { openVirtualKey, resolveError, resolveVehicleName } from './onboarding/onboarding.helpers';
+import { openVirtualKey, resolveError, resolveVehicleName, resolveVehicleStepKey } from './onboarding/onboarding.helpers';
 import { useOnboarding } from './onboarding/use-onboarding';
 
 interface OnboardingScreenProps {
@@ -106,47 +106,34 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
     );
   }
 
-  if (flags.isVirtualKeyMissing) {
-    return (
-      <OnboardingFrame
-        title={t('onboarding.virtualKeyTitle')}
-        subtitle={t('onboarding.virtualKeySubtitle')}
-        t={t}
-        onSkip={skipSetup}
-        message={message}
-        actions={
-          <>
-            <PrimaryButton label={t('dashboard.virtualKey.open')} onPress={() => openVirtualKey(setMessage, t)} />
-            <SecondaryButton label={t('onboarding.virtualKeyAdded')} onPress={() => void vehiclesQuery.refetch()} />
-          </>
-        }
-      >
-        <StepList
-          items={[t('onboarding.virtualKeyStep1'), t('onboarding.virtualKeyStep2'), t('onboarding.virtualKeyStep3'), t('onboarding.virtualKeyStep4')]}
-        />
-      </OnboardingFrame>
-    );
-  }
-
   if (flags.isTelemetryMissing && telemetryVehicle) {
+    const isKeyPaired = telemetryVehicle.key_paired !== false;
+
     return (
       <OnboardingFrame
         title={t('vehicle.alertSentry')}
         subtitle={t('onboarding.sentrySubtitle')}
         t={t}
         onSkip={skipSetup}
-        message={message}
+        message={message ?? (!isKeyPaired ? t('dashboard.virtualKey.text') : null)}
         actions={
-          <PrimaryButton
-            disabled={telemetryMutation.isPending}
-            label={telemetryMutation.isPending ? t('onboarding.activating') : t('onboarding.activateVehicle', { vehicle: resolveVehicleName(telemetryVehicle, t) })}
-            onPress={() => telemetryMutation.mutate(telemetryVehicle.vin)}
-          />
+          isKeyPaired ? (
+            <PrimaryButton
+              disabled={telemetryMutation.isPending}
+              label={telemetryMutation.isPending ? t('onboarding.activating') : t('onboarding.activateVehicle', { vehicle: resolveVehicleName(telemetryVehicle, t) })}
+              onPress={() => telemetryMutation.mutate(telemetryVehicle.vin)}
+            />
+          ) : (
+            <>
+              <PrimaryButton label={t('dashboard.virtualKey.open')} onPress={() => openVirtualKey(setMessage, t)} />
+              <SecondaryButton label={t('onboarding.virtualKeyAdded')} onPress={() => void vehiclesQuery.refetch()} />
+            </>
+          )
         }
       >
         <StepList
           items={vehicles.map((vehicle) =>
-            t(vehicle.sentry_mode_monitoring_enabled ? 'onboarding.vehicleEnabled' : 'onboarding.vehicleDisabled', {
+            t(resolveVehicleStepKey(vehicle), {
               vehicle: resolveVehicleName(vehicle, t),
             })
           )}

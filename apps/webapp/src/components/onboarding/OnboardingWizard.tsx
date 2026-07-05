@@ -6,7 +6,6 @@ import { OnboardingStep } from '../../features/onboarding/domain/entities';
 import { useOnboardingQuery } from '../../features/onboarding/di';
 import { useOnboardingStep } from '../../features/onboarding/presentation/hooks/use-onboarding-step';
 import TelegramLinkStep from './TelegramLinkStep';
-import VirtualKeySetupStep from './VirtualKeySetupStep';
 import TelemetryActivationStep from './TelemetryActivationStep';
 import FeatureDiscoveryStep from './FeatureDiscoveryStep';
 import OnboardingLoadingScreen from './OnboardingLoadingScreen';
@@ -90,10 +89,6 @@ export default function OnboardingWizard() {
 
     if (currentStep === OnboardingStep.TELEGRAM_LINK) {
       return <TelegramLinkStep onContinue={handleContinue} />;
-    }
-
-    if (currentStep === OnboardingStep.VIRTUAL_KEY_SETUP) {
-      return <VirtualKeySetupStep onContinue={handleContinue} />;
     }
 
     if (currentStep === OnboardingStep.TELEMETRY_ACTIVATION) {
