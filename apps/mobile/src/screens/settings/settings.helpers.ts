@@ -31,6 +31,22 @@ export function requiresPushDevice(updates: Partial<NotificationPreferences>): b
   );
 }
 
+export async function resolveAvailablePushToken(
+  currentPushToken: string | null,
+  updates: Partial<NotificationPreferences>,
+  getCachedPushToken = () => pushNotificationService.getCachedExpoPushToken()
+): Promise<string | undefined> {
+  if (currentPushToken) {
+    return currentPushToken;
+  }
+
+  if (updates.push_enabled === false) {
+    return (await getCachedPushToken()) ?? undefined;
+  }
+
+  return undefined;
+}
+
 export async function registerDeviceForPush(
   setMessage: ((message: string | null) => void) | undefined,
   t: (key: string) => string

@@ -17,6 +17,7 @@ import {
   defaultPreferences,
   registerDeviceForPush,
   requiresPushDevice,
+  resolveAvailablePushToken,
   resolvePreferenceUpdates,
   resolveSettingsError,
 } from './settings.helpers';
@@ -90,7 +91,7 @@ export function useSettings() {
   const resolvePushTokenForUpdate = async (
     updates: Partial<NotificationPreferences>
   ): Promise<string | undefined | false> => {
-    let currentPushToken = pushToken ?? undefined;
+    let currentPushToken = await resolveAvailablePushToken(pushToken, updates);
 
     const needsRegistration =
       updates.push_enabled === true || (requiresPushDevice(updates) && !currentPushToken && Platform.OS !== 'web');
