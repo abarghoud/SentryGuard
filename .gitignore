@@ -88,3 +88,10 @@ fleet-telemetry/certs/
 
 # Cursor
 .cursor/custom/*
+
+# Gradle and local native build folders
+.gradle/
+**/android/.gradle/
+**/android/build/
+**/ios/build/
+

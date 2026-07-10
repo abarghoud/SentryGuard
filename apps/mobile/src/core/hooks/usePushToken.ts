@@ -4,16 +4,15 @@ import { useEffect, useState } from 'react';
 import { appLogger } from '../logging';
 import {
   pushNotificationService,
-  updateNotificationPreferencesUseCase,
 } from '../../features/notifications/di';
 
-interface PushTokenSyncResult {
+interface PushTokenResult {
   isTokenResolved: boolean;
   pushToken: string | null;
   setPushToken: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
-export function usePushTokenSync(): PushTokenSyncResult {
+export function usePushToken(): PushTokenResult {
   const [pushToken, setPushToken] = useState<string | null>(null);
   const [isTokenResolved, setIsTokenResolved] = useState(false);
   const queryClient = useQueryClient();
@@ -38,11 +37,7 @@ export function usePushTokenSync(): PushTokenSyncResult {
           if (isActive) {
             setPushToken(null);
           }
-          appLogger.warn('push', 'Push permission missing, disabling push for the cached token');
-          await updateNotificationPreferencesUseCase.execute({ push_enabled: false }, cachedToken);
-          if (isActive) {
-            void queryClient.invalidateQueries({ queryKey: ['notification-preferences', cachedToken] });
-          }
+          appLogger.warn('push', 'Push permission missing, disabling push in local state');
         }
       } catch (error) {
         appLogger.error('push', 'Push token sync failed', error instanceof Error ? error.message : error);

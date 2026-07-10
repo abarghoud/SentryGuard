@@ -2,12 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { usePushTokenSync } from '../../core/hooks/usePushTokenSync';
+import { usePushToken } from '../../core/hooks/usePushToken';
 import { useTelegramStatusSync } from '../../core/hooks/useTelegramStatusSync';
 import { resolveDeviceLanguage } from '../../core/i18n';
 import { acceptConsentUseCase, getConsentStatusUseCase, getConsentTextUseCase } from '../../features/consent/di';
 import { completeOnboardingUseCase, getOnboardingStatusUseCase, skipOnboardingUseCase } from '../../features/onboarding/di';
-import { getNotificationPreferencesUseCase, updateNotificationPreferencesUseCase } from '../../features/notifications/di';
+import { getNotificationPreferencesUseCase, updateNotificationPreferencesUseCase, pushNotificationService } from '../../features/notifications/di';
 import { getTelegramStatusUseCase } from '../../features/telegram/di';
 import { getUserLanguageUseCase, updateUserLanguageUseCase } from '../../features/user/di';
 import { UserLanguage } from '../../features/user/domain/entities';
@@ -27,7 +27,7 @@ export function useOnboarding(onComplete: () => void) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState<string | null>(null);
-  const { pushToken, setPushToken } = usePushTokenSync();
+  const { pushToken, setPushToken } = usePushToken();
   useTelegramStatusSync();
 
   const deviceLanguage = resolveDeviceLanguage() === 'fr' ? UserLanguage.French : UserLanguage.English;
@@ -90,7 +90,9 @@ export function useOnboarding(onComplete: () => void) {
   const completeMutation = useMutation({
     mutationFn: () => completeOnboardingUseCase.execute(),
     onSuccess: async () => {
+      await pushNotificationService.setPushSetupCompleted(true);
       await queryClient.invalidateQueries({ queryKey: ['onboarding-status'] });
+      await queryClient.invalidateQueries({ queryKey: ['push-setup-completed'] });
       onComplete();
     },
     onError: (error: Error) => setMessage(error.message),
@@ -98,7 +100,9 @@ export function useOnboarding(onComplete: () => void) {
   const skipMutation = useMutation({
     mutationFn: () => skipOnboardingUseCase.execute(),
     onSuccess: async () => {
+      await pushNotificationService.setPushSetupCompleted(true);
       await queryClient.invalidateQueries({ queryKey: ['onboarding-status'] });
+      await queryClient.invalidateQueries({ queryKey: ['push-setup-completed'] });
       onComplete();
     },
   });
@@ -159,7 +163,9 @@ export function useOnboarding(onComplete: () => void) {
       if (token) {
         await updateNotificationPreferencesUseCase.execute({ push_enabled: true }, token);
         setPushToken(token);
+        await pushNotificationService.setPushSetupCompleted(true);
         await queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
+        await queryClient.invalidateQueries({ queryKey: ['push-setup-completed'] });
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));

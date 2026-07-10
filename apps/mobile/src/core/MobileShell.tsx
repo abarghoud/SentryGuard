@@ -52,6 +52,7 @@ export function MobileShell(): JSX.Element {
         await deletePushTokenUseCase.execute(pushToken);
         await pushNotificationService.clearCachedExpoPushToken();
       }
+      await pushNotificationService.clearPushSetupCompleted();
     } catch {
       appLogger.warn('push', 'Push token cleanup failed during logout');
     }

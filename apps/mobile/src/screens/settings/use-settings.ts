@@ -3,11 +3,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 
-import { usePushTokenSync } from '../../core/hooks/usePushTokenSync';
+import { usePushToken } from '../../core/hooks/usePushToken';
 import { useTelegramStatusSync } from '../../core/hooks/useTelegramStatusSync';
 import { appLogger } from '../../core/logging';
 import { getAuthProfileUseCase } from '../../features/auth/di';
-import { getNotificationPreferencesUseCase, updateNotificationPreferencesUseCase } from '../../features/notifications/di';
+import { getNotificationPreferencesUseCase, updateNotificationPreferencesUseCase, pushNotificationService } from '../../features/notifications/di';
 import { NotificationPreferences } from '../../features/notifications/domain/entities';
 import { getTelegramStatusUseCase } from '../../features/telegram/di';
 import { getUserLanguageUseCase, updateUserLanguageUseCase } from '../../features/user/di';
@@ -31,7 +31,7 @@ export function useSettings() {
   const { i18n, t } = useTranslation();
   const [preferenceMessage, setPreferenceMessage] = useState<string | null>(null);
   const [isDndAccessModalOpen, setIsDndAccessModalOpen] = useState(false);
-  const { isTokenResolved, pushToken, setPushToken } = usePushTokenSync();
+  const { isTokenResolved, pushToken, setPushToken } = usePushToken();
   useTelegramStatusSync();
   const hasRegisteredPushToken = useRef(false);
   const queryClient = useQueryClient();
@@ -151,6 +151,9 @@ export function useSettings() {
       if (updates.critical_alerts_enabled === true && !preferences.critical_alerts_enabled) {
         setPreferenceMessage(t('settings.criticalAlertsUnavailable'));
       }
+
+      await pushNotificationService.setPushSetupCompleted(true);
+      void queryClient.invalidateQueries({ queryKey: ['push-setup-completed'] });
     } catch (error) {
       rollback();
       setPreferenceMessage(resolveSettingsError(error, t));
