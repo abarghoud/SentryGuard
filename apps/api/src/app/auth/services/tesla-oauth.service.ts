@@ -289,7 +289,18 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
       return undefined;
     }
 
-    if (mobileRedirectUri.startsWith('sentryguard://') || mobileRedirectUri.startsWith('exp://')) {
+    if (mobileRedirectUri === 'sentryguard://callback' || mobileRedirectUri === 'sentryguard://callback/') {
+      return mobileRedirectUri;
+    }
+
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (isProduction) {
+      this.logger.warn(`Rejected mobile redirect URI in production: ${mobileRedirectUri}`);
+      return undefined;
+    }
+
+    if (mobileRedirectUri.startsWith('exp://')) {
       return mobileRedirectUri;
     }
 
@@ -297,6 +308,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
       return mobileRedirectUri;
     }
 
+    this.logger.warn(`Rejected mobile redirect URI: ${mobileRedirectUri}`);
     return undefined;
   }
 }

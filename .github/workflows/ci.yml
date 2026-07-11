@@ -36,6 +36,10 @@ jobs:
       # Install dependencies with Yarn
       - run: yarn install --frozen-lockfile
 
+      # Audit production dependencies
+      - name: Audit dependencies
+        run: yarn npm audit --environment production
+
       # Run linting on all projects
       - name: Lint
         run: yarn nx run-many -t lint

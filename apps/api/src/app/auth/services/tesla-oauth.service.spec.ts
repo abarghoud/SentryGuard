@@ -368,4 +368,177 @@ describe('The TeslaOAuthService class', () => {
       });
     });
   });
+
+  describe('The resolveMobileRedirectUri() logic', () => {
+    const originalEnv = process.env.NODE_ENV;
+
+    afterEach(() => {
+      process.env.NODE_ENV = originalEnv;
+    });
+
+    describe('When NODE_ENV is development', () => {
+      beforeEach(() => {
+        process.env.NODE_ENV = 'development';
+      });
+
+      it('should allow exact sentryguard://callback and sentryguard://callback/', () => {
+        mockJwtService.sign.mockClear();
+        service.generateLoginUrl('en', 'sentryguard://callback');
+        expect(mockJwtService.sign).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mobileRedirectUri: 'sentryguard://callback',
+          }),
+          expect.any(Object)
+        );
+
+        mockJwtService.sign.mockClear();
+        service.generateLoginUrl('en', 'sentryguard://callback/');
+        expect(mockJwtService.sign).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mobileRedirectUri: 'sentryguard://callback/',
+          }),
+          expect.any(Object)
+        );
+      });
+
+      it('should reject invalid sentryguard paths', () => {
+        mockJwtService.sign.mockClear();
+        service.generateLoginUrl('en', 'sentryguard://unexpected');
+        expect(mockJwtService.sign).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mobileRedirectUri: undefined,
+          }),
+          expect.any(Object)
+        );
+      });
+
+      it('should allow exp:// URLs', () => {
+        mockJwtService.sign.mockClear();
+        service.generateLoginUrl('en', 'exp://some-bundle-url');
+        expect(mockJwtService.sign).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mobileRedirectUri: 'exp://some-bundle-url',
+          }),
+          expect.any(Object)
+        );
+      });
+
+      it('should allow localhost and local network IPs', () => {
+        mockJwtService.sign.mockClear();
+        service.generateLoginUrl('en', 'http://localhost:3000/');
+        expect(mockJwtService.sign).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mobileRedirectUri: 'http://localhost:3000/',
+          }),
+          expect.any(Object)
+        );
+
+        mockJwtService.sign.mockClear();
+        service.generateLoginUrl('en', 'http://127.0.0.1:8081/');
+        expect(mockJwtService.sign).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mobileRedirectUri: 'http://127.0.0.1:8081/',
+          }),
+          expect.any(Object)
+        );
+
+        mockJwtService.sign.mockClear();
+        service.generateLoginUrl('en', 'https://192.168.1.15:8081/');
+        expect(mockJwtService.sign).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mobileRedirectUri: 'https://192.168.1.15:8081/',
+          }),
+          expect.any(Object)
+        );
+      });
+
+      it('should reject external non-local URLs', () => {
+        mockJwtService.sign.mockClear();
+        service.generateLoginUrl('en', 'https://example.com/callback');
+        expect(mockJwtService.sign).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mobileRedirectUri: undefined,
+          }),
+          expect.any(Object)
+        );
+      });
+    });
+
+    describe('When NODE_ENV is production', () => {
+      beforeEach(() => {
+        process.env.NODE_ENV = 'production';
+      });
+
+      it('should allow exact sentryguard://callback and sentryguard://callback/', () => {
+        mockJwtService.sign.mockClear();
+        service.generateLoginUrl('en', 'sentryguard://callback');
+        expect(mockJwtService.sign).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mobileRedirectUri: 'sentryguard://callback',
+          }),
+          expect.any(Object)
+        );
+
+        mockJwtService.sign.mockClear();
+        service.generateLoginUrl('en', 'sentryguard://callback/');
+        expect(mockJwtService.sign).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mobileRedirectUri: 'sentryguard://callback/',
+          }),
+          expect.any(Object)
+        );
+      });
+
+      it('should reject exp:// URLs', () => {
+        mockJwtService.sign.mockClear();
+        service.generateLoginUrl('en', 'exp://some-bundle-url');
+        expect(mockJwtService.sign).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mobileRedirectUri: undefined,
+          }),
+          expect.any(Object)
+        );
+      });
+
+      it('should reject localhost and local network IPs', () => {
+        mockJwtService.sign.mockClear();
+        service.generateLoginUrl('en', 'http://localhost:3000/');
+        expect(mockJwtService.sign).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mobileRedirectUri: undefined,
+          }),
+          expect.any(Object)
+        );
+
+        mockJwtService.sign.mockClear();
+        service.generateLoginUrl('en', 'http://127.0.0.1:8081/');
+        expect(mockJwtService.sign).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mobileRedirectUri: undefined,
+          }),
+          expect.any(Object)
+        );
+      });
+
+      it('should reject any invalid paths', () => {
+        mockJwtService.sign.mockClear();
+        service.generateLoginUrl('en', 'sentryguard://unexpected');
+        expect(mockJwtService.sign).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mobileRedirectUri: undefined,
+          }),
+          expect.any(Object)
+        );
+
+        mockJwtService.sign.mockClear();
+        service.generateLoginUrl('en', 'https://example.com/');
+        expect(mockJwtService.sign).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mobileRedirectUri: undefined,
+          }),
+          expect.any(Object)
+        );
+      });
+    });
+  });
 });
