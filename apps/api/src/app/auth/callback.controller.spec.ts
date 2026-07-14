@@ -99,34 +99,76 @@ describe('The CallbackController class', () => {
     describe('When code and state are valid', () => {
       const mockJwt = 'test-jwt-token';
 
-      beforeEach(async () => {
-        mockAuthService.exchangeCodeForTokens.mockResolvedValue({
-          userId: 'test-user-id',
-          jwt: mockJwt,
+      describe('When it is a webapp redirection', () => {
+        beforeEach(async () => {
+          mockAuthService.exchangeCodeForTokens.mockResolvedValue({
+            userId: 'test-user-id',
+            jwt: mockJwt,
+          });
+
+          await controller.handleTeslaCallback(
+            'test-code',
+            'test-state',
+            'en-US',
+            'https://auth.tesla.com',
+            '',
+            '',
+            mockResponse
+          );
         });
 
-        await controller.handleTeslaCallback(
-          'test-code',
-          'test-state',
-          'en-US',
-          'https://auth.tesla.com',
-          '',
-          '',
-          mockResponse
-        );
+        it('should call exchangeCodeForTokens with code and state', () => {
+          expect(mockAuthService.exchangeCodeForTokens).toHaveBeenCalledWith(
+            'test-code',
+            'test-state'
+          );
+        });
+
+        it('should set a temporary cookie with the JWT token', () => {
+          expect(mockResponse.cookie).toHaveBeenCalledWith(
+            'sentryguard_temp_token',
+            mockJwt,
+            expect.objectContaining({
+              httpOnly: false,
+              path: '/',
+              maxAge: 60000,
+            })
+          );
+        });
+
+        it('should redirect to the webapp callback URL without hash', () => {
+          expect(mockResponse.redirect).toHaveBeenCalledWith(
+            expect.stringMatching(/\/callback$/)
+          );
+        });
       });
 
-      it('should call exchangeCodeForTokens with code and state', () => {
-        expect(mockAuthService.exchangeCodeForTokens).toHaveBeenCalledWith(
-          'test-code',
-          'test-state'
-        );
-      });
+      describe('When it is a mobile app redirection', () => {
+        const mockMobileRedirectUri = 'sentryguard://callback';
 
-      it('should redirect to the webapp callback with the JWT token in the hash', () => {
-        expect(mockResponse.redirect).toHaveBeenCalledWith(
-          expect.stringContaining(`/callback#token=${encodeURIComponent(mockJwt)}`)
-        );
+        beforeEach(async () => {
+          mockAuthService.exchangeCodeForTokens.mockResolvedValue({
+            userId: 'test-user-id',
+            jwt: mockJwt,
+            mobileRedirectUri: mockMobileRedirectUri,
+          });
+
+          await controller.handleTeslaCallback(
+            'test-code',
+            'test-state',
+            'en-US',
+            'https://auth.tesla.com',
+            '',
+            '',
+            mockResponse
+          );
+        });
+
+        it('should redirect to the mobile redirect URI with the JWT in the hash', () => {
+          expect(mockResponse.redirect).toHaveBeenCalledWith(
+            `${mockMobileRedirectUri}#token=${encodeURIComponent(mockJwt)}`
+          );
+        });
       });
     });
 

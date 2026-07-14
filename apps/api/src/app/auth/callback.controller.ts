@@ -59,9 +59,25 @@ export class CallbackController {
       this.logger.log(`✅ Authentication successful for user: ${userId}`);
       this.logger.log(`🔐 JWT token generated for secure session`);
 
+      if (mobileRedirectUri) {
+        const redirectUrl = `${mobileRedirectUri}#token=${encodeURIComponent(jwt)}`;
+        res.redirect(redirectUrl);
+        return;
+      }
+
       const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
-      const callbackUrl = mobileRedirectUri || `${webappUrl}/callback`;
-      const redirectUrl = `${callbackUrl}#token=${encodeURIComponent(jwt)}`;
+      const redirectUrl = `${webappUrl}/callback`;
+      const domain = this.getCookieDomain(webappUrl);
+
+      res.cookie('sentryguard_temp_token', jwt, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 1000,
+        domain,
+      });
+
       res.redirect(redirectUrl);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -91,6 +107,23 @@ export class CallbackController {
       const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
       const redirectUrl = `${webappUrl}/callback?error=${encodeURIComponent(errorMessage)}`;
       res.redirect(redirectUrl);
+    }
+  }
+
+  private getCookieDomain(webappUrl: string): string | undefined {
+    try {
+      const parsed = new URL(webappUrl);
+      const hostname = parsed.hostname;
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || /^[0-9.]+$/.test(hostname)) {
+        return undefined;
+      }
+      const parts = hostname.split('.');
+      if (parts.length > 2) {
+        return `.${parts.slice(-2).join('.')}`;
+      }
+      return `.${hostname}`;
+    } catch {
+      return undefined;
     }
   }
 }

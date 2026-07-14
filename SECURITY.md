@@ -78,7 +78,7 @@ When deploying SentryGuard:
 
 ### Tesla API Tokens
 
-- Tesla access tokens are encrypted at rest using AES-256
+- Tesla access tokens are encrypted at rest using AES-256-GCM (with integrity verification)
 - Tokens are never logged or exposed in API responses
 - Refresh tokens are used to maintain long-term access
 
@@ -91,7 +91,7 @@ When deploying SentryGuard:
 ### Database Security
 
 - Use strong PostgreSQL passwords
-- Restrict database access to localhost or trusted networks
+- Restrict database access to localhost or trusted networks (automatically configured by default in docker-compose.selfhost.yml where the PostgreSQL port is bound to 127.0.0.1)
 - Enable PostgreSQL SSL in production
 - Regular backups with encrypted storage
 

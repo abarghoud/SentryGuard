@@ -36,7 +36,7 @@
 
 [![SentryGuard Demo](https://img.youtube.com/vi/dP61FmbPsKI/maxresdefault.jpg)](https://youtu.be/dP61FmbPsKI)
 
-*Click the image above to watch the demo video on YouTube*
+_Click the image above to watch the demo video on YouTube_
 
 ---
 
@@ -48,7 +48,7 @@ SentryGuard is a comprehensive security monitoring solution for Tesla vehicles. 
 - 📱 **Telegram Integration** - Instant alerts via deep linking (no manual chatId setup)
 - 🚗 **Multi-Vehicle Support** - Monitor all your Tesla vehicles
 - 📊 **Real-time Telemetry** - Track Sentry Mode and break-in events, receive instant Telegram notifications when security events occur
-- 🚨 **Break-in Offensive Response** - Automatically honk the horn when a break-in alert is triggered, configurable per vehicle via webapp or Telegram
+- 🚨 **Break-in Offensive Response** - Automatically honk the horn or play a sound on the boombox (fart) when a break-in alert is triggered, configurable per vehicle via webapp or Telegram
 - 🌐 **SEO-Friendly WebApp** - Next.js with server-side rendering
 - 🔒 **Secure by Design** - Encrypted token storage, secure communication
 - 🎨 **Modern UI** - Responsive interface with Tailwind CSS
@@ -112,7 +112,7 @@ Mobile documentation: [apps/mobile/README.md](apps/mobile/README.md)
 
 Choose what happens when a break-in alert is triggered:
 
-- **🚨 Break-In** — Disabled / Honk
+- **🚨 Break-In** — Disabled / Honk / Fart (Boombox)
 
 Configure per vehicle from the **Vehicles page** (webapp toggle) or via **Telegram** button.
 
@@ -200,7 +200,7 @@ SentryGuard/
 
 - Vehicle details (VIN, model, name)
 - Telemetry configuration status
-- Break-in offensive response per vehicle (Disabled / Honk)
+- Break-in offensive response per vehicle (Disabled / Honk / Fart)
 
 ### Telegram Configs
 
@@ -210,7 +210,7 @@ SentryGuard/
 
 ## 🔐 Security
 
-- **Token Encryption**: All Tesla access tokens are encrypted before storage
+- **Token Encryption**: All Tesla access tokens are encrypted using AES-256-GCM with integrity verification before storage
 - **Secure Communication**: HTTPS only in production
 - **Differentiated Rate Limiting**: Endpoints protected with adaptive rate limits (30-200 req/min depending on sensitivity)
   - Centralized configuration in `apps/api/src/config/throttle.config.ts`
