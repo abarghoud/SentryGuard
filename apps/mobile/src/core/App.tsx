@@ -9,7 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { MobileShell } from './MobileShell';
 import { ThemeProvider, useTheme } from './theme';
-import { initializeRuntimeConfig, tokenStore } from './api';
+import { initializeRuntimeConfig, sessionValidator, tokenStore } from './api';
 import { appLogger, installGlobalErrorLogging } from './logging';
 import { openTeslaApp } from './tesla-app-link';
 import { pushNotificationService } from '../features/notifications/di';
@@ -109,8 +109,6 @@ async function handleAlertNotificationResponse(
   response: Notifications.NotificationResponse,
   queryClient: QueryClient
 ): Promise<void> {
-  void queryClient.invalidateQueries({ queryKey: ['alerts'] });
-
   if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) {
     return;
   }
@@ -121,6 +119,14 @@ async function handleAlertNotificationResponse(
   }
 
   Notifications.clearLastNotificationResponse();
+
+  try {
+    await sessionValidator.ensureSessionValid();
+    void queryClient.invalidateQueries({ queryKey: ['alerts'] });
+  } catch (error) {
+    appLogger.error('api', 'Failed to validate session before notification response', error);
+  }
+
   await openTeslaApp(teslaRedirectUrl);
 }
 

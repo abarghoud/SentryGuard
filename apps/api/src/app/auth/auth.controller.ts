@@ -20,7 +20,7 @@ export class AuthController {
     private readonly accessTokenService: AccessTokenService,
     @Inject(oauthProviderRequirementsSymbol)
     private readonly oauthProvider: OAuthProviderRequirements
-  ) { }
+  ) {}
 
   @Throttle(ThrottleOptions.publicSensitive())
   @Get('tesla/login')
