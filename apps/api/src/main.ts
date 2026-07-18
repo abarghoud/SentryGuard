@@ -4,17 +4,16 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
+import { validateEncryptionKey } from './common/utils/crypto.util';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
   app.useLogger(app.get(PinoLogger));
 
-  // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: true,
       transform: true,
     })
   );
@@ -38,26 +37,36 @@ async function bootstrap() {
     ])
   );
 
-  // Validate CORS origins
   const originRegex = /^https?:\/\/[a-zA-Z0-9.-]+(:\d+)?$/;
-  const validatedOrigins = baseOrigins.filter((origin) => {
-    if (origin === '*') {
-      Logger.warn(
-        `⚠️ Wildcard '*' detected in CORS origins. This is not recommended when credentials are enabled.`,
-        'Bootstrap'
-      );
-      return false;
-    }
-    if (!originRegex.test(origin)) {
-      Logger.error(
-        `❌ Invalid CORS origin format ignored: "${origin}"`,
-        '',
-        'Bootstrap'
-      );
-      return false;
-    }
-    return true;
-  });
+  const validatedOrigins = baseOrigins
+    .map((origin) => origin.replace(/\/$/, '').toLowerCase())
+    .filter((origin) => {
+      if (origin === '*') {
+        Logger.warn(
+          `⚠️ Wildcard '*' detected in CORS origins. This is not recommended when credentials are enabled.`,
+          'Bootstrap'
+        );
+        return false;
+      }
+      if (!originRegex.test(origin)) {
+        Logger.error(
+          `❌ Invalid CORS origin format ignored: "${origin}"`,
+          '',
+          'Bootstrap'
+        );
+        return false;
+      }
+      return true;
+    });
+
+  if (validatedOrigins.length === 0 && process.env.WEBAPP_URL) {
+    Logger.error(
+      `❌ No valid CORS origins after validation. Check WEBAPP_URL and CORS_ALLOWED_ORIGINS env vars.`,
+      '',
+      'Bootstrap'
+    );
+    process.exit(1);
+  }
   const corsOrigins: Array<string | RegExp> = [...validatedOrigins];
 
   app.enableCors({
@@ -86,6 +95,14 @@ async function bootstrap() {
   }
 
   const port = process.env.PORT || 3001;
+
+  try {
+    validateEncryptionKey();
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    Logger.error(`❌ Invalid ENCRYPTION_KEY: ${message}. Shutting down.`, 'Bootstrap');
+    process.exit(1);
+  }
 
   process.on('SIGTERM', async () => {
     Logger.log('📴 SIGTERM received, shutting down gracefully...');

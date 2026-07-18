@@ -166,5 +166,19 @@ describe('TelemetryValidationService', () => {
       expect(result.isValidMessage).toBe(false);
       expect(result.errors).toContain('createdAt is in the future');
     });
+
+    it('should accept a resent message with createdAt older than 24 hours', async () => {
+      const tooOldDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+      const resendMessage = {
+        data: [{ key: 'SentryMode', value: { stringValue: 'Off' } }],
+        createdAt: tooOldDate,
+        vin: 'LRWRGCEGXHR312345',
+        isResend: true
+      };
+
+      const result = await service.validateMessage(resendMessage);
+
+      expect(result.isValidMessage).toBe(true);
+    });
   });
 });

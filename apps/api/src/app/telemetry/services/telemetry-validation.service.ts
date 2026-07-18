@@ -54,22 +54,17 @@ export class TelemetryValidationService {
     const { telemetryMessage } = structureResult;
     const errors: string[] = [];
 
-    // Verify createdAt timestamp bounding (reject if too old or in the future)
-    try {
-      const msgTime = new Date(telemetryMessage.createdAt).getTime();
-      const now = Date.now();
-      const oneDayMs = 24 * 60 * 60 * 1000;
-      const fiveMinsMs = 5 * 60 * 1000;
+    const msgTime = new Date(telemetryMessage.createdAt).getTime();
+    const now = Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const fiveMinsMs = 5 * 60 * 1000;
 
-      if (isNaN(msgTime)) {
-        errors.push('createdAt is not a valid date');
-      } else if (now - msgTime > oneDayMs) {
-        errors.push('createdAt is too old (greater than 24 hours)');
-      } else if (msgTime - now > fiveMinsMs) {
-        errors.push('createdAt is in the future');
-      }
-    } catch {
-      errors.push('createdAt is invalid');
+    if (isNaN(msgTime)) {
+      errors.push('createdAt is not a valid date');
+    } else if (!telemetryMessage.isResend && now - msgTime > oneDayMs) {
+      errors.push('createdAt is too old (greater than 24 hours)');
+    } else if (msgTime - now > fiveMinsMs) {
+      errors.push('createdAt is in the future');
     }
 
     if (errors.length > 0) {

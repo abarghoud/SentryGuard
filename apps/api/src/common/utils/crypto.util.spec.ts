@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import * as crypto from 'crypto';
 import { encrypt, decrypt } from './crypto.util';
 
 describe('The crypto utility functions', () => {
@@ -15,14 +16,13 @@ describe('The crypto utility functions', () => {
 
   describe('When ENCRYPTION_KEY is valid (>= 32 characters)', () => {
     beforeEach(() => {
-      process.env.ENCRYPTION_KEY = 'a'.repeat(32); // 32 characters
+      process.env.ENCRYPTION_KEY = 'a'.repeat(32);
     });
 
     it('should successfully encrypt and decrypt a text value', () => {
       const plaintext = 'Sensitive-Tesla-Token-123';
       const ciphertext = encrypt(plaintext);
 
-      // Should be format iv:tag:encrypted
       expect(ciphertext.split(':')).toHaveLength(3);
 
       const decrypted = decrypt(ciphertext);
@@ -30,8 +30,6 @@ describe('The crypto utility functions', () => {
     });
 
     it('should fallback and decrypt legacy AES-256-CBC ciphertext format', () => {
-      // Legacy ciphertext was generated with CBC (iv:ciphertext)
-      // We manually construct a valid CBC encrypted string to verify the fallback logic
       const plaintext = 'Legacy-CBC-Token';
       const key = crypto.scryptSync(process.env.ENCRYPTION_KEY!, 'salt', 32);
       const iv = crypto.randomBytes(16);
@@ -47,6 +45,17 @@ describe('The crypto utility functions', () => {
 
     it('should throw error for invalid encrypted text format', () => {
       expect(() => decrypt('invalid-format')).toThrow('Failed to decrypt data');
+    });
+
+    describe('When the GCM auth tag is tampered', () => {
+      it('should throw when decrypting a ciphertext with an altered auth tag', () => {
+        const ciphertext = encrypt('Sensitive-Tesla-Token-123');
+        const parts = ciphertext.split(':');
+        const tamperedTag = Buffer.alloc(16, 0xff).toString('hex');
+        const tamperedCiphertext = `${parts[0]}:${tamperedTag}:${parts[2]}`;
+
+        expect(() => decrypt(tamperedCiphertext)).toThrow('Failed to decrypt data');
+      });
     });
   });
 
@@ -74,5 +83,3 @@ describe('The crypto utility functions', () => {
     });
   });
 });
-
-import * as crypto from 'crypto';

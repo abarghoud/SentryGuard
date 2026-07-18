@@ -28,27 +28,34 @@ export class AlertsOffensiveResponseService {
     await this.processOffensiveResponseForUsers(vin, userIds);
   }
 
-  private isLatencyTooHigh(createdAt: string): boolean {
+  private readonly clockSkewToleranceMs = 30_000;
+
+  private parseTimestamp(createdAt: string): number | null {
     const time = new Date(createdAt).getTime();
-    if (isNaN(time)) {
+    return isNaN(time) ? null : time;
+  }
+
+  private isLatencyTooHigh(createdAt: string): boolean {
+    const time = this.parseTimestamp(createdAt);
+    if (time === null) {
       this.logger.error(`[OFFENSIVE] Invalid createdAt timestamp received: "${createdAt}"`);
-      return true; // Bypass on invalid date
+      return true;
     }
     const latency = Date.now() - time;
-    if (latency < 0) {
+    if (latency < -this.clockSkewToleranceMs) {
       this.logger.error(`[OFFENSIVE] Future createdAt timestamp received: "${createdAt}"`);
-      return true; // Bypass on future date
+      return true;
     }
     const threshold = parseInt(process.env.OFFENSIVE_RESPONSE_LATENCY_THRESHOLD_MS || '60000', 10);
     return latency > threshold;
   }
 
   private calculateLatency(createdAt: string): number {
-    const time = new Date(createdAt).getTime();
-    if (isNaN(time)) {
+    const time = this.parseTimestamp(createdAt);
+    if (time === null) {
       return 0;
     }
-    return Date.now() - time;
+    return Math.max(0, Date.now() - time);
   }
 
   private logBypassedResponse(vin: string, createdAt: string): void {

@@ -111,17 +111,29 @@ export class CallbackController {
   }
 
   private getCookieDomain(webappUrl: string): string | undefined {
+    if (process.env.COOKIE_DOMAIN) {
+      return process.env.COOKIE_DOMAIN;
+    }
+
     try {
       const parsed = new URL(webappUrl);
       const hostname = parsed.hostname;
+
       if (hostname === 'localhost' || hostname === '127.0.0.1' || /^[0-9.]+$/.test(hostname)) {
         return undefined;
       }
+
       const parts = hostname.split('.');
-      if (parts.length > 2) {
-        return `.${parts.slice(-2).join('.')}`;
+      if (parts.length <= 2) {
+        return `.${hostname}`;
       }
-      return `.${hostname}`;
+
+      const secondLevelCcTlds = new Set(['co', 'com', 'org', 'net', 'gov', 'edu', 'ac']);
+      const isCompoundTld = parts.length >= 3 && secondLevelCcTlds.has(parts[parts.length - 2]);
+
+      return isCompoundTld
+        ? `.${parts.slice(-3).join('.')}`
+        : `.${parts.slice(-2).join('.')}`;
     } catch {
       return undefined;
     }

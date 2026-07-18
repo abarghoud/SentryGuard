@@ -1,19 +1,11 @@
 import * as crypto from 'crypto';
-
-/**
- * Encryption/decryption utility for sensitive tokens
- * Uses AES-256-GCM with a key derived from environment variable
- * Fallback to AES-256-CBC is supported for backward compatibility
- */
+import { Logger } from '@nestjs/common';
 
 const GCM_ALGORITHM = 'aes-256-gcm';
 const CBC_ALGORITHM = 'aes-256-cbc';
 const GCM_IV_LENGTH = 12;
 
-/**
- * Get or generate encryption key from environment
- */
-function getEncryptionKey(): Buffer {
+export function validateEncryptionKey(): void {
   const key = process.env.ENCRYPTION_KEY;
 
   if (!key) {
@@ -27,14 +19,13 @@ function getEncryptionKey(): Buffer {
       'ENCRYPTION_KEY is too short; it must be at least 32 characters.'
     );
   }
-
-  // Derive a 32-byte key from the provided key
-  return crypto.scryptSync(key, 'salt', 32);
 }
 
-/**
- * Encrypt a string using AES-256-GCM
- */
+function getEncryptionKey(): Buffer {
+  validateEncryptionKey();
+  return crypto.scryptSync(process.env.ENCRYPTION_KEY!, 'salt', 32);
+}
+
 export function encrypt(text: string): string {
   const key = getEncryptionKey();
   const iv = crypto.randomBytes(GCM_IV_LENGTH);
@@ -49,9 +40,6 @@ export function encrypt(text: string): string {
   return iv.toString('hex') + ':' + tag.toString('hex') + ':' + encrypted;
 }
 
-/**
- * Decrypt a string using AES-256-GCM, with AES-256-CBC fallback
- */
 export function decrypt(text: string): string {
   const key = getEncryptionKey();
   try {
@@ -71,7 +59,7 @@ export function decrypt(text: string): string {
 
       return decrypted;
     } else if (parts.length === 2) {
-      // AES-256-CBC Fallback
+      Logger.warn('[CRYPTO] Decrypting legacy token using AES-256-CBC fallback. Token should be rotated/re-encrypted.', 'CryptoUtil');
       const iv = Buffer.from(parts[0], 'hex');
       const encryptedText = parts[1];
 
@@ -89,5 +77,3 @@ export function decrypt(text: string): string {
     throw new Error('Failed to decrypt data');
   }
 }
-
-

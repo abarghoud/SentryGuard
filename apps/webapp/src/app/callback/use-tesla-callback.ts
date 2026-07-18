@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { setToken, hasToken } from '../../core/api/token-manager';
@@ -19,15 +19,27 @@ function getCookie(name: string): string | null {
 
 function getCookieDomain(): string | undefined {
   if (typeof window === 'undefined') return undefined;
+
+  if (process.env.NEXT_PUBLIC_COOKIE_DOMAIN) {
+    return process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
+  }
+
   const hostname = window.location.hostname;
   if (hostname === 'localhost' || hostname === '127.0.0.1' || /^[0-9.]+$/.test(hostname)) {
     return undefined;
   }
+
   const parts = hostname.split('.');
-  if (parts.length > 2) {
-    return `.${parts.slice(-2).join('.')}`;
+  if (parts.length <= 2) {
+    return `.${hostname}`;
   }
-  return `.${hostname}`;
+
+  const secondLevelCcTlds = new Set(['co', 'com', 'org', 'net', 'gov', 'edu', 'ac']);
+  const isCompoundTld = parts.length >= 3 && secondLevelCcTlds.has(parts[parts.length - 2]);
+
+  return isCompoundTld
+    ? `.${parts.slice(-3).join('.')}`
+    : `.${parts.slice(-2).join('.')}`;
 }
 
 function deleteCookie(name: string): void {
@@ -48,7 +60,6 @@ function parseCallbackParams(searchParams: URLSearchParams): CallbackParams {
 
   const cookieToken = getCookie('sentryguard_temp_token');
   if (cookieToken) {
-    deleteCookie('sentryguard_temp_token');
     return { token: cookieToken, error: null };
   }
 
@@ -93,7 +104,9 @@ export function useTeslaCallback() {
   );
   const [message, setMessage] = useState(t('Processing authentication...'));
 
-  const handleError = (error: string) => {
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleError = useCallback((error: string) => {
     if (error === 'login_cancelled') {
       setStatus('cancelled');
       setMessage(t('You cancelled the Tesla login. You can try again whenever you\'re ready.'));
@@ -108,9 +121,9 @@ export function useTeslaCallback() {
 
     setStatus('error');
     setMessage(t('Authentication failed {{error}}', { error }));
-  };
+  }, [router, t]);
 
-  const checkConsentAndRedirect = async () => {
+  const checkConsentAndRedirect = useCallback(async () => {
     setStatus('success');
     setMessage(t('Authentication successful! Checking consent status...'));
 
@@ -121,8 +134,8 @@ export function useTeslaCallback() {
         ? t('Authentication successful! Redirecting to dashboard...')
         : t('Authentication successful! Redirecting to consent form...')
     );
-    setTimeout(() => router.replace(destination), 1500);
-  };
+    timerRef.current = setTimeout(() => router.replace(destination), 1500);
+  }, [router, t]);
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -135,6 +148,7 @@ export function useTeslaCallback() {
 
       if (token) {
         storeToken(token);
+        deleteCookie('sentryguard_temp_token');
       }
 
       if (hasToken()) {
@@ -148,7 +162,13 @@ export function useTeslaCallback() {
     };
 
     handleCallback();
-  }, [searchParams, router, t]);
+
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, [searchParams, handleError, checkConsentAndRedirect]);
 
   return { status, message };
 }

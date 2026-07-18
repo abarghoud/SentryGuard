@@ -169,6 +169,11 @@ Create these DNS records pointing to your server:
 | `api.yourdomain.com`             | A    | Your server IP |
 | `fleet-telemetry.yourdomain.com` | A    | Your server IP |
 
+> [!IMPORTANT]
+> **Domain Matching Requirement**: The Webapp (`yourdomain.com`) and API (`api.yourdomain.com`) **must share the same registrable parent domain** (eTLD+1). The application uses a secure cookie flow for authentication; browsers will reject cookies set across different domains (e.g., `sentryguard.com` and `sentryguard-api.net`).
+>
+> If you use complex or compound TLDs (e.g. `.co.uk`, `.com.br`), you may need to configure `COOKIE_DOMAIN` explicitly.
+
 > **Important**: If you use Cloudflare, set `fleet-telemetry.yourdomain.com` to **DNS only** (grey cloud). Cloudflare's proxy does not handle TLS connections on custom ports.
 
 ### 4.2 Reverse Proxy
@@ -189,6 +194,11 @@ Configure three proxy hosts:
 | `fleet-telemetry.yourdomain.com` | Direct (port 11111)                 | 8443 | No reverse proxy — Tesla connects directly |
 
 > **Fleet telemetry**: Tesla connects to port 11111 with mutual TLS. Do NOT proxy this through your reverse proxy — expose port 11111 directly on your firewall/router and map it to the `sentryguard-fleet-telemetry` container.
+
+> [!WARNING]
+> **Trust Proxy & Rate Limiting**: In production, the API restricts trusted proxies to local subnets (`loopback, linklocal, uniquelocal`) and ignores standard `X-Forwarded-For`/`X-Real-IP` headers to prevent client IP spoofing.
+> - If your reverse proxy is deployed on a **remote machine with a public IP** (not in local/private subnets), the API will see the proxy's IP instead of the client's. This will cause all clients to share the same rate limiting bucket.
+> - To mitigate this and keep IP detection working, ensure your reverse proxy and API run on the same machine/network, or that the proxy is assigned a local private IP.
 
 ### 4.3 SSL Certificates
 
@@ -615,6 +625,8 @@ docker exec sentryguard-kafka kafka-topics --bootstrap-server localhost:9092 \
 | `TESLA_KEY_NAME`                       | `sentryguard`                                 | Name for the virtual key registration            |
 | `SENTRY_MODE_INTERVAL_SECONDS`         | `30`                                          | Sentry mode telemetry interval                   |
 | `BREAK_IN_MONITORING_INTERVAL_SECONDS` | `30`                                          | Break-in monitoring interval                     |
+| `COOKIE_DOMAIN`                        | Computed domain (eTLD+1)                      | Custom parent domain for authentication cookies  |
+| `NEXT_PUBLIC_COOKIE_DOMAIN`            | Computed domain (eTLD+1)                      | Custom parent domain for cookie clearing (webapp)|
 
 ---
 

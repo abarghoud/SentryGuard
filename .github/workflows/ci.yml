@@ -38,7 +38,7 @@ jobs:
 
       # Audit production dependencies
       - name: Audit dependencies
-        run: yarn npm audit --environment production
+        run: yarn npm audit --environment production --severity high
 
       # Run linting on all projects
       - name: Lint

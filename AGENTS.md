@@ -156,10 +156,10 @@ Not Expo Router — uses `@react-navigation` (bottom tabs: Dashboard / Alerts / 
 - **Dual-channel notifications**: Telegram (`TelegramService`, mute enforced) **and** Expo mobile push (`NotificationsService` → exp.host). Devices via `NotificationsController`.
 - **Offensive response**: on a confirmed break-in, `AlertsOffensiveResponseService` → `TeslaVehicleCommandService` sends `honk_horn`/`remote_boombox` through the vehicle-command proxy (`TESLA_API_BASE_URL`), gated on the `vehicle_cmds` scope.
 - **Rate limiting**: All throttle values centralized in `apps/api/src/config/throttle.config.ts`. Use named `ThrottleOptions` methods — never hardcode numbers.
-- **Token storage**: Tesla OAuth tokens stored **encrypted** in `apps/api/src/common/utils/crypto.util.ts` (AES-256-CBC). *(There is no `token-encryption.service.ts`.)*
+- **Token storage**: Tesla OAuth tokens stored **encrypted** in `apps/api/src/common/utils/crypto.util.ts` (AES-256-GCM; legacy AES-256-CBC tokens transparently migrated on next refresh via fallback `decrypt`). *(There is no `token-encryption.service.ts`.)*
 - **Auth sessions**: server-side JWT sessions (`UserSessionService`, SHA-256 hash, max 5/user); token refresh on a cron with a Postgres advisory `DistributedLockService`.
 - **Clean architecture (frontends)**: web + mobile both use `features/<domain>/{domain,data,presentation,di.ts}` + TanStack Query + a hand-rolled `ApiClient`. `@sentryguard/telegram-domain` is shared between them.
-- **Cloudflare**: `CloudflareThrottlerGuard` extracts real IPs from `CF-Connecting-IP` header.
+- **Cloudflare**: `CloudflareThrottlerGuard` extracts real IPs from `CF-Connecting-IP` in production (X-Forwarded-For and X-Real-IP are ignored in production to prevent spoofing). In development all standard proxy headers are considered.
 - **i18n**: web + API use i18next, mobile uses react-i18next. Extract with `npx nx extract-i18n api` / `npx nx extract-i18n webapp`.
 
 ## Test Patterns

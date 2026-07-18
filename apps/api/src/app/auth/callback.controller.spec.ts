@@ -130,8 +130,11 @@ describe('The CallbackController class', () => {
             mockJwt,
             expect.objectContaining({
               httpOnly: false,
+              secure: false,
+              sameSite: 'lax',
               path: '/',
               maxAge: 60000,
+              domain: undefined,
             })
           );
         });
