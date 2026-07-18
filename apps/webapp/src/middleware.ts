@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { proxy } from './proxy';
+import { proxy } from './locale-proxy';
 
 export function middleware(request: NextRequest): NextResponse {
   const response = proxy(request);
