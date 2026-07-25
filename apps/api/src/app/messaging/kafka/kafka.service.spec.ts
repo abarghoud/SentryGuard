@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Consumer, EachBatchHandler, Batch } from 'kafkajs';
+import { Consumer, EachBatchHandler, Batch, Kafka } from 'kafkajs';
 import { KafkaService } from './kafka.service';
 import { kafkaMessageHandler, MessageHandler } from './interfaces/message-handler.interface';
 import { RetryManager } from '../../shared/retry-manager.service';
@@ -13,12 +13,35 @@ jest.mock('kafkajs', () => ({
       run: jest.fn().mockResolvedValue(undefined),
       disconnect: jest.fn().mockResolvedValue(undefined),
       commitOffsets: jest.fn().mockResolvedValue(undefined),
+      events: {
+        CRASH: 'consumer.crash',
+        DISCONNECT: 'consumer.disconnect',
+        GROUP_JOIN: 'consumer.group_join',
+      },
+      on: jest.fn(),
     }),
   })),
 }));
 
 const mockMessageHandler = mock<MessageHandler>();
 const mockRetryManager = mock<RetryManager>();
+
+const getLastConsumerMock = (): Consumer & { on: jest.Mock; disconnect: jest.Mock } => {
+  const kafkaMock = Kafka as unknown as jest.Mock;
+  const kafkaInstance = kafkaMock.mock.results[kafkaMock.mock.results.length - 1]
+    .value as { consumer: jest.Mock };
+  return kafkaInstance.consumer.mock.results[kafkaInstance.consumer.mock.results.length - 1]
+    .value as Consumer & { on: jest.Mock; disconnect: jest.Mock };
+};
+
+const getRegisteredListener = (eventName: string): ((event?: unknown) => unknown) => {
+  const consumerMock = getLastConsumerMock();
+  const call = consumerMock.on.mock.calls.find((callArgs) => callArgs[0] === eventName);
+  if (!call) {
+    throw new Error(`No listener registered for event ${eventName}`);
+  }
+  return call[1] as (event?: unknown) => unknown;
+};
 
 describe('The KafkaService class', () => {
   let service: KafkaService;
@@ -94,6 +117,127 @@ describe('The KafkaService class', () => {
       await service.onModuleDestroy();
 
       expect(consumerMock.disconnect).toHaveBeenCalled();
+    });
+  });
+
+  describe('The healthCheck method', () => {
+    it('should describe group when connected', async () => {
+      const consumerMock = mock<Consumer>();
+      consumerMock.describeGroup.mockResolvedValue({} as any);
+
+      Object.defineProperty(service, 'consumer', {
+        value: consumerMock,
+        writable: true,
+      });
+      Object.defineProperty(service, 'isConnected', {
+        value: true,
+        writable: true,
+      });
+
+      await service.healthCheck();
+
+      expect(consumerMock.describeGroup).toHaveBeenCalled();
+    });
+
+    it('should attempt reconnection when isConnected is false', async () => {
+      const consumerMock = mock<Consumer>();
+      consumerMock.connect.mockResolvedValue(undefined);
+      consumerMock.subscribe.mockResolvedValue(undefined);
+      consumerMock.run.mockResolvedValue(undefined);
+      consumerMock.disconnect.mockResolvedValue(undefined);
+
+      Object.defineProperty(service, 'consumer', {
+        value: consumerMock,
+        writable: true,
+      });
+      Object.defineProperty(service, 'isConnected', {
+        value: false,
+        writable: true,
+      });
+
+      await service.healthCheck();
+
+      expect(consumerMock.disconnect).toHaveBeenCalled();
+      expect(consumerMock.connect).toHaveBeenCalled();
+    });
+
+    it('should attempt reconnection when describeGroup fails', async () => {
+      const consumerMock = mock<Consumer>();
+      consumerMock.describeGroup.mockRejectedValue(new Error('Connection timeout'));
+      consumerMock.connect.mockResolvedValue(undefined);
+      consumerMock.subscribe.mockResolvedValue(undefined);
+      consumerMock.run.mockResolvedValue(undefined);
+      consumerMock.disconnect.mockResolvedValue(undefined);
+
+      Object.defineProperty(service, 'consumer', {
+        value: consumerMock,
+        writable: true,
+      });
+      Object.defineProperty(service, 'isConnected', {
+        value: true,
+        writable: true,
+      });
+
+      await service.healthCheck();
+
+      expect(consumerMock.disconnect).toHaveBeenCalled();
+      expect(consumerMock.connect).toHaveBeenCalled();
+    });
+
+    it('should skip healthCheck if already reconnecting', async () => {
+      const consumerMock = mock<Consumer>();
+
+      Object.defineProperty(service, 'consumer', {
+        value: consumerMock,
+        writable: true,
+      });
+      Object.defineProperty(service, 'isReconnecting', {
+        value: true,
+        writable: true,
+      });
+
+      await service.healthCheck();
+
+      expect(consumerMock.describeGroup).not.toHaveBeenCalled();
+      expect(consumerMock.disconnect).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('The KafkaJS event listeners', () => {
+    it('should not disconnect the consumer when KafkaJS restarts itself after a crash', async () => {
+      new KafkaService(mockMessageHandler, mockRetryManager);
+      const consumerMock = getLastConsumerMock();
+      const crashListener = getRegisteredListener('consumer.crash');
+
+      await crashListener({ payload: { error: new Error('Connection timeout'), restart: true } });
+
+      expect(consumerMock.disconnect).not.toHaveBeenCalled();
+    });
+
+    it('should restore the connected state when the consumer rejoins the group', async () => {
+      const freshService = new KafkaService(mockMessageHandler, mockRetryManager);
+      const groupJoinListener = getRegisteredListener('consumer.group_join');
+
+      const consumerMock = mock<Consumer>();
+      consumerMock.describeGroup.mockResolvedValue(
+        {} as Awaited<ReturnType<Consumer['describeGroup']>>
+      );
+
+      Object.defineProperty(freshService, 'consumer', {
+        value: consumerMock,
+        writable: true,
+      });
+      Object.defineProperty(freshService, 'isConnected', {
+        value: false,
+        writable: true,
+      });
+
+      groupJoinListener();
+
+      await freshService.healthCheck();
+
+      expect(consumerMock.describeGroup).toHaveBeenCalled();
+      expect(consumerMock.disconnect).not.toHaveBeenCalled();
     });
   });
 

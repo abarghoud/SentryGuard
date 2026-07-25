@@ -25,7 +25,7 @@ describe('The KafkaConfigFactory class', () => {
         expect(config).toStrictEqual({
           clientId: 'test-client',
           brokers: ['broker1:9092', 'broker2:9092'],
-          connectionTimeout: 5000,
+          connectionTimeout: 10000,
           requestTimeout: 10000,
         });
       });
@@ -52,7 +52,7 @@ describe('The KafkaConfigFactory class', () => {
         expect(config).toStrictEqual({
           clientId: 'test-client',
           brokers: ['broker1:9092', 'broker2:9092'],
-          connectionTimeout: 5000,
+          connectionTimeout: 10000,
           requestTimeout: 10000,
           ssl: true,
           sasl: {

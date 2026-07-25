@@ -28,6 +28,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   private readonly baseDelay = parseInt(process.env.KAFKA_RETRY_DELAY || '1000');
   private readonly maxDelay = parseInt(process.env.KAFKA_MAX_RETRY_DELAY || '30000');
   private isConnected = false;
+  private isReconnecting = false;
 
   constructor(
     @Inject(kafkaMessageHandler) private readonly messageHandler: MessageHandler,
@@ -41,6 +42,29 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       heartbeatInterval: 3000,
       rebalanceTimeout: 60000,
     });
+
+    if (this.consumer.events) {
+      this.consumer.on(this.consumer.events.CRASH, async (event) => {
+        this.logger.error('💥 Kafka consumer crashed:', event.payload.error);
+        this.isConnected = false;
+        if (!event.payload.restart) {
+          await this.safeExecute(
+            () => this.reconnect(),
+            '💀 Reconnection on consumer crash failed'
+          );
+        }
+      });
+
+      this.consumer.on(this.consumer.events.DISCONNECT, () => {
+        this.logger.warn('🔌 Kafka consumer disconnected');
+        this.isConnected = false;
+      });
+
+      this.consumer.on(this.consumer.events.GROUP_JOIN, () => {
+        this.logger.log('👥 Kafka consumer joined group');
+        this.isConnected = true;
+      });
+    }
   }
 
   private async connectWithRetry(): Promise<void> {
@@ -73,7 +97,16 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
   @Interval(process.env.KAFKA_HEALTH_CHECK_INTERVAL ? parseInt(process.env.KAFKA_HEALTH_CHECK_INTERVAL, 10) : 30000)
   async healthCheck() {
-    if (!this.isConnected) return;
+    if (this.isReconnecting) return;
+
+    if (!this.isConnected) {
+      this.logger.warn('🔴 Kafka is disconnected during health check, attempting reconnection...');
+      await this.safeExecute(
+        () => this.reconnect(),
+        '💀 Health check reconnection failed'
+      );
+      return;
+    }
 
     try {
       await this.consumer.describeGroup();
@@ -92,10 +125,31 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async reconnect(): Promise<void> {
-    await this.consumer.disconnect();
-    await this.connectWithRetry();
-    await this.subscribe();
-    await this.startConsumer();
+    if (this.isReconnecting) {
+      this.logger.warn('Reconnection already in progress. Skipping duplicate request.');
+      return;
+    }
+
+    this.isReconnecting = true;
+    this.isConnected = false;
+
+    try {
+      await this.safeExecute(
+        () => this.consumer.disconnect(),
+        'Error during consumer disconnect before reconnect'
+      );
+      await this.connectWithRetry();
+      await this.subscribe();
+      await this.startConsumer();
+    } catch (error) {
+      this.logger.error(
+        '💀 Reconnection process failed:',
+        error instanceof Error ? error.message : String(error)
+      );
+      this.isConnected = false;
+    } finally {
+      this.isReconnecting = false;
+    }
   }
 
   private async startConsumer(): Promise<void> {
