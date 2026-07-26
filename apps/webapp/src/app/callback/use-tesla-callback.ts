@@ -66,6 +66,7 @@ export function useTeslaCallback() {
   const [message, setMessage] = useState(t('Processing authentication...'));
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const exchangeAttempted = useRef(false);
 
   const handleError = useCallback((error: string) => {
     if (error === 'login_cancelled') {
@@ -100,6 +101,9 @@ export function useTeslaCallback() {
 
   useEffect(() => {
     const handleCallback = async () => {
+      if (exchangeAttempted.current) return;
+      exchangeAttempted.current = true;
+
       const { token, error } = parseCallbackParams(searchParams);
 
       if (error) {
