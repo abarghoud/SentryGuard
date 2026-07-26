@@ -34,15 +34,17 @@ async function bootstrap() {
     .split(',')
     .map((origin) => origin.trim())
     .filter((origin) => origin.length > 0);
+  const developmentOrigins =
+    process.env.NODE_ENV === 'production'
+      ? []
+      : [
+          'http://localhost:4200',
+          'http://localhost:3000',
+          'http://localhost:8081',
+          'http://localhost:19006',
+        ];
   const baseOrigins: Array<string> = Array.from(
-    new Set([
-      webappUrl,
-      'http://localhost:4200',
-      'http://localhost:3000',
-      'http://localhost:8081',
-      'http://localhost:19006',
-      ...additionalOrigins,
-    ])
+    new Set([webappUrl, ...developmentOrigins, ...additionalOrigins])
   );
 
   const originRegex = /^https?:\/\/[a-zA-Z0-9.-]+(:\d+)?$/;

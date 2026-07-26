@@ -1,5 +1,6 @@
-import { Controller, Get, Inject, Logger, Post, UnauthorizedException, UseGuards, Headers, Query } from '@nestjs/common';
+import { Controller, Get, HttpCode, Inject, Logger, Post, Req, Res, UnauthorizedException, UseGuards, Headers, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { AccessTokenService } from './services/access-token.service';
 import type { OAuthProviderRequirements } from './interfaces/oauth-provider.requirements';
@@ -137,6 +138,24 @@ export class AuthController {
     return { success: true, userId: user.userId, ...session };
   }
 
+  @Throttle(ThrottleOptions.publicSensitive())
+  @HttpCode(200)
+  @Post('session/exchange')
+  async exchangeSession(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<{ token: string }> {
+    const tempToken = this.extractTempSessionCookie(req);
+
+    if (!tempToken || !(await this.authService.validateJwtToken(tempToken))) {
+      throw new UnauthorizedException('Invalid or expired session');
+    }
+
+    res.clearCookie('sentryguard_temp_token', { path: '/auth/session' });
+
+    return { token: tempToken };
+  }
+
   @Throttle(ThrottleOptions.authenticatedRead())
   @Get('validate')
   async validateToken(
@@ -217,5 +236,15 @@ export class AuthController {
     }
 
     return authorization.substring(7);
+  }
+
+  private extractTempSessionCookie(req: Request): string | undefined {
+    const prefix = 'sentryguard_temp_token=';
+    const entry = req.headers.cookie
+      ?.split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(prefix));
+
+    return entry ? decodeURIComponent(entry.substring(prefix.length)) : undefined;
   }
 }

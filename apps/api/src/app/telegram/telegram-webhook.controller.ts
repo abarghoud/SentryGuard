@@ -9,8 +9,8 @@ import {
   Logger,
   HttpCode,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
-import * as crypto from 'crypto';
+import type { Request, Response } from 'express';
+import { timingSafeEqual } from 'node:crypto';
 import { TelegramBotService } from './telegram-bot.service';
 
 @Controller('telegram')
@@ -27,32 +27,18 @@ export class TelegramWebhookController {
     @Res() res: Response
   ) {
     const expectedSecret = this.telegramBotService.getWebhookSecretPath();
-    try {
-      const isPathMatch = crypto.timingSafeEqual(
-        Buffer.from(secret),
-        Buffer.from(expectedSecret)
-      );
-      if (!isPathMatch) throw new Error();
-    } catch {
-      this.logger.warn(`Tentative webhook avec secret invalide`);
+    if (!this.isSecretValid(secret, expectedSecret)) {
+      this.logger.warn('Tentative webhook avec secret invalide');
       throw new NotFoundException();
     }
 
     const headerSecret = this.telegramBotService.getWebhookSecretToken();
     if (headerSecret) {
       const provided = req.headers['x-telegram-bot-api-secret-token'];
-      if (!provided || typeof provided !== 'string') {
-        this.logger.warn('Tentative webhook avec secret token manquant ou invalide');
-        throw new ForbiddenException();
-      }
-
-      try {
-        const isHeaderMatch = crypto.timingSafeEqual(
-          Buffer.from(provided),
-          Buffer.from(headerSecret)
-        );
-        if (!isHeaderMatch) throw new Error();
-      } catch {
+      if (
+        typeof provided !== 'string' ||
+        !this.isSecretValid(provided, headerSecret)
+      ) {
         this.logger.warn('Tentative webhook avec secret token invalide');
         throw new ForbiddenException();
       }
@@ -60,6 +46,14 @@ export class TelegramWebhookController {
 
     return this.telegramBotService.handleUpdate(req, res);
   }
+
+  private isSecretValid(provided: string, expected: string): boolean {
+    const providedBuffer = Buffer.from(provided);
+    const expectedBuffer = Buffer.from(expected);
+
+    return (
+      providedBuffer.length === expectedBuffer.length &&
+      timingSafeEqual(providedBuffer, expectedBuffer)
+    );
+  }
 }
-
-

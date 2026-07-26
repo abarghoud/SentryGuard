@@ -124,17 +124,16 @@ describe('The CallbackController class', () => {
           );
         });
 
-        it('should set a temporary cookie with the JWT token', () => {
+        it('should set a temporary httpOnly cookie with the JWT token', () => {
           expect(mockResponse.cookie).toHaveBeenCalledWith(
             'sentryguard_temp_token',
             mockJwt,
             expect.objectContaining({
-              httpOnly: false,
+              httpOnly: true,
               secure: false,
-              sameSite: 'lax',
-              path: '/',
+              sameSite: 'strict',
+              path: '/auth/session',
               maxAge: 60000,
-              domain: undefined,
             })
           );
         });

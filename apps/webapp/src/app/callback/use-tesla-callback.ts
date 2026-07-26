@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { setToken, hasToken } from '../../core/api/token-manager';
+import { apiClient } from '../../core/api';
 import { getConsentStatusUseCase } from '../../features/consent/di';
 
 interface CallbackParams {
@@ -9,58 +10,22 @@ interface CallbackParams {
   error: string | null;
 }
 
-function getCookie(name: string): string | null {
-  if (typeof document === 'undefined') return null;
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
-  return null;
-}
-
-function getCookieDomain(): string | undefined {
-  if (typeof window === 'undefined') return undefined;
-
-  if (process.env.NEXT_PUBLIC_COOKIE_DOMAIN) {
-    return process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
+async function exchangeSessionToken(): Promise<string | null> {
+  try {
+    const { token } = await apiClient.request<{ token: string }>(
+      '/auth/session/exchange',
+      { method: 'POST', credentials: 'include' }
+    );
+    return token ?? null;
+  } catch {
+    return null;
   }
-
-  const hostname = window.location.hostname;
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || /^[0-9.]+$/.test(hostname)) {
-    return undefined;
-  }
-
-  const parts = hostname.split('.');
-  if (parts.length <= 2) {
-    return `.${hostname}`;
-  }
-
-  const secondLevelCcTlds = new Set(['co', 'com', 'org', 'net', 'gov', 'edu', 'ac']);
-  const isCompoundTld = parts.length >= 3 && secondLevelCcTlds.has(parts[parts.length - 2]);
-
-  return isCompoundTld
-    ? `.${parts.slice(-3).join('.')}`
-    : `.${parts.slice(-2).join('.')}`;
-}
-
-function deleteCookie(name: string): void {
-  if (typeof document === 'undefined') return;
-  const domain = getCookieDomain();
-  let cookieString = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-  if (domain) {
-    cookieString += `; domain=${domain}`;
-  }
-  document.cookie = cookieString;
 }
 
 function parseCallbackParams(searchParams: URLSearchParams): CallbackParams {
   const error = searchParams.get('error');
   if (error) {
     return { token: null, error };
-  }
-
-  const cookieToken = getCookie('sentryguard_temp_token');
-  if (cookieToken) {
-    return { token: cookieToken, error: null };
   }
 
   const hash = typeof window !== 'undefined' ? window.location.hash : '';
@@ -142,9 +107,10 @@ export function useTeslaCallback() {
         return;
       }
 
-      if (token) {
-        storeToken(token);
-        deleteCookie('sentryguard_temp_token');
+      const sessionToken = token ?? (await exchangeSessionToken());
+
+      if (sessionToken) {
+        storeToken(sessionToken);
       }
 
       if (hasToken()) {

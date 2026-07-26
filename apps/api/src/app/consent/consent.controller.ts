@@ -8,11 +8,13 @@ import {
   Logger,
   Query,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { ConsentService } from './consent.service';
 import type { ConsentData, ConsentStatus, ConsentTextResponse } from './consent.service';
 import type { User } from '../../entities/user.entity';
+import { ThrottleOptions } from '../../config/throttle.config';
 
 @Controller('consent')
 export class ConsentController {
@@ -63,6 +65,7 @@ export class ConsentController {
     };
   }
 
+  @Throttle(ThrottleOptions.critical())
   @Post('revoke')
   @UseGuards(JwtAuthGuard)
   async revokeConsent(@CurrentUser() user: User): Promise<{ success: boolean; message: string }> {

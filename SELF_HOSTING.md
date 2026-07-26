@@ -170,9 +170,7 @@ Create these DNS records pointing to your server:
 | `fleet-telemetry.yourdomain.com` | A    | Your server IP |
 
 > [!IMPORTANT]
-> **Domain Matching Requirement**: The Webapp (`yourdomain.com`) and API (`api.yourdomain.com`) **must share the same registrable parent domain** (eTLD+1). The application uses a secure cookie flow for authentication; browsers will reject cookies set across different domains (e.g., `sentryguard.com` and `sentryguard-api.net`).
->
-> If you use complex or compound TLDs (e.g. `.co.uk`, `.com.br`), you may need to configure `COOKIE_DOMAIN` explicitly.
+> **Domain Matching Requirement**: The Webapp (`yourdomain.com`) and API (`api.yourdomain.com`) **must share the same registrable parent domain** (eTLD+1). The application uses a secure httpOnly cookie flow for authentication; browsers will not send the cookie on cross-site requests (e.g., `sentryguard.com` and `sentryguard-api.net`).
 
 > **Important**: If you use Cloudflare, set `fleet-telemetry.yourdomain.com` to **DNS only** (grey cloud). Cloudflare's proxy does not handle TLS connections on custom ports.
 
@@ -631,8 +629,6 @@ docker exec sentryguard-kafka kafka-topics --bootstrap-server localhost:9092 \
 | `TESLA_KEY_NAME`                       | `sentryguard`                                 | Name for the virtual key registration            |
 | `SENTRY_MODE_INTERVAL_SECONDS`         | `30`                                          | Sentry mode telemetry interval                   |
 | `BREAK_IN_MONITORING_INTERVAL_SECONDS` | `30`                                          | Break-in monitoring interval                     |
-| `COOKIE_DOMAIN`                        | Computed domain (eTLD+1)                      | Custom parent domain for authentication cookies  |
-| `NEXT_PUBLIC_COOKIE_DOMAIN`            | Computed domain (eTLD+1)                      | Custom parent domain for cookie clearing (webapp)|
 
 ---
 
