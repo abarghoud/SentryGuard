@@ -1,4 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { UnauthorizedException } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AccessTokenService } from './services/access-token.service';
@@ -251,6 +253,51 @@ describe('The AuthController class', () => {
 
     it('should reject missing bearer tokens', async () => {
       await expect(controller.refreshSession()).rejects.toThrow('No Bearer token provided');
+    });
+  });
+
+  describe('The exchangeSession() method', () => {
+    const buildRequest = (cookie?: string) =>
+      ({ headers: { cookie } }) as unknown as Request;
+    const buildResponse = () =>
+      ({ clearCookie: jest.fn() }) as unknown as Response;
+
+    describe('When no temp session cookie is present', () => {
+      it('should reject with an UnauthorizedException', async () => {
+        await expect(
+          controller.exchangeSession(buildRequest(undefined), buildResponse())
+        ).rejects.toThrow(UnauthorizedException);
+      });
+    });
+
+    describe('When the temp session token is invalid', () => {
+      it('should reject with an UnauthorizedException', async () => {
+        mockAuthService.validateJwtToken.mockResolvedValue(null);
+
+        await expect(
+          controller.exchangeSession(
+            buildRequest('sentryguard_temp_token=invalid-jwt'),
+            buildResponse()
+          )
+        ).rejects.toThrow(UnauthorizedException);
+      });
+    });
+
+    describe('When the temp session token is valid', () => {
+      it('should return the token and clear the cookie', async () => {
+        mockAuthService.validateJwtToken.mockResolvedValue({ userId: 'test-user-id' });
+        const response = buildResponse();
+
+        const result = await controller.exchangeSession(
+          buildRequest('other=1; sentryguard_temp_token=valid-jwt; third=2'),
+          response
+        );
+
+        expect(result).toStrictEqual({ token: 'valid-jwt' });
+        expect(response.clearCookie).toHaveBeenCalledWith('sentryguard_temp_token', {
+          path: '/auth/session',
+        });
+      });
     });
   });
 });

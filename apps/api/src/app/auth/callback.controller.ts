@@ -66,19 +66,16 @@ export class CallbackController {
       }
 
       const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
-      const redirectUrl = `${webappUrl}/callback`;
-      const domain = this.getCookieDomain(webappUrl);
 
       res.cookie('sentryguard_temp_token', jwt, {
-        httpOnly: false,
+        httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
+        sameSite: 'strict',
+        path: '/auth/session',
         maxAge: 60 * 1000,
-        domain,
       });
 
-      res.redirect(redirectUrl);
+      res.redirect(`${webappUrl}/callback`);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
@@ -107,35 +104,6 @@ export class CallbackController {
       const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
       const redirectUrl = `${webappUrl}/callback?error=${encodeURIComponent(errorMessage)}`;
       res.redirect(redirectUrl);
-    }
-  }
-
-  private getCookieDomain(webappUrl: string): string | undefined {
-    if (process.env.COOKIE_DOMAIN) {
-      return process.env.COOKIE_DOMAIN;
-    }
-
-    try {
-      const parsed = new URL(webappUrl);
-      const hostname = parsed.hostname;
-
-      if (hostname === 'localhost' || hostname === '127.0.0.1' || /^[0-9.]+$/.test(hostname)) {
-        return undefined;
-      }
-
-      const parts = hostname.split('.');
-      if (parts.length <= 2) {
-        return `.${hostname}`;
-      }
-
-      const secondLevelCcTlds = new Set(['co', 'com', 'org', 'net', 'gov', 'edu', 'ac']);
-      const isCompoundTld = parts.length >= 3 && secondLevelCcTlds.has(parts[parts.length - 2]);
-
-      return isCompoundTld
-        ? `.${parts.slice(-3).join('.')}`
-        : `.${parts.slice(-2).join('.')}`;
-    } catch {
-      return undefined;
     }
   }
 }
