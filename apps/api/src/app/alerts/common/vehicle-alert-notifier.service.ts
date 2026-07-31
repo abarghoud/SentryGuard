@@ -130,18 +130,23 @@ export class VehicleAlertNotifierService {
     try {
       const userLanguage = await this.userLanguageService.getUserLanguage(userId);
 
-      const telegramStart = Date.now();
-      if (!config || await this.notificationsService.shouldSendTelegram(userId, config.severity)) {
-        await telegramNotifier(userId, alertInfo, userLanguage);
-      }
-      if (config) {
-        await this.notificationsService.sendPushAlert(userId, config.severity, config.type, userLanguage);
-      }
-      const telegramTime = Date.now() - telegramStart;
+      const pushTask = config
+        ? this.notificationsService.sendPushAlert(userId, config.severity, config.type, userLanguage, correlationId)
+        : Promise.resolve();
 
-      if (telegramTime > VehicleAlertNotifierService.TELEGRAM_SLOW_THRESHOLD_MS) {
-        this.logger.warn(`[TELEGRAM_SLOW][${correlationId}] ${alertName}: ${telegramTime}ms for user: ${userId}`);
-      }
+      const telegramTask = (async () => {
+        const telegramStart = Date.now();
+        if (!config || await this.notificationsService.shouldSendTelegram(userId, config.severity)) {
+          await telegramNotifier(userId, alertInfo, userLanguage);
+        }
+        const telegramTime = Date.now() - telegramStart;
+
+        if (telegramTime > VehicleAlertNotifierService.TELEGRAM_SLOW_THRESHOLD_MS) {
+          this.logger.warn(`[TELEGRAM_SLOW][${correlationId}] ${alertName}: ${telegramTime}ms for user: ${userId}`);
+        }
+      })();
+
+      await Promise.all([pushTask, telegramTask]);
 
       return { success: true, userId };
     } catch (error) {
@@ -177,7 +182,7 @@ export class VehicleAlertNotifierService {
     const handlerProcessingTime = Date.now() - handlerStartTime;
 
     if (endToEndLatency !== null) {
-      const isProcessingDelayed = telemetryMessage.isProcessingDelayed(handlerProcessingTime, 1000);
+      const isProcessingDelayed = telemetryMessage.isProcessingDelayed(handlerProcessingTime, 3000);
 
       if (isProcessingDelayed) {
         this.logger.error(`[${latencyLabel}] CorrelationId: ${telemetryMessage.correlationId} - DELAYED: ${endToEndLatency}ms (Handler: ${handlerProcessingTime}ms) ❌`);

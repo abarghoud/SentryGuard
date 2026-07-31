@@ -92,13 +92,19 @@ export class NotificationsService {
     userId: string,
     severity: AlertEventSeverity,
     type: AlertEventType,
-    userLanguage: 'en' | 'fr'
+    userLanguage: 'en' | 'fr',
+    correlationId?: string
   ): Promise<void> {
     const { body, title } = this.resolveAlertTexts(type, userLanguage);
     const devices = await this.pushDeviceTokenRepository.find({ where: { userId, push_enabled: true } });
     const eligibleDevices = devices.filter((device) => this.shouldSendPushToDevice(device, severity));
+
+    if (eligibleDevices.length > 0) {
+      this.logger.log(`[EXPO_PUSH][${correlationId || 'none'}] Sending push to ${eligibleDevices.length} device(s) for user: ${userId}`);
+    }
+
     await Promise.all(
-      eligibleDevices.map((device) => this.sendExpoPush(device, title, body, severity, type, device.critical_alerts_enabled, userId, userLanguage))
+      eligibleDevices.map((device) => this.sendExpoPush(device, title, body, severity, type, device.critical_alerts_enabled, userId, userLanguage, correlationId))
     );
   }
 
@@ -196,18 +202,23 @@ export class NotificationsService {
     type: AlertEventType,
     criticalAlertsEnabled: boolean,
     userId: string,
-    userLanguage: 'en' | 'fr'
+    userLanguage: 'en' | 'fr',
+    correlationId?: string
   ): Promise<void> {
     try {
+      const pushStart = Date.now();
       const response = await fetch('https://exp.host/--/api/v2/push/send', {
         body: JSON.stringify(this.buildExpoPushBody(device.token, title, body, severity, type, criticalAlertsEnabled, userId, userLanguage)),
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         method: 'POST',
       });
+      
+      const pushTime = Date.now() - pushStart;
+      this.logger.log(`[EXPO_PUSH_LATENCY][${correlationId || 'none'}] Push sent to device ${device.id} in ${pushTime}ms`);
 
       await this.handleExpoPushResponse(device, response);
     } catch (error) {
-      this.logger.warn(`Failed to send push notification: ${error instanceof Error ? error.message : 'unknown error'}`);
+      this.logger.warn(`Failed to send push notification: ${error instanceof Error ? error.message : 'unknown error'} (correlation: ${correlationId || 'none'})`);
     }
   }
 
@@ -236,7 +247,7 @@ export class NotificationsService {
         teslaRedirectUrl: this.buildTeslaRedirectUrl(userId, userLanguage),
         type,
       },
-      priority: isPriorityAlert || severity === AlertEventSeverity.Critical ? 'high' : 'default',
+      priority: 'high',
       title,
       to: token,
     };
