@@ -51,7 +51,7 @@ export default function FeatureDiscoveryStep({ announcementKey, onDismissed }: F
       await onDismissed();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : '';
-      setDismissError(message || t('Failed to dismiss announcement'));
+      setDismissError(message || t('Failed to continue, please try again'));
     } finally {
       setIsDismissing(false);
     }

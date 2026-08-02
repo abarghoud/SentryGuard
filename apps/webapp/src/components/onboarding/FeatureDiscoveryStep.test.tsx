@@ -122,7 +122,7 @@ describe('The FeatureDiscoveryStep component', () => {
       });
 
       it('should display the fallback message', () => {
-        expect(screen.getByText('Failed to dismiss announcement')).toBeInTheDocument();
+        expect(screen.getByText('Failed to continue, please try again')).toBeInTheDocument();
       });
     });
 
