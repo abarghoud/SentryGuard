@@ -136,7 +136,7 @@ export class TeslaTokenRefreshService {
     }
 
     const errorMessage = error instanceof Error ? error.message : String(error);
-    this.logger.error(`Transient failure refreshing token for user ${userId}: ${errorMessage}`);
+    this.logger.warn(`Transient failure refreshing token for user ${userId}: ${errorMessage}`);
     return RefreshResult.TransientFailure;
   }
 

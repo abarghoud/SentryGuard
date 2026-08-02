@@ -85,22 +85,160 @@ describe('TelemetryConfigService', () => {
     expect(service).toBeDefined();
   });
 
+  describe('When the Tesla API cannot reach the vehicle', () => {
+    const userId = 'test-user-id';
+    const buildTeslaTimeoutError = (data: unknown, status = 500) => ({
+      isAxiosError: true,
+      message: 'Request failed',
+      response: { status, data },
+    });
+
+    let errorSpy: jest.SpyInstance;
+    let warnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('token');
+      errorSpy = jest.spyOn(service['logger'], 'error').mockImplementation();
+      warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation();
+    });
+
+    afterEach(() => {
+      errorSpy.mockRestore();
+      warnSpy.mockRestore();
+    });
+
+    describe('When Tesla answers "context deadline exceeded"', () => {
+      beforeEach(async () => {
+        mockAxiosInstance.get.mockRejectedValue(
+          buildTeslaTimeoutError({ error: 'context deadline exceeded', error_description: '' })
+        );
+
+        await service.getVehicles(userId);
+      });
+
+      it('should not log at error level', () => {
+        expect(errorSpy).not.toHaveBeenCalled();
+      });
+
+      it('should log at warn level', () => {
+        expect(warnSpy).toHaveBeenCalledWith('Error fetching vehicles:', {
+          error: 'context deadline exceeded',
+          error_description: '',
+        });
+      });
+    });
+
+    describe('When the request times out client-side', () => {
+      beforeEach(async () => {
+        mockAxiosInstance.get.mockRejectedValue({
+          isAxiosError: true,
+          code: 'ECONNABORTED',
+          message: 'timeout of 10000ms exceeded',
+        });
+
+        await service.getVehicles(userId);
+      });
+
+      it('should log at warn level', () => {
+        expect(errorSpy).not.toHaveBeenCalled();
+        expect(warnSpy).toHaveBeenCalled();
+      });
+    });
+
+    describe('When Tesla answers an unexpected server error', () => {
+      beforeEach(async () => {
+        mockAxiosInstance.get.mockRejectedValue(
+          buildTeslaTimeoutError({ error: 'internal_error' })
+        );
+
+        await service.getVehicles(userId);
+      });
+
+      it('should still log at error level', () => {
+        expect(errorSpy).toHaveBeenCalled();
+        expect(warnSpy).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('When the Tesla token has been revoked', () => {
+    const userId = 'test-user-id';
+    let errorSpy: jest.SpyInstance;
+    let warnSpy: jest.SpyInstance;
+
+    beforeEach(async () => {
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('token');
+      mockAuthService.invalidateUserTokens.mockResolvedValue(undefined);
+      errorSpy = jest.spyOn(service['logger'], 'error').mockImplementation();
+      warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation();
+      mockAxiosInstance.get.mockRejectedValue({
+        isAxiosError: true,
+        message: 'Request failed with status code 401',
+        response: { status: 401, data: { error: 'token revoked' } },
+      });
+
+      await service.getVehicles(userId).catch(() => undefined);
+    });
+
+    afterEach(() => {
+      errorSpy.mockRestore();
+      warnSpy.mockRestore();
+    });
+
+    it('should not log at error level', () => {
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    it('should still invalidate the user tokens', () => {
+      expect(mockAuthService.invalidateUserTokens).toHaveBeenCalledWith(userId);
+    });
+  });
+
+  describe('When a revoked token propagates through patchTelemetryConfig', () => {
+    const userId = 'test-user-id';
+    const vin = 'VIN123';
+    let errorSpy: jest.SpyInstance;
+
+    beforeEach(async () => {
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('token');
+      mockAuthService.invalidateUserTokens.mockResolvedValue(undefined);
+      errorSpy = jest.spyOn(service['logger'], 'error').mockImplementation();
+      jest.spyOn(service['logger'], 'warn').mockImplementation();
+      mockAxiosInstance.get.mockRejectedValue({
+        isAxiosError: true,
+        message: 'Request failed with status code 401',
+        response: { status: 401, data: { error: 'token revoked' } },
+      });
+
+      await service.patchTelemetryConfig(vin, userId, { SentryMode: { interval_seconds: 30 } });
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should not log at error level', () => {
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getVehicles', () => {
-    it('should return empty array and log error when token is invalid', async () => {
+    it('should return empty array and log a warning when the user has no valid token', async () => {
       const userId = 'test-user-id';
       mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue(null);
-      const loggerSpy = jest
-        .spyOn(service['logger'], 'error')
-        .mockImplementation();
+      const errorSpy = jest.spyOn(service['logger'], 'error').mockImplementation();
+      const warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation();
 
       const result = await service.getVehicles(userId);
 
       expect(result).toEqual([]);
-      expect(loggerSpy).toHaveBeenCalledWith(
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
         'Error fetching vehicles:',
         'Invalid or expired token for this user'
       );
-      loggerSpy.mockRestore();
+      errorSpy.mockRestore();
+      warnSpy.mockRestore();
     });
     it('should return vehicles with telemetry data when userId is provided', async () => {
       const userId = 'test-user-id';
@@ -528,15 +666,14 @@ describe('TelemetryConfigService', () => {
       loggerSpy.mockRestore();
     });
 
-    it('should handle unauthorized error', async () => {
+    it('should handle unauthorized error without raising an error log', async () => {
       const vin = 'VIN123';
       const userId = 'test-user-id';
 
       mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue(null);
 
-      const loggerSpy = jest
-        .spyOn(service['logger'], 'error')
-        .mockImplementation();
+      const errorSpy = jest.spyOn(service['logger'], 'error').mockImplementation();
+      const warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation();
 
       const result = await service.deleteTelemetryConfig(vin, userId);
 
@@ -544,8 +681,10 @@ describe('TelemetryConfigService', () => {
         success: false,
         message: 'Error deleting telemetry configuration',
       });
-      expect(loggerSpy).toHaveBeenCalled();
-      loggerSpy.mockRestore();
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+      warnSpy.mockRestore();
     });
   });
 
