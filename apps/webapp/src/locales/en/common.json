@@ -36,6 +36,7 @@
   "Failed to initiate login": "Failed to initiate login",
   "Failed to configure telemetry": "Failed to configure telemetry",
   "Failed to enable telemetry": "Failed to enable telemetry",
+  "Failed to dismiss announcement": "Failed to dismiss announcement",
   "Virtual key not added to the vehicle": "Virtual key not added to the vehicle",
   "Unsupported hardware (pre-2018 Model S/X)": "Unsupported hardware (pre-2018 Model S/X)",
   "Unsupported firmware version for telemetry": "Unsupported firmware version for telemetry",
