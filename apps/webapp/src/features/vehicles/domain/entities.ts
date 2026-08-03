@@ -20,3 +20,18 @@ export interface GenericActionResponse {
   success: boolean;
   message: string;
 }
+
+export interface SkippedVehicle {
+  vin: string;
+  reason: string;
+  details?: string;
+}
+
+export interface VehicleActionOutcome {
+  success: boolean;
+  message?: string;
+}
+
+export interface ConfigureTelemetryOutcome extends VehicleActionOutcome {
+  skippedVehicle?: SkippedVehicle | null;
+}

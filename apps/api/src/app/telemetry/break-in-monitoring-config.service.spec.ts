@@ -1,3 +1,8 @@
+import {
+  BadGatewayException,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { mock, MockProxy } from 'jest-mock-extended';
@@ -33,13 +38,20 @@ describe('The BreakInMonitoringConfigService class', () => {
     const userId = 'user1';
 
     describe('When vehicle is missing', () => {
+      let act: () => Promise<unknown>;
+
       beforeEach(() => {
         mockVehicleRepository.findOne.mockResolvedValue(null);
+        act = async () => await service.toggleBreakInMonitoring(vin, userId, true);
       });
 
-      it('should return vehicle not found error', async () => {
-        const result = await service.toggleBreakInMonitoring(vin, userId, true);
-        expect(result).toEqual({ success: false, message: 'Vehicle not found' });
+      it('should throw a not found exception', async () => {
+        await expect(act()).rejects.toThrow(NotFoundException);
+      });
+
+      it('should not push any telemetry configuration', async () => {
+        await expect(act()).rejects.toThrow();
+        expect(mockTelemetryConfigService.patchTelemetryConfig).not.toHaveBeenCalled();
       });
     });
 
@@ -96,28 +108,43 @@ describe('The BreakInMonitoringConfigService class', () => {
     });
 
     describe('When patch fails', () => {
+      let act: () => Promise<unknown>;
+
       beforeEach(() => {
         const vehicle = { vin, userId, break_in_monitoring_enabled: true } as Vehicle;
         mockVehicleRepository.findOne.mockResolvedValue(vehicle);
         mockTelemetryConfigService.patchTelemetryConfig.mockResolvedValue({ success: false });
+        act = async () => await service.toggleBreakInMonitoring(vin, userId, true);
       });
 
-      it('should return error', async () => {
-        const result = await service.toggleBreakInMonitoring(vin, userId, true);
+      it('should throw a bad gateway exception', async () => {
+        await expect(act()).rejects.toThrow(BadGatewayException);
+      });
 
-        expect(result).toEqual({ success: false, message: 'Failed to push telemetry configuration to Tesla' });
+      it('should expose the Tesla push failure message', async () => {
+        await expect(act()).rejects.toThrow('Failed to push telemetry configuration to Tesla');
+      });
+
+      it('should not persist the vehicle', async () => {
+        await expect(act()).rejects.toThrow();
         expect(mockVehicleRepository.save).not.toHaveBeenCalled();
       });
     });
 
-    describe('When an exception occurs', () => {
+    describe('When an unexpected exception occurs', () => {
+      let act: () => Promise<unknown>;
+
       beforeEach(() => {
         mockVehicleRepository.findOne.mockRejectedValue(new Error('DB error'));
+        act = async () => await service.toggleBreakInMonitoring(vin, userId, true);
       });
 
-      it('should handle exceptions', async () => {
-        const result = await service.toggleBreakInMonitoring(vin, userId, true);
-        expect(result).toEqual({ success: false, message: 'An unexpected error occurred' });
+      it('should throw an internal server error exception', async () => {
+        await expect(act()).rejects.toThrow(InternalServerErrorException);
+      });
+
+      it('should not leak the underlying error message', async () => {
+        await expect(act()).rejects.toThrow('An unexpected error occurred');
       });
     });
   });
