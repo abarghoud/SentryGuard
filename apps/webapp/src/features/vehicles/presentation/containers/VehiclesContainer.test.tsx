@@ -14,6 +14,12 @@ jest.mock('../views/VehiclesView', () => ({
   },
 }));
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}));
+
 let capturedProps: VehiclesViewProps;
 
 describe('The VehiclesContainer component', () => {
@@ -32,17 +38,33 @@ describe('The VehiclesContainer component', () => {
   };
 
   describe('When toggling break-in monitoring fails', () => {
-    const expectedMessage = 'Failed to push telemetry configuration to Tesla';
-    let outcome: { success: boolean; message?: string };
+    describe('When the error has a message', () => {
+      const expectedMessage = 'Failed to push telemetry configuration to Tesla';
+      let outcome: { success: boolean; message?: string };
 
-    beforeEach(async () => {
-      renderContainer(jest.fn().mockRejectedValue(new Error(expectedMessage)));
+      beforeEach(async () => {
+        renderContainer(jest.fn().mockRejectedValue(new Error(expectedMessage)));
 
-      outcome = await capturedProps.onToggleBreakInMonitoring(fakeVin, true);
+        outcome = await capturedProps.onToggleBreakInMonitoring(fakeVin, true);
+      });
+
+      it('should resolve with the failure message instead of rejecting', () => {
+        expect(outcome).toEqual({ success: false, message: expectedMessage });
+      });
     });
 
-    it('should resolve with the failure message instead of rejecting', () => {
-      expect(outcome).toEqual({ success: false, message: expectedMessage });
+    describe('When the error has no message', () => {
+      let outcome: { success: boolean; message?: string };
+
+      beforeEach(async () => {
+        renderContainer(jest.fn().mockRejectedValue('something unexpected'));
+
+        outcome = await capturedProps.onToggleBreakInMonitoring(fakeVin, true);
+      });
+
+      it('should resolve with the i18n fallback message', () => {
+        expect(outcome).toEqual({ success: false, message: 'Failed to update Break-in monitoring' });
+      });
     });
   });
 

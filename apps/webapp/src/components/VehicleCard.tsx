@@ -200,11 +200,15 @@ export default function VehicleCard({
 
     setIsDeleting(true);
     setInlineError(null);
-    const result = await onDeleteTelemetry(vehicle.vin);
-    if (!result.success) {
-      setInlineError(result.message || t('Failed to disable telemetry'));
+    
+    try {
+      const result = await onDeleteTelemetry(vehicle.vin);
+      if (!result.success) {
+        setInlineError(result.message || t('Failed to disable telemetry'));
+      }
+    } finally {
+      setIsDeleting(false);
     }
-    setIsDeleting(false);
   };
 
   const handleUpdateBreakInOffensive = async (newResponse: string) => {

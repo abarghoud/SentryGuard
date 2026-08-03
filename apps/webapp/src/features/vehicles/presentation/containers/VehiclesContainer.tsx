@@ -1,9 +1,11 @@
 import { VehiclesView } from '../views/VehiclesView';
 import { useVehiclesQuery } from '../../../vehicles/di';
 import { VehicleActionOutcome } from '../../domain/entities';
+import { useTranslation } from 'react-i18next';
 
 const resolveActionOutcome = async (
-  action: Promise<unknown>
+  action: Promise<unknown>,
+  fallback: string
 ): Promise<VehicleActionOutcome> => {
   try {
     await action;
@@ -11,7 +13,7 @@ const resolveActionOutcome = async (
   } catch (error: unknown) {
     return {
       success: false,
-      message: error instanceof Error ? error.message : undefined,
+      message: error instanceof Error && error.message ? error.message : fallback,
     };
   }
 };
@@ -24,6 +26,7 @@ export function VehiclesContainer() {
     toggleBreakInMutation,
     updateOffensiveResponseMutation,
   } = useVehiclesQuery();
+  const { t } = useTranslation();
 
   const { data: vehicles = [], isLoading, isFetching, error, refetch } = query;
 
@@ -34,12 +37,23 @@ export function VehiclesContainer() {
       error={error?.message || null}
       onRefresh={refetch}
       onConfigureTelemetry={async (vin) => configureTelemetryMutation.mutateAsync(vin)}
-      onDeleteTelemetry={async (vin) => resolveActionOutcome(deleteTelemetryMutation.mutateAsync(vin))}
+      onDeleteTelemetry={async (vin) =>
+        resolveActionOutcome(
+          deleteTelemetryMutation.mutateAsync(vin),
+          t('Failed to disable telemetry')
+        )
+      }
       onToggleBreakInMonitoring={async (vin, enable) =>
-        resolveActionOutcome(toggleBreakInMutation.mutateAsync({ vin, enable }))
+        resolveActionOutcome(
+          toggleBreakInMutation.mutateAsync({ vin, enable }),
+          t('Failed to update Break-in monitoring')
+        )
       }
       onUpdateBreakInOffensive={async (vin, breakInResponse) =>
-        resolveActionOutcome(updateOffensiveResponseMutation.mutateAsync({ vin, breakInResponse }))
+        resolveActionOutcome(
+          updateOffensiveResponseMutation.mutateAsync({ vin, breakInResponse }),
+          t('Failed to update offensive response')
+        )
       }
     />
   );
