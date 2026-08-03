@@ -2,6 +2,8 @@ import 'reflect-metadata';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
+import { GracefulShutdownService } from './app/shared/graceful-shutdown.service';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
 import { validateSecrets } from './common/utils/crypto.util';
@@ -15,7 +17,7 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
 
   app.useLogger(app.get(PinoLogger));
 
@@ -108,12 +110,14 @@ async function bootstrap() {
 
   process.on('SIGTERM', async () => {
     Logger.log('📴 SIGTERM received, shutting down gracefully...');
+    await initiateGracefulShutdown(app);
     await app.close();
     process.exit(0);
   });
 
   process.on('SIGINT', async () => {
     Logger.log('📴 SIGINT received, shutting down gracefully...');
+    await initiateGracefulShutdown(app);
     await app.close();
     process.exit(0);
   });
@@ -122,6 +126,15 @@ async function bootstrap() {
   Logger.log(
     `🚀 Application is running on: http://localhost:${port}/`
   );
+}
+
+async function initiateGracefulShutdown(app: NestExpressApplication): Promise<void> {
+  try {
+    await app.get<GracefulShutdownService>(GracefulShutdownService).initiateShutdown();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    Logger.error(`❌ Graceful shutdown drain failed, proceeding with shutdown: ${message}`);
+  }
 }
 
 bootstrap();

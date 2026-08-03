@@ -39,6 +39,7 @@ import { NotificationPreferences } from '../entities/notification-preferences.en
 import { PushDeviceToken } from '../entities/push-device-token.entity';
 import { AlertEvent } from '../entities/alert-event.entity';
 import { RetryManager } from './shared/retry-manager.service';
+import { GracefulShutdownService } from './shared/graceful-shutdown.service';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { RetryManager } from './shared/retry-manager.service';
   providers: [
     AppService,
     KafkaService,
+    GracefulShutdownService,
     TelemetryMessageHandlerService,
     {
       provide: RetryManager,

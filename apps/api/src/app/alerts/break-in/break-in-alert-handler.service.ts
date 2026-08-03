@@ -13,6 +13,7 @@ import { ChargePortLatchTrackerService } from './charge-port-latch-tracker.servi
 @Injectable()
 export class BreakInAlertHandlerService implements TelemetryEventHandler {
   private readonly logger = new Logger(BreakInAlertHandlerService.name);
+  private readonly pendingVerifications = new Set<Promise<void>>();
 
   constructor(
     private readonly telegramService: TelegramService,
@@ -44,9 +45,41 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
 
   private scheduleAlertVerification(telemetryMessage: TelemetryMessage): void {
     const delay = parseInt(process.env.BREAK_IN_ALERT_CHECK_DELAY_MS || '2000', 10);
-    setTimeout(async () => {
-      await this.verifyAndDispatchAlert(telemetryMessage);
-    }, delay);
+
+    const verification = new Promise<void>((resolve) => {
+      setTimeout(async () => {
+        try {
+          await this.verifyAndDispatchAlert(telemetryMessage);
+        } finally {
+          this.pendingVerifications.delete(verification);
+          resolve();
+        }
+      }, delay);
+    });
+
+    this.pendingVerifications.add(verification);
+  }
+
+  public async flushPendingVerifications(timeoutMs: number): Promise<void> {
+    if (this.pendingVerifications.size === 0) {
+      return;
+    }
+
+    this.logger.log(`⏳ Waiting for ${this.pendingVerifications.size} pending display-lock alert verification(s) to flush...`);
+
+    const deadline = Date.now() + timeoutMs;
+
+    while (this.pendingVerifications.size > 0 && Date.now() < deadline) {
+      const current = [...this.pendingVerifications];
+      const remaining = deadline - Date.now();
+
+      await Promise.race([
+        Promise.allSettled(current),
+        new Promise<void>((resolve) => setTimeout(resolve, remaining)),
+      ]);
+    }
+
+    this.logger.log('✅ Pending display-lock alert verifications flushed');
   }
 
   private async verifyAndDispatchAlert(telemetryMessage: TelemetryMessage): Promise<void> {

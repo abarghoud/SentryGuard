@@ -205,4 +205,47 @@ describe('The BreakInAlertHandlerService class', () => {
       });
     });
   });
+
+  describe('The flushPendingVerifications() method', () => {
+    const createLockedDisplayMessage = (): TelemetryMessage => {
+      const message = new TelemetryMessage();
+      message.vin = '123';
+      message.createdAt = new Date('2026-05-05T20:00:00Z').toISOString();
+      message.data = [];
+      jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
+      jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
+      return message;
+    };
+
+    describe('When there are no pending verifications', () => {
+      it('should resolve immediately', async () => {
+        await expect(service.flushPendingVerifications(1000)).resolves.toBeUndefined();
+      });
+    });
+
+    describe('When there is a pending verification', () => {
+      it('should wait for the verification to dispatch before resolving', async () => {
+        mockChargeTracker.hasLatchEventAround.mockReturnValue(false);
+        mockAlertNotifier.dispatch.mockResolvedValue({ userIds: ['user-1'] });
+
+        await service.handle(createLockedDisplayMessage());
+
+        const flushPromise = service.flushPendingVerifications(5000);
+        jest.advanceTimersByTime(2000);
+
+        await expect(flushPromise).resolves.toBeUndefined();
+        expect(mockAlertNotifier.dispatch).toHaveBeenCalled();
+      });
+
+      it('should resolve after the timeout when verifications are still pending', async () => {
+        await service.handle(createLockedDisplayMessage());
+
+        const flushPromise = service.flushPendingVerifications(1000);
+        jest.advanceTimersByTime(1000);
+
+        await expect(flushPromise).resolves.toBeUndefined();
+        expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
+      });
+    });
+  });
 });
