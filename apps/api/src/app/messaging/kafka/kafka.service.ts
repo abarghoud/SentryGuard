@@ -135,18 +135,22 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
     try {
       await this.safeExecute(
-        () => this.consumer.disconnect(),
+        () => Promise.race([
+          this.consumer.disconnect(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Disconnect timeout')), 5000))
+        ]),
         'Error during consumer disconnect before reconnect'
       );
       await this.connectWithRetry();
       await this.subscribe();
       await this.startConsumer();
     } catch (error) {
-      this.logger.error(
-        '💀 Reconnection process failed:',
+      this.logger.fatal(
+        '💀 Reconnection process failed, exiting process for container restart:',
         error instanceof Error ? error.message : String(error)
       );
       this.isConnected = false;
+      process.exit(1);
     } finally {
       this.isReconnecting = false;
     }

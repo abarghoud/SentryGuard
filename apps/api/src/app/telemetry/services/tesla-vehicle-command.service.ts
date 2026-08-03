@@ -1,8 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosError, AxiosInstance } from 'axios';
 import * as https from 'https';
 import { AccessTokenService } from '../../auth/services/access-token.service';
 import { DEFAULT_TESLA_API_BASE_URL } from '../telemetry-config.constants';
+import { isAxiosError } from '../telemetry-config.helpers';
+
+const MAX_LOGGED_RESPONSE_BODY_LENGTH = 500;
 
 interface TeslaCommandResponse {
   success: boolean;
@@ -34,7 +37,7 @@ export class TeslaVehicleCommandService {
     vin: string,
     userId: string,
     command: string,
-    body?: Record<string, any>,
+    body?: Record<string, unknown>,
   ): Promise<TeslaCommandResponse> {
     try {
       const hasScope = await this.accessTokenService.hasVehicleCommandsScope(userId);
@@ -63,10 +66,58 @@ export class TeslaVehicleCommandService {
 
       return { success: response.data?.response ?? true };
     } catch (error: unknown) {
-      const errorDetails = error instanceof Error ? error.message : String(error);
+      const errorDetails = this.describeCommandFailure(error);
       this.logger.error(`[VEHICLE_COMMAND] Failed to send ${command} for VIN ${vin}: ${errorDetails}`);
 
       return { success: false, message: errorDetails };
+    }
+  }
+
+  private describeCommandFailure(error: unknown): string {
+    if (!isAxiosError(error)) {
+      return error instanceof Error ? error.message : String(error);
+    }
+
+    const axiosError = error as AxiosError;
+
+    return [axiosError.message, ...this.buildAxiosFailureDetails(axiosError)].join(' | ');
+  }
+
+  private buildAxiosFailureDetails(axiosError: AxiosError): string[] {
+    const details: string[] = [];
+    const status = axiosError.response?.status;
+    const body = this.serializeResponseBody(axiosError.response?.data);
+
+    if (status) {
+      details.push(`status=${status}`);
+    }
+
+    if (body) {
+      details.push(`body=${body}`);
+    }
+
+    if (!axiosError.response && axiosError.code) {
+      details.push(`code=${axiosError.code}`);
+    }
+
+    return details;
+  }
+
+  private serializeResponseBody(data: unknown): string {
+    if (data === undefined || data === null || data === '') {
+      return '';
+    }
+
+    const serialized = typeof data === 'string' ? data : this.stringifySafely(data);
+
+    return serialized.slice(0, MAX_LOGGED_RESPONSE_BODY_LENGTH);
+  }
+
+  private stringifySafely(data: unknown): string {
+    try {
+      return JSON.stringify(data) ?? String(data);
+    } catch {
+      return String(data);
     }
   }
 }

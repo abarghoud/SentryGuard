@@ -77,6 +77,11 @@ export class TelemetryMessage {
     return this.data.some(datum => datum.key === 'CenterDisplay');
   }
 
+  validateContainsAnyMonitoredField(): boolean {
+    const monitoredKeys = new Set(['SentryMode', 'CenterDisplay', 'ChargePortLatch']);
+    return this.data.some(datum => monitoredKeys.has(datum.key));
+  }
+
   validateSentryModeValue(): boolean {
     const sentryDatum = this.data.find(d => d.key === 'SentryMode');
     if (!sentryDatum) return false;

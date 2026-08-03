@@ -38,11 +38,11 @@ async function bootstrap() {
     process.env.NODE_ENV === 'production'
       ? []
       : [
-          'http://localhost:4200',
-          'http://localhost:3000',
-          'http://localhost:8081',
-          'http://localhost:19006',
-        ];
+        'http://localhost:4200',
+        'http://localhost:3000',
+        'http://localhost:8081',
+        'http://localhost:19006',
+      ];
   const baseOrigins: Array<string> = Array.from(
     new Set([webappUrl, ...developmentOrigins, ...additionalOrigins])
   );
