@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   Controller,
   Post,
   Get,
@@ -48,7 +49,7 @@ export class TelemetryConfigController {
       userId
     );
     if (!result) {
-      return { message: `Configuration failed for VIN: ${vin}` };
+      throw new BadGatewayException(`Configuration failed for VIN: ${vin}`);
     }
 
     if (result.skippedVehicle) {
@@ -88,6 +89,15 @@ export class TelemetryConfigController {
     this.logger.log(
       `🗑️ Deleting telemetry configuration for VIN: ${vin} (user: ${userId})`
     );
-    return await this.telemetryConfigService.deleteTelemetryConfig(vin, userId);
+    const result = await this.telemetryConfigService.deleteTelemetryConfig(
+      vin,
+      userId
+    );
+
+    if (!result.success) {
+      throw new BadGatewayException(result.message);
+    }
+
+    return result;
   }
 }

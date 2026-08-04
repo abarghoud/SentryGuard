@@ -69,7 +69,7 @@ describe('The useOnboardingQuery() hook', () => {
       });
 
       it('should return the onboarding status from the use case', async () => {
-        const expectedStatus = { isComplete: true };
+        const expectedStatus = { isComplete: true, pendingAnnouncementKey: null };
         mockGetOnboardingStatusUseCase.execute.mockResolvedValue(expectedStatus);
 
         const { result } = renderHook(() => useOnboardingQuery(), { wrapper });

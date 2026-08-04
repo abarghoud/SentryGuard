@@ -140,6 +140,22 @@ describe('The useVehiclesQuery() hook', () => {
         });
       });
     });
+
+    describe('When the API rejects the request', () => {
+      it('should resolve with the API error message instead of throwing', async () => {
+        const expectedMessage = 'Configuration failed for VIN: VIN123';
+        mockConfigureTelemetryUseCase.execute.mockRejectedValue(new Error(expectedMessage));
+
+        const { result } = renderHook(() => useVehiclesQuery(), { wrapper });
+        const response = await result.current.configureTelemetryMutation.mutateAsync('VIN123');
+
+        expect(response).toEqual({
+          success: false,
+          message: expectedMessage,
+          skippedVehicle: null,
+        });
+      });
+    });
   });
 
   describe('When deleting telemetry config', () => {

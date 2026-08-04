@@ -53,6 +53,70 @@ export function is404Error(error: unknown): boolean {
   return false;
 }
 
+const VEHICLE_UNREACHABLE_MESSAGES = [
+  'context deadline exceeded',
+  'vehicle unavailable',
+  'timeout',
+];
+const VEHICLE_UNREACHABLE_STATUS_CODES = [408, 504];
+const VEHICLE_UNREACHABLE_ERROR_CODES = ['ECONNABORTED', 'ETIMEDOUT'];
+
+function extractResponseMessages(responseData: unknown): string {
+  if (typeof responseData === 'string') {
+    return responseData;
+  }
+
+  if (!responseData || typeof responseData !== 'object') {
+    return '';
+  }
+
+  const { error, error_description: errorDescription } = responseData as {
+    error?: unknown;
+    error_description?: unknown;
+  };
+
+  return [error, errorDescription]
+    .filter((value): value is string => typeof value === 'string')
+    .join(' ');
+}
+
+function containsUnreachableMessage(responseData: unknown): boolean {
+  const details = extractResponseMessages(responseData).toLowerCase();
+
+  if (!details) {
+    return false;
+  }
+
+  return VEHICLE_UNREACHABLE_MESSAGES.some((message) => details.includes(message));
+}
+
+/**
+ * Type guard to check if an error means the vehicle could not be reached in time
+ * Covers Tesla's "context deadline exceeded" responses (asleep or offline vehicle),
+ * gateway timeout statuses and client-side request timeouts
+ *
+ * @param error - The error object to check
+ * @returns True if the error is an expected timeout rather than an internal bug
+ */
+export function isVehicleUnreachableError(error: unknown): boolean {
+  if (!isAxiosError(error)) {
+    return false;
+  }
+
+  const axiosError = error as AxiosError;
+
+  if (axiosError.code && VEHICLE_UNREACHABLE_ERROR_CODES.includes(axiosError.code)) {
+    return true;
+  }
+
+  const status = axiosError.response?.status;
+  if (status && VEHICLE_UNREACHABLE_STATUS_CODES.includes(status)) {
+    return true;
+  }
+
+  return containsUnreachableMessage(axiosError.response?.data);
+}
+
 /**
  * Type guard to check if an error indicates a revoked Tesla token
  * Checks for both 401 status and specific "token revoked" message

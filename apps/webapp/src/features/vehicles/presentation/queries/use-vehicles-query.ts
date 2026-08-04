@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Vehicle } from '../../domain/entities';
+import { ConfigureTelemetryOutcome, TelemetryConfigResult, Vehicle } from '../../domain/entities';
 import { hasToken } from '../../../../core/api/token-manager';
 import {
   GetVehiclesRequirements,
@@ -17,6 +17,27 @@ export interface VehiclesQueryDependencies {
   updateOffensiveResponseUseCase: UpdateOffensiveResponseRequirements;
 }
 
+const resolveErrorMessage = (error: unknown, fallback: string): string =>
+  error instanceof Error && error.message ? error.message : fallback;
+
+const resolveConfigureTelemetryOutcome = (
+  response: TelemetryConfigResult
+): ConfigureTelemetryOutcome => {
+  const skippedVehicle = response?.result?.skippedVehicle ?? null;
+
+  if (response?.result?.success === true && !skippedVehicle) {
+    return { success: true };
+  }
+
+  const message =
+    response?.message ||
+    (skippedVehicle
+      ? 'Telemetry configuration skipped for this vehicle'
+      : 'Failed to configure telemetry');
+
+  return { success: false, message, skippedVehicle };
+};
+
 export const createUseVehiclesQuery = (deps: VehiclesQueryDependencies) => () => {
   const queryClient = useQueryClient();
 
@@ -31,22 +52,18 @@ export const createUseVehiclesQuery = (deps: VehiclesQueryDependencies) => () =>
   });
 
   const configureTelemetryMutation = useMutation({
-    mutationFn: async (vin: string) => {
-      const response = await deps.configureTelemetryUseCase.execute(vin);
-      const skippedVehicle = response?.result?.skippedVehicle ?? null;
-      const success = response?.result?.success === true && !skippedVehicle;
-
-      if (success) {
-        return { success: true };
+    mutationFn: async (vin: string): Promise<ConfigureTelemetryOutcome> => {
+      try {
+        return resolveConfigureTelemetryOutcome(
+          await deps.configureTelemetryUseCase.execute(vin)
+        );
+      } catch (error: unknown) {
+        return {
+          success: false,
+          message: resolveErrorMessage(error, 'Failed to configure telemetry'),
+          skippedVehicle: null,
+        };
       }
-
-      const message =
-        response?.message ||
-        (skippedVehicle
-          ? 'Telemetry configuration skipped for this vehicle'
-          : 'Failed to configure telemetry');
-
-      return { success: false, message, skippedVehicle };
     },
     onSuccess: (data) => {
       if (data.success) {

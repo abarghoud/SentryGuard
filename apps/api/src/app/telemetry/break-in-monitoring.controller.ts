@@ -1,4 +1,12 @@
-import { Controller, Post, Param, Logger, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Param,
+  Logger,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { BreakInMonitoringConfigService } from './break-in-monitoring-config.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -15,6 +23,7 @@ export class BreakInMonitoringController {
   constructor(private readonly breakInMonitoringConfigService: BreakInMonitoringConfigService) {}
 
   @Throttle(ThrottleOptions.critical())
+  @HttpCode(HttpStatus.OK)
   @Post(':vin/enable')
   async enableFeature(@Param('vin') vin: string, @CurrentUser() user: User) {
     this.logger.log(`🚗 Enabling break-in monitoring for VIN: ${vin} (user: ${user.userId})`);
@@ -22,6 +31,7 @@ export class BreakInMonitoringController {
   }
 
   @Throttle(ThrottleOptions.critical())
+  @HttpCode(HttpStatus.OK)
   @Post(':vin/disable')
   async disableFeature(@Param('vin') vin: string, @CurrentUser() user: User) {
     this.logger.log(`🚗 Disabling break-in monitoring for VIN: ${vin} (user: ${user.userId})`);

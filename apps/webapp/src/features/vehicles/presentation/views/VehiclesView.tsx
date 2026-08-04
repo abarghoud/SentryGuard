@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Vehicle } from '../../domain/entities';
+import { ConfigureTelemetryOutcome, Vehicle, VehicleActionOutcome } from '../../domain/entities';
 import VehicleCard from '../../../../components/VehicleCard';
 import { resolveVirtualKeyUrl } from '../../../../core/api/api-client';
 
@@ -8,14 +8,10 @@ export interface VehiclesViewProps {
   isLoading: boolean;
   error: string | null;
   onRefresh: () => void;
-  onConfigureTelemetry: (vin: string) => Promise<{
-    success: boolean;
-    message?: string;
-    skippedVehicle?: { vin: string; reason: string; details?: string } | null;
-  }>;
-  onDeleteTelemetry: (vin: string) => Promise<boolean>;
-  onToggleBreakInMonitoring: (vin: string, enable: boolean) => Promise<boolean>;
-  onUpdateBreakInOffensive: (vin: string, breakInResponse: string) => Promise<boolean>;
+  onConfigureTelemetry: (vin: string) => Promise<ConfigureTelemetryOutcome>;
+  onDeleteTelemetry: (vin: string) => Promise<VehicleActionOutcome>;
+  onToggleBreakInMonitoring: (vin: string, enable: boolean) => Promise<VehicleActionOutcome>;
+  onUpdateBreakInOffensive: (vin: string, breakInResponse: string) => Promise<VehicleActionOutcome>;
 }
 
 export function VehiclesView({

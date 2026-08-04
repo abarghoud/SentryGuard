@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { BreakInMonitoringController } from './break-in-monitoring.controller';
-import { BreakInMonitoringConfigService } from './break-in-monitoring-config.service';
+import {
+  BreakInMonitoringConfigService,
+  BreakInMonitoringToggleResult,
+} from './break-in-monitoring-config.service';
 import { User } from '../../entities/user.entity';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -35,10 +38,10 @@ describe('The BreakInMonitoringController class', () => {
 
   describe('The enableFeature() method', () => {
     describe('When called with valid parameters', () => {
-      let result: { success: boolean; message: string };
+      let result: BreakInMonitoringToggleResult;
       const vin = 'VIN123';
       const user = { userId: 'user-1' } as User;
-      const expectedResult = { success: true, message: 'Enabled' };
+      const expectedResult: BreakInMonitoringToggleResult = { success: true, message: 'Enabled' };
 
       beforeEach(async () => {
         mockBreakInMonitoringConfigService.toggleBreakInMonitoring.mockResolvedValue(expectedResult);
@@ -57,10 +60,10 @@ describe('The BreakInMonitoringController class', () => {
 
   describe('The disableFeature() method', () => {
     describe('When called with valid parameters', () => {
-      let result: { success: boolean; message: string };
+      let result: BreakInMonitoringToggleResult;
       const vin = 'VIN123';
       const user = { userId: 'user-1' } as User;
-      const expectedResult = { success: true, message: 'Disabled' };
+      const expectedResult: BreakInMonitoringToggleResult = { success: true, message: 'Disabled' };
 
       beforeEach(async () => {
         mockBreakInMonitoringConfigService.toggleBreakInMonitoring.mockResolvedValue(expectedResult);

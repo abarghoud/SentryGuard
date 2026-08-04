@@ -31,6 +31,7 @@ import {
   extractErrorDetails,
   is404Error,
   isTokenRevokedError,
+  isVehicleUnreachableError,
 } from './telemetry-config.helpers';
 import { TokenRevokedException } from '../../common/exceptions/token-revoked.exception';
 
@@ -62,6 +63,23 @@ export class TelemetryConfigService {
       throw new UnauthorizedException(ERROR_MESSAGES.INVALID_TOKEN);
     }
     return token;
+  }
+
+  private isExpectedTeslaFailure(error: unknown): boolean {
+    return (
+      error instanceof UnauthorizedException ||
+      isTokenRevokedError(error) ||
+      isVehicleUnreachableError(error)
+    );
+  }
+
+  private logTeslaApiFailure(message: string, error: unknown): void {
+    if (this.isExpectedTeslaFailure(error)) {
+      this.logger.warn(message, extractErrorDetails(error));
+      return;
+    }
+
+    this.logger.error(message, extractErrorDetails(error));
   }
 
   private async handleTokenRevocation(userId: string, error: unknown): Promise<void> {
@@ -109,9 +127,9 @@ export class TelemetryConfigService {
         };
       });
     } catch (error: unknown) {
-      this.logger.error(
+      this.logTeslaApiFailure(
         ERROR_MESSAGES.ERROR_FETCHING_VEHICLES,
-        extractErrorDetails(error)
+        error
       );
 
       await this.handleTokenRevocation(userId, error);
@@ -197,7 +215,7 @@ export class TelemetryConfigService {
 
       return await this.pushTelemetryConfig(vin, userId, configPayload);
     } catch (error: unknown) {
-      this.logger.error(`Error patching telemetry config for ${vin}:`, extractErrorDetails(error));
+      this.logTeslaApiFailure(`Error patching telemetry config for ${vin}:`, error);
       return null;
     }
   }
@@ -234,9 +252,9 @@ export class TelemetryConfigService {
       this.logger.debug(`Config for ${vin}:`, response.data.response);
       return response.data.response;
     } catch (error: unknown) {
-      this.logger.error(
+      this.logTeslaApiFailure(
         ERROR_MESSAGES.ERROR_CHECKING_CONFIG(vin),
-        extractErrorDetails(error)
+        error
       );
 
       await this.handleTokenRevocation(userId, error);
@@ -303,9 +321,9 @@ export class TelemetryConfigService {
 
       await this.handleTokenRevocation(userId, error);
 
-      this.logger.error(
+      this.logTeslaApiFailure(
         ERROR_MESSAGES.ERROR_DELETING_CONFIG(vin),
-        extractErrorDetails(error)
+        error
       );
 
       return {
@@ -344,9 +362,9 @@ export class TelemetryConfigService {
         };
       }
 
-      this.logger.error(
+      this.logTeslaApiFailure(
         ERROR_MESSAGES.ERROR_DELETING_CONFIG(vin),
-        extractErrorDetails(error)
+        error
       );
 
       return {
@@ -403,9 +421,9 @@ export class TelemetryConfigService {
         response: response.data as TeslaApiResponse<FleetTelemetryConfigResponse>,
       };
     } catch (error: unknown) {
-      this.logger.error(
+      this.logTeslaApiFailure(
         ERROR_MESSAGES.ERROR_CONFIGURING_VIN(vin),
-        extractErrorDetails(error)
+        error
       );
 
       await this.handleTokenRevocation(userId, error);

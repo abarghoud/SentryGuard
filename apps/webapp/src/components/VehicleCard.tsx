@@ -2,7 +2,11 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type Vehicle } from '../features/vehicles/domain/entities';
+import {
+  type ConfigureTelemetryOutcome,
+  type Vehicle,
+  type VehicleActionOutcome,
+} from '../features/vehicles/domain/entities';
 import Spinner from './Spinner';
 import RequireVehicleCommands from './RequireVehicleCommands';
 import VinMask from './VinMask';
@@ -183,8 +187,8 @@ export default function VehicleCard({
     setInlineError(null);
     const newStatus = !vehicle.break_in_monitoring_enabled;
     const result = await onToggleBreakInMonitoring(vehicle.vin, newStatus);
-    if (!result) {
-      setInlineError(t('Failed to update Break-in monitoring'));
+    if (!result.success) {
+      setInlineError(result.message || t('Failed to update Break-in monitoring'));
     }
     setIsConfiguringBreakIn(false);
   };
@@ -195,8 +199,13 @@ export default function VehicleCard({
     }
 
     setIsDeleting(true);
+    setInlineError(null);
+    
     try {
-      await onDeleteTelemetry(vehicle.vin);
+      const result = await onDeleteTelemetry(vehicle.vin);
+      if (!result.success) {
+        setInlineError(result.message || t('Failed to disable telemetry'));
+      }
     } finally {
       setIsDeleting(false);
     }
@@ -206,8 +215,8 @@ export default function VehicleCard({
     setIsUpdatingBreakInOffensive(true);
     setInlineError(null);
     const result = await onUpdateBreakInOffensive(vehicle.vin, newResponse);
-    if (!result) {
-      setInlineError(t('Failed to update offensive response'));
+    if (!result.success) {
+      setInlineError(result.message || t('Failed to update offensive response'));
     }
     setIsUpdatingBreakInOffensive(false);
   };
@@ -377,14 +386,8 @@ export default function VehicleCard({
 interface VehicleCardProps {
   vehicle: Vehicle;
   onPairVirtualKey: () => void;
-  onToggleTelemetry: (
-    vin: string
-  ) => Promise<{
-    success: boolean;
-    message?: string;
-    skippedVehicle?: { vin: string; reason: string; details?: string } | null;
-  }>;
-  onToggleBreakInMonitoring: (vin: string, enable: boolean) => Promise<boolean>;
-  onUpdateBreakInOffensive: (vin: string, breakInResponse: string) => Promise<boolean>;
-  onDeleteTelemetry: (vin: string) => Promise<boolean>;
+  onToggleTelemetry: (vin: string) => Promise<ConfigureTelemetryOutcome>;
+  onToggleBreakInMonitoring: (vin: string, enable: boolean) => Promise<VehicleActionOutcome>;
+  onUpdateBreakInOffensive: (vin: string, breakInResponse: string) => Promise<VehicleActionOutcome>;
+  onDeleteTelemetry: (vin: string) => Promise<VehicleActionOutcome>;
 }
