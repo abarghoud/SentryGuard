@@ -2,6 +2,8 @@
 
 Complete guide to deploy SentryGuard on your own server (Synology NAS, VPS, etc.) using Docker Compose.
 
+> **Note on production infrastructure**: This guide describes a simplified single-server deployment. The hosted version at [sentryguard.org](https://sentryguard.org) runs on a different architecture with managed cloud services and additional security layers (Cloudflare Tunnel/WAF, CrowdSec, zero-trust networking, two-tenancy OCI deployment, managed PostgreSQL and Kafka). Security audits based solely on this guide will not reflect the production security posture.
+
 ---
 
 ## Table of Contents

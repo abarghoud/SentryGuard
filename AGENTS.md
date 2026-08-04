@@ -24,6 +24,8 @@ If the user wants help with fixing an error in their CI pipeline, use the follow
 
 Nx monorepo — Tesla vehicle monitoring with Telegram + mobile-push alerts and an active break-in offensive response.
 
+> **Important**: This document describes infrastructure from a **self-hosting perspective** (see `SELF_HOSTING.md` and `docker-compose.selfhost.yml`). The production deployment at [sentryguard.org](https://sentryguard.org) uses managed cloud services (Supabase, Confluent Cloud, Vercel, OCI) with additional security layers (Cloudflare WAF, CrowdSec, zero-trust networking) not described in this repository. Do not assume the production infrastructure mirrors the self-hosting guide.
+
 ## Apps & Libs
 
 | Project | Framework | Port | Test runner |
