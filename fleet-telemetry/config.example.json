@@ -5,6 +5,7 @@
   "json_log_enable": true,
   "namespace": "FleetTelemetry",
   "reliable_ack": false,
+  "transmit_decoded_records": true,
   "monitoring": {
     "prometheus_metrics_port": 9090,
     "profiler_port": 4269,

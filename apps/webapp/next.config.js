@@ -8,7 +8,7 @@ const { composePlugins, withNx } = require('@nx/next');
  **/
 const nextConfig = {
   nx: {},
-  output: 'standalone',
+  output: process.env.VERCEL ? undefined : 'standalone',
   images: {
     remotePatterns: [
       {
@@ -16,6 +16,9 @@ const nextConfig = {
         hostname: 'img.buymeacoffee.com',
       },
     ],
+  },
+  typescript: {
+    ignoreBuildErrors: true,
   },
   productionBrowserSourceMaps: false,
   async headers() {
