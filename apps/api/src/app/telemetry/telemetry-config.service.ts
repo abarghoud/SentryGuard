@@ -124,6 +124,7 @@ export class TelemetryConfigService {
           break_in_monitoring_enabled: dbVehicle?.break_in_monitoring_enabled ?? false,
           break_in_offensive_response: dbVehicle?.break_in_offensive_response ?? 'DISABLED',
           key_paired: telemetryConfigs.get(teslaVehicle.vin)?.key_paired ?? false,
+          vehicle_command_protocol_required: telemetryConfigs.get(teslaVehicle.vin)?.vehicle_command_protocol_required,
         };
       });
     } catch (error: unknown) {
@@ -249,8 +250,24 @@ export class TelemetryConfigService {
         }
       );
 
-      this.logger.debug(`Config for ${vin}:`, response.data.response);
-      return response.data.response;
+      const telemetryConfig = response.data.response;
+
+      if (telemetryConfig && telemetryConfig.key_paired === false) {
+        try {
+          const fleetStatusResponse = await this.teslaApi.get<TeslaApiResponse<{ vehicle_command_protocol_required?: boolean }>>(
+            TESLA_API_ENDPOINTS.VEHICLE_FLEET_STATUS(vin),
+            {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            }
+          );
+          telemetryConfig.vehicle_command_protocol_required = fleetStatusResponse.data.response.vehicle_command_protocol_required;
+        } catch (error: unknown) {
+          this.logger.warn(`Failed to fetch fleet status for ${vin}:`, error);
+        }
+      }
+
+      this.logger.debug(`Config for ${vin}:`, telemetryConfig);
+      return telemetryConfig;
     } catch (error: unknown) {
       this.logTeslaApiFailure(
         ERROR_MESSAGES.ERROR_CHECKING_CONFIG(vin),

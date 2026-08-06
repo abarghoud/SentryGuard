@@ -108,7 +108,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                   </div>
                 )}
 
-                {vehicle.key_paired === false && (
+                {vehicle.key_paired === false && vehicle.vehicle_command_protocol_required === true && (
                   <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-2">
                     <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
                       {t('Virtual Key Not Paired')}
@@ -147,7 +147,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                     </div>
                     <button
                       onClick={() => handleToggleSentry(vehicle.vin, !!vehicle.sentry_mode_monitoring_enabled)}
-                      disabled={isVehicleUpdating(vehicle.vin) || vehicle.key_paired === false}
+                      disabled={isVehicleUpdating(vehicle.vin) || (vehicle.key_paired === false && vehicle.vehicle_command_protocol_required !== false)}
                       className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                         vehicle.sentry_mode_monitoring_enabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
                       }`}
@@ -183,7 +183,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                     </div>
                     <button
                       onClick={() => handleToggleBreakIn(vehicle.vin, !!vehicle.break_in_monitoring_enabled)}
-                      disabled={isVehicleUpdating(vehicle.vin) || vehicle.key_paired === false}
+                      disabled={isVehicleUpdating(vehicle.vin) || (vehicle.key_paired === false && vehicle.vehicle_command_protocol_required !== false)}
                       className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                         vehicle.break_in_monitoring_enabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
                       }`}

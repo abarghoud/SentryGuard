@@ -26,9 +26,11 @@ export function VehiclesView({
 }: VehiclesViewProps) {
   const { t } = useTranslation('common');
 
-  const pairedVehicleCount = vehicles.filter((vehicle) => vehicle.key_paired === true).length;
-  const areAllKeysPaired = vehicles.length > 0 && pairedVehicleCount === vehicles.length;
-  const areNoKeysPaired = vehicles.length > 0 && pairedVehicleCount === 0;
+  const vehiclesRequiringKey = vehicles.filter((v) => v.vehicle_command_protocol_required === true);
+  const pairedVehicleCount = vehiclesRequiringKey.filter((vehicle) => vehicle.key_paired === true).length;
+  
+  const areAllKeysPaired = vehiclesRequiringKey.length > 0 && pairedVehicleCount === vehiclesRequiringKey.length;
+  const areNoKeysPaired = vehiclesRequiringKey.length > 0 && pairedVehicleCount === 0;
 
   const handlePairVirtualKey = async () => {
     const url = await resolveVirtualKeyUrl();

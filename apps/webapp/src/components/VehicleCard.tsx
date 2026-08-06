@@ -242,7 +242,7 @@ export default function VehicleCard({
         </div>
       </div>
 
-      {vehicle.key_paired === false && (
+      {vehicle.key_paired === false && vehicle.vehicle_command_protocol_required === true && (
         <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-2">
           <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
             {t('Virtual Key Not Paired')}

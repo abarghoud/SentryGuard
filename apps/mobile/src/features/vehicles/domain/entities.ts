@@ -11,6 +11,7 @@ export interface Vehicle {
   display_name?: string;
   id: string;
   key_paired?: boolean;
+  vehicle_command_protocol_required?: boolean;
   model?: string;
   sentry_mode_monitoring_enabled: boolean;
   updated_at: string;

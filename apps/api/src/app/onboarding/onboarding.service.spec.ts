@@ -271,7 +271,7 @@ describe('The OnboardingService class', () => {
       });
     });
 
-    describe('When virtual key is not paired', () => {
+    describe('When virtual key is not paired (and is required)', () => {
       const fakeUser = {
         userId: fakeUserId,
         onboarding_completed: false,
@@ -282,12 +282,21 @@ describe('The OnboardingService class', () => {
         pushDeviceTokens: [],
       } as User;
 
+      const fakeVehiclesWithStatus = [
+        {
+          vin: 'VIN123',
+          key_paired: false,
+          vehicle_command_protocol_required: true,
+          sentry_mode_monitoring_enabled: true,
+        },
+      ];
+
       const expectedError = 'Virtual key not paired';
       let act: () => Promise<void>;
 
       beforeEach(() => {
         mockUserRepository.findOne.mockResolvedValue(fakeUser);
-        mockTelemetryConfigService.getVehicles.mockResolvedValue([]);
+        mockTelemetryConfigService.getVehicles.mockResolvedValue(fakeVehiclesWithStatus);
         act = async () => {
           await service.completeOnboarding(fakeUserId);
         };

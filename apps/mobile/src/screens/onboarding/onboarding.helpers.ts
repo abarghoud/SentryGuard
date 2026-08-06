@@ -35,7 +35,9 @@ export function resolveVehicleStepKey(vehicle: Vehicle): string {
     return 'onboarding.vehicleEnabled';
   }
 
-  return vehicle.key_paired === false ? 'onboarding.vehicleKeyMissing' : 'onboarding.vehicleDisabled';
+  return vehicle.key_paired === false && vehicle.vehicle_command_protocol_required === true
+    ? 'onboarding.vehicleKeyMissing'
+    : 'onboarding.vehicleDisabled';
 }
 
 export function resolveError(error: unknown): string | null {

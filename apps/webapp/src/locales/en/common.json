@@ -253,6 +253,8 @@
   "Sentry Mode testing explanation": "When testing Sentry Mode yourself with your phone nearby, Tesla detects your digital key and doesn't trigger Sentry Mode because it recognizes an authorized user. Sentry Mode only activates when the vehicle senses potential unauthorized activity. To properly test, either use someone else's phone to trigger motion/camera detection, or test from further away without your phone present.",
   "Why is SentryGuard faster than Tesla notifications?": "Why is SentryGuard faster than Tesla notifications?",
   "SentryGuard speed advantage explanation": "SentryGuard provides instant notifications as soon as Tesla detects an event and begins recording, giving you immediate awareness of potential security incidents. In contrast, Tesla's own app only shows recorded video after the recording is complete, and even Tesla's direct notifications arrive several seconds later. This speed advantage can be crucial for responding quickly to security threats.",
+  "Does SentryGuard support older Model S/X vehicles?": "Does SentryGuard support older Model S/X vehicles?",
+  "Legacy vehicles support explanation": "Yes! Legacy Model S and Model X vehicles (typically built before 2021) that use the MCU1 or MCU2 infotainment system are fully supported by SentryGuard. Unlike newer models, these vehicles do not support or require a Virtual Key to be paired for telemetry to work. You can simply enable telemetry directly without the pairing step.",
   "Settings": "Settings",
   "Manage your account settings and preferences": "Manage your account settings and preferences",
   "Account Information": "Account Information",

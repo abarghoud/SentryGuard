@@ -153,6 +153,10 @@ export const faqCategories: FaqCategoryData[] = [
         answerLinks: [{ href: '/dashboard/vehicles' }],
       },
       {
+        questionKey: 'Does SentryGuard support older Model S/X vehicles?',
+        answerKey: 'Legacy vehicles support explanation',
+      },
+      {
         questionKey:
           "Why doesn't Sentry Mode trigger when I test it myself?",
         answerKey: 'Sentry Mode testing explanation',

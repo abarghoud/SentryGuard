@@ -107,7 +107,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
   }
 
   if (flags.isTelemetryMissing && telemetryVehicle) {
-    const isKeyPaired = telemetryVehicle.key_paired !== false;
+    const isKeyPaired = telemetryVehicle.key_paired !== false || telemetryVehicle.vehicle_command_protocol_required === false;
 
     return (
       <OnboardingFrame
