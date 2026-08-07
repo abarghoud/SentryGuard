@@ -215,4 +215,38 @@ describe('The TeslaVehicleCommandService class', () => {
       });
     });
   });
+
+  describe('The setSentryMode() method', () => {
+    describe('When access token is available', () => {
+      beforeEach(() => {
+        givenAuthorizedUser();
+        jest.spyOn(teslaApiOf(service), 'post').mockResolvedValue({ data: { response: true } });
+      });
+
+      it('should attempt to send set_sentry_mode command with payload', async () => {
+        const result = await service.setSentryMode(fakeVin, fakeUserId, true);
+
+        expect(result.success).toBe(true);
+        expect(teslaApiOf(service).post).toHaveBeenCalledWith(
+          `/api/1/vehicles/${fakeVin}/command/set_sentry_mode`,
+          { on: true },
+          expect.any(Object),
+        );
+      });
+    });
+
+    describe('When user lacks vehicle_cmds scope', () => {
+      beforeEach(() => {
+        mockAccessTokenService.hasVehicleCommandsScope.mockResolvedValue(false);
+      });
+
+      it('should return failure response', async () => {
+        const result = await service.setSentryMode(fakeVin, fakeUserId, true);
+
+        expect(result.success).toBe(false);
+        expect(result.message).toBe('Missing vehicle_cmds scope');
+        expect(mockAccessTokenService.getAccessTokenForUserId).not.toHaveBeenCalled();
+      });
+    });
+  });
 });

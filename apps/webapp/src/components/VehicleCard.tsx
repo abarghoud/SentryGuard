@@ -135,16 +135,19 @@ export default function VehicleCard({
   onToggleTelemetry,
   onToggleBreakInMonitoring,
   onUpdateBreakInOffensive,
+  onUpdateAutoSentry,
   onDeleteTelemetry,
 }: VehicleCardProps) {
   const { t } = useTranslation('common');
   const [isConfiguring, setIsConfiguring] = useState(false);
   const [isConfiguringBreakIn, setIsConfiguringBreakIn] = useState(false);
   const [isUpdatingBreakInOffensive, setIsUpdatingBreakInOffensive] = useState(false);
+  const [isUpdatingAutoSentry, setIsUpdatingAutoSentry] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
 
-  const isUpdating = isConfiguring || isConfiguringBreakIn || isUpdatingBreakInOffensive || isDeleting;
+  const isUpdating =
+    isConfiguring || isConfiguringBreakIn || isUpdatingBreakInOffensive || isUpdatingAutoSentry || isDeleting;
 
   const formatSkippedReason = (reason: string, details?: string) => {
     switch (reason) {
@@ -219,6 +222,16 @@ export default function VehicleCard({
       setInlineError(result.message || t('Failed to update offensive response'));
     }
     setIsUpdatingBreakInOffensive(false);
+  };
+
+  const handleUpdateAutoSentry = async () => {
+    setIsUpdatingAutoSentry(true);
+    setInlineError(null);
+    const result = await onUpdateAutoSentry(vehicle.vin, !vehicle.break_in_auto_sentry_mode_enabled);
+    if (!result.success) {
+      setInlineError(result.message || t('Failed to update auto sentry mode'));
+    }
+    setIsUpdatingAutoSentry(false);
   };
 
   return (
@@ -370,6 +383,32 @@ export default function VehicleCard({
                 onChange={handleUpdateBreakInOffensive}
                 tooltipText={t('offensiveResponseInfo')}
               />
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {t('Auto Sentry Mode')}
+                  </span>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {t('autoSentryModeInfo')}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleUpdateAutoSentry()}
+                  disabled={isUpdating}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    vehicle.break_in_auto_sentry_mode_enabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                  }`}
+                  role="switch"
+                  aria-checked={vehicle.break_in_auto_sentry_mode_enabled === true}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      vehicle.break_in_auto_sentry_mode_enabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
             </RequireVehicleCommands>
           )}
       </div>
@@ -389,5 +428,6 @@ interface VehicleCardProps {
   onToggleTelemetry: (vin: string) => Promise<ConfigureTelemetryOutcome>;
   onToggleBreakInMonitoring: (vin: string, enable: boolean) => Promise<VehicleActionOutcome>;
   onUpdateBreakInOffensive: (vin: string, breakInResponse: string) => Promise<VehicleActionOutcome>;
+  onUpdateAutoSentry: (vin: string, autoSentryEnabled: boolean) => Promise<VehicleActionOutcome>;
   onDeleteTelemetry: (vin: string) => Promise<VehicleActionOutcome>;
 }

@@ -104,6 +104,10 @@ function applyOptimisticAction(vehicle: Vehicle, action: VehicleMutationAction):
     return { ...vehicle, break_in_monitoring_enabled: !vehicle.break_in_monitoring_enabled };
   }
 
+  if (action === VehicleAction.ToggleAutoSentry) {
+    return { ...vehicle, break_in_auto_sentry_mode_enabled: !vehicle.break_in_auto_sentry_mode_enabled };
+  }
+
   return { ...vehicle, break_in_offensive_response: action };
 }
 
@@ -131,5 +135,17 @@ async function runVehicleAction(
     );
   }
 
-  return resolveSuccessfulResponse(await updateOffensiveResponseUseCase.execute(vehicle.vin, action), t);
+  if (action === VehicleAction.ToggleAutoSentry) {
+    return resolveSuccessfulResponse(
+      await updateOffensiveResponseUseCase.execute(vehicle.vin, {
+        autoSentryEnabled: !vehicle.break_in_auto_sentry_mode_enabled,
+      }),
+      t
+    );
+  }
+
+  return resolveSuccessfulResponse(
+    await updateOffensiveResponseUseCase.execute(vehicle.vin, { breakInOffensiveResponse: action }),
+    t
+  );
 }

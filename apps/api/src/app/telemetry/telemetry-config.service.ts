@@ -123,6 +123,7 @@ export class TelemetryConfigService {
           sentry_mode_monitoring_enabled: dbVehicle?.sentry_mode_monitoring_enabled ?? false,
           break_in_monitoring_enabled: dbVehicle?.break_in_monitoring_enabled ?? false,
           break_in_offensive_response: dbVehicle?.break_in_offensive_response ?? 'DISABLED',
+          break_in_auto_sentry_mode_enabled: dbVehicle?.break_in_auto_sentry_mode_enabled ?? false,
           key_paired: telemetryConfigs.get(teslaVehicle.vin)?.key_paired ?? false,
           vehicle_command_protocol_required: telemetryConfigs.get(teslaVehicle.vin)?.vehicle_command_protocol_required,
         };

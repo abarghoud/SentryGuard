@@ -52,6 +52,7 @@ describe('The VehicleOffensiveResponseConfigService class', () => {
         userId: 'user-1',
         vin: 'VIN123',
         break_in_offensive_response: OffensiveResponse.DISABLED,
+        break_in_auto_sentry_mode_enabled: false,
       } as Vehicle;
 
       beforeEach(async () => {
@@ -73,11 +74,45 @@ describe('The VehicleOffensiveResponseConfigService class', () => {
       });
     });
 
+    describe('When vehicle is found and auto sentry is enabled', () => {
+      const fakeVehicle = {
+        userId: 'user-1',
+        vin: 'VIN123',
+        break_in_offensive_response: OffensiveResponse.DISABLED,
+        break_in_auto_sentry_mode_enabled: false,
+      } as Vehicle;
+
+      let result: Awaited<ReturnType<VehicleOffensiveResponseConfigService['updateOffensiveResponse']>>;
+
+      beforeEach(async () => {
+        mockVehicleRepository.findOne.mockResolvedValue(fakeVehicle);
+        mockVehicleRepository.save.mockImplementation(async (v) => v);
+        mockAccessTokenService.hasVehicleCommandsScope.mockResolvedValue(true);
+
+        result = await service.updateOffensiveResponse('user-1', 'VIN123', {
+          break_in_auto_sentry_mode_enabled: true,
+        });
+      });
+
+      it('should update auto sentry field', () => {
+        expect(fakeVehicle.break_in_auto_sentry_mode_enabled).toBe(true);
+      });
+
+      it('should return the updated auto sentry value', () => {
+        expect(result).toStrictEqual({
+          success: true,
+          break_in_offensive_response: OffensiveResponse.DISABLED,
+          break_in_auto_sentry_mode_enabled: true,
+        });
+      });
+    });
+
     describe('When user lacks vehicle_cmds scope', () => {
       const fakeVehicle = {
         userId: 'user-1',
         vin: 'VIN123',
         break_in_offensive_response: OffensiveResponse.DISABLED,
+        break_in_auto_sentry_mode_enabled: false,
       } as Vehicle;
 
       beforeEach(() => {
@@ -85,13 +120,46 @@ describe('The VehicleOffensiveResponseConfigService class', () => {
         mockAccessTokenService.hasVehicleCommandsScope.mockResolvedValue(false);
       });
 
-      it('should throw ForbiddenException', async () => {
+      it('should throw ForbiddenException when enabling offensive response', async () => {
         await expect(
           service.updateOffensiveResponse('user-1', 'VIN123', {
             break_in_offensive_response: OffensiveResponse.HONK,
           })
         ).rejects.toThrow(ForbiddenException);
         expect(mockVehicleRepository.save).not.toHaveBeenCalled();
+      });
+
+      it('should throw ForbiddenException when enabling auto sentry', async () => {
+        await expect(
+          service.updateOffensiveResponse('user-1', 'VIN123', {
+            break_in_auto_sentry_mode_enabled: true,
+          })
+        ).rejects.toThrow(ForbiddenException);
+        expect(mockVehicleRepository.save).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When disabling auto sentry without vehicle_cmds scope', () => {
+      const fakeVehicle = {
+        userId: 'user-1',
+        vin: 'VIN123',
+        break_in_offensive_response: OffensiveResponse.DISABLED,
+        break_in_auto_sentry_mode_enabled: true,
+      } as Vehicle;
+
+      beforeEach(async () => {
+        mockVehicleRepository.findOne.mockResolvedValue(fakeVehicle);
+        mockVehicleRepository.save.mockImplementation(async (v) => v);
+        mockAccessTokenService.hasVehicleCommandsScope.mockResolvedValue(false);
+
+        await service.updateOffensiveResponse('user-1', 'VIN123', {
+          break_in_auto_sentry_mode_enabled: false,
+        });
+      });
+
+      it('should update auto sentry field without checking scope', () => {
+        expect(fakeVehicle.break_in_auto_sentry_mode_enabled).toBe(false);
+        expect(mockAccessTokenService.hasVehicleCommandsScope).not.toHaveBeenCalled();
       });
     });
 

@@ -38,6 +38,7 @@ describe('The OffensiveResponseController class', () => {
         mockService.updateOffensiveResponse.mockResolvedValue({
           success: true,
           break_in_offensive_response: OffensiveResponse.HONK,
+          break_in_auto_sentry_mode_enabled: false,
         });
 
         const result = await controller.updateOffensiveResponse('VIN123', mockUser, {
@@ -52,6 +53,32 @@ describe('The OffensiveResponseController class', () => {
         expect(result).toStrictEqual({
           success: true,
           break_in_offensive_response: OffensiveResponse.HONK,
+          break_in_auto_sentry_mode_enabled: false,
+        });
+      });
+    });
+
+    describe('When valid break_in_auto_sentry_mode_enabled is provided', () => {
+      it('should call service and return result', async () => {
+        mockService.updateOffensiveResponse.mockResolvedValue({
+          success: true,
+          break_in_offensive_response: OffensiveResponse.DISABLED,
+          break_in_auto_sentry_mode_enabled: true,
+        });
+
+        const result = await controller.updateOffensiveResponse('VIN123', mockUser, {
+          break_in_auto_sentry_mode_enabled: true,
+        });
+
+        expect(mockService.updateOffensiveResponse).toHaveBeenCalledWith(
+          'test-user-id',
+          'VIN123',
+          { break_in_auto_sentry_mode_enabled: true },
+        );
+        expect(result).toStrictEqual({
+          success: true,
+          break_in_offensive_response: OffensiveResponse.DISABLED,
+          break_in_auto_sentry_mode_enabled: true,
         });
       });
     });
@@ -65,13 +92,19 @@ describe('The OffensiveResponseController class', () => {
         ).rejects.toThrow(BadRequestException);
       });
 
-      it('should throw BadRequestException when break_in_offensive_response is not provided', async () => {
+      it('should throw BadRequestException when no field is provided', async () => {
         await expect(
           controller.updateOffensiveResponse('VIN123', mockUser, {}),
         ).rejects.toThrow(BadRequestException);
       });
+
+      it('should throw BadRequestException when auto sentry is not a boolean', async () => {
+        await expect(
+          controller.updateOffensiveResponse('VIN123', mockUser, {
+            break_in_auto_sentry_mode_enabled: 'yes' as unknown as boolean,
+          }),
+        ).rejects.toThrow(BadRequestException);
+      });
     });
   });
-
-
 });

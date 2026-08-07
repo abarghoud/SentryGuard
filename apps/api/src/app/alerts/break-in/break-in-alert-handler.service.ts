@@ -6,6 +6,7 @@ import { TelemetryEventHandler } from '../../telemetry/interfaces/telemetry-even
 import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
 import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-offensive-response.service';
+import { AlertsAutoSentryService } from '../../offensive-response/alerts-auto-sentry.service';
 import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
 
 import { ChargePortLatchTrackerService } from './charge-port-latch-tracker.service';
@@ -21,6 +22,7 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
     private readonly alertNotifier: VehicleAlertNotifierService,
     private readonly chargeTracker: ChargePortLatchTrackerService,
     private readonly offensiveResponseService: AlertsOffensiveResponseService,
+    private readonly autoSentryService: AlertsAutoSentryService,
   ) {}
 
   public async handle(telemetryMessage: TelemetryMessage): Promise<void> {
@@ -101,6 +103,10 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
 
       this.offensiveResponseService.handleBreakInOffensiveResponse(telemetryMessage.vin, userIds, telemetryMessage.createdAt).catch((error: unknown) => {
         this.logger.warn(`[OFFENSIVE] Failed to execute offensive response for VIN ${telemetryMessage.vin}`, error);
+      });
+
+      this.autoSentryService.handleBreakInAutoSentry(telemetryMessage.vin, userIds, telemetryMessage.createdAt).catch((error: unknown) => {
+        this.logger.warn(`[AUTO_SENTRY] Failed to execute auto sentry for VIN ${telemetryMessage.vin}`, error);
       });
     } catch (error) {
       this.logger.error('Failed to dispatch delayed break-in alert:', error);

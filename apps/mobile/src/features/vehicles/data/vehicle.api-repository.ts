@@ -28,10 +28,18 @@ export class VehicleApiRepository implements VehicleRepositoryRequirements {
     );
   }
 
-  public async updateOffensiveResponse(vin: string, breakInOffensiveResponse: OffensiveResponse): Promise<VehicleActionResponse> {
+  public async updateOffensiveResponse(
+    vin: string,
+    payload: { breakInOffensiveResponse?: OffensiveResponse; autoSentryEnabled?: boolean },
+  ): Promise<VehicleActionResponse> {
     return this.client.request<VehicleActionResponse>(`/offensive-response/${vin}`, {
       body: JSON.stringify({
-        break_in_offensive_response: breakInOffensiveResponse,
+        ...(payload.breakInOffensiveResponse !== undefined
+          ? { break_in_offensive_response: payload.breakInOffensiveResponse }
+          : {}),
+        ...(payload.autoSentryEnabled !== undefined
+          ? { break_in_auto_sentry_mode_enabled: payload.autoSentryEnabled }
+          : {}),
       }),
       method: 'PATCH',
     });

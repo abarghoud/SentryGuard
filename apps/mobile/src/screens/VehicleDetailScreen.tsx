@@ -106,25 +106,39 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
           }
         />
         {vehicle.break_in_monitoring_enabled && vehicleCommandsAuthorized ? (
-          <View style={styles.offensiveRow}>
-            <AppText variant={TextVariant.Body}>{t('vehicle.offensive')}</AppText>
-            <SegmentedControl
-              value={(vehicle.break_in_offensive_response as OffensiveResponse) ?? OffensiveResponse.Disabled}
-              onChange={(value) => actionMutation.mutate(value)}
-              options={[
-                { label: t('vehicle.offensiveDisabled'), value: OffensiveResponse.Disabled },
-                { label: t('vehicle.offensiveHonk'), value: OffensiveResponse.Honk },
-                { label: t('vehicle.offensiveFart'), value: OffensiveResponse.Fart },
-              ]}
+          <>
+            <View style={styles.offensiveRow}>
+              <AppText variant={TextVariant.Body}>{t('vehicle.offensive')}</AppText>
+              <SegmentedControl
+                value={(vehicle.break_in_offensive_response as OffensiveResponse) ?? OffensiveResponse.Disabled}
+                onChange={(value) => actionMutation.mutate(value)}
+                options={[
+                  { label: t('vehicle.offensiveDisabled'), value: OffensiveResponse.Disabled },
+                  { label: t('vehicle.offensiveHonk'), value: OffensiveResponse.Honk },
+                  { label: t('vehicle.offensiveFart'), value: OffensiveResponse.Fart },
+                ]}
+              />
+              <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
+                {vehicle.break_in_offensive_response === OffensiveResponse.Honk
+                  ? t('vehicle.offensiveEnabledDescription')
+                  : vehicle.break_in_offensive_response === OffensiveResponse.Fart
+                  ? t('vehicle.offensiveFartEnabledDescription')
+                  : t('vehicle.offensiveDisabledDescription')}
+              </AppText>
+            </View>
+            <ListRow
+              title={t('vehicle.autoSentry')}
+              subtitle={t('vehicle.autoSentryDescription')}
+              accessory={
+                <AppSwitch
+                  accessibilityLabel={t('vehicle.autoSentry')}
+                  disabled={isActionRunning}
+                  value={vehicle.break_in_auto_sentry_mode_enabled === true}
+                  onValueChange={() => actionMutation.mutate(VehicleAction.ToggleAutoSentry)}
+                />
+              }
             />
-            <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
-              {vehicle.break_in_offensive_response === OffensiveResponse.Honk
-                ? t('vehicle.offensiveEnabledDescription')
-                : vehicle.break_in_offensive_response === OffensiveResponse.Fart
-                ? t('vehicle.offensiveFartEnabledDescription')
-                : t('vehicle.offensiveDisabledDescription')}
-            </AppText>
-          </View>
+          </>
         ) : null}
       </ListSection>
 

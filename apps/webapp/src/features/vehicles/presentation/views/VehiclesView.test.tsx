@@ -26,6 +26,7 @@ describe('The VehiclesView component', () => {
     onDeleteTelemetry: jest.fn(),
     onToggleBreakInMonitoring: jest.fn(),
     onUpdateBreakInOffensive: jest.fn(),
+    onUpdateAutoSentry: jest.fn(),
   };
 
   const renderView = (vehicles: Vehicle[]) => {

@@ -10,6 +10,7 @@ export class VehicleMockRepository implements VehicleRepositoryRequirements {
       sentry_mode_monitoring_enabled: true,
       break_in_monitoring_enabled: true,
       break_in_offensive_response: OffensiveResponse.Disabled,
+      break_in_auto_sentry_mode_enabled: false,
       key_paired: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -44,10 +45,18 @@ export class VehicleMockRepository implements VehicleRepositoryRequirements {
     return { message: 'success', success: true };
   }
 
-  public async updateOffensiveResponse(vin: string, response: OffensiveResponse): Promise<VehicleActionResponse> {
+  public async updateOffensiveResponse(
+    vin: string,
+    payload: { breakInOffensiveResponse?: OffensiveResponse; autoSentryEnabled?: boolean },
+  ): Promise<VehicleActionResponse> {
     const v = this.vehicles.find((vehicle) => vehicle.vin === vin);
     if (v) {
-      v.break_in_offensive_response = response;
+      if (payload.breakInOffensiveResponse !== undefined) {
+        v.break_in_offensive_response = payload.breakInOffensiveResponse;
+      }
+      if (payload.autoSentryEnabled !== undefined) {
+        v.break_in_auto_sentry_mode_enabled = payload.autoSentryEnabled;
+      }
     }
     return { message: 'success', success: true };
   }

@@ -33,6 +33,10 @@ export class TeslaVehicleCommandService {
     return this.sendVehicleCommand(vin, userId, 'remote_boombox', { sound });
   }
 
+  async setSentryMode(vin: string, userId: string, on: boolean): Promise<TeslaCommandResponse> {
+    return this.sendVehicleCommand(vin, userId, 'set_sentry_mode', { on });
+  }
+
   private async sendVehicleCommand(
     vin: string,
     userId: string,

@@ -27,6 +27,11 @@ export const faqCategories: FaqCategoryData[] = [
         answerKey: 'Break-in detection explanation',
       },
       {
+        questionKey:
+          'Can SentryGuard turn on Sentry Mode automatically during a break-in?',
+        answerKey: 'Auto Sentry Mode explanation',
+      },
+      {
         questionKey: 'What is the Active Deterrent (Offensive Response) and how does it work?',
         answerKey: 'Active deterrent explanation',
       },

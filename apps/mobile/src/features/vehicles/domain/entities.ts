@@ -7,6 +7,7 @@ export enum OffensiveResponse {
 export interface Vehicle {
   break_in_monitoring_enabled?: boolean;
   break_in_offensive_response?: string;
+  break_in_auto_sentry_mode_enabled?: boolean;
   created_at: string;
   display_name?: string;
   id: string;
