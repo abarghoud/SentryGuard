@@ -3,16 +3,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Vehicle } from '../../entities/vehicle.entity';
 import { TeslaVehicleCommandService } from '../telemetry/services/tesla-vehicle-command.service';
-
+import { LatencyGuardService } from '../../common/services/latency-guard.service';
 @Injectable()
 export class AlertsAutoSentryService {
   private readonly logger = new Logger(AlertsAutoSentryService.name);
-  private readonly clockSkewToleranceMs = 30_000;
 
   constructor(
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>,
     private readonly teslaVehicleCommandService: TeslaVehicleCommandService,
+    private readonly latencyGuardService: LatencyGuardService,
   ) {}
 
   public async handleBreakInAutoSentry(
@@ -20,48 +20,21 @@ export class AlertsAutoSentryService {
     userIds: string[],
     createdAt: string,
   ): Promise<void> {
-    if (this.isLatencyTooHigh(createdAt)) {
-      this.logBypassedResponse(vin, createdAt);
+    if (
+      this.latencyGuardService.checkLatency({
+        vin,
+        createdAt,
+        logContext: 'AUTO_SENTRY',
+        envVarThresholdName: 'AUTO_SENTRY_LATENCY_THRESHOLD_MS',
+        defaultThresholdMs: 60000,
+        alertPrefix: 'AUTO_SENTRY_LATENCY_ALERT',
+        actionName: 'Auto sentry',
+      })
+    ) {
       return;
     }
 
     await this.processAutoSentryForUsers(vin, userIds);
-  }
-
-  private parseTimestamp(createdAt: string): number | null {
-    const time = new Date(createdAt).getTime();
-    return isNaN(time) ? null : time;
-  }
-
-  private isLatencyTooHigh(createdAt: string): boolean {
-    const time = this.parseTimestamp(createdAt);
-    if (time === null) {
-      this.logger.error(`[AUTO_SENTRY] Invalid createdAt timestamp received: "${createdAt}"`);
-      return true;
-    }
-    const latency = Date.now() - time;
-    if (latency < -this.clockSkewToleranceMs) {
-      this.logger.error(`[AUTO_SENTRY] Future createdAt timestamp received: "${createdAt}"`);
-      return true;
-    }
-    const threshold = parseInt(process.env.OFFENSIVE_RESPONSE_LATENCY_THRESHOLD_MS || '60000', 10);
-    return latency > threshold;
-  }
-
-  private calculateLatency(createdAt: string): number {
-    const time = this.parseTimestamp(createdAt);
-    if (time === null) {
-      return 0;
-    }
-    return Math.max(0, Date.now() - time);
-  }
-
-  private logBypassedResponse(vin: string, createdAt: string): void {
-    const latency = this.calculateLatency(createdAt);
-    const threshold = process.env.OFFENSIVE_RESPONSE_LATENCY_THRESHOLD_MS || '60000';
-    this.logger.warn(
-      `[AUTO_SENTRY_LATENCY_ALERT] Auto sentry bypassed for VIN ${vin} due to high latency: ${latency}ms (threshold: ${threshold}ms)`,
-    );
   }
 
   private async processAutoSentryForUsers(vin: string, userIds: string[]): Promise<void> {

@@ -9,6 +9,7 @@ import { TeslaVehicleCommandService } from '../telemetry/services/tesla-vehicle-
 import { AuthModule } from '../auth/auth.module';
 import { ConsentModule } from '../consent/consent.module';
 import { UserModule } from '../user/user.module';
+import { LatencyGuardService } from '../../common/services/latency-guard.service';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { UserModule } from '../user/user.module';
     AlertsOffensiveResponseService,
     AlertsAutoSentryService,
     TeslaVehicleCommandService,
+    LatencyGuardService,
   ],
   exports: [
     VehicleOffensiveResponseConfigService,
