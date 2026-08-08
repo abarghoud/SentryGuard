@@ -282,5 +282,49 @@ describe('The AlertsOffensiveResponseService class', () => {
         );
       });
     });
+
+    describe('When clock skew is within tolerance (future date)', () => {
+      beforeEach(async () => {
+        mockVehicleRepository.findOne.mockResolvedValue({
+          ...fakeVehicle,
+          break_in_offensive_response: OffensiveResponse.HONK,
+        });
+        mockTeslaVehicleCommandService.honkHorn.mockResolvedValue({ success: true });
+
+        const oneMinuteInFuture = new Date(Date.now() + 60000).toISOString();
+        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1'], oneMinuteInFuture);
+      });
+
+      it('should trigger honk horn', () => {
+        expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1');
+      });
+    });
+
+    describe('When clock skew exceeds tolerance (far future date)', () => {
+      let loggerSpy: jest.SpyInstance;
+
+      beforeEach(async () => {
+        const serviceWithLogger = service as unknown as { logger: { error: () => void } };
+        loggerSpy = jest.spyOn(serviceWithLogger.logger, 'error');
+        mockVehicleRepository.findOne.mockResolvedValue({
+          ...fakeVehicle,
+          break_in_offensive_response: OffensiveResponse.HONK,
+        });
+        mockTeslaVehicleCommandService.honkHorn.mockResolvedValue({ success: true });
+
+        const sixMinutesInFuture = new Date(Date.now() + 360000).toISOString();
+        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1'], sixMinutesInFuture);
+      });
+
+      it('should not trigger honk horn', () => {
+        expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
+      });
+
+      it('should log an error', () => {
+        expect(loggerSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Future createdAt timestamp received'),
+        );
+      });
+    });
   });
 });

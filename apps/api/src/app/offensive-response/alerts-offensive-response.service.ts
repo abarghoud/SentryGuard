@@ -28,7 +28,7 @@ export class AlertsOffensiveResponseService {
     await this.processOffensiveResponseForUsers(vin, userIds);
   }
 
-  private readonly clockSkewToleranceMs = 30_000;
+  private readonly clockSkewToleranceMs = 300_000;
 
   private parseTimestamp(createdAt: string): number | null {
     const time = new Date(createdAt).getTime();
