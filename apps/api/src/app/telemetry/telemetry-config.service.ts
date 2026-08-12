@@ -255,15 +255,26 @@ export class TelemetryConfigService {
 
       if (telemetryConfig && telemetryConfig.key_paired === false) {
         try {
-          const fleetStatusResponse = await this.teslaApi.get<TeslaApiResponse<{ vehicle_command_protocol_required?: boolean }>>(
-            TESLA_API_ENDPOINTS.VEHICLE_FLEET_STATUS(vin),
+          const fleetStatusResponse = await this.teslaApi.post<TeslaApiResponse<{ vehicle_info?: Record<string, { vehicle_command_protocol_required?: boolean }> }>>(
+            TESLA_API_ENDPOINTS.FLEET_STATUS,
+            { vins: [vin] },
             {
               headers: { Authorization: `Bearer ${accessToken}` },
             }
           );
-          telemetryConfig.vehicle_command_protocol_required = fleetStatusResponse.data.response.vehicle_command_protocol_required;
+
+          let isRequired = fleetStatusResponse.data.response.vehicle_info?.[vin]?.vehicle_command_protocol_required;
+
+          // Tesla API fleet-status sometimes incorrectly returns false for Model 3/Y/Cybertruck,
+          // but these vehicles always require the vehicle command protocol.
+          const model = vin.charAt(3).toUpperCase();
+          if (['3', 'Y', 'C'].includes(model)) {
+            isRequired = true;
+          }
+
+          telemetryConfig.vehicle_command_protocol_required = isRequired;
         } catch (error: unknown) {
-          this.logger.warn(`Failed to fetch fleet status for ${vin}:`, error);
+          this.logger.warn(`Failed to fetch fleet status for ${vin}: ${error}`);
         }
       }
 

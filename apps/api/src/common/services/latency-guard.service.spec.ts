@@ -51,7 +51,7 @@ describe('The LatencyGuardService class', () => {
 
   describe('When the createdAt timestamp is in the future beyond tolerance', () => {
     it('should log an error and return true', () => {
-      const futureDate = new Date(Date.now() + 60000).toISOString();
+      const futureDate = new Date(Date.now() + 360000).toISOString();
       const result = latencyGuardService.checkLatency({
         ...defaultOptions,
         createdAt: futureDate,

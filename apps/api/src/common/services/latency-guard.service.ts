@@ -12,7 +12,7 @@ export interface LatencyGuardOptions {
 
 @Injectable()
 export class LatencyGuardService {
-  private readonly clockSkewToleranceMs = 30_000;
+  private readonly clockSkewToleranceMs = 300_000;
 
   public checkLatency(options: LatencyGuardOptions): boolean {
     const {

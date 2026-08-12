@@ -290,5 +290,6 @@ describe('The AlertsOffensiveResponseService class', () => {
         });
       });
     });
+
   });
 });
