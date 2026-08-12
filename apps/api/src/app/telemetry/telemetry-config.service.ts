@@ -261,7 +261,17 @@ export class TelemetryConfigService {
               headers: { Authorization: `Bearer ${accessToken}` },
             }
           );
-          telemetryConfig.vehicle_command_protocol_required = fleetStatusResponse.data.response.vehicle_info?.[vin]?.vehicle_command_protocol_required;
+          
+          let isRequired = fleetStatusResponse.data.response.vehicle_info?.[vin]?.vehicle_command_protocol_required;
+
+          // Tesla API fleet-status sometimes incorrectly returns false for Model 3/Y/Cybertruck,
+          // but these vehicles always require the vehicle command protocol.
+          const model = vin.charAt(3).toUpperCase();
+          if (['3', 'Y', 'C'].includes(model)) {
+            isRequired = true;
+          }
+
+          telemetryConfig.vehicle_command_protocol_required = isRequired;
         } catch (error: unknown) {
           this.logger.warn(`Failed to fetch fleet status for ${vin}: ${error}`);
         }

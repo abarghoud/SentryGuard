@@ -548,6 +548,23 @@ describe('TelemetryConfigService', () => {
       );
     });
 
+    it('should force vehicle_command_protocol_required to true for Model 3/Y/Cybertruck even if fleet_status returns false', async () => {
+      const vin = 'LRWY1234567890'; // 4th char is Y
+      const mockConfig = { key_paired: false, fields: {} };
+
+      mockAccessTokenService.getAccessTokenForUserId.mockResolvedValue('user-access-token');
+      mockAxiosInstance.get.mockResolvedValueOnce({
+        data: { response: mockConfig },
+      });
+      mockAxiosInstance.post.mockResolvedValueOnce({
+        data: { response: { vehicle_info: { [vin]: { vehicle_command_protocol_required: false } } } },
+      });
+
+      const result = await service.checkTelemetryConfig(vin, 'test-user-id');
+
+      expect(result).toEqual({ ...mockConfig, vehicle_command_protocol_required: true });
+    });
+
     it('should catch error and return config if fleet_status fails when key_paired is false', async () => {
       const vin = 'VIN123';
       const mockConfig = { key_paired: false, fields: {} };
