@@ -63,6 +63,7 @@ export const TESLA_API_ENDPOINTS = {
   FLEET_TELEMETRY_CONFIG: '/api/1/vehicles/fleet_telemetry_config',
   VEHICLE_TELEMETRY_CONFIG: (vin: string) =>
     `/api/1/vehicles/${vin}/fleet_telemetry_config`,
+  FLEET_STATUS: '/api/1/vehicles/fleet_status',
   VEHICLES: '/api/1/vehicles',
 } as const;
 

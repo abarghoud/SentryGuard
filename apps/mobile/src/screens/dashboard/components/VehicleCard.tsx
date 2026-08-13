@@ -9,10 +9,12 @@ import { Vehicle } from '../../../features/vehicles/domain/entities';
 import { TranslationFunction, isVehicleProtected } from '../dashboard.helpers';
 
 export function VehicleCard({
+  onOpenKey,
   onSelect,
   t,
   vehicle,
 }: {
+  onOpenKey(): void;
   onSelect(): void;
   t: TranslationFunction;
   vehicle: Vehicle;
@@ -48,6 +50,20 @@ export function VehicleCard({
               value={vehicle.break_in_monitoring_enabled ? t('common.active') : t('common.inactive')}
             />
           </View>
+
+          {vehicle.key_paired === false ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={onOpenKey}
+              style={[styles.keyWarning, { backgroundColor: colors.warningSurface, borderColor: colors.warningBorder }]}
+            >
+              <Icon name="key.fill" size={16} color={colors.secondaryLabel} />
+              <AppText variant={TextVariant.Footnote} style={styles.keyWarningText}>
+                {t('dashboard.virtualKey.cardMissing')}
+              </AppText>
+              <Icon name="arrow.up.right.square" size={14} color={colors.secondaryLabel} />
+            </Pressable>
+          ) : null}
 
           <View style={styles.footer}>
             <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
@@ -98,6 +114,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.md,
     justifyContent: 'space-between',
+  },
+  keyWarning: {
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
+  keyWarningText: {
+    flex: 1,
   },
   metric: {
     borderRadius: 12,

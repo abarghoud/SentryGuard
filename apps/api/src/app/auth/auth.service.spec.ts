@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { mock, MockProxy } from 'jest-mock-extended';
+import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import { User } from '../../entities/user.entity';
 import { UserSession } from '../../entities/user-session.entity';
 import { MissingPermissionsException } from '../../common/exceptions/missing-permissions.exception';
@@ -215,6 +216,80 @@ describe('The AuthService class', () => {
 
       it('should return null', () => {
         expect(result).toBeNull();
+      });
+    });
+
+    describe('When the signature is invalid', () => {
+      let errorSpy: jest.SpyInstance;
+      let warnSpy: jest.SpyInstance;
+
+      beforeEach(async () => {
+        errorSpy = jest.spyOn(service['logger'], 'error').mockImplementation();
+        warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation();
+        mockJwtService.verifyAsync.mockRejectedValue(
+          new JsonWebTokenError('invalid signature')
+        );
+
+        await service.validateJwtToken('tampered-jwt');
+      });
+
+      afterEach(() => {
+        errorSpy.mockRestore();
+        warnSpy.mockRestore();
+      });
+
+      it('should not log at error level', () => {
+        expect(errorSpy).not.toHaveBeenCalled();
+      });
+
+      it('should log at warn level', () => {
+        expect(warnSpy).toHaveBeenCalledWith(
+          'Failed to validate JWT token: invalid signature'
+        );
+      });
+    });
+
+    describe('When the token is expired', () => {
+      let errorSpy: jest.SpyInstance;
+      let warnSpy: jest.SpyInstance;
+
+      beforeEach(async () => {
+        errorSpy = jest.spyOn(service['logger'], 'error').mockImplementation();
+        warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation();
+        mockJwtService.verifyAsync.mockRejectedValue(
+          new TokenExpiredError('jwt expired', new Date())
+        );
+
+        await service.validateJwtToken('expired-jwt');
+      });
+
+      afterEach(() => {
+        errorSpy.mockRestore();
+        warnSpy.mockRestore();
+      });
+
+      it('should not log at all', () => {
+        expect(errorSpy).not.toHaveBeenCalled();
+        expect(warnSpy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When an unexpected error occurs', () => {
+      let errorSpy: jest.SpyInstance;
+
+      beforeEach(async () => {
+        errorSpy = jest.spyOn(service['logger'], 'error').mockImplementation();
+        mockJwtService.verifyAsync.mockRejectedValue(new Error('database is down'));
+
+        await service.validateJwtToken('valid-jwt');
+      });
+
+      afterEach(() => {
+        errorSpy.mockRestore();
+      });
+
+      it('should still log at error level', () => {
+        expect(errorSpy).toHaveBeenCalled();
       });
     });
   });

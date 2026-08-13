@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import type { JSX } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { TextVariant } from '../core/design/typography';
 import { useThemeColors } from '../core/theme';
-import { AppText, SegmentedControl } from '../core/ui';
+import { AppText, AppSwitch, SegmentedControl } from '../core/ui';
 import { OffensiveResponse } from '../features/vehicles/domain/entities';
 import { OnboardingFrame } from './onboarding/components/OnboardingFrame';
 import { PrimaryButton } from './onboarding/components/PrimaryButton';
 import { SecondaryButton } from './onboarding/components/SecondaryButton';
 import { StepList } from './onboarding/components/StepList';
 import { NotificationStep } from './onboarding/components/NotificationStep';
-import { openVirtualKey, resolveError, resolveVehicleName } from './onboarding/onboarding.helpers';
+import { openVirtualKey, resolveError, resolveVehicleName, resolveVehicleStepKey } from './onboarding/onboarding.helpers';
 import { useOnboarding } from './onboarding/use-onboarding';
 
 interface OnboardingScreenProps {
@@ -23,8 +23,10 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
   const [hasConfirmedNotifications, setHasConfirmedNotifications] = useState(false);
   const [hasReviewedBreakIn, setHasReviewedBreakIn] = useState(false);
   const [hasReviewedOffensive, setHasReviewedOffensive] = useState(false);
+  const [hasReviewedAutoSentry, setHasReviewedAutoSentry] = useState(false);
   const {
     acceptConsentMutation,
+    autoSentryMutation,
     completeMutation,
     consentStatusQuery,
     consentTextQuery,
@@ -106,47 +108,34 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
     );
   }
 
-  if (flags.isVirtualKeyMissing) {
-    return (
-      <OnboardingFrame
-        title={t('onboarding.virtualKeyTitle')}
-        subtitle={t('onboarding.virtualKeySubtitle')}
-        t={t}
-        onSkip={skipSetup}
-        message={message}
-        actions={
-          <>
-            <PrimaryButton label={t('dashboard.virtualKey.open')} onPress={() => openVirtualKey(setMessage, t)} />
-            <SecondaryButton label={t('onboarding.virtualKeyAdded')} onPress={() => void vehiclesQuery.refetch()} />
-          </>
-        }
-      >
-        <StepList
-          items={[t('onboarding.virtualKeyStep1'), t('onboarding.virtualKeyStep2'), t('onboarding.virtualKeyStep3'), t('onboarding.virtualKeyStep4')]}
-        />
-      </OnboardingFrame>
-    );
-  }
-
   if (flags.isTelemetryMissing && telemetryVehicle) {
+    const isKeyPaired = telemetryVehicle.key_paired !== false || telemetryVehicle.vehicle_command_protocol_required === false;
+
     return (
       <OnboardingFrame
         title={t('vehicle.alertSentry')}
         subtitle={t('onboarding.sentrySubtitle')}
         t={t}
         onSkip={skipSetup}
-        message={message}
+        message={message ?? (!isKeyPaired ? t('dashboard.virtualKey.text') : null)}
         actions={
-          <PrimaryButton
-            disabled={telemetryMutation.isPending}
-            label={telemetryMutation.isPending ? t('onboarding.activating') : t('onboarding.activateVehicle', { vehicle: resolveVehicleName(telemetryVehicle, t) })}
-            onPress={() => telemetryMutation.mutate(telemetryVehicle.vin)}
-          />
+          isKeyPaired ? (
+            <PrimaryButton
+              disabled={telemetryMutation.isPending}
+              label={telemetryMutation.isPending ? t('onboarding.activating') : t('onboarding.activateVehicle', { vehicle: resolveVehicleName(telemetryVehicle, t) })}
+              onPress={() => telemetryMutation.mutate(telemetryVehicle.vin)}
+            />
+          ) : (
+            <>
+              <PrimaryButton label={t('dashboard.virtualKey.open')} onPress={() => openVirtualKey(setMessage, t)} />
+              <SecondaryButton label={t('onboarding.virtualKeyAdded')} onPress={() => void vehiclesQuery.refetch()} />
+            </>
+          )
         }
       >
         <StepList
           items={vehicles.map((vehicle) =>
-            t(vehicle.sentry_mode_monitoring_enabled ? 'onboarding.vehicleEnabled' : 'onboarding.vehicleDisabled', {
+            t(resolveVehicleStepKey(vehicle), {
               vehicle: resolveVehicleName(vehicle, t),
             })
           )}
@@ -219,6 +208,51 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
     );
   }
 
+  if (monitoredVehicle && monitoredVehicle.break_in_monitoring_enabled && hasReviewedOffensive && !hasReviewedAutoSentry) {
+    if (!vehicleCommandsAuthorized) {
+      return (
+        <OnboardingFrame
+          title={t('vehicle.autoSentry')}
+          subtitle={t('vehicle.autoSentryDescription')}
+          t={t}
+          message={message}
+          actions={
+            <>
+              <PrimaryButton
+                disabled={scopeMutation.isPending}
+                label={scopeMutation.isPending ? t('vehicle.openingTesla') : t('vehicle.authorizeOffensive')}
+                onPress={() => scopeMutation.mutate()}
+              />
+              <SecondaryButton label={t('onboarding.skip')} onPress={() => setHasReviewedAutoSentry(true)} />
+            </>
+          }
+        />
+      );
+    }
+
+    return (
+      <OnboardingFrame
+        title={t('vehicle.autoSentry')}
+        subtitle={t('vehicle.autoSentryDescription')}
+        t={t}
+        message={message}
+        actions={<PrimaryButton label={t('onboarding.continue')} onPress={() => setHasReviewedAutoSentry(true)} />}
+      >
+        <View style={styles.autoSentryRow}>
+          <AppText variant={TextVariant.Body}>{t('vehicle.autoSentryActivate')}</AppText>
+          <AppSwitch
+            accessibilityLabel={t('vehicle.autoSentry')}
+            disabled={autoSentryMutation.isPending}
+            value={monitoredVehicle.break_in_auto_sentry_mode_enabled === true}
+            onValueChange={(value: boolean) =>
+              autoSentryMutation.mutate({ vin: monitoredVehicle.vin, enabled: value })
+            }
+          />
+        </View>
+      </OnboardingFrame>
+    );
+  }
+
   if (flags.isNotificationConfigMissing || !hasConfirmedNotifications) {
     return (
       <OnboardingFrame
@@ -269,5 +303,11 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
 const styles = StyleSheet.create({
   paragraph: {
     textAlign: 'justify',
+  },
+  autoSentryRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
   },
 });

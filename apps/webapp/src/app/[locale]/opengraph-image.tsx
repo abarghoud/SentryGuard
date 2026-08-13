@@ -19,20 +19,13 @@ export default async function OpengraphImage({ params }: OgImageProps) {
       ? 'Surveillance temps réel et alertes pour votre Tesla'
       : 'Real-time monitoring and alerts for your Tesla';
 
-  const resolveLogoPath = (): string => {
-    const paths = [
-      path.join(process.cwd(), 'apps/webapp/public/apple-touch-icon.png'),
-      path.join(process.cwd(), 'public/apple-touch-icon.png'),
-    ];
-    for (const p of paths) {
-      if (fs.existsSync(p)) {
-        return p;
-      }
-    }
-    throw new Error('Logo file not found');
-  };
+  let logoBuffer: Buffer;
+  try {
+    logoBuffer = fs.readFileSync(path.join(process.cwd(), 'apps/webapp/public/apple-touch-icon.png'));
+  } catch {
+    logoBuffer = fs.readFileSync(path.join(process.cwd(), 'public/apple-touch-icon.png'));
+  }
 
-  const logoBuffer = fs.readFileSync(resolveLogoPath());
   const logoSrc = `data:image/png;base64,${logoBuffer.toString('base64')}`;
 
   return new ImageResponse(

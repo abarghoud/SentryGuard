@@ -5,6 +5,7 @@ import { TelegramService } from '../../telegram/telegram.service';
 import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
 import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-offensive-response.service';
+import { AlertsAutoSentryService } from '../../offensive-response/alerts-auto-sentry.service';
 import { TelemetryMessage, TelemetryDatum, TelemetryValue } from '../../telemetry/models/telemetry-message.model';
 import { ChargePortLatchTrackerService } from './charge-port-latch-tracker.service';
 
@@ -16,6 +17,7 @@ describe('The BreakInAlertHandlerService class', () => {
   let mockAlertNotifier: MockProxy<VehicleAlertNotifierService>;
   let mockChargeTracker: MockProxy<ChargePortLatchTrackerService>;
   let mockOffensiveResponseService: MockProxy<AlertsOffensiveResponseService>;
+  let mockAutoSentryService: MockProxy<AlertsAutoSentryService>;
 
   beforeEach(async () => {
     mockTelegramService = mock<TelegramService>();
@@ -24,6 +26,8 @@ describe('The BreakInAlertHandlerService class', () => {
     mockChargeTracker = mock<ChargePortLatchTrackerService>();
     mockOffensiveResponseService = mock<AlertsOffensiveResponseService>();
     mockOffensiveResponseService.handleBreakInOffensiveResponse.mockResolvedValue(undefined);
+    mockAutoSentryService = mock<AlertsAutoSentryService>();
+    mockAutoSentryService.handleBreakInAutoSentry.mockResolvedValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -33,6 +37,7 @@ describe('The BreakInAlertHandlerService class', () => {
         { provide: VehicleAlertNotifierService, useValue: mockAlertNotifier },
         { provide: ChargePortLatchTrackerService, useValue: mockChargeTracker },
         { provide: AlertsOffensiveResponseService, useValue: mockOffensiveResponseService },
+        { provide: AlertsAutoSentryService, useValue: mockAutoSentryService },
       ],
     }).compile();
 
@@ -119,9 +124,9 @@ describe('The BreakInAlertHandlerService class', () => {
         mockChargeTracker.hasLatchEventAround.mockReturnValue(true);
       });
 
-      it('should delay the verification by 3 seconds to ensure subsequent ChargePortLatch events have time to arrive, then prevent alert dispatch', async () => {
+      it('should delay the verification by 2 seconds to ensure subsequent ChargePortLatch events have time to arrive, then prevent alert dispatch', async () => {
         await service.handle(message);
-        jest.advanceTimersByTime(3000);
+        jest.advanceTimersByTime(2000);
 
         await Promise.resolve();
 
@@ -144,11 +149,11 @@ describe('The BreakInAlertHandlerService class', () => {
         mockAlertNotifier.dispatch.mockResolvedValue({ userIds: ['user-1'] });
       });
 
-      it('should delay the verification by 3 seconds to account for telemetry lag, then dispatch the alert via alertNotifier', async () => {
+      it('should delay the verification by 2 seconds to account for telemetry lag, then dispatch the alert via alertNotifier', async () => {
         await service.handle(message);
         expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
 
-        jest.advanceTimersByTime(3000);
+        jest.advanceTimersByTime(2000);
 
         await Promise.resolve();
 
@@ -160,17 +165,40 @@ describe('The BreakInAlertHandlerService class', () => {
         }));
       });
 
+      it('should respect a custom delay specified via environment variable', async () => {
+        process.env.BREAK_IN_ALERT_CHECK_DELAY_MS = '1500';
+        try {
+          await service.handle(message);
+          jest.advanceTimersByTime(1400);
+          expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
+
+          jest.advanceTimersByTime(100);
+          await Promise.resolve();
+          expect(mockAlertNotifier.dispatch).toHaveBeenCalled();
+        } finally {
+          delete process.env.BREAK_IN_ALERT_CHECK_DELAY_MS;
+        }
+      });
+
       it('should trigger offensive response for the VIN with userIds', async () => {
         await service.handle(message);
-        jest.advanceTimersByTime(3000);
+        jest.advanceTimersByTime(2000);
         await Promise.resolve();
 
         expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).toHaveBeenCalledWith('123', ['user-1'], message.createdAt);
       });
 
+      it('should trigger auto sentry for the VIN with userIds', async () => {
+        await service.handle(message);
+        jest.advanceTimersByTime(2000);
+        await Promise.resolve();
+
+        expect(mockAutoSentryService.handleBreakInAutoSentry).toHaveBeenCalledWith('123', ['user-1'], message.createdAt);
+      });
+
       it('should construct and send telegram message when notifier callback is invoked', async () => {
         await service.handle(message);
-        jest.advanceTimersByTime(3000);
+        jest.advanceTimersByTime(2000);
         await Promise.resolve();
 
         const dispatchCall = mockAlertNotifier.dispatch.mock.calls[0][0];
@@ -187,6 +215,49 @@ describe('The BreakInAlertHandlerService class', () => {
           'en',
           { inline_keyboard: [] }
         );
+      });
+    });
+  });
+
+  describe('The flushPendingVerifications() method', () => {
+    const createLockedDisplayMessage = (): TelemetryMessage => {
+      const message = new TelemetryMessage();
+      message.vin = '123';
+      message.createdAt = new Date('2026-05-05T20:00:00Z').toISOString();
+      message.data = [];
+      jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
+      jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
+      return message;
+    };
+
+    describe('When there are no pending verifications', () => {
+      it('should resolve immediately', async () => {
+        await expect(service.flushPendingVerifications(1000)).resolves.toBeUndefined();
+      });
+    });
+
+    describe('When there is a pending verification', () => {
+      it('should wait for the verification to dispatch before resolving', async () => {
+        mockChargeTracker.hasLatchEventAround.mockReturnValue(false);
+        mockAlertNotifier.dispatch.mockResolvedValue({ userIds: ['user-1'] });
+
+        await service.handle(createLockedDisplayMessage());
+
+        const flushPromise = service.flushPendingVerifications(5000);
+        jest.advanceTimersByTime(2000);
+
+        await expect(flushPromise).resolves.toBeUndefined();
+        expect(mockAlertNotifier.dispatch).toHaveBeenCalled();
+      });
+
+      it('should resolve after the timeout when verifications are still pending', async () => {
+        await service.handle(createLockedDisplayMessage());
+
+        const flushPromise = service.flushPendingVerifications(1000);
+        jest.advanceTimersByTime(1000);
+
+        await expect(flushPromise).resolves.toBeUndefined();
+        expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
       });
     });
   });

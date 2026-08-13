@@ -38,8 +38,11 @@ class DynamicVehicleRepository implements VehicleRepositoryRequirements {
     return this.getRepo().toggleBreakInMonitoring(vin, shouldEnable);
   }
 
-  public async updateOffensiveResponse(vin: string, response: OffensiveResponse): Promise<VehicleActionResponse> {
-    return this.getRepo().updateOffensiveResponse(vin, response);
+  public async updateOffensiveResponse(
+    vin: string,
+    payload: { breakInOffensiveResponse?: OffensiveResponse; autoSentryEnabled?: boolean },
+  ): Promise<VehicleActionResponse> {
+    return this.getRepo().updateOffensiveResponse(vin, payload);
   }
 }
 

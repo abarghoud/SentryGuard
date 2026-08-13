@@ -28,6 +28,10 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   private readonly baseDelay = parseInt(process.env.KAFKA_RETRY_DELAY || '1000');
   private readonly maxDelay = parseInt(process.env.KAFKA_MAX_RETRY_DELAY || '30000');
   private isConnected = false;
+  private isReconnecting = false;
+  private isShuttingDown = false;
+  private inFlightCount = 0;
+  private readonly drainWaiters: Array<() => void> = [];
 
   constructor(
     @Inject(kafkaMessageHandler) private readonly messageHandler: MessageHandler,
@@ -41,6 +45,29 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       heartbeatInterval: 3000,
       rebalanceTimeout: 60000,
     });
+
+    if (this.consumer.events) {
+      this.consumer.on(this.consumer.events.CRASH, async (event) => {
+        this.logger.error('💥 Kafka consumer crashed:', event.payload.error);
+        this.isConnected = false;
+        if (!event.payload.restart) {
+          await this.safeExecute(
+            () => this.reconnect(),
+            '💀 Reconnection on consumer crash failed'
+          );
+        }
+      });
+
+      this.consumer.on(this.consumer.events.DISCONNECT, () => {
+        this.logger.warn('🔌 Kafka consumer disconnected');
+        this.isConnected = false;
+      });
+
+      this.consumer.on(this.consumer.events.GROUP_JOIN, () => {
+        this.logger.log('👥 Kafka consumer joined group');
+        this.isConnected = true;
+      });
+    }
   }
 
   private async connectWithRetry(): Promise<void> {
@@ -73,7 +100,17 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
   @Interval(process.env.KAFKA_HEALTH_CHECK_INTERVAL ? parseInt(process.env.KAFKA_HEALTH_CHECK_INTERVAL, 10) : 30000)
   async healthCheck() {
-    if (!this.isConnected) return;
+    if (this.isShuttingDown) return;
+    if (this.isReconnecting) return;
+
+    if (!this.isConnected) {
+      this.logger.warn('🔴 Kafka is disconnected during health check, attempting reconnection...');
+      await this.safeExecute(
+        () => this.reconnect(),
+        '💀 Health check reconnection failed'
+      );
+      return;
+    }
 
     try {
       await this.consumer.describeGroup();
@@ -92,10 +129,40 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async reconnect(): Promise<void> {
-    await this.consumer.disconnect();
-    await this.connectWithRetry();
-    await this.subscribe();
-    await this.startConsumer();
+    if (this.isShuttingDown) {
+      this.logger.warn('Skipping reconnection - graceful shutdown in progress');
+      return;
+    }
+
+    if (this.isReconnecting) {
+      this.logger.warn('Reconnection already in progress. Skipping duplicate request.');
+      return;
+    }
+
+    this.isReconnecting = true;
+    this.isConnected = false;
+
+    try {
+      await this.safeExecute(
+        () => Promise.race([
+          this.consumer.disconnect(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Disconnect timeout')), 5000))
+        ]),
+        'Error during consumer disconnect before reconnect'
+      );
+      await this.connectWithRetry();
+      await this.subscribe();
+      await this.startConsumer();
+    } catch (error) {
+      this.logger.fatal(
+        '💀 Reconnection process failed, exiting process for container restart:',
+        error instanceof Error ? error.message : String(error)
+      );
+      this.isConnected = false;
+      process.exit(1);
+    } finally {
+      this.isReconnecting = false;
+    }
   }
 
   private async startConsumer(): Promise<void> {
@@ -109,22 +176,28 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
         await Promise.all(batch.messages.map(message =>
           this.messageLimit(async () => {
-            if (!this.isConnected) {
-              this.logger.warn('Skipping message processing - Kafka disconnected');
-              return;
-            }
+            this.incrementInFlight();
 
             try {
-              await this.messageHandler.handleMessage(
-                message,
-                async () => {
-                  resolveOffset(message.offset);
-                }
-              );
+              if (!this.isConnected) {
+                this.logger.warn('Skipping message processing - Kafka disconnected');
+                return;
+              }
 
-              await heartbeat();
-            } catch (error) {
-              await this.handleMessageFailure(error, message, batch, resolveOffset, heartbeat);
+              try {
+                await this.messageHandler.handleMessage(
+                  message,
+                  async () => {
+                    resolveOffset(message.offset);
+                  }
+                );
+
+                await heartbeat();
+              } catch (error) {
+                await this.handleMessageFailure(error, message, batch, resolveOffset, heartbeat);
+              }
+            } finally {
+              this.decrementInFlight();
             }
           })
         ));
@@ -149,6 +222,10 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     this.logger.log('Resubscribed to Kafka topic');
   }
 
+  public isKafkaConnected(): boolean {
+    return this.isConnected;
+  }
+
   async onModuleInit() {
     await this.startListening();
   }
@@ -156,6 +233,65 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy() {
     this.retryManager.stop();
     await this.stopListening();
+  }
+
+  public async pauseConsumer(): Promise<void> {
+    if (this.isShuttingDown) {
+      return;
+    }
+
+    this.isShuttingDown = true;
+    this.logger.log('⏸️ Pausing Kafka consumer for graceful shutdown');
+
+    await this.safeExecute(
+      () => this.consumer.pause([{ topic: this.kafkaTopic }]),
+      'Error pausing Kafka consumer'
+    );
+  }
+
+  public async drainInFlight(timeoutMs: number): Promise<void> {
+    if (this.inFlightCount === 0) {
+      return;
+    }
+
+    this.logger.log(`⏳ Waiting for ${this.inFlightCount} in-flight Kafka message(s) to complete...`);
+
+    let timeoutId: NodeJS.Timeout | undefined;
+
+    const drained = new Promise<void>((resolve) => {
+      this.drainWaiters.push(() => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        resolve();
+      });
+    });
+
+    const timeout = new Promise<void>((resolve) => {
+      timeoutId = setTimeout(() => {
+        this.logger.warn(`Graceful shutdown Kafka drain timed out after ${timeoutMs}ms (${this.inFlightCount} in-flight)`);
+        resolve();
+      }, timeoutMs);
+    });
+
+    await Promise.race([drained, timeout]);
+
+    if (this.inFlightCount === 0) {
+      this.logger.log('✅ Kafka in-flight messages drained');
+    }
+  }
+
+  private incrementInFlight(): void {
+    this.inFlightCount++;
+  }
+
+  private decrementInFlight(): void {
+    this.inFlightCount = Math.max(0, this.inFlightCount - 1);
+
+    if (this.inFlightCount === 0) {
+      const waiters = this.drainWaiters.splice(0);
+      waiters.forEach((waiter) => waiter());
+    }
   }
 
   private async startListening(): Promise<void> {

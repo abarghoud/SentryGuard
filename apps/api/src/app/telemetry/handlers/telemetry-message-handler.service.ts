@@ -57,6 +57,11 @@ export class TelemetryMessageHandlerService implements MessageHandler {
     const validateTime = Date.now() - validateStart;
 
     const dispatchStart = Date.now();
+
+    if (!telemetryMessage.validateContainsAnyMonitoredField()) {
+      this.logger.error(`Telemetry message does not contain any monitored data`, telemetryMessage);
+    }
+
     await this.dispatchTelemetryEvents(telemetryMessage);
     const dispatchTime = Date.now() - dispatchStart;
 
@@ -81,7 +86,7 @@ export class TelemetryMessageHandlerService implements MessageHandler {
       this.logger.warn(`Kafka message without content - Offset: ${message.offset}`);
       return null;
     }
-    
+
     return JSON.parse(messageValue) as RawTelemetryMessage;
   }
 

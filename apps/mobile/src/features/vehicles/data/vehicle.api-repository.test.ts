@@ -79,7 +79,9 @@ describe('The VehicleApiRepository class', () => {
     describe('When enabling the break-in offensive response', () => {
       beforeEach(async () => {
         mockClient.request.mockResolvedValue({} as VehicleActionResponse);
-        await repository.updateOffensiveResponse(fakeVin, OffensiveResponse.Honk);
+        await repository.updateOffensiveResponse(fakeVin, {
+          breakInOffensiveResponse: OffensiveResponse.Honk,
+        });
       });
 
       it('should PATCH the offensive-response endpoint with the break-in response', () => {
@@ -95,13 +97,31 @@ describe('The VehicleApiRepository class', () => {
     describe('When disabling the break-in offensive response', () => {
       beforeEach(async () => {
         mockClient.request.mockResolvedValue({} as VehicleActionResponse);
-        await repository.updateOffensiveResponse(fakeVin, OffensiveResponse.Disabled);
+        await repository.updateOffensiveResponse(fakeVin, {
+          breakInOffensiveResponse: OffensiveResponse.Disabled,
+        });
       });
 
       it('should PATCH with the disabled response', () => {
         expect(mockClient.request).toHaveBeenCalledWith(`/offensive-response/${fakeVin}`, {
           body: JSON.stringify({
             break_in_offensive_response: OffensiveResponse.Disabled,
+          }),
+          method: 'PATCH',
+        });
+      });
+    });
+
+    describe('When enabling auto sentry mode', () => {
+      beforeEach(async () => {
+        mockClient.request.mockResolvedValue({} as VehicleActionResponse);
+        await repository.updateOffensiveResponse(fakeVin, { autoSentryEnabled: true });
+      });
+
+      it('should PATCH with the auto sentry flag', () => {
+        expect(mockClient.request).toHaveBeenCalledWith(`/offensive-response/${fakeVin}`, {
+          body: JSON.stringify({
+            break_in_auto_sentry_mode_enabled: true,
           }),
           method: 'PATCH',
         });

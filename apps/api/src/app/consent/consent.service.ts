@@ -72,7 +72,11 @@ export class ConsentService {
 
     const consent = this.consentRepository.create({
       userId,
-      ...consentData,
+      version: consentData.version,
+      locale: consentData.locale,
+      userAgent: consentData.userAgent,
+      appTitle: consentData.appTitle,
+      partnerName: consentData.partnerName,
       textHash,
       acceptedAt: new Date(),
     });

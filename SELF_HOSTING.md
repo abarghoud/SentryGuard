@@ -2,6 +2,8 @@
 
 Complete guide to deploy SentryGuard on your own server (Synology NAS, VPS, etc.) using Docker Compose.
 
+> **Note on production infrastructure**: This guide describes a simplified single-server deployment. The hosted version at [sentryguard.org](https://sentryguard.org) runs on a different architecture with managed cloud services and additional security layers (Cloudflare Tunnel/WAF, CrowdSec, zero-trust networking, two-tenancy OCI deployment, managed PostgreSQL and Kafka). Security audits based solely on this guide will not reflect the production security posture.
+
 ---
 
 ## Table of Contents
@@ -169,6 +171,9 @@ Create these DNS records pointing to your server:
 | `api.yourdomain.com`             | A    | Your server IP |
 | `fleet-telemetry.yourdomain.com` | A    | Your server IP |
 
+> [!IMPORTANT]
+> **Domain Matching Requirement**: The Webapp (`yourdomain.com`) and API (`api.yourdomain.com`) **must share the same registrable parent domain** (eTLD+1). The application uses a secure httpOnly cookie flow for authentication; browsers will not send the cookie on cross-site requests (e.g., `sentryguard.com` and `sentryguard-api.net`).
+
 > **Important**: If you use Cloudflare, set `fleet-telemetry.yourdomain.com` to **DNS only** (grey cloud). Cloudflare's proxy does not handle TLS connections on custom ports.
 
 ### 4.2 Reverse Proxy
@@ -189,6 +194,11 @@ Configure three proxy hosts:
 | `fleet-telemetry.yourdomain.com` | Direct (port 11111)                 | 8443 | No reverse proxy — Tesla connects directly |
 
 > **Fleet telemetry**: Tesla connects to port 11111 with mutual TLS. Do NOT proxy this through your reverse proxy — expose port 11111 directly on your firewall/router and map it to the `sentryguard-fleet-telemetry` container.
+
+> [!WARNING]
+> **Trust Proxy & Rate Limiting**: In production, the API restricts trusted proxies to local subnets (`loopback, linklocal, uniquelocal`) and ignores standard `X-Forwarded-For`/`X-Real-IP` headers to prevent client IP spoofing.
+> - If your reverse proxy is deployed on a **remote machine with a public IP** (not in local/private subnets), the API will see the proxy's IP instead of the client's. This will cause all clients to share the same rate limiting bucket.
+> - To mitigate this and keep IP detection working, ensure your reverse proxy and API run on the same machine/network, or that the proxy is assigned a local private IP.
 
 ### 4.3 SSL Certificates
 
@@ -387,20 +397,24 @@ Create the `config.json` file for fleet-telemetry. The cert paths reference the 
 ```bash
 cat > fleet-telemetry/config.json << 'EOF'
 {
+  "host": "0.0.0.0",
   "port": 8443,
-  "kafka": {
-    "brokers": ["kafka:29092"],
-    "topic": "FleetTelemetry_V"
+  "log_level": "info",
+  "json_log_enable": true,
+  "namespace": "FleetTelemetry",
+  "reliable_ack": true,
+  "records": {
+    "alerts": ["logger"],
+    "errors": ["logger"],
+    "V": ["kafka"],
+    "connectivity": ["logger"]
   },
-  "logger": {
-    "level": "info"
+  "kafka": {
+    "bootstrap.servers": "kafka:29092"
   },
   "tls": {
     "server_cert": "/etc/fleet-telemetry/certs/fullchain.pem",
     "server_key": "/etc/fleet-telemetry/certs/privkey.pem"
-  },
-  "metrics": {
-    "port": 9090
   }
 }
 EOF
@@ -566,6 +580,8 @@ docker exec sentryguard-kafka kafka-topics --bootstrap-server localhost:9092 \
 ```
 
 > **Note**: `KAFKA_AUTO_CREATE_TOPICS_ENABLE=true` is set in docker-compose, so topics are created automatically.
+>
+> **Topic Naming Mechanism**: Tesla Fleet Telemetry automatically generates topic names using the root-level `"namespace"` field in `config.json` combined with the record type suffix (e.g. `"namespace": "FleetTelemetry"` + vehicle record `"V"` -> topic `FleetTelemetry_V`). Do not attempt to specify topic names inside the `"kafka"` block.
 
 ---
 
@@ -650,6 +666,28 @@ Verify the fleet-telemetry certificate is signed by the CA:
 ```bash
 openssl verify -CAfile fleet-telemetry/certs/ca.crt fleet-telemetry/certs/tls.crt
 ```
+
+### Fleet telemetry data not reaching Kafka / No Telegram alerts
+
+If test notifications work but vehicle alerts never trigger, check the following in `fleet-telemetry/config.json`:
+
+1. **Records Mapping (`records`)**: Ensure `"V": ["kafka"]` is defined inside `"records"`. Without this, `fleet-telemetry` drops or logs vehicle data instead of publishing it to Kafka:
+   ```json
+   "records": {
+     "V": ["kafka"],
+     "alerts": ["logger"],
+     "errors": ["logger"]
+   }
+   ```
+2. **Reliable ACK (`reliable_ack`)**: Ensure `"reliable_ack": true` is set in `config.json`.
+3. **Kafka Topic Prefix (`namespace`)**: `fleet-telemetry` constructs topic names as `<namespace>_<record_type>`. To write to `FleetTelemetry_V` (which `sentryguard-api` listens on), you MUST set `"namespace": "FleetTelemetry"`. Setting `topic` inside the `kafka` block does nothing.
+
+### Fleet telemetry cannot connect to Kafka (`localhost` vs container hostname)
+
+If `fleet-telemetry` logs show errors connecting to Kafka:
+
+- **Inside Docker**: `bootstrap.servers` MUST point to `kafka:29092` (the service name on the `sentryguard` network), NOT `localhost:9092` or `127.0.0.1:9092`. Inside a container, `localhost` points to the `fleet-telemetry` container itself.
+- **Kafka Advertised Listeners**: Ensure Kafka's `KAFKA_ADVERTISED_LISTENERS` includes `PLAINTEXT://kafka:29092`. If Kafka advertises `localhost` to container clients, external containers will fail to connect after metadata resolution.
 
 ### Database migration errors
 

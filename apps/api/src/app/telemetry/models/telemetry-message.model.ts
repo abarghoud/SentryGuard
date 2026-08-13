@@ -1,4 +1,4 @@
-import { IsArray, IsString, IsBoolean, IsOptional, ValidateNested, IsEnum, IsDateString, ArrayMinSize, IsObject } from 'class-validator';
+import { IsArray, IsString, IsBoolean, IsOptional, ValidateNested, IsEnum, IsDateString, ArrayMinSize, IsObject, Matches } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum SentryModeState {
@@ -59,7 +59,7 @@ export class TelemetryMessage {
   @IsDateString()
   createdAt!: string;
 
-  @IsString()
+  @Matches(/^[A-HJ-NPR-Z0-9]{17}$/, { message: 'VIN must be a valid 17-character ISO 3779 alphanumeric string' })
   vin!: string;
 
   @IsBoolean()
@@ -75,6 +75,11 @@ export class TelemetryMessage {
 
   validateContainsCenterDisplay(): boolean {
     return this.data.some(datum => datum.key === 'CenterDisplay');
+  }
+
+  validateContainsAnyMonitoredField(): boolean {
+    const monitoredKeys = new Set(['SentryMode', 'CenterDisplay', 'ChargePortLatch']);
+    return this.data.some(datum => monitoredKeys.has(datum.key));
   }
 
   validateSentryModeValue(): boolean {

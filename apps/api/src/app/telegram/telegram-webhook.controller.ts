@@ -9,7 +9,8 @@ import {
   Logger,
   HttpCode,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
+import { timingSafeEqual } from 'node:crypto';
 import { TelegramBotService } from './telegram-bot.service';
 
 @Controller('telegram')
@@ -26,15 +27,18 @@ export class TelegramWebhookController {
     @Res() res: Response
   ) {
     const expectedSecret = this.telegramBotService.getWebhookSecretPath();
-    if (secret !== expectedSecret) {
-      this.logger.warn(`Tentative webhook avec secret invalide: ${secret}`);
+    if (!this.isSecretValid(secret, expectedSecret)) {
+      this.logger.warn('Tentative webhook avec secret invalide');
       throw new NotFoundException();
     }
 
     const headerSecret = this.telegramBotService.getWebhookSecretToken();
     if (headerSecret) {
       const provided = req.headers['x-telegram-bot-api-secret-token'];
-      if (provided !== headerSecret) {
+      if (
+        typeof provided !== 'string' ||
+        !this.isSecretValid(provided, headerSecret)
+      ) {
         this.logger.warn('Tentative webhook avec secret token invalide');
         throw new ForbiddenException();
       }
@@ -42,6 +46,14 @@ export class TelegramWebhookController {
 
     return this.telegramBotService.handleUpdate(req, res);
   }
+
+  private isSecretValid(provided: string, expected: string): boolean {
+    const providedBuffer = Buffer.from(provided);
+    const expectedBuffer = Buffer.from(expected);
+
+    return (
+      providedBuffer.length === expectedBuffer.length &&
+      timingSafeEqual(providedBuffer, expectedBuffer)
+    );
+  }
 }
-
-

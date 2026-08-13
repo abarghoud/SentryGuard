@@ -57,11 +57,26 @@ export class NotificationsService {
   }
 
   public async registerPushToken(userId: string, token: string, platform?: string): Promise<{ success: boolean }> {
+    const existingDevice = await this.findPushDevice(userId, token);
+    if (existingDevice) {
+      await this.refreshPushDeviceMetadata(existingDevice, platform);
+      return { success: true };
+    }
+
     await this.pushDeviceTokenRepository.upsert(
       { userId, token, platform, push_enabled: true },
-      { conflictPaths: ['token'], skipUpdateIfNoValuesChanged: true }
+      { conflictPaths: ['userId', 'token'], skipUpdateIfNoValuesChanged: true }
     );
     return { success: true };
+  }
+
+  private async refreshPushDeviceMetadata(device: PushDeviceToken, platform?: string): Promise<void> {
+    if (!platform || device.platform === platform) {
+      return;
+    }
+
+    device.platform = platform;
+    await this.pushDeviceTokenRepository.save(device);
   }
 
   public async removePushToken(userId: string, token: string): Promise<{ success: boolean }> {
@@ -78,13 +93,19 @@ export class NotificationsService {
     userId: string,
     severity: AlertEventSeverity,
     type: AlertEventType,
-    userLanguage: SupportedLanguage
+    userLanguage: SupportedLanguage,
+    correlationId?: string
   ): Promise<void> {
     const { body, title } = this.resolveAlertTexts(type, userLanguage);
     const devices = await this.pushDeviceTokenRepository.find({ where: { userId, push_enabled: true } });
     const eligibleDevices = devices.filter((device) => this.shouldSendPushToDevice(device, severity));
+
+    if (eligibleDevices.length > 0) {
+      this.logger.log(`[EXPO_PUSH][${correlationId || 'none'}] Sending push to ${eligibleDevices.length} device(s) for user: ${userId}`);
+    }
+
     await Promise.all(
-      eligibleDevices.map((device) => this.sendExpoPush(device, title, body, severity, type, device.critical_alerts_enabled, userId, userLanguage))
+      eligibleDevices.map((device) => this.sendExpoPush(device, title, body, severity, type, device.critical_alerts_enabled, userId, userLanguage, correlationId))
     );
   }
 
@@ -182,18 +203,23 @@ export class NotificationsService {
     type: AlertEventType,
     criticalAlertsEnabled: boolean,
     userId: string,
-    userLanguage: SupportedLanguage
+    userLanguage: SupportedLanguage,
+    correlationId?: string
   ): Promise<void> {
     try {
+      const pushStart = Date.now();
       const response = await fetch('https://exp.host/--/api/v2/push/send', {
         body: JSON.stringify(this.buildExpoPushBody(device.token, title, body, severity, type, criticalAlertsEnabled, userId, userLanguage)),
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         method: 'POST',
       });
+      
+      const pushTime = Date.now() - pushStart;
+      this.logger.log(`[EXPO_PUSH_LATENCY][${correlationId || 'none'}] Push sent to device ${device.id} in ${pushTime}ms`);
 
       await this.handleExpoPushResponse(device, response);
     } catch (error) {
-      this.logger.warn(`Failed to send push notification: ${error instanceof Error ? error.message : 'unknown error'}`);
+      this.logger.error(`[NOTIFICATION_ERROR] Failed to send push notification: ${error instanceof Error ? error.message : 'unknown error'} (correlation: ${correlationId || 'none'})`);
     }
   }
 
@@ -222,7 +248,7 @@ export class NotificationsService {
         teslaRedirectUrl: this.buildTeslaRedirectUrl(userId, userLanguage),
         type,
       },
-      priority: isPriorityAlert || severity === AlertEventSeverity.Critical ? 'high' : 'default',
+      priority: 'high',
       title,
       to: token,
     };
@@ -241,7 +267,7 @@ export class NotificationsService {
     const result = await this.parseExpoPushResponse(response);
 
     if (!response.ok || result.data?.status === 'error') {
-      this.logger.warn(`Expo push rejected token ${device.id}: ${result.data?.message ?? response.statusText}`);
+      this.logger.warn(`[NOTIFICATION_ERROR] Expo push rejected token ${device.id}: ${result.data?.message ?? response.statusText}`);
     }
 
     if (result.data?.details?.error === 'DeviceNotRegistered') {

@@ -33,12 +33,15 @@ import { KafkaLogContextService } from '../common/services/kafka-log-context.ser
 import { getDatabaseConfig } from '../config/database.config';
 import { getThrottleConfig } from '../config/throttle.config';
 import { getPinoConfig } from '../config/pino.config';
+import { HealthController } from './health/health.controller';
+import { HealthService } from './health/health.service';
 import { Vehicle } from '../entities/vehicle.entity';
 import { User } from '../entities/user.entity';
 import { NotificationPreferences } from '../entities/notification-preferences.entity';
 import { PushDeviceToken } from '../entities/push-device-token.entity';
 import { AlertEvent } from '../entities/alert-event.entity';
 import { RetryManager } from './shared/retry-manager.service';
+import { GracefulShutdownService } from './shared/graceful-shutdown.service';
 
 @Module({
   imports: [
@@ -59,10 +62,12 @@ import { RetryManager } from './shared/retry-manager.service';
     NotificationsModule,
     ThrottlerModule.forRoot([getThrottleConfig()]),
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthController],
   providers: [
     AppService,
+    HealthService,
     KafkaService,
+    GracefulShutdownService,
     TelemetryMessageHandlerService,
     {
       provide: RetryManager,

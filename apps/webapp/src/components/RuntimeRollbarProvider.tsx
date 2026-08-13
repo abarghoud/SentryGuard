@@ -26,6 +26,9 @@ export default function RuntimeRollbarProvider({ children }: RuntimeRollbarProvi
         captureUncaught: true,
         captureUnhandledRejections: true,
         environment: process.env.NODE_ENV,
+        scrubFields: ['token', 'jwt_token', 'accessToken', 'refresh_token', 'authorization', 'vin', 'link_token'],
+        scrubTelemetryInputs: true,
+        scrubRequestBody: true,
       }}
     >
       {children}

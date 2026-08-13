@@ -1,4 +1,5 @@
 import { Writable } from 'stream';
+import { Logger } from '@nestjs/common';
 import { OciLoggingService, OciLoggingConfig } from '../services/oci-logging.service';
 
 interface BufferedLogEntry {
@@ -14,6 +15,7 @@ interface OciTransportStreamOptions {
 }
 
 export class OciTransportStream extends Writable {
+  private readonly logger = new Logger(OciTransportStream.name);
   private readonly ociService: OciLoggingService;
   private readonly maxBatchSize: number;
   private readonly flushIntervalMs: number;
@@ -84,12 +86,12 @@ export class OciTransportStream extends Writable {
         this.isInitialized = true;
         this.flushTimer = setInterval(() => {
           this.flush().catch((err) =>
-            console.error('[OCI Transport] Flush error:', err),
+            this.logger.error('[OCI_TRANSPORT_FLUSH_ERROR] Flush error:', err),
           );
         }, this.flushIntervalMs);
       })
       .catch((err) => {
-        console.error('[OCI Transport] Initialization failed:', err);
+        this.logger.error('[OCI_TRANSPORT_INIT_ERROR] Initialization failed:', err);
       });
   }
 

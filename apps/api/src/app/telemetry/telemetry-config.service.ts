@@ -31,6 +31,7 @@ import {
   extractErrorDetails,
   is404Error,
   isTokenRevokedError,
+  isVehicleUnreachableError,
 } from './telemetry-config.helpers';
 import { TokenRevokedException } from '../../common/exceptions/token-revoked.exception';
 
@@ -54,7 +55,7 @@ export class TelemetryConfigService {
     private readonly partnerAuthService: TeslaPartnerAuthService,
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>
-  ) { }
+  ) {}
 
   private async getAccessToken(userId: string): Promise<string> {
     const token = await this.accessTokenService.getAccessTokenForUserId(userId);
@@ -62,6 +63,23 @@ export class TelemetryConfigService {
       throw new UnauthorizedException(ERROR_MESSAGES.INVALID_TOKEN);
     }
     return token;
+  }
+
+  private isExpectedTeslaFailure(error: unknown): boolean {
+    return (
+      error instanceof UnauthorizedException ||
+      isTokenRevokedError(error) ||
+      isVehicleUnreachableError(error)
+    );
+  }
+
+  private logTeslaApiFailure(message: string, error: unknown): void {
+    if (this.isExpectedTeslaFailure(error)) {
+      this.logger.warn(message, extractErrorDetails(error));
+      return;
+    }
+
+    this.logger.error(message, extractErrorDetails(error));
   }
 
   private async handleTokenRevocation(userId: string, error: unknown): Promise<void> {
@@ -89,41 +107,31 @@ export class TelemetryConfigService {
 
       const vehicles = response.data.response;
 
-      if (userId && vehicles.length > 0) {
-        const telemetryConfigs = await this.syncVehiclesToDatabase(userId, vehicles);
-        const dbVehicles = await this.getUserVehiclesFromDB(userId);
-
-        let keyPaired = false;
-        if (telemetryConfigs.size > 0) {
-          const firstConfig = telemetryConfigs.get(vehicles[0].vin);
-          keyPaired = firstConfig?.key_paired ?? false;
-        }
-
-        return vehicles.map((teslaVehicle: TeslaVehicle): TeslaVehicleWithStatus => {
-          const dbVehicle = dbVehicles.find(
-            (dbV) => dbV.vin === teslaVehicle.vin
-          );
-          return {
-            ...teslaVehicle,
-            sentry_mode_monitoring_enabled: dbVehicle?.sentry_mode_monitoring_enabled ?? false,
-            break_in_monitoring_enabled: dbVehicle?.break_in_monitoring_enabled ?? false,
-            break_in_offensive_response: dbVehicle?.break_in_offensive_response ?? 'DISABLED',
-            key_paired: keyPaired,
-          };
-        });
+      if (vehicles.length === 0) {
+        return [];
       }
 
-      return vehicles.map((vehicle): TeslaVehicleWithStatus => ({
-        ...vehicle,
-        sentry_mode_monitoring_enabled: false,
-        break_in_monitoring_enabled: false,
-        break_in_offensive_response: 'DISABLED',
-        key_paired: false,
-      }));
+      const telemetryConfigs = await this.syncVehiclesToDatabase(userId, vehicles);
+      const dbVehicles = await this.getUserVehiclesFromDB(userId);
+
+      return vehicles.map((teslaVehicle: TeslaVehicle): TeslaVehicleWithStatus => {
+        const dbVehicle = dbVehicles.find(
+          (dbV) => dbV.vin === teslaVehicle.vin
+        );
+        return {
+          ...teslaVehicle,
+          sentry_mode_monitoring_enabled: dbVehicle?.sentry_mode_monitoring_enabled ?? false,
+          break_in_monitoring_enabled: dbVehicle?.break_in_monitoring_enabled ?? false,
+          break_in_offensive_response: dbVehicle?.break_in_offensive_response ?? 'DISABLED',
+          break_in_auto_sentry_mode_enabled: dbVehicle?.break_in_auto_sentry_mode_enabled ?? false,
+          key_paired: telemetryConfigs.get(teslaVehicle.vin)?.key_paired ?? false,
+          vehicle_command_protocol_required: telemetryConfigs.get(teslaVehicle.vin)?.vehicle_command_protocol_required,
+        };
+      });
     } catch (error: unknown) {
-      this.logger.error(
+      this.logTeslaApiFailure(
         ERROR_MESSAGES.ERROR_FETCHING_VEHICLES,
-        extractErrorDetails(error)
+        error
       );
 
       await this.handleTokenRevocation(userId, error);
@@ -209,7 +217,7 @@ export class TelemetryConfigService {
 
       return await this.pushTelemetryConfig(vin, userId, configPayload);
     } catch (error: unknown) {
-      this.logger.error(`Error patching telemetry config for ${vin}:`, extractErrorDetails(error));
+      this.logTeslaApiFailure(`Error patching telemetry config for ${vin}:`, error);
       return null;
     }
   }
@@ -243,12 +251,39 @@ export class TelemetryConfigService {
         }
       );
 
-      this.logger.debug(`Config for ${vin}:`, response.data.response);
-      return response.data.response;
+      const telemetryConfig = response.data.response;
+
+      if (telemetryConfig && telemetryConfig.key_paired === false) {
+        try {
+          const fleetStatusResponse = await this.teslaApi.post<TeslaApiResponse<{ vehicle_info?: Record<string, { vehicle_command_protocol_required?: boolean }> }>>(
+            TESLA_API_ENDPOINTS.FLEET_STATUS,
+            { vins: [vin] },
+            {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            }
+          );
+
+          let isRequired = fleetStatusResponse.data.response.vehicle_info?.[vin]?.vehicle_command_protocol_required;
+
+          // Tesla API fleet-status sometimes incorrectly returns false for Model 3/Y/Cybertruck,
+          // but these vehicles always require the vehicle command protocol.
+          const model = vin.charAt(3).toUpperCase();
+          if (['3', 'Y', 'C'].includes(model)) {
+            isRequired = true;
+          }
+
+          telemetryConfig.vehicle_command_protocol_required = isRequired;
+        } catch (error: unknown) {
+          this.logger.warn(`Failed to fetch fleet status for ${vin}: ${error}`);
+        }
+      }
+
+      this.logger.debug(`Config for ${vin}:`, telemetryConfig);
+      return telemetryConfig;
     } catch (error: unknown) {
-      this.logger.error(
+      this.logTeslaApiFailure(
         ERROR_MESSAGES.ERROR_CHECKING_CONFIG(vin),
-        extractErrorDetails(error)
+        error
       );
 
       await this.handleTokenRevocation(userId, error);
@@ -315,9 +350,9 @@ export class TelemetryConfigService {
 
       await this.handleTokenRevocation(userId, error);
 
-      this.logger.error(
+      this.logTeslaApiFailure(
         ERROR_MESSAGES.ERROR_DELETING_CONFIG(vin),
-        extractErrorDetails(error)
+        error
       );
 
       return {
@@ -356,9 +391,9 @@ export class TelemetryConfigService {
         };
       }
 
-      this.logger.error(
+      this.logTeslaApiFailure(
         ERROR_MESSAGES.ERROR_DELETING_CONFIG(vin),
-        extractErrorDetails(error)
+        error
       );
 
       return {
@@ -415,9 +450,9 @@ export class TelemetryConfigService {
         response: response.data as TeslaApiResponse<FleetTelemetryConfigResponse>,
       };
     } catch (error: unknown) {
-      this.logger.error(
+      this.logTeslaApiFailure(
         ERROR_MESSAGES.ERROR_CONFIGURING_VIN(vin),
-        extractErrorDetails(error)
+        error
       );
 
       await this.handleTokenRevocation(userId, error);

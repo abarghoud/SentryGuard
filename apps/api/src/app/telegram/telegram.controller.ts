@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Delete,
+  Inject,
   Logger,
   UseGuards,
   BadRequestException,
@@ -17,6 +18,8 @@ import {
 } from '../../entities/telegram-config.entity';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramContextService } from './telegram-context.service';
+import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
+import type { ITelegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ConsentGuard } from '../../common/guards/consent.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -36,6 +39,8 @@ export class TelegramController {
     private readonly telegramConfigRepository: Repository<TelegramConfig>,
     private readonly telegramBotService: TelegramBotService,
     private readonly telegramContextService: TelegramContextService,
+    @Inject(telegramFailureHandler)
+    private readonly failureHandler: ITelegramFailureHandler,
   ) {}
 
   /**
@@ -187,7 +192,7 @@ export class TelegramController {
       return { success: false, message: 'Failed to send message. Verify that the account is linked.' };
     }
 
-    const success = await this.telegramBotService.sendMessage(chatId, message);
+    const success = await this.sendTestMessageSafely(chatId, message, userId);
 
     return {
       success,
@@ -195,5 +200,46 @@ export class TelegramController {
         ? 'Message sent successfully'
         : 'Failed to send message. Verify that the account is linked.',
     };
+  }
+
+  private async sendTestMessageSafely(
+    chatId: string,
+    message: string,
+    userId: string
+  ): Promise<boolean> {
+    try {
+      return await this.telegramBotService.sendMessage(chatId, message);
+    } catch (error: unknown) {
+      await this.handleTestMessageFailure(error, userId);
+
+      return false;
+    }
+  }
+
+  private async handleTestMessageFailure(error: unknown, userId: string): Promise<void> {
+    if (!this.isBlockedBotFailure(error)) {
+      this.logger.error(
+        `[TELEGRAM_TEST] Failed to send test message for user ${userId}:`,
+        error
+      );
+      return;
+    }
+
+    await this.disableTelegramSafely(error, userId);
+  }
+
+  private isBlockedBotFailure(error: unknown): error is Error {
+    return error instanceof Error && this.failureHandler.canHandle(error);
+  }
+
+  private async disableTelegramSafely(error: Error, userId: string): Promise<void> {
+    try {
+      await this.failureHandler.handleFailure(error, userId);
+      this.logger.log(`[TELEGRAM_FAILURE_HANDLED] Error handled for user ${userId}`);
+    } catch {
+      this.logger.warn(
+        `[TELEGRAM_TEST] Could not disable Telegram for user ${userId} after a blocked-bot error`
+      );
+    }
   }
 }

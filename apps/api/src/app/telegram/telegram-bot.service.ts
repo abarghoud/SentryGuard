@@ -156,7 +156,7 @@ export class TelegramBotService implements OnModuleInit {
       this.logger.error(
         '❌ TELEGRAM_WEBHOOK_SECRET_TOKEN must be defined (24+ chars) to accept webhook updates'
       );
-      return;
+      process.exit(1);
     }
 
     try {

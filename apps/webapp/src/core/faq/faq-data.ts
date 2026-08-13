@@ -27,6 +27,11 @@ export const faqCategories: FaqCategoryData[] = [
         answerKey: 'Break-in detection explanation',
       },
       {
+        questionKey:
+          'Can SentryGuard turn on Sentry Mode automatically during a break-in?',
+        answerKey: 'Auto Sentry Mode explanation',
+      },
+      {
         questionKey: 'What is the Active Deterrent (Offensive Response) and how does it work?',
         answerKey: 'Active deterrent explanation',
       },
@@ -151,6 +156,10 @@ export const faqCategories: FaqCategoryData[] = [
           'SentryGuard shows "Virtual Key Not Paired". What does this mean?',
         answerKey: 'Virtual key not paired help',
         answerLinks: [{ href: '/dashboard/vehicles' }],
+      },
+      {
+        questionKey: 'Does SentryGuard support older Model S/X vehicles?',
+        answerKey: 'Legacy vehicles support explanation',
       },
       {
         questionKey:

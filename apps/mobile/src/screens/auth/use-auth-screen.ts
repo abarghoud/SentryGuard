@@ -6,6 +6,7 @@ import { Platform, ScrollView } from 'react-native';
 
 import { apiUrlStore, virtualKeyStore } from '../../core/api';
 import { normalizeDomain } from '../../core/config/app-domain';
+import { appLogger } from '../../core/logging';
 import { getTeslaLoginUrlUseCase, getTeslaScopeChangeUrlUseCase, demoLoginUseCase } from '../../features/auth/di';
 import { extractMissingScopesFromCallbackUrl, extractTokenFromCallbackUrl } from './auth.helpers';
 
@@ -60,6 +61,7 @@ export function useAuthScreen({ onAuthenticated }: UseAuthScreenParams): UseAuth
       const callbackUrl = url ?? '';
       const token = extractTokenFromCallbackUrl(callbackUrl);
       if (token) {
+        appLogger.info('auth', 'Login callback received with a session token');
         if (Platform.OS === 'ios') {
           void WebBrowser.dismissBrowser();
         }
@@ -70,6 +72,7 @@ export function useAuthScreen({ onAuthenticated }: UseAuthScreenParams): UseAuth
 
       const missing = extractMissingScopesFromCallbackUrl(callbackUrl);
       if (missing) {
+        appLogger.warn('auth', 'Login callback reports missing Tesla scopes', missing);
         if (Platform.OS === 'ios') {
           void WebBrowser.dismissBrowser();
         }
@@ -96,6 +99,7 @@ export function useAuthScreen({ onAuthenticated }: UseAuthScreenParams): UseAuth
       const login = await getTeslaLoginUrlUseCase.execute(redirectUri);
       await openTeslaAuthUrl(login.url);
     } catch (error) {
+      appLogger.error('auth', 'Tesla login failed to open', error instanceof Error ? error.message : error);
       setMessage(error instanceof Error ? error.message : t('auth.error.login'));
     } finally {
       setIsAuthenticating(false);
@@ -166,9 +170,17 @@ export function useAuthScreen({ onAuthenticated }: UseAuthScreenParams): UseAuth
     if (!trimmedApiUrl) {
       return;
     }
-    if (!/^https?:\/\/.+/.test(trimmedApiUrl)) {
+
+    const isDev = __DEV__;
+    const isLocalhost = /^(?:https?:\/\/)?(?:localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+)(?::\d+)?(?:\/.*)?$/i.test(trimmedApiUrl);
+    const requireHttps = !(isDev && isLocalhost);
+
+    if (requireHttps && !/^https:\/\/.+/.test(trimmedApiUrl)) {
+      throw new Error(t('auth.error.apiUrl'));
+    } else if (!requireHttps && !/^https?:\/\/.+/.test(trimmedApiUrl)) {
       throw new Error(t('auth.error.apiUrl'));
     }
+
     await apiUrlStore.setUrl(trimmedApiUrl);
     setApiUrl(apiUrlStore.getCustomUrl());
   };

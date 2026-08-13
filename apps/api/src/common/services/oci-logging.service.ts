@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { Region, SimpleAuthenticationDetailsProvider } from 'oci-common';
 import { LoggingClient } from 'oci-loggingingestion';
@@ -17,6 +17,7 @@ export interface OciLoggingConfig {
 
 @Injectable()
 export class OciLoggingService implements OnModuleInit {
+  private readonly logger = new Logger(OciLoggingService.name);
   private loggingClient: LoggingClient | null = null;
   private authProvider: SimpleAuthenticationDetailsProvider | null = null;
   private isInitialized = false;
@@ -31,7 +32,7 @@ export class OciLoggingService implements OnModuleInit {
     try {
       this.authProvider = await this.createAuthProvider();
       if (!this.authProvider) {
-        console.error('[OciLoggingService] Failed to initialize authentication provider');
+        this.logger.error('[OCI_LOGGING_INIT_ERROR] Failed to initialize authentication provider');
         return;
       }
 
@@ -42,10 +43,8 @@ export class OciLoggingService implements OnModuleInit {
 
       this.isInitialized = true;
     } catch (error) {
-      console.error(`[OciLoggingService] Failed to initialize: ${(error as Error).message}`);
+      this.logger.error(`[OCI_LOGGING_INIT_ERROR] Failed to initialize: ${(error as Error).message}`);
       this.isInitialized = false;
-
-      throw error;
     }
   }
 
@@ -77,7 +76,7 @@ export class OciLoggingService implements OnModuleInit {
 
       return authProvider;
     } catch (error) {
-      console.error(`[OciLoggingService] Failed to create authentication provider: ${(error as Error).message}`);
+      this.logger.error(`[OCI_LOGGING_INIT_ERROR] Failed to create authentication provider: ${(error as Error).message}`);
       return null;
     }
   }
@@ -101,7 +100,7 @@ export class OciLoggingService implements OnModuleInit {
         },
       });
     } catch (error) {
-      console.error(`[OciLoggingService] Failed to send logs to OCI: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(`[OCI_LOGGING_SEND_ERROR] Failed to send logs to OCI: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

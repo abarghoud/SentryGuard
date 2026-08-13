@@ -26,6 +26,7 @@ export default function FeatureDiscoveryStep({ announcementKey, onDismissed }: F
   const { t } = useTranslation('common');
   const { dismissAnnouncementMutation } = useOnboardingQuery();
   const [isDismissing, setIsDismissing] = useState(false);
+  const [dismissError, setDismissError] = useState<string | null>(null);
 
   const config = ANNOUNCEMENT_CONFIGS[announcementKey];
   const hasAutoDismissed = useRef(false);
@@ -44,9 +45,13 @@ export default function FeatureDiscoveryStep({ announcementKey, onDismissed }: F
 
   const handleDismiss = async () => {
     setIsDismissing(true);
+    setDismissError(null);
     try {
       await dismissAnnouncementMutation.mutateAsync(announcementKey);
       await onDismissed();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '';
+      setDismissError(message || t('Failed to continue, please try again'));
     } finally {
       setIsDismissing(false);
     }
@@ -88,6 +93,12 @@ export default function FeatureDiscoveryStep({ announcementKey, onDismissed }: F
               </>
             )}
           </button>
+
+          {dismissError ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-100">
+              {dismissError}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

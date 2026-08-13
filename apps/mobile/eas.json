@@ -28,6 +28,10 @@
         "buildType": "apk"
       }
     },
+    "production-preview": {
+      "extends": "preview",
+      "environment": "production"
+    },
     "production": {
       "corepack": true,
       "autoIncrement": true,
@@ -36,6 +40,14 @@
   },
   "submit": {
     "preview": {
+      "android": {
+        "track": "internal"
+      },
+      "ios": {
+        "ascAppId": "6779729590"
+      }
+    },
+    "production-preview": {
       "android": {
         "track": "internal"
       },

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '@/core/i18n/i18n-config';
+import { LOCALE_ROUTES } from '@/core/security/csp';
 
 function detectLocale(request: NextRequest): string {
   const localeCookie = request.cookies.get('locale')?.value;
@@ -62,26 +63,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/',
-    '/faq',
-    '/en',
-    '/fr',
-    '/de',
-    '/nl',
-    '/no',
-    '/es',
-    '/it',
-    '/sv',
-    '/da',
-    '/en/faq',
-    '/fr/faq',
-    '/de/faq',
-    '/nl/faq',
-    '/no/faq',
-    '/es/faq',
-    '/it/faq',
-    '/sv/faq',
-    '/da/faq',
-  ],
+  matcher: LOCALE_ROUTES,
 };

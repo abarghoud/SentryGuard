@@ -2,7 +2,11 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type Vehicle } from '../features/vehicles/domain/entities';
+import {
+  type ConfigureTelemetryOutcome,
+  type Vehicle,
+  type VehicleActionOutcome,
+} from '../features/vehicles/domain/entities';
 import Spinner from './Spinner';
 import RequireVehicleCommands from './RequireVehicleCommands';
 import VinMask from './VinMask';
@@ -127,19 +131,23 @@ function BreakInOffensiveSelect({
 
 export default function VehicleCard({
   vehicle,
+  onPairVirtualKey,
   onToggleTelemetry,
   onToggleBreakInMonitoring,
   onUpdateBreakInOffensive,
+  onUpdateAutoSentry,
   onDeleteTelemetry,
 }: VehicleCardProps) {
   const { t } = useTranslation('common');
   const [isConfiguring, setIsConfiguring] = useState(false);
   const [isConfiguringBreakIn, setIsConfiguringBreakIn] = useState(false);
   const [isUpdatingBreakInOffensive, setIsUpdatingBreakInOffensive] = useState(false);
+  const [isUpdatingAutoSentry, setIsUpdatingAutoSentry] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
 
-  const isUpdating = isConfiguring || isConfiguringBreakIn || isUpdatingBreakInOffensive || isDeleting;
+  const isUpdating =
+    isConfiguring || isConfiguringBreakIn || isUpdatingBreakInOffensive || isUpdatingAutoSentry || isDeleting;
 
   const formatSkippedReason = (reason: string, details?: string) => {
     switch (reason) {
@@ -182,8 +190,8 @@ export default function VehicleCard({
     setInlineError(null);
     const newStatus = !vehicle.break_in_monitoring_enabled;
     const result = await onToggleBreakInMonitoring(vehicle.vin, newStatus);
-    if (!result) {
-      setInlineError(t('Failed to update Break-in monitoring'));
+    if (!result.success) {
+      setInlineError(result.message || t('Failed to update Break-in monitoring'));
     }
     setIsConfiguringBreakIn(false);
   };
@@ -194,8 +202,13 @@ export default function VehicleCard({
     }
 
     setIsDeleting(true);
+    setInlineError(null);
+    
     try {
-      await onDeleteTelemetry(vehicle.vin);
+      const result = await onDeleteTelemetry(vehicle.vin);
+      if (!result.success) {
+        setInlineError(result.message || t('Failed to disable telemetry'));
+      }
     } finally {
       setIsDeleting(false);
     }
@@ -205,10 +218,20 @@ export default function VehicleCard({
     setIsUpdatingBreakInOffensive(true);
     setInlineError(null);
     const result = await onUpdateBreakInOffensive(vehicle.vin, newResponse);
-    if (!result) {
-      setInlineError(t('Failed to update offensive response'));
+    if (!result.success) {
+      setInlineError(result.message || t('Failed to update offensive response'));
     }
     setIsUpdatingBreakInOffensive(false);
+  };
+
+  const handleUpdateAutoSentry = async () => {
+    setIsUpdatingAutoSentry(true);
+    setInlineError(null);
+    const result = await onUpdateAutoSentry(vehicle.vin, !vehicle.break_in_auto_sentry_mode_enabled);
+    if (!result.success) {
+      setInlineError(result.message || t('Failed to update auto sentry mode'));
+    }
+    setIsUpdatingAutoSentry(false);
   };
 
   return (
@@ -231,6 +254,20 @@ export default function VehicleCard({
           <img src="/tesla-logo-red.svg" alt="Tesla Logo" className="w-12 h-12" />
         </div>
       </div>
+
+      {vehicle.key_paired === false && vehicle.vehicle_command_protocol_required === true && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-2">
+          <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
+            {t('Virtual Key Not Paired')}
+          </p>
+          <button
+            onClick={onPairVirtualKey}
+            className="shrink-0 inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-tesla-600 hover:bg-tesla-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tesla-500"
+          >
+            {t('Pair Virtual Key')}
+          </button>
+        </div>
+      )}
 
       <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
         <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -346,6 +383,32 @@ export default function VehicleCard({
                 onChange={handleUpdateBreakInOffensive}
                 tooltipText={t('offensiveResponseInfo')}
               />
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {t('Auto Sentry Mode')}
+                  </span>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {t('autoSentryModeInfo')}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleUpdateAutoSentry()}
+                  disabled={isUpdating}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    vehicle.break_in_auto_sentry_mode_enabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                  }`}
+                  role="switch"
+                  aria-checked={vehicle.break_in_auto_sentry_mode_enabled === true}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      vehicle.break_in_auto_sentry_mode_enabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
             </RequireVehicleCommands>
           )}
       </div>
@@ -361,14 +424,10 @@ export default function VehicleCard({
 
 interface VehicleCardProps {
   vehicle: Vehicle;
-  onToggleTelemetry: (
-    vin: string
-  ) => Promise<{
-    success: boolean;
-    message?: string;
-    skippedVehicle?: { vin: string; reason: string; details?: string } | null;
-  }>;
-  onToggleBreakInMonitoring: (vin: string, enable: boolean) => Promise<boolean>;
-  onUpdateBreakInOffensive: (vin: string, breakInResponse: string) => Promise<boolean>;
-  onDeleteTelemetry: (vin: string) => Promise<boolean>;
+  onPairVirtualKey: () => void;
+  onToggleTelemetry: (vin: string) => Promise<ConfigureTelemetryOutcome>;
+  onToggleBreakInMonitoring: (vin: string, enable: boolean) => Promise<VehicleActionOutcome>;
+  onUpdateBreakInOffensive: (vin: string, breakInResponse: string) => Promise<VehicleActionOutcome>;
+  onUpdateAutoSentry: (vin: string, autoSentryEnabled: boolean) => Promise<VehicleActionOutcome>;
+  onDeleteTelemetry: (vin: string) => Promise<VehicleActionOutcome>;
 }

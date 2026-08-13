@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import FeatureDiscoveryStep from './FeatureDiscoveryStep';
 import { useOnboardingQuery } from '../../features/onboarding/di';
 
@@ -81,6 +81,70 @@ describe('The FeatureDiscoveryStep component', () => {
 
       it('should call onDismissed', () => {
         expect(mockOnDismissed).toHaveBeenCalled();
+      });
+    });
+
+    describe('When dismissing fails with a server message', () => {
+      const expectedMessage = 'Announcement not found';
+
+      beforeEach(async () => {
+        mockDismissAnnouncement.mockRejectedValue(new Error(expectedMessage));
+        renderComponent({
+          announcementKey: 'break_in_offensive_response_v1',
+          onDismissed: mockOnDismissed,
+        });
+
+        await act(async () => {
+          fireEvent.click(screen.getByRole('button', { name: "Understood, let's go!" }));
+        });
+      });
+
+      it('should display the server message', () => {
+        expect(screen.getByText(expectedMessage)).toBeInTheDocument();
+      });
+
+      it('should re-enable the button so the user can retry', () => {
+        expect(screen.getByRole('button', { name: "Understood, let's go!" })).toBeEnabled();
+      });
+    });
+
+    describe('When dismissing fails without a server message', () => {
+      beforeEach(async () => {
+        mockDismissAnnouncement.mockRejectedValue(new Error(''));
+        renderComponent({
+          announcementKey: 'break_in_offensive_response_v1',
+          onDismissed: mockOnDismissed,
+        });
+
+        await act(async () => {
+          fireEvent.click(screen.getByRole('button', { name: "Understood, let's go!" }));
+        });
+      });
+
+      it('should display the fallback message', () => {
+        expect(screen.getByText('Failed to continue, please try again')).toBeInTheDocument();
+      });
+    });
+
+    describe('When the dismiss succeeds after a failure', () => {
+      beforeEach(async () => {
+        mockDismissAnnouncement.mockRejectedValueOnce(new Error('Announcement not found'));
+        mockDismissAnnouncement.mockResolvedValue({});
+        renderComponent({
+          announcementKey: 'break_in_offensive_response_v1',
+          onDismissed: mockOnDismissed,
+        });
+
+        await act(async () => {
+          fireEvent.click(screen.getByRole('button', { name: "Understood, let's go!" }));
+        });
+        await act(async () => {
+          fireEvent.click(screen.getByRole('button', { name: "Understood, let's go!" }));
+        });
+      });
+
+      it('should clear the previous error', () => {
+        expect(screen.queryByText('Announcement not found')).not.toBeInTheDocument();
       });
     });
   });

@@ -10,7 +10,7 @@ export class KafkaConfigFactory {
     const baseConfig: KafkaConfig = {
       clientId,
       brokers,
-      connectionTimeout: 5000,
+      connectionTimeout: parseInt(process.env.KAFKA_CONNECTION_TIMEOUT || '10000', 10),
       requestTimeout: 10000,
     };
 

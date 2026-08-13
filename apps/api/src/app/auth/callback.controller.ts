@@ -59,10 +59,23 @@ export class CallbackController {
       this.logger.log(`✅ Authentication successful for user: ${userId}`);
       this.logger.log(`🔐 JWT token generated for secure session`);
 
+      if (mobileRedirectUri) {
+        const redirectUrl = `${mobileRedirectUri}#token=${encodeURIComponent(jwt)}`;
+        res.redirect(redirectUrl);
+        return;
+      }
+
       const webappUrl = process.env.WEBAPP_URL || 'http://localhost:4200';
-      const callbackUrl = mobileRedirectUri || `${webappUrl}/callback`;
-      const redirectUrl = `${callbackUrl}#token=${encodeURIComponent(jwt)}`;
-      res.redirect(redirectUrl);
+
+      res.cookie('sentryguard_temp_token', jwt, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/auth/session',
+        maxAge: 60 * 1000,
+      });
+
+      res.redirect(`${webappUrl}/callback`);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 

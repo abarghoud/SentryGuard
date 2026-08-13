@@ -1,7 +1,7 @@
 import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('push_device_tokens')
-@Index(['token'], { unique: true })
+@Index(['userId', 'token'], { unique: true })
 @Index(['userId'])
 export class PushDeviceToken {
   @PrimaryGeneratedColumn('uuid')

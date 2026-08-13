@@ -65,7 +65,7 @@ describe('The useUserQuery() hook', () => {
     describe('When the update fails', () => {
       it('should throw an error', async () => {
         const expectedError = 'Failed to update language';
-        mockUpdateUserLanguageUseCase.execute.mockResolvedValue({ success: false, language: 'en' });
+        mockUpdateUserLanguageUseCase.execute.mockResolvedValue({ success: false, language: '' });
 
         const { result } = renderHook(() => useUserQuery(), { wrapper });
 

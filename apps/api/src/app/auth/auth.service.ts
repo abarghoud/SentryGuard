@@ -7,7 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
-import { TokenExpiredError } from 'jsonwebtoken';
+import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import { User } from '../../entities/user.entity';
 import { UserSession } from '../../entities/user-session.entity';
 import { MissingPermissionsException } from '../../common/exceptions/missing-permissions.exception';
@@ -89,13 +89,24 @@ export class AuthService {
 
       await this.userSessionService.touchSession(session);
       return user;
-    } catch (error) {
-      if (!(error instanceof TokenExpiredError)) {
-        this.logger.error(`Failed to validate JWT token:`, error);
-      }
+    } catch (error: unknown) {
+      this.logRejectedJwt('Failed to validate JWT token', error);
 
       return null;
     }
+  }
+
+  private logRejectedJwt(context: string, error: unknown): void {
+    if (error instanceof TokenExpiredError) {
+      return;
+    }
+
+    if (error instanceof JsonWebTokenError) {
+      this.logger.warn(`${context}: ${error.message}`);
+      return;
+    }
+
+    this.logger.error(`${context}:`, error);
   }
 
   public async getRefreshableJwtUser(jwt: string): Promise<User | null> {
@@ -109,8 +120,8 @@ export class AuthService {
       }
 
       return user;
-    } catch (error) {
-      this.logger.error(`Failed to read refreshable JWT token:`, error);
+    } catch (error: unknown) {
+      this.logRejectedJwt('Failed to read refreshable JWT token', error);
       return null;
     }
   }
@@ -190,7 +201,7 @@ export class AuthService {
 
   private resolveJwtExpiresAt(): Date {
     const expiresAt = new Date();
-    const match = (process.env.JWT_EXPIRATION || '30d').match(/^(\d+)([dhm])$/);
+    const match = (process.env.JWT_EXPIRATION || '1d').match(/^(\d+)([dhm])$/);
 
     if (!match) {
       expiresAt.setDate(expiresAt.getDate() + 30);

@@ -1,90 +1,13 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { setToken } from '../../core/api/token-manager';
-import { getConsentStatusUseCase } from '../../features/consent/di';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
+import { useTeslaCallback } from './use-tesla-callback';
 
 function CallbackContent() {
   const { t } = useTranslation('common');
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'cancelled'>(
-    'loading'
-  );
-  const [message, setMessage] = useState(t('Processing authentication...'));
-
-  useEffect(() => {
-    const handleCallback = async () => {
-      const hash = typeof window !== 'undefined' ? window.location.hash : '';
-      const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
-      const tokenFromHash = hashParams.get('token');
-      const tokenFromQuery = searchParams.get('token');
-      const error = searchParams.get('error');
-
-      if (error) {
-        if (error === 'login_cancelled') {
-          setStatus('cancelled');
-          setMessage(t('You cancelled the Tesla login. You can try again whenever you\'re ready.'));
-          return;
-        }
-
-        if (error.includes('Missing required permissions')) {
-          const missingScopes =
-            error
-              .match(/Missing required permissions: (.+)/)?.[1]
-              ?.split(', ') || [];
-          const params = new URLSearchParams({
-            missing: missingScopes.join(','),
-          });
-          router.push(`/scopes-fix?${params.toString()}`);
-          return;
-        }
-
-        setStatus('error');
-        setMessage(t('Authentication failed {{error}}', { error }));
-        return;
-      }
-
-      const token = tokenFromHash || tokenFromQuery;
-
-      if (token) {
-        setToken(token);
-        setStatus('success');
-        setMessage(t('Authentication successful! Checking consent status...'));
-
-        try {
-          const consentStatus = await getConsentStatusUseCase.execute();
-          if (!consentStatus.hasConsent) {
-            setMessage(t('Authentication successful! Redirecting to consent form...'));
-            setTimeout(() => {
-              router.push('/consent');
-            }, 1500);
-          } else {
-            setMessage(t('Authentication successful! Redirecting to dashboard...'));
-            setTimeout(() => {
-              router.push('/dashboard');
-            }, 1500);
-          }
-        } catch (error) {
-          console.warn('Failed to check consent status, redirecting to consent:', error);
-          setMessage(t('Authentication successful! Redirecting to consent form...'));
-          setTimeout(() => {
-            router.push('/consent');
-          }, 1500);
-        }
-      } else {
-        setStatus('error');
-        setMessage(
-          'No authentication token received. Please try logging in again.'
-        );
-      }
-    };
-
-    handleCallback();
-  }, [searchParams, router]);
+  const { status, message } = useTeslaCallback();
 
   return (
     <main className="min-h-screen bg-gray-50 flex items-center justify-center px-6">

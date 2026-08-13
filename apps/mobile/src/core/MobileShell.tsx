@@ -8,9 +8,11 @@ import { Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { type RootStackParamList } from './navigation';
+import { appLogger } from './logging';
 import { useTheme } from './theme';
 import { MainScreen } from './shell/MainScreen';
 import { createNavigationTheme } from './shell/navigation-theme';
+import { resolveActiveRouteName } from './shell/navigation-logging';
 import { AuthScreen } from '../screens/AuthScreen';
 import { ConsentScreen } from '../screens/ConsentScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
@@ -50,8 +52,9 @@ export function MobileShell(): JSX.Element {
         await deletePushTokenUseCase.execute(pushToken);
         await pushNotificationService.clearCachedExpoPushToken();
       }
+      await pushNotificationService.clearPushSetupCompleted();
     } catch {
-      // best-effort: never block logout on push-token cleanup
+      appLogger.warn('push', 'Push token cleanup failed during logout');
     }
     await session.clearToken();
   }, [session.clearToken]);
@@ -59,6 +62,13 @@ export function MobileShell(): JSX.Element {
   const isOnboardingComplete = onboardingQuery.data?.isComplete === true;
   const isOnboardingResolved = isOnboardingComplete || onboardingQuery.data?.isSkipped === true;
   const isConsentRequestNeeded = shouldRequestConsent(consentQuery.data, isOnboardingComplete);
+  const activeShellGate = resolveActiveShellGate(!!session.token, isConsentRequestNeeded, isOnboardingResolved);
+
+  useEffect(() => {
+    if (session.isReady) {
+      appLogger.info('nav', `Shell gate → ${activeShellGate}`);
+    }
+  }, [activeShellGate, session.isReady]);
 
   useEffect(() => {
     const language = languageQuery.data?.language;
@@ -76,7 +86,15 @@ export function MobileShell(): JSX.Element {
   }
 
   return (
-    <NavigationContainer theme={createNavigationTheme(colors, isDark)}>
+    <NavigationContainer
+      theme={createNavigationTheme(colors, isDark)}
+      onStateChange={(state) => {
+        const routeName = resolveActiveRouteName(state);
+        if (routeName) {
+          appLogger.info('nav', `Screen → ${routeName}`);
+        }
+      }}
+    >
       <Stack.Navigator screenOptions={{ contentStyle: { backgroundColor: colors.systemBackground }, headerShown: false }}>
         {session.token ? (
           isConsentRequestNeeded ? (
@@ -100,4 +118,16 @@ export function MobileShell(): JSX.Element {
       </Stack.Navigator>
     </NavigationContainer>
   );
+}
+
+function resolveActiveShellGate(hasToken: boolean, isConsentRequestNeeded: boolean, isOnboardingResolved: boolean): string {
+  if (!hasToken) {
+    return 'Auth';
+  }
+
+  if (isConsentRequestNeeded) {
+    return 'Consent';
+  }
+
+  return isOnboardingResolved ? 'Main' : 'Onboarding';
 }

@@ -1,4 +1,5 @@
 import { i18n } from '../i18n';
+import { AppLoggerRequirements } from '../logging';
 import { ApiUrlStoreRequirements } from './api-url-store';
 import { TokenStoreRequirements } from './token-store';
 
@@ -22,13 +23,16 @@ export class ApiClient implements ApiClientRequirements {
 
   public constructor(
     private readonly tokenStore: TokenStoreRequirements,
-    private readonly apiUrlStore: ApiUrlStoreRequirements
+    private readonly apiUrlStore: ApiUrlStoreRequirements,
+    private readonly logger: AppLoggerRequirements
   ) {}
 
   public async request<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
     const token = this.tokenStore.getToken();
     const { skipSessionRefresh, ...requestOptions } = options;
+    const startedAt = Date.now();
     const response = await this.fetchApi(endpoint, requestOptions, this.createHeaders(options, token));
+    this.logResponse(this.describeRequest(endpoint, options), response, startedAt);
 
     if (this.shouldRefreshSession(response, token, skipSessionRefresh)) {
       const retried = await this.retryAfterRefresh<T>(endpoint, options, token as string);
@@ -40,6 +44,18 @@ export class ApiClient implements ApiClientRequirements {
 
     await this.assertSuccessfulResponse(response);
     return this.parseResponse<T>(response);
+  }
+
+  private logResponse(requestDescription: string, response: Response, startedAt: number): void {
+    const summary = `${requestDescription} → ${response.status}`;
+    const duration = `${Date.now() - startedAt}ms`;
+
+    if (response.ok) {
+      this.logger.info('api', summary, duration);
+      return;
+    }
+
+    this.logger.warn('api', summary, duration);
   }
 
   private async retryAfterRefresh<T>(
@@ -82,6 +98,7 @@ export class ApiClient implements ApiClientRequirements {
 
   private async fetchApi(endpoint: string, options: RequestInit, headers: Record<string, string>): Promise<Response> {
     return fetch(`${this.apiUrlStore.resolveUrl()}${endpoint}`, { ...options, headers }).catch((error: unknown) => {
+      this.logger.error('api', `${this.describeRequest(endpoint, options)} network failure`);
       throw new ApiError(this.resolveNetworkErrorMessage(error));
     });
   }
@@ -90,6 +107,10 @@ export class ApiClient implements ApiClientRequirements {
     if (!response.ok) {
       throw new ApiError(await this.resolveErrorMessage(response), response.status);
     }
+  }
+
+  private describeRequest(endpoint: string, options: RequestInit): string {
+    return `${options.method ?? 'GET'} ${endpoint.split('?')[0]}`;
   }
 
   private async parseResponse<T>(response: Response): Promise<T> {
@@ -109,21 +130,21 @@ export class ApiClient implements ApiClientRequirements {
   }
 
   private async refreshSessionToken(token: string): Promise<string | null> {
-    try {
-      const response = await this.fetchApi('/auth/refresh-session', { method: 'POST' }, {
-        Accept: 'application/json',
-        Authorization: `Bearer ${token}`,
-      });
+    const response = await this.fetchApi('/auth/refresh-session', { method: 'POST' }, {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    });
 
-      return this.resolveRefreshedToken(response);
-    } catch {
-      return null;
-    }
+    return this.resolveRefreshedToken(response);
   }
 
   private async resolveRefreshedToken(response: Response): Promise<string | null> {
     if (!response.ok) {
-      return null;
+      if (response.status === 401 || response.status === 403) {
+        return null;
+      }
+
+      throw new ApiError(await this.resolveErrorMessage(response), response.status);
     }
 
     const body = (await response.json()) as { jwt?: unknown };

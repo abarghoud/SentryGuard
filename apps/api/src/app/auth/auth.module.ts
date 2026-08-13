@@ -21,7 +21,7 @@ import { MailingModule } from '../mailing/mailing.module';
 import { UserSessionService } from './services/user-session.service';
 
 const jwtSecret = process.env.JWT_SECRET;
-const jwtExpiresIn = (process.env.JWT_EXPIRATION || '30d') as JwtSignOptions['expiresIn'];
+const jwtExpiresIn = (process.env.JWT_EXPIRATION || '1d') as JwtSignOptions['expiresIn'];
 
 if (!jwtSecret) {
   throw new Error(
@@ -37,6 +37,7 @@ if (!jwtSecret) {
       secret: jwtSecret,
       signOptions: {
         expiresIn: jwtExpiresIn,
+        algorithm: 'HS256',
       },
     }),
     WaitlistModule,

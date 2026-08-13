@@ -1,4 +1,5 @@
 import { mock } from 'jest-mock-extended';
+import { Logger } from '@nestjs/common';
 import { OciLoggingService } from './oci-logging.service';
 import * as ociLoggingIngestion from 'oci-loggingingestion';
 import * as ociCommon from 'oci-common';
@@ -239,14 +240,20 @@ describe('The OciLoggingService class', () => {
         service = new OciLoggingService(config);
       });
 
-      it('should propagate the error', async () => {
-        await expect(service.onModuleInit()).rejects.toThrow(
-          'LoggingClient creation failed',
+      it('should log the error', async () => {
+        const loggerErrorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+
+        await service.onModuleInit();
+
+        expect(loggerErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining('[OCI_LOGGING_INIT_ERROR] Failed to initialize: LoggingClient creation failed'),
         );
+
+        loggerErrorSpy.mockRestore();
       });
 
       it('should mark the service as not ready', async () => {
-        await expect(service.onModuleInit()).rejects.toThrow();
+        await service.onModuleInit();
 
         expect(service.isReady()).toBe(false);
       });

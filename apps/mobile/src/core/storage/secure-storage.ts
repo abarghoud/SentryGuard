@@ -22,7 +22,9 @@ export class SecureStorage implements SecureStorageRequirements {
       return;
     }
 
-    await SecureStore.setItemAsync(key, value);
+    await SecureStore.setItemAsync(key, value, {
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
   }
 
   public async removeItem(key: string): Promise<void> {

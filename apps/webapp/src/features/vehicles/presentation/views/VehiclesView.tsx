@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Vehicle } from '../../domain/entities';
+import { ConfigureTelemetryOutcome, Vehicle, VehicleActionOutcome } from '../../domain/entities';
 import VehicleCard from '../../../../components/VehicleCard';
 import { resolveVirtualKeyUrl } from '../../../../core/api/api-client';
 
@@ -8,14 +8,11 @@ export interface VehiclesViewProps {
   isLoading: boolean;
   error: string | null;
   onRefresh: () => void;
-  onConfigureTelemetry: (vin: string) => Promise<{
-    success: boolean;
-    message?: string;
-    skippedVehicle?: { vin: string; reason: string; details?: string } | null;
-  }>;
-  onDeleteTelemetry: (vin: string) => Promise<boolean>;
-  onToggleBreakInMonitoring: (vin: string, enable: boolean) => Promise<boolean>;
-  onUpdateBreakInOffensive: (vin: string, breakInResponse: string) => Promise<boolean>;
+  onConfigureTelemetry: (vin: string) => Promise<ConfigureTelemetryOutcome>;
+  onDeleteTelemetry: (vin: string) => Promise<VehicleActionOutcome>;
+  onToggleBreakInMonitoring: (vin: string, enable: boolean) => Promise<VehicleActionOutcome>;
+  onUpdateBreakInOffensive: (vin: string, breakInResponse: string) => Promise<VehicleActionOutcome>;
+  onUpdateAutoSentry: (vin: string, autoSentryEnabled: boolean) => Promise<VehicleActionOutcome>;
 }
 
 export function VehiclesView({
@@ -27,10 +24,15 @@ export function VehiclesView({
   onDeleteTelemetry,
   onToggleBreakInMonitoring,
   onUpdateBreakInOffensive,
+  onUpdateAutoSentry,
 }: VehiclesViewProps) {
   const { t } = useTranslation('common');
 
-  const isKeyPaired = vehicles.length > 0 ? vehicles[0].key_paired : null;
+  const vehiclesRequiringKey = vehicles.filter((v) => v.vehicle_command_protocol_required === true);
+  const pairedVehicleCount = vehiclesRequiringKey.filter((vehicle) => vehicle.key_paired === true).length;
+  
+  const areAllKeysPaired = vehiclesRequiringKey.length > 0 && pairedVehicleCount === vehiclesRequiringKey.length;
+  const areNoKeysPaired = vehiclesRequiringKey.length > 0 && pairedVehicleCount === 0;
 
   const handlePairVirtualKey = async () => {
     const url = await resolveVirtualKeyUrl();
@@ -103,17 +105,17 @@ export function VehiclesView({
       )}
 
       {/* Virtual Key Pairing Status */}
-      {isKeyPaired !== null && vehicles.length > 0 && (
+      {(areAllKeysPaired || areNoKeysPaired) && (
         <div
           className={`mb-6 rounded-lg border p-4 ${
-            isKeyPaired
+            areAllKeysPaired
               ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
               : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
           }`}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              {isKeyPaired ? (
+              {areAllKeysPaired ? (
                 <>
                   <svg
                     className="h-5 w-5 text-green-400"
@@ -163,7 +165,7 @@ export function VehiclesView({
                 </>
               )}
             </div>
-            {!isKeyPaired && (
+            {areNoKeysPaired && (
               <button
                 onClick={handlePairVirtualKey}
                 className="ml-4 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-tesla-600 hover:bg-tesla-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tesla-500"
@@ -224,12 +226,14 @@ export function VehiclesView({
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {vehicles.map((vehicle) => (
             <VehicleCard
-              key={vehicle.id}
+              key={vehicle.vin}
               vehicle={vehicle}
+              onPairVirtualKey={() => void handlePairVirtualKey()}
               onToggleTelemetry={onConfigureTelemetry}
               onToggleBreakInMonitoring={onToggleBreakInMonitoring}
               onDeleteTelemetry={onDeleteTelemetry}
               onUpdateBreakInOffensive={onUpdateBreakInOffensive}
+              onUpdateAutoSentry={onUpdateAutoSentry}
             />
           ))}
         </div>

@@ -1,3 +1,4 @@
+import { BadGatewayException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TelemetryConfigController } from './telemetry-config.controller';
 import { TelemetryConfigService } from './telemetry-config.service';
@@ -24,6 +25,7 @@ describe('TelemetryConfigController', () => {
           useValue: {
             getVehicles: jest.fn(),
             checkTelemetryConfig: jest.fn(),
+            deleteTelemetryConfig: jest.fn(),
           },
         },
         {
@@ -127,18 +129,16 @@ describe('TelemetryConfigController', () => {
       });
     });
 
-    it('should return failed message when service returns null', async () => {
+    it('should throw a bad gateway exception when service returns null', async () => {
       const vin = 'TEST_VIN_123';
 
       (sentryModeConfigService.configureTelemetry as jest.Mock).mockResolvedValue(null);
 
       const mockUser = { userId: 'test-user-id' } as unknown as User;
 
-      const result = await controller.configureVehicle(vin, mockUser);
-
-      expect(result).toEqual({
-        message: `Configuration failed for VIN: ${vin}`,
-      });
+      await expect(controller.configureVehicle(vin, mockUser)).rejects.toThrow(
+        BadGatewayException
+      );
     });
 
     it('should handle service errors', async () => {
@@ -150,6 +150,33 @@ describe('TelemetryConfigController', () => {
       await expect(controller.configureVehicle(vin, mockUser)).rejects.toThrow(
         'Service error'
       );
+    });
+  });
+
+  describe('deleteTelemetryConfig', () => {
+    const vin = 'TEST_VIN_123';
+    const mockUser = { userId: 'test-user-id' } as unknown as User;
+
+    it('should return the deletion result when it succeeds', async () => {
+      const expectedResult = { success: true, message: 'Configuration deleted' };
+      jest
+        .spyOn(service, 'deleteTelemetryConfig')
+        .mockResolvedValue(expectedResult);
+
+      const result = await controller.deleteTelemetryConfig(vin, mockUser);
+
+      expect(result).toEqual(expectedResult);
+    });
+
+    it('should throw a bad gateway exception when the deletion fails', async () => {
+      jest.spyOn(service, 'deleteTelemetryConfig').mockResolvedValue({
+        success: false,
+        message: 'Error deleting telemetry configuration',
+      });
+
+      await expect(
+        controller.deleteTelemetryConfig(vin, mockUser)
+      ).rejects.toThrow('Error deleting telemetry configuration');
     });
   });
 

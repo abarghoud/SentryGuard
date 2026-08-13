@@ -21,5 +21,8 @@ export interface ToggleBreakInMonitoringRequirements {
 }
 
 export interface UpdateOffensiveResponseRequirements {
-  execute(vin: string, breakInResponse?: string): Promise<GenericActionResponse>;
+  execute(
+    vin: string,
+    payload: { breakInResponse?: string; autoSentryEnabled?: boolean },
+  ): Promise<GenericActionResponse>;
 }

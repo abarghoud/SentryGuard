@@ -14,14 +14,46 @@ export interface PushNotificationServiceRequirements {
   getCachedExpoPushToken(): Promise<string | null>;
   getGrantedExpoPushToken(): Promise<string | null>;
   requestExpoPushToken(): Promise<string | null>;
+  isPushSetupCompleted(): Promise<boolean>;
+  setPushSetupCompleted(completed: boolean): Promise<void>;
+  clearPushSetupCompleted(): Promise<void>;
 }
 
 export class PushNotificationService implements PushNotificationServiceRequirements {
   private readonly notificationChannelId = 'sentryguard-alerts';
   private readonly criticalNotificationChannelId = 'sentryguard-critical-alerts-v5';
   private readonly pushTokenStorageKey = 'sentryguard.expoPushToken';
+  private readonly setupCompletedStorageKey = 'sentryguard.pushSetupCompleted';
 
   public constructor(private readonly dndPolicyAccess: DndPolicyAccessRequirements) {}
+
+  public async isPushSetupCompleted(): Promise<boolean> {
+    if (Platform.OS === 'web') {
+      return globalThis.localStorage?.getItem(this.setupCompletedStorageKey) === 'true';
+    }
+
+    const val = await SecureStore.getItemAsync(this.setupCompletedStorageKey);
+    return val === 'true';
+  }
+
+  public async setPushSetupCompleted(completed: boolean): Promise<void> {
+    const val = completed ? 'true' : 'false';
+    if (Platform.OS === 'web') {
+      globalThis.localStorage?.setItem(this.setupCompletedStorageKey, val);
+      return;
+    }
+
+    await SecureStore.setItemAsync(this.setupCompletedStorageKey, val);
+  }
+
+  public async clearPushSetupCompleted(): Promise<void> {
+    if (Platform.OS === 'web') {
+      globalThis.localStorage?.removeItem(this.setupCompletedStorageKey);
+      return;
+    }
+
+    await SecureStore.deleteItemAsync(this.setupCompletedStorageKey);
+  }
 
   public async getCachedExpoPushToken(): Promise<string | null> {
     if (Platform.OS === 'web') {
@@ -122,17 +154,26 @@ export class PushNotificationService implements PushNotificationServiceRequireme
   }
 
   private async getExpoPushToken(): Promise<string | null> {
-    try {
-      const projectId = this.getEasProjectId();
-      const expoToken = projectId
-        ? await Notifications.getExpoPushTokenAsync({ projectId })
-        : await Notifications.getExpoPushTokenAsync();
+    const maxRetries = 3;
+    const delayMs = 1000;
 
-      await this.storeExpoPushToken(expoToken.data);
-      return expoToken.data;
-    } catch (error) {
-      throw new Error(this.resolvePushTokenErrorMessage(error));
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const projectId = this.getEasProjectId();
+        const expoToken = projectId
+          ? await Notifications.getExpoPushTokenAsync({ projectId })
+          : await Notifications.getExpoPushTokenAsync();
+
+        await this.storeExpoPushToken(expoToken.data);
+        return expoToken.data;
+      } catch (error) {
+        if (attempt === maxRetries) {
+          throw new Error(this.resolvePushTokenErrorMessage(error));
+        }
+        await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+      }
     }
+    return null;
   }
 
   private getEasProjectId(): string | undefined {

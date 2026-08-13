@@ -27,7 +27,12 @@ export class RetryManager {
     }
 
     if (attemptCount === 1) {
-      this.executeRetry(execute, correlationId, attemptCount);
+      this.executeRetry(execute, correlationId, attemptCount).catch((err: unknown) =>
+        this.logger.error(
+          `[RETRY_ERROR][${correlationId}] Unhandled error in retry execution:`,
+          err instanceof Error ? err.message : String(err)
+        )
+      );
     } else {
       const delay = this.calculateDelay(attemptCount);
 
@@ -37,7 +42,12 @@ export class RetryManager {
 
       const timeoutId = setTimeout(() => {
         this.pendingRetries.delete(correlationId);
-        this.executeRetry(execute, correlationId, attemptCount);
+        this.executeRetry(execute, correlationId, attemptCount).catch((err: unknown) =>
+          this.logger.error(
+            `[RETRY_ERROR][${correlationId}] Unhandled error in scheduled retry:`,
+            err instanceof Error ? err.message : String(err)
+          )
+        );
       }, delay);
 
       this.pendingRetries.set(correlationId, timeoutId);

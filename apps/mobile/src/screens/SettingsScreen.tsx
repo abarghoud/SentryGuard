@@ -13,10 +13,12 @@ import { AppSwitch, AppText, GlassButton, GlassButtonVariant, Icon, ListRow, Lis
 import { UserLanguage } from '../features/user/domain/entities';
 import { resolveTelegramStatusKey } from './telegram-settings/telegram-settings.helpers';
 import {
+  clearDebugLogs,
   openAndroidDoNotDisturbAccessSettings,
   openPrivacyPolicy,
   openTermsOfService,
   resolveSettingsError,
+  shareDebugLogs,
 } from './settings/settings.helpers';
 import { useSettings } from './settings/use-settings';
 
@@ -149,6 +151,11 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         <ListRow title={t('settings.privacyPolicy')} showChevron onPress={() => void openPrivacyPolicy(i18n.language)} />
         <ListRow title={t('settings.terms')} showChevron onPress={() => void openTermsOfService(i18n.language)} />
         <ListRow title={t('settings.deleteAccount')} showChevron onPress={() => navigation.navigate('DeleteAccount')} />
+      </ListSection>
+
+      <ListSection header={t('settings.supportSection')} footer={t('settings.debugLogsFooter')}>
+        <ListRow title={t('settings.exportLogs')} showChevron onPress={() => void shareDebugLogs(t)} />
+        <ListRow title={t('settings.clearLogs')} onPress={() => void clearDebugLogs()} />
       </ListSection>
 
       <GlassButton

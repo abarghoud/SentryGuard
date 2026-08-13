@@ -14,7 +14,10 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { User } from '../../entities/user.entity';
 import { ThrottleOptions } from '../../config/throttle.config';
 import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
-import { VehicleOffensiveResponseConfigService } from './vehicle-offensive-response-config.service';
+import {
+  UpdateOffensiveResponseDto,
+  VehicleOffensiveResponseConfigService,
+} from './vehicle-offensive-response-config.service';
 
 @Controller('offensive-response')
 @UseGuards(JwtAuthGuard, ConsentGuard)
@@ -30,21 +33,9 @@ export class OffensiveResponseController {
   async updateOffensiveResponse(
     @Param('vin') vin: string,
     @CurrentUser() user: User,
-    @Body() body: { break_in_offensive_response?: string },
+    @Body() body: UpdateOffensiveResponseDto,
   ) {
-    if (!body.break_in_offensive_response) {
-      throw new BadRequestException(
-        'break_in_offensive_response must be provided'
-      );
-    }
-
-    const validResponses = Object.values(OffensiveResponse);
-
-    if (!validResponses.includes(body.break_in_offensive_response as OffensiveResponse)) {
-      throw new BadRequestException(
-        `Invalid break_in_offensive_response value. Must be one of: ${validResponses.join(', ')}`
-      );
-    }
+    this.validateUpdateBody(body);
 
     const userId = user.userId;
     this.logger.log(
@@ -55,5 +46,32 @@ export class OffensiveResponseController {
       vin,
       body,
     );
+  }
+
+  private validateUpdateBody(body: UpdateOffensiveResponseDto): void {
+    const hasOffensiveResponse = body.break_in_offensive_response !== undefined;
+    const hasAutoSentry = body.break_in_auto_sentry_mode_enabled !== undefined;
+
+    if (!hasOffensiveResponse && !hasAutoSentry) {
+      throw new BadRequestException(
+        'break_in_offensive_response or break_in_auto_sentry_mode_enabled must be provided'
+      );
+    }
+
+    if (hasOffensiveResponse) {
+      const validResponses = Object.values(OffensiveResponse);
+
+      if (!validResponses.includes(body.break_in_offensive_response as OffensiveResponse)) {
+        throw new BadRequestException(
+          `Invalid break_in_offensive_response value. Must be one of: ${validResponses.join(', ')}`
+        );
+      }
+    }
+
+    if (hasAutoSentry && typeof body.break_in_auto_sentry_mode_enabled !== 'boolean') {
+      throw new BadRequestException(
+        'break_in_auto_sentry_mode_enabled must be a boolean'
+      );
+    }
   }
 }

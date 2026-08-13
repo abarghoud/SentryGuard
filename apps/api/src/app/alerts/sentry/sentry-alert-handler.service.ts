@@ -10,20 +10,13 @@ import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-even
 
 @Injectable()
 export class SentryAlertHandlerService implements TelemetryEventHandler {
-  private readonly logger = new Logger(SentryAlertHandlerService.name);
-
   constructor(
     private readonly telegramService: TelegramService,
     private readonly keyboardBuilder: TelegramKeyboardBuilderService,
     private readonly alertNotifier: VehicleAlertNotifierService,
-  ) { }
+  ) {}
 
   async handle(telemetryMessage: TelemetryMessage): Promise<void> {
-    if (!telemetryMessage.validateContainsSentryMode() || !telemetryMessage.validateSentryModeValue()) {
-      this.logger.warn('Telemetry message does not contain SentryMode data', telemetryMessage);
-      return;
-    }
-
     const sentryMode = telemetryMessage.getSentryModeState();
 
     if (sentryMode === SentryModeState.Aware) {

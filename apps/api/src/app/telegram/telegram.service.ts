@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { TelegramError } from 'telegraf';
 import i18n from '../../i18n';
 import { SupportedLanguage } from '../../common/utils/language.util';
@@ -6,8 +6,8 @@ import { TelegramBotService } from './telegram-bot.service';
 import { TelegramMuteService } from './telegram-mute.service';
 import { TelegramContextService } from './telegram-context.service';
 import { TelegramBotUpdateService } from './telegram-bot-update.service';
-import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import type { ITelegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
+import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import { telegramRetryManager } from './telegram-retry-manager.token';
 import { RetryManager } from '../shared/retry-manager.service';
 
@@ -53,21 +53,27 @@ export class TelegramService implements OnModuleDestroy {
       return false;
     }
 
-    await this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage);
-
-    if (this.shouldSimulateMessage(alertInfo.vin)) {
-      return await this.simulateMessage(userId, 'alert', alertInfo.vin);
-    }
-
     const options = keyboard ? { keyboard } : undefined;
 
     try {
-      const success = await this.telegramBotService.sendMessage(chatId, message, options);
+      await this.telegramBotUpdateService.ensureUserIsUpToDate(
+        userId,
+        chatId,
+        userLanguage
+      );
 
-      return success;
+      if (this.shouldSimulateMessage(alertInfo.vin)) {
+        return await this.simulateMessage(userId, 'alert', alertInfo.vin);
+      }
+
+      return await this.telegramBotService.sendMessage(
+        chatId,
+        message,
+        options
+      );
     } catch (error) {
-      if (this.failureHandler.canHandle(error as Error)) {
-        await this.failureHandler.handleFailure(error as Error, userId);
+      if (this.isBlockedBotFailure(error)) {
+        await this.failureHandler.handleFailure(error, userId);
         this.logger.log(`[TELEGRAM_FAILURE_HANDLED] Error handled for user ${userId}`);
 
         return false;
@@ -114,21 +120,27 @@ export class TelegramService implements OnModuleDestroy {
       return false;
     }
 
-    await this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage);
-
-    if (this.shouldSimulateMessage(alertInfo.vin)) {
-      return await this.simulateMessage(userId, 'alert', alertInfo.vin);
-    }
-
     const options = keyboard ? { keyboard } : undefined;
 
     try {
-      const success = await this.telegramBotService.sendMessage(chatId, message, options);
+      await this.telegramBotUpdateService.ensureUserIsUpToDate(
+        userId,
+        chatId,
+        userLanguage
+      );
 
-      return success;
+      if (this.shouldSimulateMessage(alertInfo.vin)) {
+        return await this.simulateMessage(userId, 'alert', alertInfo.vin);
+      }
+
+      return await this.telegramBotService.sendMessage(
+        chatId,
+        message,
+        options
+      );
     } catch (error) {
-      if (this.failureHandler.canHandle(error as Error)) {
-        await this.failureHandler.handleFailure(error as Error, userId);
+      if (this.isBlockedBotFailure(error)) {
+        await this.failureHandler.handleFailure(error, userId);
         this.logger.log(`[TELEGRAM_FAILURE_HANDLED] Error handled for user ${userId}`);
 
         return false;
@@ -155,6 +167,10 @@ export class TelegramService implements OnModuleDestroy {
 
   onModuleDestroy() {
     this.retryManager.stop();
+  }
+
+  private isBlockedBotFailure(error: unknown): error is Error {
+    return error instanceof Error && this.failureHandler.canHandle(error);
   }
 
   private isRetryableTelegramError(error: unknown): boolean {

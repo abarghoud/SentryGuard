@@ -5,6 +5,7 @@ import OnboardingStepLayout from './OnboardingStepLayout';
 import RequireVehicleCommands from '../RequireVehicleCommands';
 import VinMask from '../VinMask';
 import { useTelemetryActivation } from '../../features/onboarding/presentation/hooks/use-telemetry-activation';
+import { resolveVirtualKeyUrl } from '../../core/api/api-client';
 
 interface TelemetryActivationStepProps {
   onCompleted?: () => Promise<void>;
@@ -15,6 +16,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
   const {
     vehicles,
     isLoading,
+    refetch,
     activatingVins,
     deletingVins,
     errors,
@@ -22,6 +24,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
     hasTelemetryEnabled,
     handleToggleBreakIn,
     handleToggleOffensive,
+    handleToggleAutoSentry,
     handleToggleSentry,
     handleCompleteOnboarding,
     isVehicleUpdating,
@@ -33,8 +36,8 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
       description={t(
         'Start monitoring your vehicle\'s Sentry Mode in real-time'
       )}
-      stepNumber={4}
-      totalSteps={4}
+      stepNumber={2}
+      totalSteps={2}
     >
       <div className="space-y-6">
         {/* Success message if telemetry enabled */}
@@ -106,6 +109,33 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                   </div>
                 )}
 
+                {vehicle.key_paired === false && vehicle.vehicle_command_protocol_required === true && (
+                  <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-2">
+                    <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
+                      {t('Virtual Key Not Paired')}
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          const url = await resolveVirtualKeyUrl();
+                          if (url) {
+                            window.open(url, '_blank');
+                          }
+                        }}
+                        className="shrink-0 inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-tesla-600 hover:bg-tesla-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tesla-500"
+                      >
+                        {t('Pair Virtual Key')}
+                      </button>
+                      <button
+                        onClick={() => void refetch()}
+                        className="shrink-0 inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      >
+                        {t('Refresh')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-4 pt-2">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
@@ -118,7 +148,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                     </div>
                     <button
                       onClick={() => handleToggleSentry(vehicle.vin, !!vehicle.sentry_mode_monitoring_enabled)}
-                      disabled={isVehicleUpdating(vehicle.vin)}
+                      disabled={isVehicleUpdating(vehicle.vin) || (vehicle.key_paired === false && vehicle.vehicle_command_protocol_required !== false)}
                       className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                         vehicle.sentry_mode_monitoring_enabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
                       }`}
@@ -154,7 +184,7 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                     </div>
                     <button
                       onClick={() => handleToggleBreakIn(vehicle.vin, !!vehicle.break_in_monitoring_enabled)}
-                      disabled={isVehicleUpdating(vehicle.vin)}
+                      disabled={isVehicleUpdating(vehicle.vin) || (vehicle.key_paired === false && vehicle.vehicle_command_protocol_required !== false)}
                       className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                         vehicle.break_in_monitoring_enabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
                       }`}
@@ -176,32 +206,62 @@ export default function TelemetryActivationStep({ onCompleted }: TelemetryActiva
                       description={t('offensiveResponseLockedDescription')}
                       buttonLabel={t('offensiveResponseLockedButton')}
                     >
-                      <div className="flex items-start justify-between gap-4 pt-3 border-t border-gray-100 dark:border-gray-700/50">
-                        <div className="flex-1">
-                          <span className="text-sm font-semibold text-gray-900 dark:text-white block">
-                            {t('Offensive Response')}
-                          </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400 leading-normal block mt-0.5">
-                            {t('offensiveResponseInfo')}
-                          </span>
-                        </div>
-                        <div className="flex-shrink-0">
-                          <button
-                            onClick={() => handleToggleOffensive(vehicle.vin, vehicle.break_in_offensive_response === 'HONK')}
-                            disabled={isVehicleUpdating(vehicle.vin)}
-                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                              vehicle.break_in_offensive_response === 'HONK' ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
-                            }`}
-                            role="switch"
-                            aria-checked={vehicle.break_in_offensive_response === 'HONK'}
-                            type="button"
-                          >
-                            <span
-                              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                vehicle.break_in_offensive_response === 'HONK' ? 'translate-x-5' : 'translate-x-0'
+                      <div>
+                        <div className="flex items-start justify-between gap-4 pt-3 border-t border-gray-100 dark:border-gray-700/50">
+                          <div className="flex-1">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white block">
+                              {t('Offensive Response')}
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 leading-normal block mt-0.5">
+                              {t('offensiveResponseInfo')}
+                            </span>
+                          </div>
+                          <div className="flex-shrink-0">
+                            <button
+                              onClick={() => handleToggleOffensive(vehicle.vin, vehicle.break_in_offensive_response === 'HONK')}
+                              disabled={isVehicleUpdating(vehicle.vin)}
+                              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                                vehicle.break_in_offensive_response === 'HONK' ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
                               }`}
-                            />
-                          </button>
+                              role="switch"
+                              aria-checked={vehicle.break_in_offensive_response === 'HONK'}
+                              type="button"
+                            >
+                              <span
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                  vehicle.break_in_offensive_response === 'HONK' ? 'translate-x-5' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex items-start justify-between gap-4 pt-3 border-t border-gray-100 dark:border-gray-700/50">
+                          <div className="flex-1">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white block">
+                              {t('Auto Sentry Mode')}
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 leading-normal block mt-0.5">
+                              {t('autoSentryModeInfo')}
+                            </span>
+                          </div>
+                          <div className="flex-shrink-0">
+                            <button
+                              onClick={() => handleToggleAutoSentry(vehicle.vin, vehicle.break_in_auto_sentry_mode_enabled === true)}
+                              disabled={isVehicleUpdating(vehicle.vin)}
+                              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                                vehicle.break_in_auto_sentry_mode_enabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                              }`}
+                              role="switch"
+                              aria-checked={vehicle.break_in_auto_sentry_mode_enabled === true}
+                              type="button"
+                            >
+                              <span
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                  vehicle.break_in_auto_sentry_mode_enabled ? 'translate-x-5' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </RequireVehicleCommands>
