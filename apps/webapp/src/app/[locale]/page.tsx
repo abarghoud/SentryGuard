@@ -7,6 +7,7 @@ import AuthRedirect from '@/components/AuthRedirect';
 import TeslaLoginButton from '@/components/TeslaLoginButton';
 import SessionExpiredBanner from '@/components/SessionExpiredBanner';
 import LocalizedImage from '@/components/LocalizedImage';
+import AiIllustrationWrapper from '@/components/AiIllustrationWrapper';
 import ComparisonItem from '@/components/home/ComparisonItem';
 import StepItem from '@/components/home/StepItem';
 
@@ -133,7 +134,9 @@ export default async function HomePage({ params }: HomePageProps) {
             </div>
           </div>
           <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-gray-100">
-            <LocalizedImage baseSrc="/images/hero-alert" locale={locale} alt="Telegram Sentry Alert" width={600} height={600} priority fetchPriority="high" className="w-full h-auto object-cover transform hover:scale-105 transition-transform duration-700" />
+            <AiIllustrationWrapper locale={locale}>
+              <LocalizedImage baseSrc="/images/hero-alert" locale={locale} alt="Telegram Sentry Alert" width={600} height={600} priority fetchPriority="high" className="w-full h-auto object-cover transform hover:scale-105 transition-transform duration-700" />
+            </AiIllustrationWrapper>
           </div>
         </div>
       </div>
@@ -151,7 +154,9 @@ export default async function HomePage({ params }: HomePageProps) {
             
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div className="order-2 md:order-1 relative rounded-2xl overflow-hidden shadow-xl border border-gray-100 bg-white">
-                 <LocalizedImage baseSrc="/images/door-ding" locale={locale} alt="Door ding comparison" width={600} height={600} className="w-full h-auto object-cover" />
+                <AiIllustrationWrapper locale={locale}>
+                  <LocalizedImage baseSrc="/images/door-ding" locale={locale} alt="Door ding comparison" width={600} height={600} className="w-full h-auto object-cover" />
+                </AiIllustrationWrapper>
               </div>
               <div className="order-1 md:order-2 space-y-8">
                 <div>
@@ -201,13 +206,17 @@ export default async function HomePage({ params }: HomePageProps) {
                 </div>
               </div>
               <div className="order-2 md:order-2 relative rounded-2xl overflow-hidden shadow-xl border border-gray-100 bg-white">
-                 <LocalizedImage baseSrc="/images/hero-alert" locale={locale} alt="Break-in alert comparison" width={600} height={600} className="w-full h-auto object-cover" />
+                <AiIllustrationWrapper locale={locale}>
+                  <LocalizedImage baseSrc="/images/hero-alert" locale={locale} alt="Break-in alert comparison" width={600} height={600} className="w-full h-auto object-cover" />
+                </AiIllustrationWrapper>
               </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div className="order-2 md:order-1 relative rounded-2xl overflow-hidden shadow-xl border border-gray-100 bg-white">
-                 <LocalizedImage baseSrc="/images/auto-sentry" locale={locale} alt="Auto Sentry Mode comparison" width={600} height={600} className="w-full h-auto object-cover" />
+                <AiIllustrationWrapper locale={locale}>
+                  <LocalizedImage baseSrc="/images/auto-sentry" locale={locale} alt="Auto Sentry Mode comparison" width={600} height={600} className="w-full h-auto object-cover" />
+                </AiIllustrationWrapper>
               </div>
               <div className="order-1 md:order-2 space-y-8">
                 <div>
@@ -257,7 +266,9 @@ export default async function HomePage({ params }: HomePageProps) {
                 </div>
               </div>
               <div className="order-2 md:order-2 relative rounded-2xl overflow-hidden shadow-xl border border-gray-100 bg-white">
-                 <LocalizedImage baseSrc="/images/offensive-response" locale={locale} alt="Active deterrent comparison" width={600} height={600} className="w-full h-auto object-cover" />
+                <AiIllustrationWrapper locale={locale}>
+                  <LocalizedImage baseSrc="/images/offensive-response" locale={locale} alt="Active deterrent comparison" width={600} height={600} className="w-full h-auto object-cover" />
+                </AiIllustrationWrapper>
               </div>
             </div>
 
