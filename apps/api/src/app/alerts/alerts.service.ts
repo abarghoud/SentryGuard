@@ -1,8 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 
-import { AlertEvent, AlertEventSeverity, AlertEventType } from '../../entities/alert-event.entity';
+import {
+  AlertEvent,
+  AlertEventNotificationStatus,
+  AlertEventSeverity,
+  AlertEventType,
+} from '../../entities/alert-event.entity';
 
 const maxAlertEventsPerUser = 50;
 
@@ -45,11 +50,55 @@ export class AlertsService {
     type: AlertEventType,
     severity: AlertEventSeverity,
     vehicleDisplayName?: string
-  ): Promise<void> {
-    await this.alertEventRepository.save(
+  ): Promise<string> {
+    const savedEvent = await this.alertEventRepository.save(
       this.alertEventRepository.create({ userId, vin, type, severity, vehicle_display_name: vehicleDisplayName })
     );
     await this.deleteOldAlertEvents(userId);
+
+    return savedEvent.id;
+  }
+
+  public async markNotificationSent(alertEventId: string): Promise<void> {
+    await this.alertEventRepository.update(
+      { id: alertEventId, notification_status: AlertEventNotificationStatus.Pending },
+      { notification_status: AlertEventNotificationStatus.Sent }
+    );
+  }
+
+  public async markNotificationAttemptFailed(alertEventId: string, maxAttempts: number): Promise<void> {
+    await this.alertEventRepository
+      .createQueryBuilder()
+      .update(AlertEvent)
+      .set({ notification_attempts: () => 'notification_attempts + 1' })
+      .where('id = :id AND notification_status = :pendingStatus', {
+        id: alertEventId,
+        pendingStatus: AlertEventNotificationStatus.Pending,
+      })
+      .execute();
+
+    await this.alertEventRepository
+      .createQueryBuilder()
+      .update(AlertEvent)
+      .set({ notification_status: AlertEventNotificationStatus.Failed })
+      .where(
+        'id = :id AND notification_status = :pendingStatus AND notification_attempts >= :maxAttempts',
+        {
+          id: alertEventId,
+          pendingStatus: AlertEventNotificationStatus.Pending,
+          maxAttempts,
+        }
+      )
+      .execute();
+  }
+
+  public async findPendingNotificationsBefore(cutoff: Date): Promise<AlertEvent[]> {
+    return this.alertEventRepository.find({
+      where: {
+        notification_status: AlertEventNotificationStatus.Pending,
+        created_at: LessThan(cutoff),
+      },
+    });
   }
 
   private async deleteOldAlertEvents(userId: string): Promise<void> {

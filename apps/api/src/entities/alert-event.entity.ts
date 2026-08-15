@@ -10,9 +10,16 @@ export enum AlertEventType {
   Sentry = 'sentry',
 }
 
+export enum AlertEventNotificationStatus {
+  Pending = 'pending',
+  Sent = 'sent',
+  Failed = 'failed',
+}
+
 @Entity('alert_events')
 @Index(['userId', 'created_at'])
 @Index(['vin'])
+@Index('idx_alert_events_pending', { where: "notification_status = 'pending'" })
 export class AlertEvent {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -31,6 +38,12 @@ export class AlertEvent {
 
   @Column({ type: 'enum', enum: AlertEventSeverity })
   severity!: AlertEventSeverity;
+
+  @Column({ type: 'enum', enum: AlertEventNotificationStatus, default: AlertEventNotificationStatus.Pending, nullable: true })
+  notification_status?: AlertEventNotificationStatus | null;
+
+  @Column({ type: 'int', default: 0 })
+  notification_attempts!: number;
 
   @CreateDateColumn()
   created_at!: Date;

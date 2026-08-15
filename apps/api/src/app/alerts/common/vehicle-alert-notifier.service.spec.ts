@@ -9,16 +9,21 @@ import { Vehicle } from '../../../entities/vehicle.entity';
 import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 import { AlertsService } from '../alerts.service';
 import { NotificationsService } from '../../notifications/notifications.service';
+import { NotificationQueueService } from '../../notifications/notification-queue.service';
+import { AlertNotifierRegistry } from './alert-notifier.registry';
 import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
 
 describe('The VehicleAlertNotifierService class', () => {
   let service: VehicleAlertNotifierService;
-  
+
   let mockUserLanguageService: MockProxy<UserLanguageService>;
   let mockKafkaLogContextService: MockProxy<KafkaLogContextService>;
   let mockVehicleRepository: MockProxy<Repository<Vehicle>>;
   let mockAlertsService: MockProxy<AlertsService>;
   let mockNotificationsService: MockProxy<NotificationsService>;
+  let mockNotificationQueueService: MockProxy<NotificationQueueService>;
+  let mockAlertNotifierRegistry: MockProxy<AlertNotifierRegistry>;
+  let enqueuedTasks: Array<() => Promise<void>>;
 
   beforeEach(async () => {
     mockUserLanguageService = mock<UserLanguageService>();
@@ -26,8 +31,23 @@ describe('The VehicleAlertNotifierService class', () => {
     mockVehicleRepository = mock<Repository<Vehicle>>();
     mockAlertsService = mock<AlertsService>();
     mockNotificationsService = mock<NotificationsService>();
+    mockNotificationQueueService = mock<NotificationQueueService>();
+    mockAlertNotifierRegistry = mock<AlertNotifierRegistry>();
+    enqueuedTasks = [];
+
     mockNotificationsService.shouldSendTelegram.mockResolvedValue(true);
     mockNotificationsService.sendPushAlert.mockResolvedValue(undefined);
+    mockAlertsService.record.mockImplementation(async (userId: string) => `alert-${userId}`);
+    mockAlertsService.markNotificationSent.mockResolvedValue(undefined);
+    mockAlertsService.markNotificationAttemptFailed.mockResolvedValue(undefined);
+    mockKafkaLogContextService.runWithContext.mockImplementation(
+      async (_context: { vin: string; correlationId: string }, callback: () => Promise<void>) => {
+        await callback();
+      }
+    );
+    mockNotificationQueueService.enqueue.mockImplementation((task: () => Promise<void>) => {
+      enqueuedTasks.push(task);
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -36,6 +56,8 @@ describe('The VehicleAlertNotifierService class', () => {
         { provide: KafkaLogContextService, useValue: mockKafkaLogContextService },
         { provide: AlertsService, useValue: mockAlertsService },
         { provide: NotificationsService, useValue: mockNotificationsService },
+        { provide: NotificationQueueService, useValue: mockNotificationQueueService },
+        { provide: AlertNotifierRegistry, useValue: mockAlertNotifierRegistry },
         { provide: getRepositoryToken(Vehicle), useValue: mockVehicleRepository },
       ],
     }).compile();
@@ -47,9 +69,12 @@ describe('The VehicleAlertNotifierService class', () => {
     jest.clearAllMocks();
   });
 
+  const executeEnqueuedTasks = async (): Promise<void> => {
+    await Promise.all(enqueuedTasks.map((task) => task()));
+  };
+
   describe('The dispatch() method', () => {
     let telemetryMessage: TelemetryMessage;
-    let mockTelegramNotifier: jest.Mock;
     let config: AlertDispatchConfig;
 
     beforeEach(() => {
@@ -60,14 +85,11 @@ describe('The VehicleAlertNotifierService class', () => {
       jest.spyOn(telemetryMessage, 'calculateEndToEndLatency').mockReturnValue(50);
       jest.spyOn(telemetryMessage, 'isProcessingDelayed').mockReturnValue(false);
 
-      mockTelegramNotifier = jest.fn().mockResolvedValue(undefined);
-
       config = {
         telemetryMessage,
         alertName: 'TEST_ALERT',
         latencyLabel: 'TEST_LATENCY',
         severity: AlertEventSeverity.Critical,
-        telegramNotifier: mockTelegramNotifier,
         type: AlertEventType.BreakIn,
       };
     });
@@ -88,22 +110,23 @@ describe('The VehicleAlertNotifierService class', () => {
 
       await service.dispatch(config);
 
-      expect(mockTelegramNotifier).not.toHaveBeenCalled();
+      expect(mockNotificationQueueService.enqueue).not.toHaveBeenCalled();
       expect(mockKafkaLogContextService.assignUserId).not.toHaveBeenCalled();
     });
 
-    it('should extract unique users, assign log context, and trigger notifications', async () => {
+    it('should extract unique users, assign log context, and enqueue notifications', async () => {
       mockVehicleRepository.find.mockResolvedValue([
         { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
         { userId: 'user-2', display_name: 'My Tesla' } as Vehicle,
         { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
       ]);
 
-      mockUserLanguageService.getUserLanguage.mockImplementation(async (userId) => {
+      mockUserLanguageService.getUserLanguage.mockImplementation(async (userId: string) => {
         return userId === 'user-1' ? 'en' : 'fr';
       });
 
       await service.dispatch(config);
+      await executeEnqueuedTasks();
 
       expect(mockKafkaLogContextService.assignUserId).toHaveBeenCalledWith('user-1,user-2');
 
@@ -111,41 +134,49 @@ describe('The VehicleAlertNotifierService class', () => {
       expect(mockUserLanguageService.getUserLanguage).toHaveBeenCalledWith('user-1');
       expect(mockUserLanguageService.getUserLanguage).toHaveBeenCalledWith('user-2');
 
-      expect(mockTelegramNotifier).toHaveBeenCalledTimes(2);
-      expect(mockTelegramNotifier).toHaveBeenCalledWith(
-        'user-1',
-        { vin: 'TEST_VIN_123', display_name: 'My Tesla' },
+      expect(mockAlertNotifierRegistry.notify).toHaveBeenCalledTimes(2);
+      expect(mockAlertNotifierRegistry.notify).toHaveBeenCalledWith(
+        expect.objectContaining({ alertEventId: 'alert-user-1', userId: 'user-1', vin: 'TEST_VIN_123' }),
         'en'
       );
-      expect(mockTelegramNotifier).toHaveBeenCalledWith(
-        'user-2',
-        { vin: 'TEST_VIN_123', display_name: 'My Tesla' },
+      expect(mockAlertNotifierRegistry.notify).toHaveBeenCalledWith(
+        expect.objectContaining({ alertEventId: 'alert-user-2', userId: 'user-2' }),
         'fr'
       );
     });
 
-    it('should continue executing gracefully if one user notification fails', async () => {
+    it('should mark the notification as sent after a successful send', async () => {
       mockVehicleRepository.find.mockResolvedValue([
         { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
-        { userId: 'user-2', display_name: 'My Tesla' } as Vehicle,
       ]);
-
       mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
-      
-      mockTelegramNotifier
-        .mockRejectedValueOnce(new Error('Network Error'))
-        .mockResolvedValueOnce(undefined);
 
       await service.dispatch(config);
+      await executeEnqueuedTasks();
 
-      expect(mockTelegramNotifier).toHaveBeenCalledTimes(2);
+      expect(mockAlertsService.markNotificationSent).toHaveBeenCalledWith('alert-user-1');
+      expect(mockAlertsService.markNotificationAttemptFailed).not.toHaveBeenCalled();
+    });
+
+    it('should mark the attempt as failed when the notification fails', async () => {
+      mockVehicleRepository.find.mockResolvedValue([
+        { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
+      ]);
+      mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+      mockAlertNotifierRegistry.notify.mockRejectedValue(new Error('Network Error'));
+
+      await service.dispatch(config);
+      await executeEnqueuedTasks();
+
+      expect(mockAlertsService.markNotificationAttemptFailed).toHaveBeenCalledWith('alert-user-1', 3);
+      expect(mockAlertsService.markNotificationSent).not.toHaveBeenCalled();
     });
 
     it('should surface database errors downstream', async () => {
       mockVehicleRepository.find.mockRejectedValue(new Error('DB Error'));
 
       await expect(service.dispatch(config)).rejects.toThrow('DB Error');
-      expect(mockTelegramNotifier).not.toHaveBeenCalled();
+      expect(mockNotificationQueueService.enqueue).not.toHaveBeenCalled();
     });
 
     it('should correctly evaluate end-to-end latency', async () => {
@@ -166,7 +197,7 @@ describe('The VehicleAlertNotifierService class', () => {
           { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
           { userId: 'user-2', display_name: 'My Tesla' } as Vehicle,
         ]);
-        mockUserLanguageService.getUserLanguage.mockImplementation(async (userId) => {
+        mockUserLanguageService.getUserLanguage.mockImplementation(async (userId: string) => {
           return userId === 'user-1' ? 'en' : 'fr';
         });
       });
@@ -193,6 +224,7 @@ describe('The VehicleAlertNotifierService class', () => {
 
       it('should trigger push notifications for each user', async () => {
         await service.dispatch(config);
+        await executeEnqueuedTasks();
 
         expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledTimes(2);
         expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
@@ -223,8 +255,9 @@ describe('The VehicleAlertNotifierService class', () => {
 
       it('should not notify via Telegram but still send push alert', async () => {
         await service.dispatch(config);
+        await executeEnqueuedTasks();
 
-        expect(mockTelegramNotifier).not.toHaveBeenCalled();
+        expect(mockAlertNotifierRegistry.notify).not.toHaveBeenCalled();
         expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
           'user-1',
           AlertEventSeverity.Critical,
@@ -233,6 +266,31 @@ describe('The VehicleAlertNotifierService class', () => {
           'corr-123'
         );
       });
+    });
+  });
+
+  describe('The enqueueNotification() method', () => {
+    it('should enqueue a job carrying the alert event id', () => {
+      service.enqueueNotification({
+        alertEventId: 'alert-1',
+        userId: 'user-1',
+        vin: 'VIN-1',
+        vehicleDisplayName: 'My Tesla',
+        type: AlertEventType.Sentry,
+        severity: AlertEventSeverity.Warning,
+        correlationId: 'corr-1',
+      });
+
+      expect(mockNotificationQueueService.enqueue).toHaveBeenCalledTimes(1);
+      expect(mockNotificationQueueService.enqueue).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.objectContaining({
+          label: 'sentry:user-1',
+          vin: 'VIN-1',
+          correlationId: 'corr-1',
+          alertEventId: 'alert-1',
+        })
+      );
     });
   });
 });

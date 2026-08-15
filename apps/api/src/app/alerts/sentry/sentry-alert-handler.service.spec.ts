@@ -2,8 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { plainToInstance } from 'class-transformer';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { SentryAlertHandlerService } from './sentry-alert-handler.service';
-import { TelegramService } from '../../telegram/telegram.service';
-import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
 
 import { TelemetryMessage, SentryModeState } from '../../telemetry/models/telemetry-message.model';
@@ -11,19 +9,13 @@ import { TelemetryMessage, SentryModeState } from '../../telemetry/models/teleme
 describe('The SentryAlertHandlerService class', () => {
   let service: SentryAlertHandlerService;
 
-  let mockTelegramService: MockProxy<TelegramService>;
-  let mockKeyboardBuilder: MockProxy<TelegramKeyboardBuilderService>;
   let mockAlertNotifier: MockProxy<VehicleAlertNotifierService>;
   beforeEach(async () => {
-    mockTelegramService = mock<TelegramService>();
-    mockKeyboardBuilder = mock<TelegramKeyboardBuilderService>();
     mockAlertNotifier = mock<VehicleAlertNotifierService>();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SentryAlertHandlerService,
-        { provide: TelegramService, useValue: mockTelegramService },
-        { provide: TelegramKeyboardBuilderService, useValue: mockKeyboardBuilder },
         { provide: VehicleAlertNotifierService, useValue: mockAlertNotifier },
       ]
     }).compile();
@@ -123,29 +115,7 @@ describe('The SentryAlertHandlerService class', () => {
           telemetryMessage: baseTelemetryMessage,
           alertName: 'SENTRY_ALERT',
           latencyLabel: 'SENTRY_LATENCY',
-          telegramNotifier: expect.any(Function)
         }));
-      });
-
-      it('should construct and send telegram message when notifier callback is invoked', async () => {
-        await service.handle(baseTelemetryMessage);
-
-        const dispatchCall = mockAlertNotifier.dispatch.mock.calls[0][0];
-        const notifierCb = dispatchCall.telegramNotifier;
-
-        mockKeyboardBuilder.buildSentryAlertKeyboard.mockReturnValue({
-          inline_keyboard: [[{ text: 'Test Button', url: 'http://test.com' }]]
-        });
-
-        await notifierCb('test-user', { vin: '123', display_name: 'Test Vehicle' }, 'en');
-
-        expect(mockKeyboardBuilder.buildSentryAlertKeyboard).toHaveBeenCalledWith('test-user', 'en');
-        expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith(
-          'test-user',
-          { vin: '123', display_name: 'Test Vehicle' },
-          'en',
-          { inline_keyboard: [[{ text: 'Test Button', url: 'http://test.com' }]] }
-        );
       });
     });
   });

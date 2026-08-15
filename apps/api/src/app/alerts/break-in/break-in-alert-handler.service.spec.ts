@@ -1,8 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { BreakInAlertHandlerService } from './break-in-alert-handler.service';
-import { TelegramService } from '../../telegram/telegram.service';
-import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
 import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-offensive-response.service';
 import { AlertsAutoSentryService } from '../../offensive-response/alerts-auto-sentry.service';
@@ -12,16 +10,12 @@ import { ChargePortLatchTrackerService } from './charge-port-latch-tracker.servi
 describe('The BreakInAlertHandlerService class', () => {
   let service: BreakInAlertHandlerService;
 
-  let mockTelegramService: MockProxy<TelegramService>;
-  let mockKeyboardBuilder: MockProxy<TelegramKeyboardBuilderService>;
   let mockAlertNotifier: MockProxy<VehicleAlertNotifierService>;
   let mockChargeTracker: MockProxy<ChargePortLatchTrackerService>;
   let mockOffensiveResponseService: MockProxy<AlertsOffensiveResponseService>;
   let mockAutoSentryService: MockProxy<AlertsAutoSentryService>;
 
   beforeEach(async () => {
-    mockTelegramService = mock<TelegramService>();
-    mockKeyboardBuilder = mock<TelegramKeyboardBuilderService>();
     mockAlertNotifier = mock<VehicleAlertNotifierService>();
     mockChargeTracker = mock<ChargePortLatchTrackerService>();
     mockOffensiveResponseService = mock<AlertsOffensiveResponseService>();
@@ -32,8 +26,6 @@ describe('The BreakInAlertHandlerService class', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BreakInAlertHandlerService,
-        { provide: TelegramService, useValue: mockTelegramService },
-        { provide: TelegramKeyboardBuilderService, useValue: mockKeyboardBuilder },
         { provide: VehicleAlertNotifierService, useValue: mockAlertNotifier },
         { provide: ChargePortLatchTrackerService, useValue: mockChargeTracker },
         { provide: AlertsOffensiveResponseService, useValue: mockOffensiveResponseService },
@@ -161,7 +153,6 @@ describe('The BreakInAlertHandlerService class', () => {
           telemetryMessage: message,
           alertName: 'BREAK_IN_ALERT',
           latencyLabel: 'BREAK_IN_LATENCY',
-          telegramNotifier: expect.any(Function),
         }));
       });
 
@@ -194,27 +185,6 @@ describe('The BreakInAlertHandlerService class', () => {
         await Promise.resolve();
 
         expect(mockAutoSentryService.handleBreakInAutoSentry).toHaveBeenCalledWith('123', ['user-1'], message.createdAt);
-      });
-
-      it('should construct and send telegram message when notifier callback is invoked', async () => {
-        await service.handle(message);
-        jest.advanceTimersByTime(2000);
-        await Promise.resolve();
-
-        const dispatchCall = mockAlertNotifier.dispatch.mock.calls[0][0];
-        const notifierCb = dispatchCall.telegramNotifier;
-
-        mockKeyboardBuilder.buildBreakInAlertKeyboard.mockReturnValue({ inline_keyboard: [] });
-
-        await notifierCb('user-1', { vin: '123', display_name: 'Test Vehicle' }, 'en');
-
-        expect(mockKeyboardBuilder.buildBreakInAlertKeyboard).toHaveBeenCalledWith('user-1', 'en');
-        expect(mockTelegramService.sendBreakInAlert).toHaveBeenCalledWith(
-          'user-1',
-          { vin: '123', display_name: 'Test Vehicle' },
-          'en',
-          { inline_keyboard: [] }
-        );
       });
     });
   });

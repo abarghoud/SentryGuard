@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { TelegramService } from '../../telegram/telegram.service';
-import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { TelemetryEventHandler } from '../../telemetry/interfaces/telemetry-event-handler.interface';
 import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
@@ -17,8 +15,6 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
   private readonly pendingVerifications = new Set<Promise<void>>();
 
   constructor(
-    private readonly telegramService: TelegramService,
-    private readonly keyboardBuilder: TelegramKeyboardBuilderService,
     private readonly alertNotifier: VehicleAlertNotifierService,
     private readonly chargeTracker: ChargePortLatchTrackerService,
     private readonly offensiveResponseService: AlertsOffensiveResponseService,
@@ -97,7 +93,6 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
         alertName: 'BREAK_IN_ALERT',
         latencyLabel: 'BREAK_IN_LATENCY',
         severity: AlertEventSeverity.Critical,
-        telegramNotifier: this.telegramNotifier,
         type: AlertEventType.BreakIn,
       });
 
@@ -112,9 +107,4 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
       this.logger.error('Failed to dispatch delayed break-in alert:', error);
     }
   }
-
-  private readonly telegramNotifier = async (userId: string, alertInfo: { vin: string; display_name?: string }, userLanguage: 'en' | 'fr') => {
-    const keyboard = this.keyboardBuilder.buildBreakInAlertKeyboard(userId, userLanguage);
-    await this.telegramService.sendBreakInAlert(userId, alertInfo, userLanguage, keyboard);
-  };
 }
