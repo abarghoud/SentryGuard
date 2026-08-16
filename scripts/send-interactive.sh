@@ -74,7 +74,7 @@ echo " 21) DoorState door open       # 🚪 Sends a DoorState message with a pas
 echo ""
 
 # Ask for state
-read -p "Choose state (1-19, or Enter for alert): " CHOICE
+read -p "Choose state (1-21, or Enter for alert): " CHOICE
 
 if [ "$CHOICE" = "19" ]; then
     echo ""
