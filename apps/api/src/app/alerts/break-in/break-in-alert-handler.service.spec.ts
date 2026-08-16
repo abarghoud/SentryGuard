@@ -7,7 +7,7 @@ import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.se
 import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-offensive-response.service';
 import { AlertsAutoSentryService } from '../../offensive-response/alerts-auto-sentry.service';
 import { TelemetryMessage, TelemetryDatum, TelemetryValue } from '../../telemetry/models/telemetry-message.model';
-import { ChargePortLatchTrackerService } from './charge-port-latch-tracker.service';
+import { BreakInEventTrackerService, BreakInTrackedEvent } from './break-in-event-tracker.service';
 
 describe('The BreakInAlertHandlerService class', () => {
   let service: BreakInAlertHandlerService;
@@ -15,7 +15,7 @@ describe('The BreakInAlertHandlerService class', () => {
   let mockTelegramService: MockProxy<TelegramService>;
   let mockKeyboardBuilder: MockProxy<TelegramKeyboardBuilderService>;
   let mockAlertNotifier: MockProxy<VehicleAlertNotifierService>;
-  let mockChargeTracker: MockProxy<ChargePortLatchTrackerService>;
+  let mockEventTracker: MockProxy<BreakInEventTrackerService>;
   let mockOffensiveResponseService: MockProxy<AlertsOffensiveResponseService>;
   let mockAutoSentryService: MockProxy<AlertsAutoSentryService>;
 
@@ -23,7 +23,7 @@ describe('The BreakInAlertHandlerService class', () => {
     mockTelegramService = mock<TelegramService>();
     mockKeyboardBuilder = mock<TelegramKeyboardBuilderService>();
     mockAlertNotifier = mock<VehicleAlertNotifierService>();
-    mockChargeTracker = mock<ChargePortLatchTrackerService>();
+    mockEventTracker = mock<BreakInEventTrackerService>();
     mockOffensiveResponseService = mock<AlertsOffensiveResponseService>();
     mockOffensiveResponseService.handleBreakInOffensiveResponse.mockResolvedValue(undefined);
     mockAutoSentryService = mock<AlertsAutoSentryService>();
@@ -35,7 +35,7 @@ describe('The BreakInAlertHandlerService class', () => {
         { provide: TelegramService, useValue: mockTelegramService },
         { provide: TelegramKeyboardBuilderService, useValue: mockKeyboardBuilder },
         { provide: VehicleAlertNotifierService, useValue: mockAlertNotifier },
-        { provide: ChargePortLatchTrackerService, useValue: mockChargeTracker },
+        { provide: BreakInEventTrackerService, useValue: mockEventTracker },
         { provide: AlertsOffensiveResponseService, useValue: mockOffensiveResponseService },
         { provide: AlertsAutoSentryService, useValue: mockAutoSentryService },
       ],
@@ -67,10 +67,124 @@ describe('The BreakInAlertHandlerService class', () => {
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(false);
       });
 
-      it('should track the latch event in the charge tracker', async () => {
+      it('should track the latch event in the break-in event tracker', async () => {
         await service.handle(message);
         const expectedTime = new Date(message.createdAt).getTime();
-        expect(mockChargeTracker.trackLatchEvent).toHaveBeenCalledWith('123', expectedTime, 'ChargePortLatchDisengaged');
+        expect(mockEventTracker.track).toHaveBeenCalledWith('123', BreakInTrackedEvent.ChargePortLatchDisengaged, expectedTime);
+      });
+    });
+
+    describe('When message contains a trunk opening DoorState event', () => {
+      let message: TelemetryMessage;
+
+      beforeEach(() => {
+        message = new TelemetryMessage();
+        message.vin = '123';
+        message.createdAt = new Date('2026-05-05T20:00:00Z').toISOString();
+
+        const datum = new TelemetryDatum();
+        datum.key = 'DoorState';
+        datum.value = new TelemetryValue();
+        datum.value.doorValue = {
+          DriverFront: false,
+          DriverRear: false,
+          PassengerFront: false,
+          PassengerRear: false,
+          TrunkFront: false,
+          TrunkRear: true,
+        };
+        message.data = [datum];
+
+        jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(false);
+      });
+
+      it('should track the door opening event in the break-in event tracker', async () => {
+        await service.handle(message);
+        const expectedTime = new Date(message.createdAt).getTime();
+        expect(mockEventTracker.track).toHaveBeenCalledWith('123', BreakInTrackedEvent.DoorOpened, expectedTime);
+      });
+    });
+
+    describe('When message contains a passenger door opening DoorState event', () => {
+      let message: TelemetryMessage;
+
+      beforeEach(() => {
+        message = new TelemetryMessage();
+        message.vin = '123';
+        message.createdAt = new Date('2026-05-05T20:00:00Z').toISOString();
+
+        const datum = new TelemetryDatum();
+        datum.key = 'DoorState';
+        datum.value = new TelemetryValue();
+        datum.value.doorValue = {
+          DriverFront: false,
+          DriverRear: false,
+          PassengerFront: false,
+          PassengerRear: true,
+          TrunkFront: false,
+          TrunkRear: false,
+        };
+        message.data = [datum];
+
+        jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(false);
+      });
+
+      it('should track the door opening event in the break-in event tracker', async () => {
+        await service.handle(message);
+        const expectedTime = new Date(message.createdAt).getTime();
+        expect(mockEventTracker.track).toHaveBeenCalledWith('123', BreakInTrackedEvent.DoorOpened, expectedTime);
+      });
+    });
+
+    describe('When message contains a DoorState event with all doors closed', () => {
+      let message: TelemetryMessage;
+
+      beforeEach(() => {
+        message = new TelemetryMessage();
+        message.vin = '123';
+        message.createdAt = new Date('2026-05-05T20:00:00Z').toISOString();
+
+        const datum = new TelemetryDatum();
+        datum.key = 'DoorState';
+        datum.value = new TelemetryValue();
+        datum.value.doorValue = {
+          DriverFront: false,
+          DriverRear: false,
+          PassengerFront: false,
+          PassengerRear: false,
+          TrunkFront: false,
+          TrunkRear: false,
+        };
+        message.data = [datum];
+
+        jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(false);
+      });
+
+      it('should not track any event in the break-in event tracker', async () => {
+        await service.handle(message);
+        expect(mockEventTracker.track).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When message contains a DoorState event without any open door value', () => {
+      let message: TelemetryMessage;
+
+      beforeEach(() => {
+        message = new TelemetryMessage();
+        message.vin = '123';
+        message.createdAt = new Date('2026-05-05T20:00:00Z').toISOString();
+
+        const datum = new TelemetryDatum();
+        datum.key = 'DoorState';
+        datum.value = new TelemetryValue();
+        message.data = [datum];
+
+        jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(false);
+      });
+
+      it('should not track any event in the break-in event tracker', async () => {
+        await service.handle(message);
+        expect(mockEventTracker.track).not.toHaveBeenCalled();
       });
     });
 
@@ -121,17 +235,44 @@ describe('The BreakInAlertHandlerService class', () => {
         message.data = [];
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
         jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
-        mockChargeTracker.hasLatchEventAround.mockReturnValue(true);
+        mockEventTracker.hasEventAround.mockReturnValue(true);
       });
 
-      it('should delay the verification by 2 seconds to ensure subsequent ChargePortLatch events have time to arrive, then prevent alert dispatch', async () => {
+      it('should delay the verification by 3 seconds to ensure subsequent ChargePortLatch events have time to arrive, then prevent alert dispatch', async () => {
         await service.handle(message);
-        jest.advanceTimersByTime(2000);
+        jest.advanceTimersByTime(3000);
 
         await Promise.resolve();
 
-        expect(mockChargeTracker.hasLatchEventAround).toHaveBeenCalled();
+        expect(mockEventTracker.hasEventAround).toHaveBeenCalled();
         expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When displayState is DisplayStateLock and a door opening occurred within the grace period', () => {
+      let message: TelemetryMessage;
+
+      beforeEach(() => {
+        message = new TelemetryMessage();
+        message.vin = '123';
+        message.createdAt = new Date('2026-05-05T20:00:00Z').toISOString();
+        message.data = [];
+        jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
+        jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
+        mockEventTracker.hasEventAround.mockImplementation((_vin, event) =>
+          event === BreakInTrackedEvent.DoorOpened
+        );
+      });
+
+      it('should suppress the alert, the offensive response and the auto sentry', async () => {
+        await service.handle(message);
+        jest.advanceTimersByTime(3000);
+
+        await Promise.resolve();
+
+        expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
+        expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).not.toHaveBeenCalled();
+        expect(mockAutoSentryService.handleBreakInAutoSentry).not.toHaveBeenCalled();
       });
     });
 
@@ -145,15 +286,15 @@ describe('The BreakInAlertHandlerService class', () => {
         message.data = [];
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
         jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
-        mockChargeTracker.hasLatchEventAround.mockReturnValue(false);
+        mockEventTracker.hasEventAround.mockReturnValue(false);
         mockAlertNotifier.dispatch.mockResolvedValue({ userIds: ['user-1'] });
       });
 
-      it('should delay the verification by 2 seconds to account for telemetry lag, then dispatch the alert via alertNotifier', async () => {
+      it('should delay the verification by 3 seconds to account for telemetry lag, then dispatch the alert via alertNotifier', async () => {
         await service.handle(message);
         expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
 
-        jest.advanceTimersByTime(2000);
+        jest.advanceTimersByTime(3000);
 
         await Promise.resolve();
 
@@ -182,7 +323,7 @@ describe('The BreakInAlertHandlerService class', () => {
 
       it('should trigger offensive response for the VIN with userIds', async () => {
         await service.handle(message);
-        jest.advanceTimersByTime(2000);
+        jest.advanceTimersByTime(3000);
         await Promise.resolve();
 
         expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).toHaveBeenCalledWith('123', ['user-1'], message.createdAt);
@@ -190,7 +331,7 @@ describe('The BreakInAlertHandlerService class', () => {
 
       it('should trigger auto sentry for the VIN with userIds', async () => {
         await service.handle(message);
-        jest.advanceTimersByTime(2000);
+        jest.advanceTimersByTime(3000);
         await Promise.resolve();
 
         expect(mockAutoSentryService.handleBreakInAutoSentry).toHaveBeenCalledWith('123', ['user-1'], message.createdAt);
@@ -198,7 +339,7 @@ describe('The BreakInAlertHandlerService class', () => {
 
       it('should construct and send telegram message when notifier callback is invoked', async () => {
         await service.handle(message);
-        jest.advanceTimersByTime(2000);
+        jest.advanceTimersByTime(3000);
         await Promise.resolve();
 
         const dispatchCall = mockAlertNotifier.dispatch.mock.calls[0][0];
@@ -238,13 +379,13 @@ describe('The BreakInAlertHandlerService class', () => {
 
     describe('When there is a pending verification', () => {
       it('should wait for the verification to dispatch before resolving', async () => {
-        mockChargeTracker.hasLatchEventAround.mockReturnValue(false);
+        mockEventTracker.hasEventAround.mockReturnValue(false);
         mockAlertNotifier.dispatch.mockResolvedValue({ userIds: ['user-1'] });
 
         await service.handle(createLockedDisplayMessage());
 
-        const flushPromise = service.flushPendingVerifications(5000);
-        jest.advanceTimersByTime(2000);
+        const flushPromise = service.flushPendingVerifications(6000);
+        jest.advanceTimersByTime(3000);
 
         await expect(flushPromise).resolves.toBeUndefined();
         expect(mockAlertNotifier.dispatch).toHaveBeenCalled();

@@ -73,14 +73,14 @@ services:
 
           # Create message in Tesla Fleet API format
           MESSAGE='{
-            \"vin\": \"'$VIN'\",
+            \"vin\": \"'$$VIN'\",
             \"createdAt\": \"'$$(date -u +%Y-%m-%dT%H:%M:%SZ)'\",
             \"isResend\": false,
             \"data\": [
               {
                 \"key\": \"SentryMode\",
                 \"value\": {
-                  \"sentryModeStateValue\": \"'$SENTRY_STATE'\"
+                  \"sentryModeStateValue\": \"'$$SENTRY_STATE'\"
                 }
               }
             ]
