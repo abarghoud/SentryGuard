@@ -7,6 +7,7 @@ import AuthRedirect from '@/components/AuthRedirect';
 import TeslaLoginButton from '@/components/TeslaLoginButton';
 import SessionExpiredBanner from '@/components/SessionExpiredBanner';
 import LocalizedImage from '@/components/LocalizedImage';
+import AiIllustrationWrapper from '@/components/AiIllustrationWrapper';
 import ComparisonItem from '@/components/home/ComparisonItem';
 import StepItem from '@/components/home/StepItem';
 
@@ -133,7 +134,9 @@ export default async function HomePage({ params }: HomePageProps) {
             </div>
           </div>
           <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-gray-100">
-            <LocalizedImage baseSrc="/images/hero-alert" locale={locale} alt="Telegram Sentry Alert" width={600} height={600} priority fetchPriority="high" className="w-full h-auto object-cover transform hover:scale-105 transition-transform duration-700" />
+            <AiIllustrationWrapper locale={locale}>
+              <LocalizedImage baseSrc="/images/hero-alert" locale={locale} alt="Telegram Sentry Alert" width={600} height={600} priority fetchPriority="high" className="w-full h-auto object-cover transform hover:scale-105 transition-transform duration-700" />
+            </AiIllustrationWrapper>
           </div>
         </div>
       </div>
@@ -141,7 +144,7 @@ export default async function HomePage({ params }: HomePageProps) {
       <div className="bg-gray-50 py-16 md:py-24 border-y border-gray-200 overflow-hidden">
         <div className="container mx-auto px-6">
           <div className="text-center max-w-3xl mx-auto mb-16 md:mb-24">
-            <h3 className="text-3xl md:text-4xl font-bold mb-4">{t('Three critical features the Tesla App is missing.')}</h3>
+            <h3 className="text-3xl md:text-4xl font-bold mb-4">{t('Four critical features the Tesla App is missing.')}</h3>
             <p className="text-lg text-gray-600">
               {t('The official app leaves gaps in your security. We fill them with instant Telegram alerts.')}
             </p>
@@ -151,7 +154,9 @@ export default async function HomePage({ params }: HomePageProps) {
             
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div className="order-2 md:order-1 relative rounded-2xl overflow-hidden shadow-xl border border-gray-100 bg-white">
-                 <LocalizedImage baseSrc="/images/door-ding" locale={locale} alt="Door ding comparison" width={600} height={600} className="w-full h-auto object-cover" />
+                <AiIllustrationWrapper locale={locale}>
+                  <LocalizedImage baseSrc="/images/door-ding" locale={locale} alt="Door ding comparison" width={600} height={600} className="w-full h-auto object-cover" />
+                </AiIllustrationWrapper>
               </div>
               <div className="order-1 md:order-2 space-y-8">
                 <div>
@@ -201,20 +206,49 @@ export default async function HomePage({ params }: HomePageProps) {
                 </div>
               </div>
               <div className="order-2 md:order-2 relative rounded-2xl overflow-hidden shadow-xl border border-gray-100 bg-white">
-                 <LocalizedImage baseSrc="/images/hero-alert" locale={locale} alt="Break-in alert comparison" width={600} height={600} className="w-full h-auto object-cover" />
+                <AiIllustrationWrapper locale={locale}>
+                  <LocalizedImage baseSrc="/images/hero-alert" locale={locale} alt="Break-in alert comparison" width={600} height={600} className="w-full h-auto object-cover" />
+                </AiIllustrationWrapper>
               </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div className="order-2 md:order-1 relative rounded-2xl overflow-hidden shadow-xl border border-gray-100 bg-white">
-                 <LocalizedImage baseSrc="/images/offensive-response" locale={locale} alt="Active deterrent comparison" width={600} height={600} className="w-full h-auto object-cover" />
+                <AiIllustrationWrapper locale={locale}>
+                  <LocalizedImage baseSrc="/images/auto-sentry" locale={locale} alt="Auto Sentry Mode comparison" width={600} height={600} className="w-full h-auto object-cover" />
+                </AiIllustrationWrapper>
               </div>
               <div className="order-1 md:order-2 space-y-8">
+                <div>
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-amber-50 text-amber-600 text-sm font-semibold mb-4 border border-amber-100">
+                    {t('Smart Recording')}
+                  </div>
+                  <h4 className="text-3xl font-bold mb-4">{t('3. Auto Sentry Activation')}</h4>
+                  <p className="text-lg text-gray-600">{t('Automatically wakes up Sentry Mode and starts camera recording the second a break-in attempt is detected, even if Sentry was off.')}</p>
+                </div>
+
+                <div className="space-y-6">
+                  <ComparisonItem 
+                    isPositive={false} 
+                    title={t('Tesla App')} 
+                    description={t('If Sentry Mode is off to save battery, cameras remain offline. You get zero video footage of the incident.')} 
+                  />
+                  <ComparisonItem 
+                    isPositive={true} 
+                    title={t('SentryGuard')} 
+                    description={t('Instantly arms Sentry Mode upon handle pull or breach attempt, waking up all cameras to capture the suspect on video.')} 
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              <div className="order-1 md:order-1 space-y-8">
                 <div>
                   <div className="inline-flex items-center px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-sm font-semibold mb-4 border border-indigo-100">
                     {t('Active Defense')}
                   </div>
-                  <h4 className="text-3xl font-bold mb-4">{t('3. Active Deterrent')}</h4>
+                  <h4 className="text-3xl font-bold mb-4">{t('4. Active Deterrent')}</h4>
                   <p className="text-lg text-gray-600">{t('Automatically scare off intruders by triggering your vehicle\'s horn or boombox sound the moment a break-in is detected.')}</p>
                 </div>
 
@@ -230,6 +264,11 @@ export default async function HomePage({ params }: HomePageProps) {
                     description={t('Triggers a loud sound deterrent within seconds to alert bystanders and scare away the intruder.')} 
                   />
                 </div>
+              </div>
+              <div className="order-2 md:order-2 relative rounded-2xl overflow-hidden shadow-xl border border-gray-100 bg-white">
+                <AiIllustrationWrapper locale={locale}>
+                  <LocalizedImage baseSrc="/images/offensive-response" locale={locale} alt="Active deterrent comparison" width={600} height={600} className="w-full h-auto object-cover" />
+                </AiIllustrationWrapper>
               </div>
             </div>
 

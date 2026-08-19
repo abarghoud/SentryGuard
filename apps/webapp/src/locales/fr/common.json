@@ -444,8 +444,15 @@
   "✅ Security monitoring enabled! Your setup is complete.": "✅ Surveillance de sécurité activée ! Votre configuration est terminée.",
   "Privacy Policy": "Politique de confidentialité",
   "Terms of Service": "Conditions d’utilisation",
-  "Three critical features the Tesla App is missing.": "Trois fonctionnalités critiques qui manquent à l'application Tesla.",
-  "3. Active Deterrent": "3. Riposte Active",
+  "Four critical features the Tesla App is missing.": "Quatre fonctionnalités indispensables qui manquent à l'application Tesla.",
+  "Three critical features the Tesla App is missing.": "Quatre fonctionnalités indispensables qui manquent à l'application Tesla.",
+  "Smart Recording": "Enregistrement d'urgence",
+  "3. Auto Sentry Activation": "3. Sentinelle Automatique",
+  "Automatically wakes up Sentry Mode and starts camera recording the second a break-in attempt is detected, even if Sentry was off.": "Démarre instantanément l'enregistrement des caméras dès qu'une tentative d'ouverture est détectée, même si la Sentinelle était éteinte.",
+  "If Sentry Mode is off to save battery, cameras remain offline. You get zero video footage of the incident.": "Si le mode Sentinelle est coupé pour économiser la batterie, les caméras restent éteintes. Aucun enregistrement vidéo n'est disponible en cas d'acte malveillant.",
+  "Instantly arms Sentry Mode upon handle pull or breach attempt, waking up all cameras to capture the suspect on video.": "Dès la détection du tirage de poignée via télémétrie, le mode Sentinelle s'enclenche en une fraction de seconde pour filmer l'auteur en flagrant délit.",
+  "4. Active Deterrent": "4. Riposte Active",
+  "3. Active Deterrent": "4. Riposte Active",
   "Automatically scare off intruders by triggering your vehicle's horn or boombox sound the moment a break-in is detected.": "Dissuadez instantanément les intrus en déclenchant automatiquement le klaxon ou un bruit de pet (boombox) dès qu'une intrusion est détectée.",
   "Stays passive and silent. The intruder can continue their attempt without any immediate local deterrent.": "Reste passive et silencieuse. L'intrus peut continuer sa tentative sans aucune dissuasion locale immédiate.",
   "Triggers a loud sound deterrent within seconds to alert bystanders and scare away the intruder.": "Dissuasion intelligente. L'alerte sonore se déclenche uniquement en cas de menace réelle (comme un tirage de poignée), évitant ainsi les déclenchements intempestifs.",
@@ -453,5 +460,5 @@
   "What is the Active Deterrent (Offensive Response) and how does it work?": "Qu'est-ce que la Riposte Active (Réponse Offensive) et comment fonctionne-t-elle ?",
   "Active deterrent explanation": "La Riposte Active est une fonctionnalité de sécurité qui déclenche automatiquement une action sonore de votre véhicule (klaxon ou bruit de pet via la boombox) lorsqu'une intrusion physique réelle est détectée (comme un tirage de poignée de porte). Contrairement à d'autres applications qui klaxonnent au moindre mouvement de caméra (générant des fausses alarmes constantes), notre système utilise la télémétrie pour n'agir qu'en cas de menace avérée. Cette fonctionnalité est entièrement optionnelle, désactivée par défaut, et peut être configurée ou désactivée à tout moment pour chaque véhicule depuis votre tableau de bord.",
   "Do I have to grant write permissions (vehicle commands) to SentryGuard?": "Suis-je obligé d'accorder les permissions de commande (vehicle_commands) à SentryGuard ?",
-  "Write permissions requirement explanation": "Non. SentryGuard fonctionne parfaitement de manière purement passive (lecture seule) si vous souhaitez uniquement recevoir des notifications d'alertes par Telegram. L'autorisation d'envoyer des commandes de contrôle n'est requise et demandée que si vous choisissez explicitement d'activer la fonctionnalité de Riposte Active pour faire klaxonner ou faire sonner votre véhicule à distance en cas d'intrusion. Si vous n'activez pas cette fonctionnalité, SentryGuard n'a besoin d'aucun droit d'écriture sur votre Tesla."
+  "Write permissions requirement explanation": "Non. SentryGuard fonctionne parfaitement de manière purement passive (lecture seule) si vous souhaitez uniquement recevoir des notifications d'alertes par Telegram. L'autorisation d'envoyer des commandes de contrôle n'est requise et demandée que si vous choisissez explicitement d'activer la fonctionnalité de Riposte Active (klaxon/sonnerie) ou la Sentinelle Automatique en cas d'intrusion. Si vous n'activez pas ces fonctionnalités, SentryGuard n'a besoin d'aucun droit d'écriture sur votre Tesla."
 }
