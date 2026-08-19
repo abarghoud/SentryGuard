@@ -7,7 +7,7 @@ import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-
 import { AlertsAutoSentryService } from '../../offensive-response/alerts-auto-sentry.service';
 import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
 
-import { ChargePortLatchTrackerService } from './charge-port-latch-tracker.service';
+import { BreakInEventTrackerService, BreakInTrackedEvent } from './break-in-event-tracker.service';
 
 @Injectable()
 export class BreakInAlertHandlerService implements TelemetryEventHandler {
@@ -16,13 +16,13 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
 
   constructor(
     private readonly alertNotifier: VehicleAlertNotifierService,
-    private readonly chargeTracker: ChargePortLatchTrackerService,
+    private readonly eventTracker: BreakInEventTrackerService,
     private readonly offensiveResponseService: AlertsOffensiveResponseService,
     private readonly autoSentryService: AlertsAutoSentryService,
   ) {}
 
   public async handle(telemetryMessage: TelemetryMessage): Promise<void> {
-    this.trackChargePortEvents(telemetryMessage);
+    this.trackBreakInEvents(telemetryMessage);
 
     if (!telemetryMessage.validateContainsCenterDisplay()) {
       return;
@@ -33,16 +33,21 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
     }
   }
 
-  private trackChargePortEvents(telemetryMessage: TelemetryMessage): void {
+  private trackBreakInEvents(telemetryMessage: TelemetryMessage): void {
+    const eventTime = new Date(telemetryMessage.createdAt).getTime();
+
     const latchDatum = telemetryMessage.data.find(d => d.key === 'ChargePortLatch');
-    if (latchDatum) {
-      const eventTime = new Date(telemetryMessage.createdAt).getTime();
-      this.chargeTracker.trackLatchEvent(telemetryMessage.vin, eventTime, latchDatum.value.chargePortLatchValue);
+    if (latchDatum?.value.chargePortLatchValue === 'ChargePortLatchDisengaged') {
+      this.eventTracker.track(telemetryMessage.vin, BreakInTrackedEvent.ChargePortLatchDisengaged, eventTime);
+    }
+
+    if (telemetryMessage.extractOpenDoors().length > 0) {
+      this.eventTracker.track(telemetryMessage.vin, BreakInTrackedEvent.DoorOpened, eventTime);
     }
   }
 
   private scheduleAlertVerification(telemetryMessage: TelemetryMessage): void {
-    const delay = parseInt(process.env.BREAK_IN_ALERT_CHECK_DELAY_MS || '2000', 10);
+    const delay = parseInt(process.env.BREAK_IN_ALERT_CHECK_DELAY_MS || '3000', 10);
 
     const verification = new Promise<void>((resolve) => {
       setTimeout(async () => {
@@ -83,8 +88,13 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
   private async verifyAndDispatchAlert(telemetryMessage: TelemetryMessage): Promise<void> {
     try {
       const eventTime = new Date(telemetryMessage.createdAt).getTime();
-      if (this.chargeTracker.hasLatchEventAround(telemetryMessage.vin, eventTime)) {
+      if (this.eventTracker.hasEventAround(telemetryMessage.vin, BreakInTrackedEvent.ChargePortLatchDisengaged, eventTime)) {
         this.logger.log(`[False Positive Prevented] Suppressing break-in alert for VIN ${telemetryMessage.vin} due to correlated ChargePortLatch event.`);
+        return;
+      }
+
+      if (this.eventTracker.hasEventAround(telemetryMessage.vin, BreakInTrackedEvent.DoorOpened, eventTime)) {
+        this.logger.log(`[False Positive Prevented] Suppressing break-in alert for VIN ${telemetryMessage.vin} due to door/trunk opening within the grace period.`);
         return;
       }
 

@@ -11,7 +11,7 @@ import { TelemetryMessageHandlerService } from './telemetry/handlers/telemetry-m
 import { TelemetryValidationService } from './telemetry/services/telemetry-validation.service';
 import { SentryAlertHandlerService } from './alerts/sentry/sentry-alert-handler.service';
 import { BreakInAlertHandlerService } from './alerts/break-in/break-in-alert-handler.service';
-import { ChargePortLatchTrackerService } from './alerts/break-in/charge-port-latch-tracker.service';
+import { BreakInEventTrackerService } from './alerts/break-in/break-in-event-tracker.service';
 import { VehicleAlertNotifierService } from './alerts/common/vehicle-alert-notifier.service';
 import { OffensiveResponseModule } from './offensive-response/offensive-response.module';
 import { AlertsModule } from './alerts/alerts.module';
@@ -104,7 +104,7 @@ import {
     VehicleAlertNotifierService,
     SentryAlertHandlerService,
     BreakInAlertHandlerService,
-    ChargePortLatchTrackerService,
+    BreakInEventTrackerService,
     {
       provide: kafkaMessageHandler,
       useClass: TelemetryMessageHandlerService,

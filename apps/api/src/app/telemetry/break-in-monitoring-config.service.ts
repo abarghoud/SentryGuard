@@ -13,7 +13,7 @@ import { Vehicle } from '../../entities/vehicle.entity';
 import { TELEMETRY_CONFIG } from './telemetry-config.constants';
 import { extractErrorDetails } from './telemetry-config.helpers';
 
-const BREAK_IN_MONITORED_FIELDS = ['CenterDisplay', 'ChargePortLatch'];
+const BREAK_IN_MONITORED_FIELDS = ['CenterDisplay', 'ChargePortLatch', 'DoorState'];
 
 export interface BreakInMonitoringToggleResult {
   success: true;
@@ -28,7 +28,7 @@ export class BreakInMonitoringConfigService {
     private readonly telemetryConfigService: TelemetryConfigService,
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>
-  ) { }
+  ) {}
 
   public async toggleBreakInMonitoring(
     vin: string,

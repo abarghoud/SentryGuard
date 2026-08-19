@@ -73,7 +73,8 @@ describe('The BreakInMonitoringConfigService class', () => {
           userId,
           {
             CenterDisplay: { interval_seconds: expectedInterval },
-            ChargePortLatch: { interval_seconds: expectedInterval }
+            ChargePortLatch: { interval_seconds: expectedInterval },
+            DoorState: { interval_seconds: expectedInterval }
           },
           []
         );
@@ -99,7 +100,7 @@ describe('The BreakInMonitoringConfigService class', () => {
           vin,
           userId,
           {},
-          ['CenterDisplay', 'ChargePortLatch']
+          ['CenterDisplay', 'ChargePortLatch', 'DoorState']
         );
         expect(vehicle.break_in_monitoring_enabled).toBe(false);
         expect(mockVehicleRepository.save).toHaveBeenCalledWith(vehicle);
