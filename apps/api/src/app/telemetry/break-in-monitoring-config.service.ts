@@ -13,7 +13,7 @@ import { Vehicle } from '../../entities/vehicle.entity';
 import { TELEMETRY_CONFIG } from './telemetry-config.constants';
 import { extractErrorDetails } from './telemetry-config.helpers';
 
-const BREAK_IN_MONITORED_FIELDS = ['CenterDisplay', 'ChargePortLatch', 'DoorState'];
+const BREAK_IN_MONITORED_FIELDS = ['CenterDisplay', 'ChargePortLatch'];
 
 export interface BreakInMonitoringToggleResult {
   success: true;

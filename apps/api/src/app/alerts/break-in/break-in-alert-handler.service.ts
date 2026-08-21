@@ -45,8 +45,8 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
       this.eventTracker.track(telemetryMessage.vin, BreakInTrackedEvent.ChargePortLatchDisengaged, eventTime);
     }
 
-    if (telemetryMessage.extractOpenDoors().length > 0) {
-      this.eventTracker.track(telemetryMessage.vin, BreakInTrackedEvent.DoorOpened, eventTime);
+    if (telemetryMessage.isCenterDisplayOwnerActivity()) {
+      this.eventTracker.track(telemetryMessage.vin, BreakInTrackedEvent.CenterDisplayOwnerActivity, eventTime);
     }
   }
 
@@ -97,8 +97,8 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
         return;
       }
 
-      if (this.eventTracker.hasEventAround(telemetryMessage.vin, BreakInTrackedEvent.DoorOpened, eventTime)) {
-        this.logger.log(`[False Positive Prevented] Suppressing break-in alert for VIN ${telemetryMessage.vin} due to door/trunk opening within the grace period.`);
+      if (this.eventTracker.hasEventAfter(telemetryMessage.vin, BreakInTrackedEvent.CenterDisplayOwnerActivity, eventTime)) {
+        this.logger.log(`[False Positive Prevented] Suppressing break-in alert for VIN ${telemetryMessage.vin} due to correlated CenterDisplay owner activity.`);
         return;
       }
 

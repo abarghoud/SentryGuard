@@ -74,7 +74,7 @@ describe('The BreakInAlertHandlerService class', () => {
       });
     });
 
-    describe('When message contains a trunk opening DoorState event', () => {
+    describe('When message contains CenterDisplay owner activity', () => {
       let message: TelemetryMessage;
 
       beforeEach(() => {
@@ -83,29 +83,22 @@ describe('The BreakInAlertHandlerService class', () => {
         message.createdAt = new Date('2026-05-05T20:00:00Z').toISOString();
 
         const datum = new TelemetryDatum();
-        datum.key = 'DoorState';
+        datum.key = 'CenterDisplay';
         datum.value = new TelemetryValue();
-        datum.value.doorValue = {
-          DriverFront: false,
-          DriverRear: false,
-          PassengerFront: false,
-          PassengerRear: false,
-          TrunkFront: false,
-          TrunkRear: true,
-        };
+        datum.value.displayStateValue = 'DisplayStateAccessory';
         message.data = [datum];
 
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(false);
       });
 
-      it('should track the door opening event in the break-in event tracker', async () => {
+      it('should track the owner activity event in the break-in event tracker', async () => {
         await service.handle(message);
         const expectedTime = new Date(message.createdAt).getTime();
-        expect(mockEventTracker.track).toHaveBeenCalledWith('123', BreakInTrackedEvent.DoorOpened, expectedTime);
+        expect(mockEventTracker.track).toHaveBeenCalledWith('123', BreakInTrackedEvent.CenterDisplayOwnerActivity, expectedTime);
       });
     });
 
-    describe('When message contains a passenger door opening DoorState event', () => {
+    describe('When message contains CenterDisplay Off state', () => {
       let message: TelemetryMessage;
 
       beforeEach(() => {
@@ -114,75 +107,15 @@ describe('The BreakInAlertHandlerService class', () => {
         message.createdAt = new Date('2026-05-05T20:00:00Z').toISOString();
 
         const datum = new TelemetryDatum();
-        datum.key = 'DoorState';
+        datum.key = 'CenterDisplay';
         datum.value = new TelemetryValue();
-        datum.value.doorValue = {
-          DriverFront: false,
-          DriverRear: false,
-          PassengerFront: false,
-          PassengerRear: true,
-          TrunkFront: false,
-          TrunkRear: false,
-        };
+        datum.value.displayStateValue = 'DisplayStateOff';
         message.data = [datum];
 
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(false);
       });
 
-      it('should track the door opening event in the break-in event tracker', async () => {
-        await service.handle(message);
-        const expectedTime = new Date(message.createdAt).getTime();
-        expect(mockEventTracker.track).toHaveBeenCalledWith('123', BreakInTrackedEvent.DoorOpened, expectedTime);
-      });
-    });
-
-    describe('When message contains a DoorState event with all doors closed', () => {
-      let message: TelemetryMessage;
-
-      beforeEach(() => {
-        message = new TelemetryMessage();
-        message.vin = '123';
-        message.createdAt = new Date('2026-05-05T20:00:00Z').toISOString();
-
-        const datum = new TelemetryDatum();
-        datum.key = 'DoorState';
-        datum.value = new TelemetryValue();
-        datum.value.doorValue = {
-          DriverFront: false,
-          DriverRear: false,
-          PassengerFront: false,
-          PassengerRear: false,
-          TrunkFront: false,
-          TrunkRear: false,
-        };
-        message.data = [datum];
-
-        jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(false);
-      });
-
-      it('should not track any event in the break-in event tracker', async () => {
-        await service.handle(message);
-        expect(mockEventTracker.track).not.toHaveBeenCalled();
-      });
-    });
-
-    describe('When message contains a DoorState event without any open door value', () => {
-      let message: TelemetryMessage;
-
-      beforeEach(() => {
-        message = new TelemetryMessage();
-        message.vin = '123';
-        message.createdAt = new Date('2026-05-05T20:00:00Z').toISOString();
-
-        const datum = new TelemetryDatum();
-        datum.key = 'DoorState';
-        datum.value = new TelemetryValue();
-        message.data = [datum];
-
-        jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(false);
-      });
-
-      it('should not track any event in the break-in event tracker', async () => {
+      it('should not track owner activity in the break-in event tracker', async () => {
         await service.handle(message);
         expect(mockEventTracker.track).not.toHaveBeenCalled();
       });
@@ -249,7 +182,7 @@ describe('The BreakInAlertHandlerService class', () => {
       });
     });
 
-    describe('When displayState is DisplayStateLock and a door opening occurred within the grace period', () => {
+    describe('When displayState is DisplayStateLock and owner activity occurred within the grace period', () => {
       let message: TelemetryMessage;
 
       beforeEach(() => {
@@ -259,8 +192,8 @@ describe('The BreakInAlertHandlerService class', () => {
         message.data = [];
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
         jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
-        mockEventTracker.hasEventAround.mockImplementation((_vin, event) =>
-          event === BreakInTrackedEvent.DoorOpened
+        mockEventTracker.hasEventAfter.mockImplementation((_vin, event) =>
+          event === BreakInTrackedEvent.CenterDisplayOwnerActivity
         );
       });
 
