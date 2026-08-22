@@ -34,6 +34,7 @@ describe('The NotificationSweeperService class', () => {
     mockDistributedLockService = mock<DistributedLockService>();
     mockNotificationQueueService = mock<NotificationQueueService>();
     mockVehicleAlertNotifierService = mock<VehicleAlertNotifierService>();
+    mockVehicleAlertNotifierService.enqueueNotification.mockReturnValue(true);
 
     mockDistributedLockService.withLock.mockImplementation(async (_key: number, task: () => Promise<void>) => {
       lockTask = task;
@@ -79,7 +80,7 @@ describe('The NotificationSweeperService class', () => {
       it('should query pending alerts older than the threshold', async () => {
         await service.sweep();
 
-        expect(mockAlertsService.findPendingNotificationsBefore).toHaveBeenCalledWith(expect.any(Date));
+        expect(mockAlertsService.findPendingNotificationsBefore).toHaveBeenCalledWith(expect.any(Date), 500);
       });
 
       it('should re-enqueue each stale notification', async () => {

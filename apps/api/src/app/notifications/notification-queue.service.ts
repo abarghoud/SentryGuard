@@ -32,13 +32,13 @@ export class NotificationQueueService implements OnModuleDestroy {
     this.limit = pLimit(workerCount);
   }
 
-  public enqueue(task: () => Promise<void>, context: NotificationJobContext): void {
+  public enqueue(task: () => Promise<void>, context: NotificationJobContext): boolean {
     if (this.isStopping) {
       this.droppedCount++;
       this.logger.warn(
         `[NOTIFICATION_QUEUE] Dropping notification ${context.label} for VIN ${context.vin} - shutdown in progress`
       );
-      return;
+      return false;
     }
 
     if (this.getQueuedJobCount() >= this.maxQueueSize) {
@@ -46,7 +46,7 @@ export class NotificationQueueService implements OnModuleDestroy {
       this.logger.error(
         `[NOTIFICATION_QUEUE] Queue full (${this.maxQueueSize} jobs), dropping notification ${context.label} for VIN ${context.vin}`
       );
-      return;
+      return false;
     }
 
     this.trackAlertEventId(context);
@@ -61,6 +61,8 @@ export class NotificationQueueService implements OnModuleDestroy {
       .finally(() => {
         this.releaseAlertEventId(context);
       });
+
+    return true;
   }
 
   public has(alertEventId: string): boolean {

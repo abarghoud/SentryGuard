@@ -1,7 +1,7 @@
 # Plan — Outbox-lite de notifications sur `alert_events`
 
 Branche cible : `feat/kafka-commit-before-notifications`
-Statut : **implémenté** (étapes 1-6 et stats de l'étape 7) ; alarmes OCI à configurer côté console
+Statut : **implémenté côté chemin nominal** ; alarmes OCI et validation du déploiement roulant restent à traiter
 
 ---
 
@@ -175,6 +175,7 @@ Kafka msg                                Cron (1/min, advisory lock)
 - Créer `notification-sweeper.service.spec.ts` (AAA, jest-mock-extended)
 - Modifier `apps/api/src/config/scheduler-lock-key.config.ts` : ajouter la clé `notificationSweep`
 - Créer `apps/api/src/config/notification-sweep-cron.config.ts` : `NOTIFICATION_SWEEP_CRON_EXPRESSION` (default `0 * * * * *`), `NOTIFICATION_SWEEP_PENDING_THRESHOLD_MS` (default 120000), `NOTIFICATION_SWEEP_MAX_ATTEMPTS` (default 3)
+- Ajouter `NOTIFICATION_SWEEP_BATCH_SIZE` (default 500) pour borner chaque passage du sweeper
 - Enregistrer le provider dans `app.module.ts`
 
 **Justification :** couvre les trois scénarios de perte (crash, queue pleine, drain timeout) avec ~100 lignes ; l'advisory lock (`pg_try_advisory_xact_lock`, non bloquant) garantit qu'**une seule instance sweepe** — les 2 instances de prod tournent déjà ce pattern (cron token-refresh), la deuxième skip silencieusement quand le lock est pris. Le `WHERE status = 'pending'` du `markNotificationSent` rend la collision résiduelle inoffensive : au pire un doublon d'envoi, sémantique at-least-once acceptée.
@@ -205,7 +206,7 @@ npx nx lint api && npx nx typecheck api && npx nx test api --skip-nx-cache
 
 À traiter dans la même MR ou une suivante, issues de la pré-review de la branche :
 
-1. **Résumé périodique de la queue** : `NotificationQueueService` logge toutes les minutes une ligne de stats unique : `[NOTIFICATION_QUEUE] Stats: processed=N, dropped=D, failed=F, pending_age_max=Ms, throttled_ms=T`. Cette ligne est la base des log-based metrics OCI (pas d'émission de métrique custom dans le code aujourd'hui — tout passe par les logs).
+1. **Résumé périodique de la queue** : `NotificationQueueService` logge toutes les minutes une ligne de stats unique : `[NOTIFICATION_QUEUE] Stats: processed=N, dropped=D, failed=F, queued=Q, throttled_ms=T`. Les échecs définitifs sont signalés séparément par `[NOTIFICATION_FAILED]`. Ces lignes sont la base des log-based metrics OCI (pas d'émission de métrique custom dans le code aujourd'hui — tout passe par les logs).
 2. **Alarmes OCI (log-based metrics)** :
    - `notification_failed_count` (pattern `[NOTIFICATION_FAILED]` ou champ `failed=F` de la ligne de stats) → alarme si > 0 sur une fenêtre : couvre le statut `failed` définitif (jamais silencieux).
    - **Approche de la limite Telegram** : alarme si `processed/min > ~1500` (~25/s, limite Bot API ~30/s) ou si `throttled_ms` croît — pour détecter qu'on s'approche du plafond avant d'investir dans un token bucket séparé Telegram/push. **Attention 2 instances :** les deux instances loggent dans le même log OCI, la log-based metric agrège donc automatiquement les deux — le seuil `~1500/min` vaut pour l'agrégat (le token bucket 20/s étant par instance, le plafond effectif est 40/s agrégé ; à ~10 k notifs/jour on en est loin).
@@ -229,4 +230,6 @@ npx nx lint api && npx nx typecheck api && npx nx test api --skip-nx-cache
 | Doublon sur le canal déjà livré en cas d'échec partiel (Telegram ok / push ko ou inverse) | Sémantique historique du chemin actuel (le retry Kafka renvoyait aussi les deux canaux) ; colonne de statut unique, pas de statut par canal — accepté |
 | `failed` définitif après `NOTIFICATION_SWEEP_MAX_ATTEMPTS` échecs | Jamais silencieux : compteur dans les stats de queue + alarme OCI `notification_failed_count` |
 | Notification retardée de ~2-3 min après un crash | Accepté par design (mieux que silencieusement perdue) |
-| `alert_events` purgée (max 50/user ou `clearForUser`) avant rattrapage | Edge case : une alerte assez vieille pour être purgée n'a plus vocation à être notifiée |
+| `alert_events` purgée par `clearForUser` ou la rétention avant rattrapage | Edge case : une alerte explicitement supprimée ou trop vieille n'a plus vocation à être notifiée |
+| Déploiement roulant avec une ancienne instance | À éviter tant que l'ancienne version peut créer des lignes `pending` sans les marquer `sent` |
+| Crash pendant la vérification break-in différée de 2 secondes | Hors périmètre de cet outbox : aucune ligne ne permet alors le rattrapage |

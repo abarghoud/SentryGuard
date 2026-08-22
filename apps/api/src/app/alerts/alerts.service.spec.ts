@@ -125,11 +125,13 @@ describe('The AlertsService class', () => {
       beforeEach(async () => {
         mockAlertEventRepository.find.mockResolvedValue([]);
         const cutoff = new Date('2026-08-14T10:00:00Z');
-        result = await service.findPendingNotificationsBefore(cutoff);
+        result = await service.findPendingNotificationsBefore(cutoff, 500);
       });
 
       it('should filter on pending status and created_at', () => {
         expect(mockAlertEventRepository.find).toHaveBeenCalledWith({
+          order: { created_at: 'ASC' },
+          take: 500,
           where: {
             notification_status: AlertEventNotificationStatus.Pending,
             created_at: expect.any(Object),
@@ -143,4 +145,3 @@ describe('The AlertsService class', () => {
     });
   });
 });
-

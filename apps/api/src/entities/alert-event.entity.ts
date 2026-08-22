@@ -19,7 +19,7 @@ export enum AlertEventNotificationStatus {
 @Entity('alert_events')
 @Index(['userId', 'created_at'])
 @Index(['vin'])
-@Index('idx_alert_events_pending', { where: "notification_status = 'pending'" })
+@Index('idx_alert_events_pending', ['notification_status'], { where: "notification_status = 'pending'" })
 export class AlertEvent {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

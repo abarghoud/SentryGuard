@@ -39,7 +39,7 @@ describe('The VehicleAlertNotifierService class', () => {
     mockNotificationsService.sendPushAlert.mockResolvedValue(undefined);
     mockAlertsService.record.mockImplementation(async (userId: string) => `alert-${userId}`);
     mockAlertsService.markNotificationSent.mockResolvedValue(undefined);
-    mockAlertsService.markNotificationAttemptFailed.mockResolvedValue(undefined);
+    mockAlertsService.markNotificationAttemptFailed.mockResolvedValue(false);
     mockKafkaLogContextService.runWithContext.mockImplementation(
       async (_context: { vin: string; correlationId: string }, callback: () => Promise<void>) => {
         await callback();
@@ -47,6 +47,7 @@ describe('The VehicleAlertNotifierService class', () => {
     );
     mockNotificationQueueService.enqueue.mockImplementation((task: () => Promise<void>) => {
       enqueuedTasks.push(task);
+      return true;
     });
 
     const module: TestingModule = await Test.createTestingModule({
@@ -166,7 +167,7 @@ describe('The VehicleAlertNotifierService class', () => {
       mockAlertNotifierRegistry.notify.mockRejectedValue(new Error('Network Error'));
 
       await service.dispatch(config);
-      await executeEnqueuedTasks();
+      await expect(executeEnqueuedTasks()).rejects.toThrow('Network Error');
 
       expect(mockAlertsService.markNotificationAttemptFailed).toHaveBeenCalledWith('alert-user-1', 3);
       expect(mockAlertsService.markNotificationSent).not.toHaveBeenCalled();

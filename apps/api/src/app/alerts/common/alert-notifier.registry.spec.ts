@@ -55,7 +55,8 @@ describe('The AlertNotifierRegistry class', () => {
           'user-1',
           { vin: 'VIN-1', display_name: 'My Tesla' },
           'en',
-          { inline_keyboard: [] }
+          { inline_keyboard: [] },
+          false
         );
       });
     });
@@ -75,7 +76,8 @@ describe('The AlertNotifierRegistry class', () => {
           'user-1',
           { vin: 'VIN-1', display_name: 'My Tesla' },
           'fr',
-          { inline_keyboard: [] }
+          { inline_keyboard: [] },
+          false
         );
       });
     });

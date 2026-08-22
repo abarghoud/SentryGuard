@@ -6,6 +6,7 @@ import { DistributedLockService } from '../../common/services/distributed-lock.s
 import { NotificationQueueService } from './notification-queue.service';
 import { VehicleAlertNotifierService } from '../alerts/common/vehicle-alert-notifier.service';
 import {
+  NOTIFICATION_SWEEP_BATCH_SIZE,
   NOTIFICATION_SWEEP_CRON_EXPRESSION,
   NOTIFICATION_SWEEP_PENDING_THRESHOLD_MS,
 } from '../../config/notification-sweep-cron.config';
@@ -36,10 +37,11 @@ export class NotificationSweeperService {
 
   private async executeSweep(): Promise<void> {
     const cutoff = new Date(Date.now() - NOTIFICATION_SWEEP_PENDING_THRESHOLD_MS);
-    const pendingAlerts = await this.alertsService.findPendingNotificationsBefore(cutoff);
+    const pendingAlerts = await this.alertsService.findPendingNotificationsBefore(cutoff, NOTIFICATION_SWEEP_BATCH_SIZE);
 
     let reEnqueuedCount = 0;
     let skippedCount = 0;
+    let droppedCount = 0;
 
     for (const alert of pendingAlerts) {
       if (this.notificationQueueService.has(alert.id)) {
@@ -47,7 +49,7 @@ export class NotificationSweeperService {
         continue;
       }
 
-      this.vehicleAlertNotifierService.enqueueNotification({
+      const wasEnqueued = this.vehicleAlertNotifierService.enqueueNotification({
         alertEventId: alert.id,
         userId: alert.userId,
         vin: alert.vin,
@@ -56,12 +58,17 @@ export class NotificationSweeperService {
         severity: alert.severity,
         correlationId: `sweep-${alert.id}`,
       });
-      reEnqueuedCount++;
+
+      if (wasEnqueued) {
+        reEnqueuedCount++;
+      } else {
+        droppedCount++;
+      }
     }
 
-    if (reEnqueuedCount > 0 || skippedCount > 0) {
+    if (reEnqueuedCount > 0 || skippedCount > 0 || droppedCount > 0) {
       this.logger.log(
-        `[NOTIFICATION_SWEEPER] Re-enqueued ${reEnqueuedCount} pending alert(s), skipped ${skippedCount} in-queue`
+        `[NOTIFICATION_SWEEPER] Re-enqueued ${reEnqueuedCount} pending alert(s), skipped ${skippedCount} in-queue, dropped ${droppedCount}`
       );
     }
   }

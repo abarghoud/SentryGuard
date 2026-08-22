@@ -4,7 +4,7 @@ describe('The TokenBucketRateLimiterService class', () => {
   describe('The acquire() method', () => {
     it('should allow the initial burst without waiting', async () => {
       const sleepDurations: number[] = [];
-      const limiter = new TokenBucketRateLimiterService(2, () => 0, async (ms) => {
+      const limiter = new TokenBucketRateLimiterService(2, () => 0, async (ms: number) => {
         sleepDurations.push(ms);
       });
 
@@ -17,7 +17,7 @@ describe('The TokenBucketRateLimiterService class', () => {
     it('should wait for the next token when the bucket is empty', async () => {
       let now = 0;
       const sleepDurations: number[] = [];
-      const limiter = new TokenBucketRateLimiterService(2, () => now, async (ms) => {
+      const limiter = new TokenBucketRateLimiterService(2, () => now, async (ms: number) => {
         sleepDurations.push(ms);
         now += ms;
       });
@@ -32,7 +32,7 @@ describe('The TokenBucketRateLimiterService class', () => {
     it('should refill tokens as time elapses', async () => {
       let now = 0;
       const sleepDurations: number[] = [];
-      const limiter = new TokenBucketRateLimiterService(2, () => now, async (ms) => {
+      const limiter = new TokenBucketRateLimiterService(2, () => now, async (ms: number) => {
         sleepDurations.push(ms);
         now += ms;
       });
@@ -53,7 +53,7 @@ describe('The TokenBucketRateLimiterService class', () => {
     it('should never exceed the bucket capacity', async () => {
       let now = 0;
       const sleepDurations: number[] = [];
-      const limiter = new TokenBucketRateLimiterService(2, () => now, async (ms) => {
+      const limiter = new TokenBucketRateLimiterService(2, () => now, async (ms: number) => {
         sleepDurations.push(ms);
         now += ms;
       });

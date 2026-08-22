@@ -51,11 +51,11 @@ export class AlertNotifierRegistry {
 
   private async notifySentry(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<void> {
     const keyboard = this.keyboardBuilder.buildSentryAlertKeyboard(payload.userId, userLanguage);
-    await this.telegramService.sendSentryAlert(payload.userId, this.buildAlertInfo(payload), userLanguage, keyboard);
+    await this.telegramService.sendSentryAlert(payload.userId, this.buildAlertInfo(payload), userLanguage, keyboard, false);
   }
 
   private async notifyBreakIn(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<void> {
     const keyboard = this.keyboardBuilder.buildBreakInAlertKeyboard(payload.userId, userLanguage);
-    await this.telegramService.sendBreakInAlert(payload.userId, this.buildAlertInfo(payload), userLanguage, keyboard);
+    await this.telegramService.sendBreakInAlert(payload.userId, this.buildAlertInfo(payload), userLanguage, keyboard, false);
   }
 }

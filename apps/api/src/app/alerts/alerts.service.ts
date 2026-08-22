@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThan, Repository } from 'typeorm';
+import { IsNull, LessThan, Not, Or, Repository } from 'typeorm';
 
 import {
   AlertEvent,
@@ -52,7 +52,14 @@ export class AlertsService {
     vehicleDisplayName?: string
   ): Promise<string> {
     const savedEvent = await this.alertEventRepository.save(
-      this.alertEventRepository.create({ userId, vin, type, severity, vehicle_display_name: vehicleDisplayName })
+      this.alertEventRepository.create({
+        notification_status: AlertEventNotificationStatus.Pending,
+        userId,
+        vin,
+        type,
+        severity,
+        vehicle_display_name: vehicleDisplayName,
+      })
     );
     await this.deleteOldAlertEvents(userId);
 
@@ -66,8 +73,8 @@ export class AlertsService {
     );
   }
 
-  public async markNotificationAttemptFailed(alertEventId: string, maxAttempts: number): Promise<void> {
-    await this.alertEventRepository
+  public async markNotificationAttemptFailed(alertEventId: string, maxAttempts: number): Promise<boolean> {
+    const incrementResult = await this.alertEventRepository
       .createQueryBuilder()
       .update(AlertEvent)
       .set({ notification_attempts: () => 'notification_attempts + 1' })
@@ -77,7 +84,11 @@ export class AlertsService {
       })
       .execute();
 
-    await this.alertEventRepository
+    if (incrementResult.affected === 0) {
+      return false;
+    }
+
+    const failedResult = await this.alertEventRepository
       .createQueryBuilder()
       .update(AlertEvent)
       .set({ notification_status: AlertEventNotificationStatus.Failed })
@@ -90,10 +101,14 @@ export class AlertsService {
         }
       )
       .execute();
+
+    return (failedResult.affected ?? 0) > 0;
   }
 
-  public async findPendingNotificationsBefore(cutoff: Date): Promise<AlertEvent[]> {
+  public async findPendingNotificationsBefore(cutoff: Date, limit: number): Promise<AlertEvent[]> {
     return this.alertEventRepository.find({
+      order: { created_at: 'ASC' },
+      take: limit,
       where: {
         notification_status: AlertEventNotificationStatus.Pending,
         created_at: LessThan(cutoff),
@@ -115,7 +130,10 @@ export class AlertsService {
       order: { created_at: 'DESC' },
       select: { id: true },
       skip: maxAlertEventsPerUser,
-      where: { userId },
+      where: {
+        notification_status: Or(IsNull(), Not(AlertEventNotificationStatus.Pending)),
+        userId,
+      },
     });
     return alerts.map((alert) => alert.id);
   }

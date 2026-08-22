@@ -74,8 +74,8 @@ export class VehicleAlertNotifierService {
     }
   }
 
-  public enqueueNotification(payload: AlertNotifierPayload): void {
-    this.notificationQueueService.enqueue(
+  public enqueueNotification(payload: AlertNotifierPayload): boolean {
+    return this.notificationQueueService.enqueue(
       () => this.kafkaLogContextService.runWithContext(
         {
           vin: payload.vin,
@@ -205,10 +205,21 @@ export class VehicleAlertNotifierService {
       this.logger.error(`[NOTIFICATION_ERROR] Failed to send ${payload.type} to user ${payload.userId} for VIN ${payload.vin}:`, error);
 
       try {
-        await this.alertsService.markNotificationAttemptFailed(payload.alertEventId, NOTIFICATION_SWEEP_MAX_ATTEMPTS);
+        const isPermanentlyFailed = await this.alertsService.markNotificationAttemptFailed(
+          payload.alertEventId,
+          NOTIFICATION_SWEEP_MAX_ATTEMPTS
+        );
+
+        if (isPermanentlyFailed) {
+          this.logger.error(
+            `[NOTIFICATION_FAILED] Alert ${payload.alertEventId} permanently failed after ${NOTIFICATION_SWEEP_MAX_ATTEMPTS} attempts`
+          );
+        }
       } catch (markingError) {
         this.logger.error(`[NOTIFICATION_ERROR] Failed to mark notification attempt for alert ${payload.alertEventId}:`, markingError);
       }
+
+      throw error;
     }
   }
 

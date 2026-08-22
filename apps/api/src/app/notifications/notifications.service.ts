@@ -6,6 +6,8 @@ import { NotificationPreferences } from '../../entities/notification-preferences
 import { PushDeviceToken } from '../../entities/push-device-token.entity';
 import { AlertEventSeverity, AlertEventType } from '../../entities/alert-event.entity';
 import i18n from '../../i18n';
+import { NOTIFICATION_REQUEST_TIMEOUT_MS } from '../../config/notification-timeout.config';
+import { withTimeout } from '../../common/utils/with-timeout.util';
 
 export interface NotificationPreferencesDto {
   critical_alerts_enabled: boolean;
@@ -207,18 +209,24 @@ export class NotificationsService {
   ): Promise<void> {
     try {
       const pushStart = Date.now();
-      const response = await fetch('https://exp.host/--/api/v2/push/send', {
-        body: JSON.stringify(this.buildExpoPushBody(device.token, title, body, severity, type, criticalAlertsEnabled, userId, userLanguage)),
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        method: 'POST',
-      });
-      
+      const response = await withTimeout(
+        (signal) => fetch('https://exp.host/--/api/v2/push/send', {
+          body: JSON.stringify(this.buildExpoPushBody(device.token, title, body, severity, type, criticalAlertsEnabled, userId, userLanguage)),
+          headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+          method: 'POST',
+          signal,
+        }),
+        NOTIFICATION_REQUEST_TIMEOUT_MS,
+        `Expo push request timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
+      );
+
       const pushTime = Date.now() - pushStart;
       this.logger.log(`[EXPO_PUSH_LATENCY][${correlationId || 'none'}] Push sent to device ${device.id} in ${pushTime}ms`);
 
       await this.handleExpoPushResponse(device, response);
     } catch (error) {
       this.logger.error(`[NOTIFICATION_ERROR] Failed to send push notification: ${error instanceof Error ? error.message : 'unknown error'} (correlation: ${correlationId || 'none'})`);
+      throw error;
     }
   }
 
@@ -265,12 +273,14 @@ export class NotificationsService {
   private async handleExpoPushResponse(device: PushDeviceToken, response: Response): Promise<void> {
     const result = await this.parseExpoPushResponse(response);
 
-    if (!response.ok || result.data?.status === 'error') {
-      this.logger.warn(`[NOTIFICATION_ERROR] Expo push rejected token ${device.id}: ${result.data?.message ?? response.statusText}`);
-    }
-
     if (result.data?.details?.error === 'DeviceNotRegistered') {
       await this.removePushDevice(device);
+    }
+
+    if (!response.ok || result.data?.status === 'error') {
+      const message = result.data?.message ?? response.statusText ?? 'Expo push rejected';
+      this.logger.warn(`[NOTIFICATION_ERROR] Expo push rejected token ${device.id}: ${message}`);
+      throw new Error(message);
     }
   }
 
