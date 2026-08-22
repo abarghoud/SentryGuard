@@ -25,6 +25,15 @@ const STRING_TO_SENTRY_MODE_MAP: Record<string, SentryModeState> = {
   'Unknown': SentryModeState.Unknown,
 };
 
+const CENTER_DISPLAY_OWNER_ACTIVITY_STATES = new Set([
+  'DisplayStateAccessory',
+  'Accessory',
+  'DisplayStateOn',
+  'On',
+  'DisplayStateDriving',
+  'Driving',
+]);
+
 export class TelemetryValue {
   @IsOptional()
   @IsString()
@@ -139,6 +148,15 @@ export class TelemetryMessage {
     const { displayStateValue, stringValue } = displayDatum.value;
     const value = displayStateValue ?? stringValue;
     return value === 'DisplayStateLock' || value === 'Lock';
+  }
+
+  isCenterDisplayOwnerActivity(): boolean {
+    const displayDatum = this.data.find(d => d.key === 'CenterDisplay');
+    if (!displayDatum) return false;
+
+    const { displayStateValue, stringValue } = displayDatum.value;
+    const value = displayStateValue ?? stringValue;
+    return value !== undefined && CENTER_DISPLAY_OWNER_ACTIVITY_STATES.has(value);
   }
 
   extractOpenDoors(): string[] {
