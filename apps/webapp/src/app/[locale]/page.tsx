@@ -10,6 +10,8 @@ import LocalizedImage from '@/components/LocalizedImage';
 import AiIllustrationWrapper from '@/components/AiIllustrationWrapper';
 import ComparisonItem from '@/components/home/ComparisonItem';
 import StepItem from '@/components/home/StepItem';
+import { StoreBadges } from '@/components/home/StoreBadges';
+import { getAppStoreUrls } from '@/core/site';
 
 export const dynamicParams = false;
 
@@ -73,6 +75,8 @@ export default async function HomePage({ params }: HomePageProps) {
   const { locale } = await params;
   const t = getTranslation(locale);
   const jsonLd = buildSoftwareApplicationJsonLd(locale, t('meta.home.description'));
+  const { appStoreUrl, googlePlayUrl } = getAppStoreUrls();
+  const hasStoreUrls = Boolean(appStoreUrl || googlePlayUrl);
 
   return (
     <PublicLayout
@@ -123,19 +127,32 @@ export default async function HomePage({ params }: HomePageProps) {
               {t('The missing security alerts for your Tesla.')}
             </h2>
             <p className="text-xl md:text-2xl text-gray-700 mb-8">
-              {t('Get a Telegram notification the second Sentry Mode records a threat, or when someone pulls your door handle—even if you disabled Sentry Mode to save battery.')}
+              {t('Get an instant push notification the second Sentry Mode records a threat, or when someone pulls your door handle—even if you disabled Sentry Mode to save battery.')}
             </p>
-            <div className="mb-8 flex flex-col items-start">
-               <TeslaLoginButton />
-               <p className="text-sm text-gray-500 mt-2 flex items-center">
+            <div className="mb-8 flex flex-col items-start gap-4" id="mobile-app">
+              {hasStoreUrls ? (
+                <>
+                  <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+                    {t('Get the mobile app')}
+                  </p>
+                  <StoreBadges className="justify-start" />
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-gray-400">{t('or')}</span>
+                    <TeslaLoginButton variant="secondary" />
+                  </div>
+                </>
+              ) : (
+                <TeslaLoginButton />
+              )}
+              <p className="text-sm text-gray-500 flex items-center">
                  <svg className="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                 {t('Secure OAuth authentication powered by Tesla')}
-               </p>
+                  {t('Secure OAuth authentication powered by Tesla')}
+                </p>
             </div>
           </div>
           <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-gray-100">
             <AiIllustrationWrapper locale={locale}>
-              <LocalizedImage baseSrc="/images/hero-alert" locale={locale} alt="Telegram Sentry Alert" width={600} height={600} priority fetchPriority="high" className="w-full h-auto object-cover transform hover:scale-105 transition-transform duration-700" />
+              <LocalizedImage baseSrc="/images/hero-alert" locale={locale} alt="SentryGuard Instant Alert" width={600} height={600} priority fetchPriority="high" className="w-full h-auto object-cover transform hover:scale-105 transition-transform duration-700" />
             </AiIllustrationWrapper>
           </div>
         </div>
@@ -146,7 +163,7 @@ export default async function HomePage({ params }: HomePageProps) {
           <div className="text-center max-w-3xl mx-auto mb-16 md:mb-24">
             <h3 className="text-3xl md:text-4xl font-bold mb-4">{t('Four critical features the Tesla App is missing.')}</h3>
             <p className="text-lg text-gray-600">
-              {t('The official app leaves gaps in your security. We fill them with instant Telegram alerts.')}
+              {t('The official app leaves gaps in your security. We fill them with instant push notifications and Telegram alerts.')}
             </p>
           </div>
           
@@ -176,7 +193,7 @@ export default async function HomePage({ params }: HomePageProps) {
                   <ComparisonItem 
                     isPositive={true} 
                     title={t('SentryGuard')} 
-                    description={t('Instantly pushes a Telegram alert the moment Sentry Mode triggers, so you can react immediately.')} 
+                    description={t('Instantly pushes an alert to your phone the moment Sentry Mode triggers, so you can react immediately.')} 
                   />
                 </div>
               </div>
@@ -294,10 +311,10 @@ export default async function HomePage({ params }: HomePageProps) {
             title={t('2. Smart Telemetry')} 
             description={t('Our servers listen to the official telemetry stream. Zero polling means absolutely zero battery drain.')} 
           />
-          <StepItem 
-            icon="📱" 
-            title={t('3. Instant Alerts')} 
-            description={t('Connect our Telegram bot and receive push notifications the exact second Sentry Mode is triggered.')} 
+          <StepItem
+            icon="📱"
+            title={t('3. Instant Alerts')}
+            description={t('Receive push notifications via our mobile app or Telegram bot the exact second Sentry Mode is triggered.')}
           />
         </div>
       </div>
