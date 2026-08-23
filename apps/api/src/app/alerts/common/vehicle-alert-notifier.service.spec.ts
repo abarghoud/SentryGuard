@@ -36,7 +36,7 @@ describe('The VehicleAlertNotifierService class', () => {
     enqueuedTasks = [];
 
     mockNotificationsService.shouldSendTelegram.mockResolvedValue(true);
-    mockNotificationsService.sendPushAlert.mockResolvedValue(undefined);
+    mockNotificationsService.sendPushAlert.mockResolvedValue(true);
     mockAlertsService.record.mockImplementation(async (userId: string) => `alert-${userId}`);
     mockAlertsService.markNotificationSent.mockResolvedValue(undefined);
     mockAlertsService.markNotificationAttemptFailed.mockResolvedValue(false);
@@ -159,15 +159,44 @@ describe('The VehicleAlertNotifierService class', () => {
       expect(mockAlertsService.markNotificationAttemptFailed).not.toHaveBeenCalled();
     });
 
-    it('should mark the attempt as failed when the notification fails', async () => {
+    it('should mark the notification as sent when Telegram fails but push succeeds', async () => {
       mockVehicleRepository.find.mockResolvedValue([
         { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
       ]);
       mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
-      mockAlertNotifierRegistry.notify.mockRejectedValue(new Error('Network Error'));
+      mockAlertNotifierRegistry.notify.mockRejectedValue(new Error('Telegram Error'));
 
       await service.dispatch(config);
-      await expect(executeEnqueuedTasks()).rejects.toThrow('Network Error');
+      await executeEnqueuedTasks();
+
+      expect(mockAlertsService.markNotificationSent).toHaveBeenCalledWith('alert-user-1');
+      expect(mockAlertsService.markNotificationAttemptFailed).not.toHaveBeenCalled();
+    });
+
+    it('should mark the notification as sent when push fails but Telegram succeeds', async () => {
+      mockVehicleRepository.find.mockResolvedValue([
+        { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
+      ]);
+      mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+      mockNotificationsService.sendPushAlert.mockRejectedValue(new Error('Push Error'));
+
+      await service.dispatch(config);
+      await executeEnqueuedTasks();
+
+      expect(mockAlertsService.markNotificationSent).toHaveBeenCalledWith('alert-user-1');
+      expect(mockAlertsService.markNotificationAttemptFailed).not.toHaveBeenCalled();
+    });
+
+    it('should mark the attempt as failed when all attempted notification channels fail', async () => {
+      mockVehicleRepository.find.mockResolvedValue([
+        { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
+      ]);
+      mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+      mockNotificationsService.sendPushAlert.mockRejectedValue(new Error('Push Error'));
+      mockAlertNotifierRegistry.notify.mockRejectedValue(new Error('Telegram Error'));
+
+      await service.dispatch(config);
+      await expect(executeEnqueuedTasks()).rejects.toThrow('Push Error');
 
       expect(mockAlertsService.markNotificationAttemptFailed).toHaveBeenCalledWith('alert-user-1', 3);
       expect(mockAlertsService.markNotificationSent).not.toHaveBeenCalled();

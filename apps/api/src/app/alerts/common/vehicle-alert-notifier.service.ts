@@ -173,53 +173,60 @@ export class VehicleAlertNotifierService {
   private async notifyUser(payload: AlertNotifierPayload): Promise<void> {
     try {
       const userLanguage = await this.userLanguageService.getUserLanguage(payload.userId);
-
-      const pushTask = this.notificationsService.sendPushAlert(
-        payload.userId,
-        payload.severity,
-        payload.type,
-        userLanguage,
-        payload.correlationId
-      );
-
-      const telegramTask = (async () => {
-        const telegramStart = Date.now();
-
-        if (await this.notificationsService.shouldSendTelegram(payload.userId, payload.severity)) {
-          await this.alertNotifierRegistry.notify(payload, userLanguage);
-        }
-
-        const telegramTime = Date.now() - telegramStart;
-
-        if (telegramTime > VehicleAlertNotifierService.TELEGRAM_SLOW_THRESHOLD_MS) {
-          this.logger.warn(`[TELEGRAM_SLOW][${payload.correlationId}] ${payload.type}: ${telegramTime}ms for user: ${payload.userId}`);
-        }
-      })();
-
-      await Promise.all([pushTask, telegramTask]);
-
+      await this.deliverNotifications(payload, userLanguage);
       await this.alertsService.markNotificationSent(payload.alertEventId);
-
       this.logger.log(`[${payload.type}] Notified user ${payload.userId} for VIN ${payload.vin} (correlation: ${payload.correlationId})`);
     } catch (error) {
       this.logger.error(`[NOTIFICATION_ERROR] Failed to send ${payload.type} to user ${payload.userId} for VIN ${payload.vin}:`, error);
-
-      try {
-        const isPermanentlyFailed = await this.alertsService.markNotificationAttemptFailed(
-          payload.alertEventId,
-          NOTIFICATION_SWEEP_MAX_ATTEMPTS
-        );
-
-        if (isPermanentlyFailed) {
-          this.logger.error(
-            `[NOTIFICATION_FAILED] Alert ${payload.alertEventId} permanently failed after ${NOTIFICATION_SWEEP_MAX_ATTEMPTS} attempts`
-          );
-        }
-      } catch (markingError) {
-        this.logger.error(`[NOTIFICATION_ERROR] Failed to mark notification attempt for alert ${payload.alertEventId}:`, markingError);
-      }
-
+      await this.handleNotificationFailure(payload.alertEventId);
       throw error;
+    }
+  }
+
+  private async deliverNotifications(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<void> {
+    const [pushResult, telegramResult] = await Promise.allSettled([
+      this.notificationsService.sendPushAlert(payload.userId, payload.severity, payload.type, userLanguage, payload.correlationId),
+      this.sendTelegramNotification(payload, userLanguage),
+    ]);
+
+    const pushSent = pushResult.status === 'fulfilled' && pushResult.value;
+    const telegramSent = telegramResult.status === 'fulfilled' && telegramResult.value;
+
+    if (!pushSent && !telegramSent && (pushResult.status === 'rejected' || telegramResult.status === 'rejected')) {
+      throw pushResult.status === 'rejected' ? pushResult.reason : (telegramResult as PromiseRejectedResult).reason;
+    }
+  }
+
+  private async sendTelegramNotification(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<boolean> {
+    if (!(await this.notificationsService.shouldSendTelegram(payload.userId, payload.severity))) {
+      return false;
+    }
+
+    const telegramStart = Date.now();
+    await this.alertNotifierRegistry.notify(payload, userLanguage);
+    const telegramTime = Date.now() - telegramStart;
+
+    if (telegramTime > VehicleAlertNotifierService.TELEGRAM_SLOW_THRESHOLD_MS) {
+      this.logger.warn(`[TELEGRAM_SLOW][${payload.correlationId}] ${payload.type}: ${telegramTime}ms for user: ${payload.userId}`);
+    }
+
+    return true;
+  }
+
+  private async handleNotificationFailure(alertEventId: string): Promise<void> {
+    try {
+      const isPermanentlyFailed = await this.alertsService.markNotificationAttemptFailed(
+        alertEventId,
+        NOTIFICATION_SWEEP_MAX_ATTEMPTS
+      );
+
+      if (isPermanentlyFailed) {
+        this.logger.error(
+          `[NOTIFICATION_FAILED] Alert ${alertEventId} permanently failed after ${NOTIFICATION_SWEEP_MAX_ATTEMPTS} attempts`
+        );
+      }
+    } catch (markingError) {
+      this.logger.error(`[NOTIFICATION_ERROR] Failed to mark notification attempt for alert ${alertEventId}:`, markingError);
     }
   }
 

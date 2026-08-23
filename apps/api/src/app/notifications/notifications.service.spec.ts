@@ -95,13 +95,19 @@ describe('The NotificationsService class', () => {
     });
 
     describe('When the user has no eligible device', () => {
+      let result: boolean;
+
       beforeEach(async () => {
         mockPushDeviceTokenRepository.find.mockResolvedValue([]);
-        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'fr');
+        result = await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'fr');
       });
 
       it('should not call the push service', () => {
         expect(fetchMock).not.toHaveBeenCalled();
+      });
+
+      it('should return false', () => {
+        expect(result).toBe(false);
       });
     });
 
@@ -153,7 +159,7 @@ describe('The NotificationsService class', () => {
       });
     });
 
-    describe('When Expo invalidates the device token', () => {
+    describe('When Expo invalidates the device token and no other devices exist', () => {
       beforeEach(() => {
         fetchMock.mockResolvedValue({
           json: () => Promise.resolve({
@@ -173,6 +179,44 @@ describe('The NotificationsService class', () => {
           service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'en')
         ).rejects.toThrow('Device is not registered');
         expect(mockPushDeviceTokenRepository.delete).toHaveBeenCalledWith({ id: undefined });
+      });
+    });
+
+    describe('When one device has a stale token but another device succeeds', () => {
+      let result: boolean;
+
+      beforeEach(async () => {
+        const staleDevice = { ...createDevice(), id: 'stale-device', token: 'ExponentPushToken[stale]' };
+        const healthyDevice = { ...createDevice(), id: 'healthy-device', token: 'ExponentPushToken[healthy]' };
+        mockPushDeviceTokenRepository.find.mockResolvedValue([staleDevice, healthyDevice]);
+
+        fetchMock.mockImplementation((_url: string, init: RequestInit) => {
+          const body = JSON.parse(init.body as string);
+          if (body.to === 'ExponentPushToken[stale]') {
+            return Promise.resolve({
+              json: () => Promise.resolve({
+                data: { details: { error: 'DeviceNotRegistered' }, message: 'Device is not registered', status: 'error' },
+              }),
+              ok: false,
+              statusText: 'Bad Request',
+            });
+          }
+          return Promise.resolve({
+            json: () => Promise.resolve({ data: { status: 'ok' } }),
+            ok: true,
+            statusText: 'OK',
+          });
+        });
+
+        result = await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'en');
+      });
+
+      it('should remove the stale device', () => {
+        expect(mockPushDeviceTokenRepository.delete).toHaveBeenCalledWith({ id: 'stale-device' });
+      });
+
+      it('should succeed and return true', () => {
+        expect(result).toBe(true);
       });
     });
   });
