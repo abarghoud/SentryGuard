@@ -3,6 +3,7 @@ import { HttpAdapterHost } from '@nestjs/core';
 
 import { KafkaService } from '../messaging/kafka/kafka.service';
 import { BreakInAlertHandlerService } from '../alerts/break-in/break-in-alert-handler.service';
+import { NotificationQueueService } from '../notifications/notification-queue.service';
 
 @Injectable()
 export class GracefulShutdownService {
@@ -12,6 +13,7 @@ export class GracefulShutdownService {
     private readonly httpAdapterHost: HttpAdapterHost,
     private readonly kafkaService: KafkaService,
     private readonly breakInAlertHandler: BreakInAlertHandlerService,
+    private readonly notificationQueueService: NotificationQueueService,
   ) {}
 
   public async initiateShutdown(): Promise<void> {
@@ -23,6 +25,8 @@ export class GracefulShutdownService {
     await this.kafkaService.drainInFlight(this.getKafkaDrainTimeoutMs());
 
     await this.breakInAlertHandler.flushPendingVerifications(this.getAlertFlushTimeoutMs());
+
+    await this.notificationQueueService.drain(this.getNotificationDrainTimeoutMs());
 
     this.logger.log('✅ Graceful shutdown drain complete');
   }
@@ -48,5 +52,9 @@ export class GracefulShutdownService {
 
   private getAlertFlushTimeoutMs(): number {
     return parseInt(process.env.GRACEFUL_SHUTDOWN_ALERT_FLUSH_TIMEOUT_MS || '30000', 10);
+  }
+
+  private getNotificationDrainTimeoutMs(): number {
+    return parseInt(process.env.GRACEFUL_SHUTDOWN_NOTIFICATION_DRAIN_TIMEOUT_MS || '30000', 10);
   }
 }

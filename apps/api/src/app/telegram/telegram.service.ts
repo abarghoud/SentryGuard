@@ -9,6 +9,8 @@ import type { ITelegramFailureHandler } from './interfaces/telegram-failure-hand
 import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import { telegramRetryManager } from './telegram-retry-manager.token';
 import { RetryManager } from '../shared/retry-manager.service';
+import { NOTIFICATION_REQUEST_TIMEOUT_MS } from '../../config/notification-timeout.config';
+import { withTimeout } from '../../common/utils/with-timeout.util';
 
 type TelegramKeyboard = {
   inline_keyboard?: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
@@ -35,6 +37,7 @@ export class TelegramService implements OnModuleDestroy {
     alertInfo: { vin: string, display_name?: string },
     userLanguage: 'en' | 'fr',
     keyboard?: TelegramKeyboard,
+    shouldScheduleRetry = true,
   ) {
     this.logger.debug(`[OPTIMIZATION] Using provided language: ${userLanguage} for user: ${userId}`);
 
@@ -55,20 +58,20 @@ export class TelegramService implements OnModuleDestroy {
     const options = keyboard ? { keyboard } : undefined;
 
     try {
-      await this.telegramBotUpdateService.ensureUserIsUpToDate(
-        userId,
-        chatId,
-        userLanguage
+      await withTimeout(
+        () => this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage),
+        NOTIFICATION_REQUEST_TIMEOUT_MS,
+        `Telegram bot update request timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
       );
 
       if (this.shouldSimulateMessage(alertInfo.vin)) {
         return await this.simulateMessage(userId, 'alert', alertInfo.vin);
       }
 
-      return await this.telegramBotService.sendMessage(
-        chatId,
-        message,
-        options
+      return await withTimeout(
+        () => this.telegramBotService.sendMessage(chatId, message, options),
+        NOTIFICATION_REQUEST_TIMEOUT_MS,
+        `Telegram notification request timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
       );
     } catch (error) {
       if (this.isBlockedBotFailure(error)) {
@@ -79,10 +82,18 @@ export class TelegramService implements OnModuleDestroy {
       }
 
       if (this.isRetryableTelegramError(error)) {
+        if (!shouldScheduleRetry) {
+          throw error;
+        }
+
         const correlationId = `telegram-alert-${userId}-${Date.now()}`;
         this.retryManager.addToRetry(
           async () => {
-            await this.telegramBotService.sendMessage(chatId, message, options);
+            await withTimeout(
+              () => this.telegramBotService.sendMessage(chatId, message, options),
+              NOTIFICATION_REQUEST_TIMEOUT_MS,
+              `Telegram notification retry timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
+            );
           },
           error as Error,
           correlationId
@@ -102,6 +113,7 @@ export class TelegramService implements OnModuleDestroy {
     alertInfo: { vin: string, display_name?: string },
     userLanguage: 'en' | 'fr',
     keyboard?: TelegramKeyboard,
+    shouldScheduleRetry = true,
   ) {
     this.logger.debug(`[OPTIMIZATION] Using provided language: ${userLanguage} for user: ${userId}`);
 
@@ -122,20 +134,20 @@ export class TelegramService implements OnModuleDestroy {
     const options = keyboard ? { keyboard } : undefined;
 
     try {
-      await this.telegramBotUpdateService.ensureUserIsUpToDate(
-        userId,
-        chatId,
-        userLanguage
+      await withTimeout(
+        () => this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage),
+        NOTIFICATION_REQUEST_TIMEOUT_MS,
+        `Telegram bot update request timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
       );
 
       if (this.shouldSimulateMessage(alertInfo.vin)) {
         return await this.simulateMessage(userId, 'alert', alertInfo.vin);
       }
 
-      return await this.telegramBotService.sendMessage(
-        chatId,
-        message,
-        options
+      return await withTimeout(
+        () => this.telegramBotService.sendMessage(chatId, message, options),
+        NOTIFICATION_REQUEST_TIMEOUT_MS,
+        `Telegram notification request timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
       );
     } catch (error) {
       if (this.isBlockedBotFailure(error)) {
@@ -146,10 +158,18 @@ export class TelegramService implements OnModuleDestroy {
       }
 
       if (this.isRetryableTelegramError(error)) {
+        if (!shouldScheduleRetry) {
+          throw error;
+        }
+
         const correlationId = `telegram-alert-breakin-${userId}-${Date.now()}`;
         this.retryManager.addToRetry(
           async () => {
-            await this.telegramBotService.sendMessage(chatId, message, options);
+            await withTimeout(
+              () => this.telegramBotService.sendMessage(chatId, message, options),
+              NOTIFICATION_REQUEST_TIMEOUT_MS,
+              `Telegram notification retry timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
+            );
           },
           error as Error,
           correlationId
