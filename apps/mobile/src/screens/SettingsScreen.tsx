@@ -15,9 +15,15 @@ import { resolveTelegramStatusKey } from './telegram-settings/telegram-settings.
 import {
   clearDebugLogs,
   openAndroidDoNotDisturbAccessSettings,
+  openCrispSupport,
+  openDiscordCommunity,
+  openEmailSupport,
   openPrivacyPolicy,
   openTermsOfService,
+  resolveCrispWebsiteId,
+  resolveDiscordUrl,
   resolveSettingsError,
+  resolveSupportEmail,
   shareDebugLogs,
 } from './settings/settings.helpers';
 import { useSettings } from './settings/use-settings';
@@ -46,6 +52,10 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
 
   const isBusy = preferencesMutation.isPending;
   const language = languageQuery.data?.language ?? UserLanguage.French;
+  const crispWebsiteId = resolveCrispWebsiteId();
+  const discordUrl = resolveDiscordUrl();
+  const supportEmail = resolveSupportEmail();
+  const hasSupportLinks = Boolean(crispWebsiteId || discordUrl || supportEmail);
 
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const statusMessage =
@@ -141,9 +151,40 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         <ListRow title={t('settings.deleteAccount')} showChevron onPress={() => navigation.navigate('DeleteAccount')} />
       </ListSection>
 
-      <ListSection header={t('settings.supportSection')} footer={t('settings.debugLogsFooter')}>
-        <ListRow title={t('settings.exportLogs')} showChevron onPress={() => void shareDebugLogs(t)} />
-        <ListRow title={t('settings.clearLogs')} onPress={() => void clearDebugLogs()} />
+      {hasSupportLinks ? (
+        <ListSection header={t('settings.supportSection')}>
+          {crispWebsiteId ? (
+            <ListRow
+              icon="bubble.left.and.bubble.right.fill"
+              title={t('settings.contactSupport')}
+              subtitle={t('settings.contactSupportSubtitle')}
+              showChevron
+              onPress={() => void openCrispSupport(profile?.email, profile?.full_name)}
+            />
+          ) : null}
+          {discordUrl ? (
+            <ListRow
+              icon="person.2.fill"
+              title={t('settings.discordCommunity')}
+              subtitle={t('settings.discordCommunitySubtitle')}
+              showChevron
+              onPress={() => void openDiscordCommunity()}
+            />
+          ) : null}
+          {supportEmail ? (
+            <ListRow
+              icon="envelope.fill"
+              title={t('settings.emailSupport')}
+              showChevron
+              onPress={() => void openEmailSupport()}
+            />
+          ) : null}
+        </ListSection>
+      ) : null}
+
+      <ListSection header={t('settings.diagnosticSection')} footer={t('settings.debugLogsFooter')}>
+        <ListRow icon="doc.text.fill" title={t('settings.exportLogs')} showChevron onPress={() => void shareDebugLogs(t)} />
+        <ListRow icon="trash.fill" title={t('settings.clearLogs')} onPress={() => void clearDebugLogs()} />
       </ListSection>
 
       <GlassButton

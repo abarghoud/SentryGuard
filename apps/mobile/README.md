@@ -145,6 +145,18 @@ Tesla virtual key pairing URL (`https://tesla.com/_ak/<your-domain>`).
 
 If undefined and no custom URL is set in the hidden advanced settings, the virtual key button shows a configuration error.
 
+### `EXPO_PUBLIC_CRISP_WEBSITE_ID`
+
+Crisp website ID for live chat support.
+
+### `EXPO_PUBLIC_DISCORD_URL`
+
+Discord invite URL for community support and announcements.
+
+### `EXPO_PUBLIC_SUPPORT_EMAIL`
+
+Support email address for direct email inquiries.
+
 ## Architecture
 
 ### App Initialization

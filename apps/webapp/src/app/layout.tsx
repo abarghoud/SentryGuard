@@ -38,6 +38,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const locale = await getLocale();
+  const rawCrispId = process.env.NEXT_PUBLIC_CRISP_WEBSITE_ID?.trim();
+  const crispWebsiteId =
+    rawCrispId && /^[a-zA-Z0-9-]+$/.test(rawCrispId) ? rawCrispId : null;
 
   return (
     <RuntimeRollbarProvider>
@@ -47,19 +50,21 @@ export default async function RootLayout({
           <QueryProvider>
             <I18nProvider initialLocale={locale}>{children}</I18nProvider>
             <BuyMeACoffeeWidget />
-          <Script id="crisp-widget" strategy="afterInteractive">
-            {`
-              window.$crisp = [];
-              window.CRISP_WEBSITE_ID = "04ce8de3-dcd5-454b-bd56-66643019ccc0";
-              (function() {
-                d = document;
-                s = d.createElement("script");
-                s.src = "https://client.crisp.chat/l.js";
-                s.async = 1;
-                d.getElementsByTagName("head")[0].appendChild(s);
-              })();
-            `}
-          </Script>
+            {crispWebsiteId ? (
+              <Script id="crisp-widget" strategy="afterInteractive">
+                {`
+                  window.$crisp = [];
+                  window.CRISP_WEBSITE_ID = "${crispWebsiteId}";
+                  (function() {
+                    d = document;
+                    s = d.createElement("script");
+                    s.src = "https://client.crisp.chat/l.js";
+                    s.async = 1;
+                    d.getElementsByTagName("head")[0].appendChild(s);
+                  })();
+                `}
+              </Script>
+            ) : null}
           </QueryProvider>
         </body>
       </html>
