@@ -1,11 +1,16 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import React from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { FAQCategoryComponent } from './FAQCategory';
 import { ContactSection } from './ContactSection';
 import { faqCategories } from '../../core/faq/faq-data';
+import {
+  getFaqCategorySlug,
+  getFaqItemSlug,
+} from '../../core/faq/faq.helper';
+import { useFaqHashNavigation } from './use-faq-hash-navigation';
 
 const linkClassName =
   'text-blue-400 hover:text-blue-300 underline transition-colors duration-200';
@@ -20,23 +25,15 @@ function createLink(
 
 export default function FAQContent() {
   const { t } = useTranslation('common');
-  const [openItems, setOpenItems] = useState<Set<string>>(new Set());
-
-  const toggleItem = (id: string) => {
-    const newOpenItems = new Set(openItems);
-    if (newOpenItems.has(id)) {
-      newOpenItems.delete(id);
-    } else {
-      newOpenItems.add(id);
-    }
-    setOpenItems(newOpenItems);
-  };
+  const { openItems, toggleItem, highlightedId } = useFaqHashNavigation();
 
   const translatedCategories = useMemo(
     () =>
       faqCategories.map((category) => ({
+        id: getFaqCategorySlug(category),
         title: t(category.titleKey),
         items: category.items.map((item) => ({
+          id: getFaqItemSlug(item),
           question: t(item.questionKey),
           answer: item.answerLinks ? (
             <Trans
@@ -56,13 +53,15 @@ export default function FAQContent() {
   return (
     <>
       <div className="space-y-6">
-        {translatedCategories.map((category, categoryIndex) => (
+        {translatedCategories.map((category) => (
           <FAQCategoryComponent
-            key={categoryIndex}
+            key={category.id}
             category={category}
-            categoryIndex={categoryIndex}
             openItems={openItems}
+            highlightedId={highlightedId}
             onToggleItem={toggleItem}
+            copyLabel={t('Copy link')}
+            copiedLabel={t('Copied!')}
           />
         ))}
       </div>

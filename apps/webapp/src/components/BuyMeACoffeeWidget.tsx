@@ -10,10 +10,6 @@ export default function BuyMeACoffeeWidget() {
     script.setAttribute('data-cfasync', 'false');
     script.setAttribute('data-id', 'sentryguardorg');
     script.setAttribute('data-description', 'Support me on Buy me a coffee!');
-    script.setAttribute(
-      'data-message',
-      'SentryGuard depends on donations to operate. Your support keeps us running!'
-    );
     script.setAttribute('data-color', '#b91c1c');
     script.setAttribute('data-position', 'Right');
     script.setAttribute('data-x_margin', '18');

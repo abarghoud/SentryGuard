@@ -1,41 +1,58 @@
 import React from 'react';
 import { FAQItemComponent, TranslatedFaqItem } from './FAQItem';
+import { CopyLinkButton } from './CopyLinkButton';
 
-interface TranslatedFaqCategory {
+export interface TranslatedFaqCategory {
+  id: string;
   title: string;
   items: TranslatedFaqItem[];
 }
 
 export function FAQCategoryComponent({
   category,
-  categoryIndex,
   openItems,
+  highlightedId,
   onToggleItem,
+  copyLabel,
+  copiedLabel,
 }: {
   category: TranslatedFaqCategory;
-  categoryIndex: number;
   openItems: Set<string>;
+  highlightedId?: string | null;
   onToggleItem: (id: string) => void;
+  copyLabel?: string;
+  copiedLabel?: string;
 }) {
   return (
-    <div className="rounded-2xl shadow-sm border overflow-hidden bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+    <div
+      id={category.id}
+      className="rounded-2xl shadow-sm border overflow-hidden bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 scroll-mt-28 transition-all duration-300"
+    >
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between group">
         <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
           {category.title}
         </h3>
+        <CopyLinkButton
+          targetId={category.id}
+          copyLabel={copyLabel}
+          copiedLabel={copiedLabel}
+          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+        />
       </div>
       <div className="divide-y divide-gray-200 dark:divide-gray-700">
-        {category.items.map((item, itemIndex) => {
-          const itemId = `${categoryIndex}-${itemIndex}`;
-          const isOpen = openItems.has(itemId);
+        {category.items.map((item) => {
+          const isOpen = openItems.has(item.id);
+          const isHighlighted = highlightedId === item.id;
 
           return (
             <FAQItemComponent
-              key={itemIndex}
+              key={item.id}
               item={item}
-              itemId={itemId}
               isOpen={isOpen}
+              isHighlighted={isHighlighted}
               onToggle={onToggleItem}
+              copyLabel={copyLabel}
+              copiedLabel={copiedLabel}
             />
           );
         })}

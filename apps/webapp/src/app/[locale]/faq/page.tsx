@@ -5,9 +5,16 @@ import {
   stripRichTextTags,
 } from '@/core/i18n/server-i18n';
 import { SUPPORTED_LOCALES } from '@/core/i18n/i18n-config';
-import { faqCategories } from '@/core/faq/faq-data';
+import {
+  faqCategories,
+} from '@/core/faq/faq-data';
+import {
+  getFaqCategorySlug,
+  getFaqItemSlug,
+} from '@/core/faq/faq.helper';
 import PublicLayout from '@/components/PublicLayout';
 import { ContactSection } from '@/components/faq/ContactSection';
+import { PublicFaqList } from '@/components/faq/PublicFaqList';
 
 export const dynamicParams = false;
 
@@ -75,6 +82,18 @@ export default async function FAQPage({ params }: FaqPageProps) {
   const t = getTranslation(locale);
   const jsonLd = generateFaqJsonLd(t);
 
+  const categories = faqCategories.map((category) => ({
+    id: getFaqCategorySlug(category),
+    title: t(category.titleKey),
+    items: category.items.map((item) => ({
+      id: getFaqItemSlug(item),
+      question: t(item.questionKey),
+      answer: item.answerLinks
+        ? renderRichTranslation(t(item.answerKey), item.answerLinks)
+        : t(item.answerKey),
+    })),
+  }));
+
   return (
     <PublicLayout
       locale={locale}
@@ -102,57 +121,11 @@ export default async function FAQPage({ params }: FaqPageProps) {
             </p>
           </div>
 
-          <div className="space-y-6">
-            {faqCategories.map((category, categoryIndex) => (
-              <div
-                key={categoryIndex}
-                className="rounded-2xl shadow-sm border overflow-hidden bg-white border-gray-200"
-              >
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    {t(category.titleKey)}
-                  </h3>
-                </div>
-                <div className="divide-y divide-gray-200">
-                  {category.items.map((item, itemIndex) => (
-                    <details
-                      key={itemIndex}
-                      className="group transition-all duration-200 hover:bg-gray-50"
-                    >
-                      <summary className="w-full px-6 py-5 text-left flex items-start justify-between gap-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-                        <span className="text-base font-medium flex-1 text-left text-gray-900">
-                          {t(item.questionKey)}
-                        </span>
-                        <svg
-                          className="w-5 h-5 flex-shrink-0 transition-all duration-300 mt-0.5 text-gray-400 group-open:rotate-180 group-open:text-red-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 9l-7 7-7-7"
-                          />
-                        </svg>
-                      </summary>
-                      <div className="px-6 pb-5 pt-0">
-                        <p className="leading-relaxed text-sm text-gray-600">
-                          {item.answerLinks
-                            ? renderRichTranslation(
-                                t(item.answerKey),
-                                item.answerLinks
-                              )
-                            : t(item.answerKey)}
-                        </p>
-                      </div>
-                    </details>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          <PublicFaqList
+            categories={categories}
+            copyLinkText={t('Copy link')}
+            copiedText={t('Copied!')}
+          />
 
           <ContactSection />
         </div>
