@@ -84,11 +84,15 @@ describe('The vehicles use cases', () => {
     describe('When updating the offensive response', () => {
       beforeEach(async () => {
         mockRepository.updateOffensiveResponse.mockResolvedValue({ message: 'ok' } as VehicleActionResponse);
-        await new UpdateOffensiveResponseUseCase(mockRepository).execute(fakeVin, OffensiveResponse.Honk);
+        await new UpdateOffensiveResponseUseCase(mockRepository).execute(fakeVin, {
+          breakInOffensiveResponse: OffensiveResponse.Honk,
+        });
       });
 
       it('should forward the arguments to the repository', () => {
-        expect(mockRepository.updateOffensiveResponse).toHaveBeenCalledWith(fakeVin, OffensiveResponse.Honk);
+        expect(mockRepository.updateOffensiveResponse).toHaveBeenCalledWith(fakeVin, {
+          breakInOffensiveResponse: OffensiveResponse.Honk,
+        });
       });
     });
   });

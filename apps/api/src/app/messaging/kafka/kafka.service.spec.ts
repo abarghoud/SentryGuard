@@ -478,4 +478,106 @@ describe('The KafkaService class', () => {
       });
     });
   });
+
+  describe('The pauseConsumer method', () => {
+    it('should pause the consumer for the configured topic', async () => {
+      const consumerMock = mock<Consumer>();
+
+      Object.defineProperty(service, 'consumer', {
+        value: consumerMock,
+        writable: true,
+      });
+
+      await service.pauseConsumer();
+
+      expect(consumerMock.pause).toHaveBeenCalledWith([{ topic: 'TeslaLogger_V' }]);
+    });
+
+    it('should be idempotent', async () => {
+      const consumerMock = mock<Consumer>();
+
+      Object.defineProperty(service, 'consumer', {
+        value: consumerMock,
+        writable: true,
+      });
+
+      await service.pauseConsumer();
+      await service.pauseConsumer();
+
+      expect(consumerMock.pause).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('The drainInFlight method', () => {
+    it('should resolve immediately when there are no in-flight messages', async () => {
+      await expect(service.drainInFlight(1000)).resolves.toBeUndefined();
+    });
+
+    it('should wait for in-flight messages to complete before resolving', async () => {
+      const consumerMock = mock<Consumer>();
+
+      Object.defineProperty(service, 'consumer', {
+        value: consumerMock,
+        writable: true,
+      });
+
+      await service.onModuleInit();
+      const eachBatchFunction = (consumerMock.run as jest.MockedFunction<any>).mock.calls[0][0].eachBatch;
+
+      let resolveMessage: (() => void) | undefined;
+      mockMessageHandler.handleMessage.mockImplementation(
+        () => new Promise<void>((resolve) => {
+          resolveMessage = resolve;
+        })
+      );
+
+      const testBatch = {
+        topic: 'TeslaLogger_V',
+        partition: 0,
+        messages: [{
+          offset: '100',
+          value: Buffer.from('test message'),
+          key: null,
+          timestamp: '1234567890',
+          attributes: 0,
+          headers: {},
+        }],
+        highWatermark: '200',
+        isEmpty: jest.fn().mockReturnValue(false),
+        firstOffset: jest.fn().mockReturnValue('100'),
+        lastOffset: jest.fn().mockReturnValue('100'),
+        offsetLag: jest.fn().mockReturnValue('100'),
+        offsetLagLow: jest.fn().mockReturnValue('100'),
+      } as unknown as Batch;
+
+      const eachBatchPromise = eachBatchFunction({
+        batch: testBatch,
+        resolveOffset: jest.fn(),
+        heartbeat: jest.fn().mockResolvedValue(undefined),
+        commitOffsetsIfNecessary: jest.fn().mockResolvedValue(undefined),
+        pause: jest.fn().mockReturnValue(jest.fn()),
+        isRunning: jest.fn().mockReturnValue(true),
+        isStale: jest.fn().mockReturnValue(false),
+        uncommittedOffsets: jest.fn().mockReturnValue({}),
+      });
+
+      await new Promise((resolve) => setImmediate(resolve));
+
+      const drainPromise = service.drainInFlight(5000);
+
+      let drained = false;
+      void drainPromise.then(() => {
+        drained = true;
+      });
+
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(drained).toBe(false);
+
+      resolveMessage?.();
+      await drainPromise;
+      await eachBatchPromise;
+
+      expect(drained).toBe(true);
+    });
+  });
 });

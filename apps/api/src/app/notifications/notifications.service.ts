@@ -6,6 +6,8 @@ import { NotificationPreferences } from '../../entities/notification-preferences
 import { PushDeviceToken } from '../../entities/push-device-token.entity';
 import { AlertEventSeverity, AlertEventType } from '../../entities/alert-event.entity';
 import i18n from '../../i18n';
+import { NOTIFICATION_REQUEST_TIMEOUT_MS } from '../../config/notification-timeout.config';
+import { withTimeout } from '../../common/utils/with-timeout.util';
 
 export interface NotificationPreferencesDto {
   critical_alerts_enabled: boolean;
@@ -94,18 +96,46 @@ export class NotificationsService {
     type: AlertEventType,
     userLanguage: 'en' | 'fr',
     correlationId?: string
-  ): Promise<void> {
-    const { body, title } = this.resolveAlertTexts(type, userLanguage);
-    const devices = await this.pushDeviceTokenRepository.find({ where: { userId, push_enabled: true } });
-    const eligibleDevices = devices.filter((device) => this.shouldSendPushToDevice(device, severity));
+  ): Promise<boolean> {
+    const eligibleDevices = await this.findEligibleDevices(userId, severity);
 
-    if (eligibleDevices.length > 0) {
-      this.logger.log(`[EXPO_PUSH][${correlationId || 'none'}] Sending push to ${eligibleDevices.length} device(s) for user: ${userId}`);
+    if (eligibleDevices.length === 0) {
+      return false;
     }
 
-    await Promise.all(
-      eligibleDevices.map((device) => this.sendExpoPush(device, title, body, severity, type, device.critical_alerts_enabled, userId, userLanguage, correlationId))
+    this.logger.log(`[EXPO_PUSH][${correlationId || 'none'}] Sending push to ${eligibleDevices.length} device(s) for user: ${userId}`);
+
+    await this.dispatchPushToDevices(eligibleDevices, severity, type, userId, userLanguage, correlationId);
+
+    return true;
+  }
+
+  private async findEligibleDevices(userId: string, severity: AlertEventSeverity): Promise<PushDeviceToken[]> {
+    const devices = await this.pushDeviceTokenRepository.find({ where: { userId, push_enabled: true } });
+    return devices.filter((device) => this.shouldSendPushToDevice(device, severity));
+  }
+
+  private async dispatchPushToDevices(
+    devices: PushDeviceToken[],
+    severity: AlertEventSeverity,
+    type: AlertEventType,
+    userId: string,
+    userLanguage: 'en' | 'fr',
+    correlationId?: string
+  ): Promise<void> {
+    const { body, title } = this.resolveAlertTexts(type, userLanguage);
+    const results = await Promise.allSettled(
+      devices.map((device) =>
+        this.sendExpoPush(device, title, body, severity, type, device.critical_alerts_enabled, userId, userLanguage, correlationId)
+      )
     );
+
+    const hasSuccess = results.some((result) => result.status === 'fulfilled');
+
+    if (!hasSuccess) {
+      const firstError = (results[0] as PromiseRejectedResult).reason;
+      throw firstError;
+    }
   }
 
   private resolveAlertTexts(type: AlertEventType, lng: 'en' | 'fr'): { body: string; title: string } {
@@ -207,18 +237,24 @@ export class NotificationsService {
   ): Promise<void> {
     try {
       const pushStart = Date.now();
-      const response = await fetch('https://exp.host/--/api/v2/push/send', {
-        body: JSON.stringify(this.buildExpoPushBody(device.token, title, body, severity, type, criticalAlertsEnabled, userId, userLanguage)),
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        method: 'POST',
-      });
-      
+      const response = await withTimeout(
+        (signal) => fetch('https://exp.host/--/api/v2/push/send', {
+          body: JSON.stringify(this.buildExpoPushBody(device.token, title, body, severity, type, criticalAlertsEnabled, userId, userLanguage)),
+          headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+          method: 'POST',
+          signal,
+        }),
+        NOTIFICATION_REQUEST_TIMEOUT_MS,
+        `Expo push request timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
+      );
+
       const pushTime = Date.now() - pushStart;
       this.logger.log(`[EXPO_PUSH_LATENCY][${correlationId || 'none'}] Push sent to device ${device.id} in ${pushTime}ms`);
 
       await this.handleExpoPushResponse(device, response);
     } catch (error) {
-      this.logger.warn(`Failed to send push notification: ${error instanceof Error ? error.message : 'unknown error'} (correlation: ${correlationId || 'none'})`);
+      this.logger.error(`[NOTIFICATION_ERROR] Failed to send push notification: ${error instanceof Error ? error.message : 'unknown error'} (correlation: ${correlationId || 'none'})`);
+      throw error;
     }
   }
 
@@ -265,12 +301,14 @@ export class NotificationsService {
   private async handleExpoPushResponse(device: PushDeviceToken, response: Response): Promise<void> {
     const result = await this.parseExpoPushResponse(response);
 
-    if (!response.ok || result.data?.status === 'error') {
-      this.logger.warn(`Expo push rejected token ${device.id}: ${result.data?.message ?? response.statusText}`);
-    }
-
     if (result.data?.details?.error === 'DeviceNotRegistered') {
       await this.removePushDevice(device);
+    }
+
+    if (!response.ok || result.data?.status === 'error') {
+      const message = result.data?.message ?? response.statusText ?? 'Expo push rejected';
+      this.logger.warn(`[NOTIFICATION_ERROR] Expo push rejected token ${device.id}: ${message}`);
+      throw new Error(message);
     }
   }
 

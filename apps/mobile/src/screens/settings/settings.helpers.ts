@@ -1,5 +1,6 @@
 import * as Linking from 'expo-linking';
 import * as Sharing from 'expo-sharing';
+import * as WebBrowser from 'expo-web-browser';
 import { Alert, Platform, Share } from 'react-native';
 
 import { virtualKeyStore } from '../../core/api';
@@ -107,6 +108,64 @@ export async function openPrivacyPolicy(locale: string): Promise<void> {
 
 export async function openTermsOfService(locale: string): Promise<void> {
   await Linking.openURL(buildLegalUrl(locale, 'terms'));
+}
+
+export function resolveCrispWebsiteId(): string | undefined {
+  const id = process.env.EXPO_PUBLIC_CRISP_WEBSITE_ID?.trim();
+  return id && /^[a-zA-Z0-9-]+$/.test(id) ? id : undefined;
+}
+
+export function resolveDiscordUrl(): string | undefined {
+  const url = process.env.EXPO_PUBLIC_DISCORD_URL?.trim();
+  return url && /^https?:\/\//i.test(url) ? url : undefined;
+}
+
+export function resolveSupportEmail(): string | undefined {
+  const email = process.env.EXPO_PUBLIC_SUPPORT_EMAIL?.trim();
+  return email && email.includes('@') && !/[\r\n]/.test(email) ? email : undefined;
+}
+
+export function buildCrispChatUrl(userEmail?: string, userName?: string): string | null {
+  const websiteId = resolveCrispWebsiteId();
+  if (!websiteId) {
+    return null;
+  }
+  const params = new URLSearchParams({ website_id: websiteId });
+  if (userEmail) {
+    params.set('user_email', userEmail);
+  }
+  if (userName) {
+    params.set('user_nickname', userName);
+  }
+  return `https://go.crisp.chat/chat/embed/?${params.toString()}`;
+}
+
+export async function openCrispSupport(userEmail?: string, userName?: string): Promise<void> {
+  const url = buildCrispChatUrl(userEmail, userName);
+  if (!url) {
+    return;
+  }
+  if (Platform.OS === 'web') {
+    globalThis.open?.(url, '_blank');
+    return;
+  }
+  await WebBrowser.openBrowserAsync(url);
+}
+
+export async function openDiscordCommunity(): Promise<void> {
+  const url = resolveDiscordUrl();
+  if (!url) {
+    return;
+  }
+  await Linking.openURL(url);
+}
+
+export async function openEmailSupport(subject = 'Support SentryGuard'): Promise<void> {
+  const email = resolveSupportEmail();
+  if (!email) {
+    return;
+  }
+  await Linking.openURL(`mailto:${email}?subject=${encodeURIComponent(subject)}`);
 }
 
 export async function shareDebugLogs(t: (key: string) => string): Promise<void> {

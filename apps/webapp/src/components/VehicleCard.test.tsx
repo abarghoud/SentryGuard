@@ -35,6 +35,7 @@ describe('The VehicleCard component', () => {
           handlers.onToggleBreakInMonitoring ?? jest.fn().mockResolvedValue({ success: true })
         }
         onUpdateBreakInOffensive={jest.fn().mockResolvedValue({ success: true })}
+        onUpdateAutoSentry={jest.fn().mockResolvedValue({ success: true })}
         onDeleteTelemetry={handlers.onDeleteTelemetry ?? jest.fn().mockResolvedValue({ success: true })}
       />
     );

@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { AlertsOffensiveResponseService } from './alerts-offensive-response.service';
 import { TeslaVehicleCommandService } from '../telemetry/services/tesla-vehicle-command.service';
+import { LatencyGuardService } from '../../common/services/latency-guard.service';
 import { Vehicle } from '../../entities/vehicle.entity';
 import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
 
@@ -13,6 +14,7 @@ describe('The AlertsOffensiveResponseService class', () => {
     findOne: jest.fn(),
   };
   let mockTeslaVehicleCommandService: MockProxy<TeslaVehicleCommandService>;
+  let mockLatencyGuardService: MockProxy<LatencyGuardService>;
 
   const fakeVehicle: Vehicle = {
     id: 'vehicle-1',
@@ -29,12 +31,15 @@ describe('The AlertsOffensiveResponseService class', () => {
 
   beforeEach(async () => {
     mockTeslaVehicleCommandService = mock<TeslaVehicleCommandService>();
+    mockLatencyGuardService = mock<LatencyGuardService>();
+    mockLatencyGuardService.checkLatency.mockReturnValue(false);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AlertsOffensiveResponseService,
         { provide: getRepositoryToken(Vehicle), useValue: mockVehicleRepository },
         { provide: TeslaVehicleCommandService, useValue: mockTeslaVehicleCommandService },
+        { provide: LatencyGuardService, useValue: mockLatencyGuardService },
       ],
     }).compile();
 
@@ -257,30 +262,34 @@ describe('The AlertsOffensiveResponseService class', () => {
       });
     });
 
-    describe('When latency exceeds the threshold', () => {
-      let loggerSpy: jest.SpyInstance;
-
+    describe('When latency guard blocks the request', () => {
       beforeEach(async () => {
-        const serviceWithLogger = service as unknown as { logger: { warn: () => void } };
-        loggerSpy = jest.spyOn(serviceWithLogger.logger, 'warn');
+        mockLatencyGuardService.checkLatency.mockReturnValue(true);
         mockVehicleRepository.findOne.mockResolvedValue({
           ...fakeVehicle,
           break_in_offensive_response: OffensiveResponse.HONK,
         });
         mockTeslaVehicleCommandService.honkHorn.mockResolvedValue({ success: true });
-        const pastDate = new Date(Date.now() - 70000).toISOString();
-        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1'], pastDate);
+        
+        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1'], createdAt);
       });
 
       it('should not trigger honk horn', () => {
         expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
       });
 
-      it('should log a warning', () => {
-        expect(loggerSpy).toHaveBeenCalledWith(
-          expect.stringContaining('[OFFENSIVE_LATENCY_ALERT]'),
-        );
+      it('should have called checkLatency with correct options', () => {
+        expect(mockLatencyGuardService.checkLatency).toHaveBeenCalledWith({
+          vin: '5YJ3E1EA123456789',
+          createdAt,
+          logContext: 'OFFENSIVE',
+          envVarThresholdName: 'OFFENSIVE_RESPONSE_LATENCY_THRESHOLD_MS',
+          defaultThresholdMs: 60000,
+          alertPrefix: 'OFFENSIVE_LATENCY_ALERT',
+          actionName: 'Offensive response',
+        });
       });
     });
+
   });
 });

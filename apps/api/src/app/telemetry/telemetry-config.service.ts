@@ -123,7 +123,9 @@ export class TelemetryConfigService {
           sentry_mode_monitoring_enabled: dbVehicle?.sentry_mode_monitoring_enabled ?? false,
           break_in_monitoring_enabled: dbVehicle?.break_in_monitoring_enabled ?? false,
           break_in_offensive_response: dbVehicle?.break_in_offensive_response ?? 'DISABLED',
+          break_in_auto_sentry_mode_enabled: dbVehicle?.break_in_auto_sentry_mode_enabled ?? false,
           key_paired: telemetryConfigs.get(teslaVehicle.vin)?.key_paired ?? false,
+          vehicle_command_protocol_required: telemetryConfigs.get(teslaVehicle.vin)?.vehicle_command_protocol_required,
         };
       });
     } catch (error: unknown) {
@@ -249,8 +251,35 @@ export class TelemetryConfigService {
         }
       );
 
-      this.logger.debug(`Config for ${vin}:`, response.data.response);
-      return response.data.response;
+      const telemetryConfig = response.data.response;
+
+      if (telemetryConfig && telemetryConfig.key_paired === false) {
+        try {
+          const fleetStatusResponse = await this.teslaApi.post<TeslaApiResponse<{ vehicle_info?: Record<string, { vehicle_command_protocol_required?: boolean }> }>>(
+            TESLA_API_ENDPOINTS.FLEET_STATUS,
+            { vins: [vin] },
+            {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            }
+          );
+
+          let isRequired = fleetStatusResponse.data.response.vehicle_info?.[vin]?.vehicle_command_protocol_required;
+
+          // Tesla API fleet-status sometimes incorrectly returns false for Model 3/Y/Cybertruck,
+          // but these vehicles always require the vehicle command protocol.
+          const model = vin.charAt(3).toUpperCase();
+          if (['3', 'Y', 'C'].includes(model)) {
+            isRequired = true;
+          }
+
+          telemetryConfig.vehicle_command_protocol_required = isRequired;
+        } catch (error: unknown) {
+          this.logger.warn(`Failed to fetch fleet status for ${vin}: ${error}`);
+        }
+      }
+
+      this.logger.debug(`Config for ${vin}:`, telemetryConfig);
+      return telemetryConfig;
     } catch (error: unknown) {
       this.logTeslaApiFailure(
         ERROR_MESSAGES.ERROR_CHECKING_CONFIG(vin),

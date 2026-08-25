@@ -12,6 +12,7 @@ export interface VehiclesViewProps {
   onDeleteTelemetry: (vin: string) => Promise<VehicleActionOutcome>;
   onToggleBreakInMonitoring: (vin: string, enable: boolean) => Promise<VehicleActionOutcome>;
   onUpdateBreakInOffensive: (vin: string, breakInResponse: string) => Promise<VehicleActionOutcome>;
+  onUpdateAutoSentry: (vin: string, autoSentryEnabled: boolean) => Promise<VehicleActionOutcome>;
 }
 
 export function VehiclesView({
@@ -23,12 +24,15 @@ export function VehiclesView({
   onDeleteTelemetry,
   onToggleBreakInMonitoring,
   onUpdateBreakInOffensive,
+  onUpdateAutoSentry,
 }: VehiclesViewProps) {
   const { t } = useTranslation('common');
 
-  const pairedVehicleCount = vehicles.filter((vehicle) => vehicle.key_paired === true).length;
-  const areAllKeysPaired = vehicles.length > 0 && pairedVehicleCount === vehicles.length;
-  const areNoKeysPaired = vehicles.length > 0 && pairedVehicleCount === 0;
+  const vehiclesRequiringKey = vehicles.filter((v) => v.vehicle_command_protocol_required === true);
+  const pairedVehicleCount = vehiclesRequiringKey.filter((vehicle) => vehicle.key_paired === true).length;
+  
+  const areAllKeysPaired = vehiclesRequiringKey.length > 0 && pairedVehicleCount === vehiclesRequiringKey.length;
+  const areNoKeysPaired = vehiclesRequiringKey.length > 0 && pairedVehicleCount === 0;
 
   const handlePairVirtualKey = async () => {
     const url = await resolveVirtualKeyUrl();
@@ -229,6 +233,7 @@ export function VehiclesView({
               onToggleBreakInMonitoring={onToggleBreakInMonitoring}
               onDeleteTelemetry={onDeleteTelemetry}
               onUpdateBreakInOffensive={onUpdateBreakInOffensive}
+              onUpdateAutoSentry={onUpdateAutoSentry}
             />
           ))}
         </div>

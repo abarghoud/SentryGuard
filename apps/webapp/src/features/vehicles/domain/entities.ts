@@ -6,7 +6,9 @@ export interface Vehicle {
   sentry_mode_monitoring_enabled: boolean;
   break_in_monitoring_enabled?: boolean;
   break_in_offensive_response?: string;
+  break_in_auto_sentry_mode_enabled?: boolean;
   key_paired?: boolean;
+  vehicle_command_protocol_required?: boolean;
   created_at: string;
   updated_at: string;
 }

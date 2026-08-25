@@ -10,14 +10,21 @@ import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model
 import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
 import { AlertsService } from '../alerts.service';
 import { NotificationsService } from '../../notifications/notifications.service';
+import { NotificationQueueService } from '../../notifications/notification-queue.service';
+import { AlertNotifierPayload, AlertNotifierRegistry } from './alert-notifier.registry';
+import { NOTIFICATION_SWEEP_MAX_ATTEMPTS } from '../../../config/notification-sweep-cron.config';
 
 export interface AlertDispatchConfig {
   telemetryMessage: TelemetryMessage;
   alertName: string;
   latencyLabel: string;
   severity: AlertEventSeverity;
-  telegramNotifier: (userId: string, alertInfo: { vin: string; display_name?: string }, userLanguage: 'en' | 'fr') => Promise<void>;
   type: AlertEventType;
+}
+
+interface RecordedAlert {
+  userId: string;
+  alertEventId: string;
 }
 
 @Injectable()
@@ -31,13 +38,15 @@ export class VehicleAlertNotifierService {
     private readonly kafkaLogContextService: KafkaLogContextService,
     private readonly alertsService: AlertsService,
     private readonly notificationsService: NotificationsService,
+    private readonly notificationQueueService: NotificationQueueService,
+    private readonly alertNotifierRegistry: AlertNotifierRegistry,
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>
   ) {}
 
   async dispatch(config: AlertDispatchConfig): Promise<{ userIds: string[] }> {
     const handlerStartTime = Date.now();
-    const { telemetryMessage: message, alertName, latencyLabel, telegramNotifier } = config;
+    const { telemetryMessage: message, alertName, latencyLabel } = config;
 
     try {
       const vehicles = await this.findVehiclesByVin(message.vin, message.correlationId);
@@ -53,9 +62,8 @@ export class VehicleAlertNotifierService {
 
       this.logMultiUserNotification(message.vin, userIds.length);
 
-      await this.recordAlerts(userIds, alertInfo, config);
-      const results = await this.notifyAllUsers(userIds, alertInfo, telegramNotifier, message.correlationId, alertName, config);
-      this.logNotificationResults(results, message.vin, alertName, message.correlationId);
+      const recordedAlerts = await this.recordAlerts(userIds, alertInfo, config);
+      this.enqueueUserNotifications(recordedAlerts, alertInfo, message.correlationId, alertName, config);
 
       this.logAlertLatency(message, handlerStartTime, latencyLabel);
 
@@ -64,6 +72,24 @@ export class VehicleAlertNotifierService {
       this.logger.error(`Error in ${alertName}:`, error);
       throw error;
     }
+  }
+
+  public enqueueNotification(payload: AlertNotifierPayload): boolean {
+    return this.notificationQueueService.enqueue(
+      () => this.kafkaLogContextService.runWithContext(
+        {
+          vin: payload.vin,
+          correlationId: payload.correlationId ?? `notification-${payload.vin}`,
+        },
+        () => this.notifyUser(payload)
+      ),
+      {
+        label: `${payload.type}:${payload.userId}`,
+        vin: payload.vin,
+        correlationId: payload.correlationId,
+        alertEventId: payload.alertEventId,
+      }
+    );
   }
 
   private async findVehiclesByVin(vin: string, correlationId?: string): Promise<Vehicle[]> {
@@ -104,72 +130,103 @@ export class VehicleAlertNotifierService {
     }
   }
 
-  private async notifyAllUsers(
+  private async recordAlerts(
     userIds: string[],
     alertInfo: { vin: string; display_name?: string },
-    telegramNotifier: AlertDispatchConfig['telegramNotifier'],
-    correlationId?: string,
-    alertName?: string,
-    config?: AlertDispatchConfig
-  ): Promise<Array<{ success: boolean; userId: string; error?: unknown }>> {
-    const notificationPromises = userIds.map(userId =>
-      this.notifyUser(userId, alertInfo, telegramNotifier, correlationId, alertName, config)
-    );
+    config: AlertDispatchConfig
+  ): Promise<RecordedAlert[]> {
+    return Promise.all(userIds.map(async (userId) => {
+      const alertEventId = await this.alertsService.record(
+        userId,
+        alertInfo.vin,
+        config.type,
+        config.severity,
+        alertInfo.display_name
+      );
 
-    return Promise.all(notificationPromises);
+      return { userId, alertEventId };
+    }));
   }
 
-  private async notifyUser(
-    userId: string,
+  private enqueueUserNotifications(
+    recordedAlerts: RecordedAlert[],
     alertInfo: { vin: string; display_name?: string },
-    telegramNotifier: AlertDispatchConfig['telegramNotifier'],
-    correlationId?: string,
-    alertName?: string,
-    config?: AlertDispatchConfig
-  ): Promise<{ success: boolean; userId: string; error?: unknown }> {
+    correlationId: string | undefined,
+    alertName: string,
+    config: AlertDispatchConfig
+  ): void {
+    for (const { userId, alertEventId } of recordedAlerts) {
+      this.enqueueNotification({
+        alertEventId,
+        userId,
+        vin: alertInfo.vin,
+        vehicleDisplayName: alertInfo.display_name,
+        type: config.type,
+        severity: config.severity,
+        correlationId,
+      });
+    }
+
+    this.logger.log(`[${alertName}] Enqueued ${recordedAlerts.length} notification job(s)`);
+  }
+
+  private async notifyUser(payload: AlertNotifierPayload): Promise<void> {
     try {
-      const userLanguage = await this.userLanguageService.getUserLanguage(userId);
-
-      const pushTask = config
-        ? this.notificationsService.sendPushAlert(userId, config.severity, config.type, userLanguage, correlationId)
-        : Promise.resolve();
-
-      const telegramTask = (async () => {
-        const telegramStart = Date.now();
-        if (!config || await this.notificationsService.shouldSendTelegram(userId, config.severity)) {
-          await telegramNotifier(userId, alertInfo, userLanguage);
-        }
-        const telegramTime = Date.now() - telegramStart;
-
-        if (telegramTime > VehicleAlertNotifierService.TELEGRAM_SLOW_THRESHOLD_MS) {
-          this.logger.warn(`[TELEGRAM_SLOW][${correlationId}] ${alertName}: ${telegramTime}ms for user: ${userId}`);
-        }
-      })();
-
-      await Promise.all([pushTask, telegramTask]);
-
-      return { success: true, userId };
+      const userLanguage = await this.userLanguageService.getUserLanguage(payload.userId);
+      await this.deliverNotifications(payload, userLanguage);
+      await this.alertsService.markNotificationSent(payload.alertEventId);
+      this.logger.log(`[${payload.type}] Notified user ${payload.userId} for VIN ${payload.vin} (correlation: ${payload.correlationId})`);
     } catch (error) {
-      this.logger.error(`[NOTIFICATION_ERROR] Failed to send ${alertName} to user ${userId} for VIN ${alertInfo.vin}:`, error);
-      return { success: false, userId, error };
+      this.logger.error(`[NOTIFICATION_ERROR] Failed to send ${payload.type} to user ${payload.userId} for VIN ${payload.vin}:`, error);
+      await this.handleNotificationFailure(payload.alertEventId);
+      throw error;
     }
   }
 
-  private logNotificationResults(
-    results: Array<{ success: boolean; userId: string }>,
-    vin: string,
-    alertName: string,
-    correlationId?: string
-  ): void {
-    const successCount = results.filter(r => r.success).length;
-    const failureCount = results.filter(r => !r.success).length;
+  private async deliverNotifications(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<void> {
+    const [pushResult, telegramResult] = await Promise.allSettled([
+      this.notificationsService.sendPushAlert(payload.userId, payload.severity, payload.type, userLanguage, payload.correlationId),
+      this.sendTelegramNotification(payload, userLanguage),
+    ]);
 
-    if (successCount > 0) {
-      this.logger.log(`[${alertName}] Successfully notified ${successCount} user(s) for VIN ${vin} (correlation: ${correlationId})`);
+    const pushSent = pushResult.status === 'fulfilled' && pushResult.value;
+    const telegramSent = telegramResult.status === 'fulfilled' && telegramResult.value;
+
+    if (!pushSent && !telegramSent && (pushResult.status === 'rejected' || telegramResult.status === 'rejected')) {
+      throw pushResult.status === 'rejected' ? pushResult.reason : (telegramResult as PromiseRejectedResult).reason;
+    }
+  }
+
+  private async sendTelegramNotification(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<boolean> {
+    if (!(await this.notificationsService.shouldSendTelegram(payload.userId, payload.severity))) {
+      return false;
     }
 
-    if (failureCount > 0) {
-      this.logger.warn(`[${alertName}] Failed to notify ${failureCount} user(s) for VIN ${vin} (correlation: ${correlationId})`);
+    const telegramStart = Date.now();
+    await this.alertNotifierRegistry.notify(payload, userLanguage);
+    const telegramTime = Date.now() - telegramStart;
+
+    if (telegramTime > VehicleAlertNotifierService.TELEGRAM_SLOW_THRESHOLD_MS) {
+      this.logger.warn(`[TELEGRAM_SLOW][${payload.correlationId}] ${payload.type}: ${telegramTime}ms for user: ${payload.userId}`);
+    }
+
+    return true;
+  }
+
+  private async handleNotificationFailure(alertEventId: string): Promise<void> {
+    try {
+      const isPermanentlyFailed = await this.alertsService.markNotificationAttemptFailed(
+        alertEventId,
+        NOTIFICATION_SWEEP_MAX_ATTEMPTS
+      );
+
+      if (isPermanentlyFailed) {
+        this.logger.error(
+          `[NOTIFICATION_FAILED] Alert ${alertEventId} permanently failed after ${NOTIFICATION_SWEEP_MAX_ATTEMPTS} attempts`
+        );
+      }
+    } catch (markingError) {
+      this.logger.error(`[NOTIFICATION_ERROR] Failed to mark notification attempt for alert ${alertEventId}:`, markingError);
     }
   }
 
@@ -190,11 +247,5 @@ export class VehicleAlertNotifierService {
         this.logger.log(`[${latencyLabel}] CorrelationId: ${telemetryMessage.correlationId} - Total: ${endToEndLatency}ms (Handler: ${handlerProcessingTime}ms) ✅`);
       }
     }
-  }
-
-  private async recordAlerts(userIds: string[], alertInfo: { vin: string; display_name?: string }, config: AlertDispatchConfig): Promise<void> {
-    await Promise.all(userIds.map((userId) =>
-      this.alertsService.record(userId, alertInfo.vin, config.type, config.severity, alertInfo.display_name)
-    ));
   }
 }

@@ -96,8 +96,19 @@ export const createUseVehiclesQuery = (deps: VehiclesQueryDependencies) => () =>
   });
 
   const updateOffensiveResponseMutation = useMutation({
-    mutationFn: async ({ vin, breakInResponse }: { vin: string; breakInResponse?: string }) => {
-      const result = await deps.updateOffensiveResponseUseCase.execute(vin, breakInResponse);
+    mutationFn: async ({
+      vin,
+      breakInResponse,
+      autoSentryEnabled,
+    }: {
+      vin: string;
+      breakInResponse?: string;
+      autoSentryEnabled?: boolean;
+    }) => {
+      const result = await deps.updateOffensiveResponseUseCase.execute(vin, {
+        breakInResponse,
+        autoSentryEnabled,
+      });
       if (!result.success) throw new Error(result.message);
       return result;
     },

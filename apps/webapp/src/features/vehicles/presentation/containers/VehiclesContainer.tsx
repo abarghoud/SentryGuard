@@ -55,6 +55,12 @@ export function VehiclesContainer() {
           t('Failed to update offensive response')
         )
       }
+      onUpdateAutoSentry={async (vin, autoSentryEnabled) =>
+        resolveActionOutcome(
+          updateOffensiveResponseMutation.mutateAsync({ vin, autoSentryEnabled }),
+          t('Failed to update auto sentry mode')
+        )
+      }
     />
   );
 }

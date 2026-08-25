@@ -1,38 +1,35 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { BreakInAlertHandlerService } from './break-in-alert-handler.service';
-import { TelegramService } from '../../telegram/telegram.service';
-import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
 import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-offensive-response.service';
+import { AlertsAutoSentryService } from '../../offensive-response/alerts-auto-sentry.service';
 import { TelemetryMessage, TelemetryDatum, TelemetryValue } from '../../telemetry/models/telemetry-message.model';
-import { ChargePortLatchTrackerService } from './charge-port-latch-tracker.service';
+import { BreakInEventTrackerService, BreakInTrackedEvent } from './break-in-event-tracker.service';
 
 describe('The BreakInAlertHandlerService class', () => {
   let service: BreakInAlertHandlerService;
 
-  let mockTelegramService: MockProxy<TelegramService>;
-  let mockKeyboardBuilder: MockProxy<TelegramKeyboardBuilderService>;
   let mockAlertNotifier: MockProxy<VehicleAlertNotifierService>;
-  let mockChargeTracker: MockProxy<ChargePortLatchTrackerService>;
+  let mockEventTracker: MockProxy<BreakInEventTrackerService>;
   let mockOffensiveResponseService: MockProxy<AlertsOffensiveResponseService>;
+  let mockAutoSentryService: MockProxy<AlertsAutoSentryService>;
 
   beforeEach(async () => {
-    mockTelegramService = mock<TelegramService>();
-    mockKeyboardBuilder = mock<TelegramKeyboardBuilderService>();
     mockAlertNotifier = mock<VehicleAlertNotifierService>();
-    mockChargeTracker = mock<ChargePortLatchTrackerService>();
+    mockEventTracker = mock<BreakInEventTrackerService>();
     mockOffensiveResponseService = mock<AlertsOffensiveResponseService>();
     mockOffensiveResponseService.handleBreakInOffensiveResponse.mockResolvedValue(undefined);
+    mockAutoSentryService = mock<AlertsAutoSentryService>();
+    mockAutoSentryService.handleBreakInAutoSentry.mockResolvedValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BreakInAlertHandlerService,
-        { provide: TelegramService, useValue: mockTelegramService },
-        { provide: TelegramKeyboardBuilderService, useValue: mockKeyboardBuilder },
         { provide: VehicleAlertNotifierService, useValue: mockAlertNotifier },
-        { provide: ChargePortLatchTrackerService, useValue: mockChargeTracker },
+        { provide: BreakInEventTrackerService, useValue: mockEventTracker },
         { provide: AlertsOffensiveResponseService, useValue: mockOffensiveResponseService },
+        { provide: AlertsAutoSentryService, useValue: mockAutoSentryService },
       ],
     }).compile();
 
@@ -62,10 +59,57 @@ describe('The BreakInAlertHandlerService class', () => {
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(false);
       });
 
-      it('should track the latch event in the charge tracker', async () => {
+      it('should track the latch event in the break-in event tracker', async () => {
         await service.handle(message);
         const expectedTime = new Date(message.createdAt).getTime();
-        expect(mockChargeTracker.trackLatchEvent).toHaveBeenCalledWith('123', expectedTime, 'ChargePortLatchDisengaged');
+        expect(mockEventTracker.track).toHaveBeenCalledWith('123', BreakInTrackedEvent.ChargePortLatchDisengaged, expectedTime);
+      });
+    });
+
+    describe('When message contains CenterDisplay owner activity', () => {
+      let message: TelemetryMessage;
+
+      beforeEach(() => {
+        message = new TelemetryMessage();
+        message.vin = '123';
+        message.createdAt = new Date('2026-05-05T20:00:00Z').toISOString();
+
+        const datum = new TelemetryDatum();
+        datum.key = 'CenterDisplay';
+        datum.value = new TelemetryValue();
+        datum.value.displayStateValue = 'DisplayStateAccessory';
+        message.data = [datum];
+
+        jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(false);
+      });
+
+      it('should track the owner activity event in the break-in event tracker', async () => {
+        await service.handle(message);
+        const expectedTime = new Date(message.createdAt).getTime();
+        expect(mockEventTracker.track).toHaveBeenCalledWith('123', BreakInTrackedEvent.CenterDisplayOwnerActivity, expectedTime);
+      });
+    });
+
+    describe('When message contains CenterDisplay Off state', () => {
+      let message: TelemetryMessage;
+
+      beforeEach(() => {
+        message = new TelemetryMessage();
+        message.vin = '123';
+        message.createdAt = new Date('2026-05-05T20:00:00Z').toISOString();
+
+        const datum = new TelemetryDatum();
+        datum.key = 'CenterDisplay';
+        datum.value = new TelemetryValue();
+        datum.value.displayStateValue = 'DisplayStateOff';
+        message.data = [datum];
+
+        jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(false);
+      });
+
+      it('should not track owner activity in the break-in event tracker', async () => {
+        await service.handle(message);
+        expect(mockEventTracker.track).not.toHaveBeenCalled();
       });
     });
 
@@ -116,17 +160,42 @@ describe('The BreakInAlertHandlerService class', () => {
         message.data = [];
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
         jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
-        mockChargeTracker.hasLatchEventAround.mockReturnValue(true);
+        mockEventTracker.hasEventAround.mockReturnValue(true);
       });
 
-      it('should delay the verification by 2 seconds to ensure subsequent ChargePortLatch events have time to arrive, then prevent alert dispatch', async () => {
+      it('should delay the verification by 3 seconds to ensure subsequent ChargePortLatch events have time to arrive, then prevent alert dispatch', async () => {
         await service.handle(message);
-        jest.advanceTimersByTime(2000);
+        jest.advanceTimersByTime(3000);
 
         await Promise.resolve();
 
-        expect(mockChargeTracker.hasLatchEventAround).toHaveBeenCalled();
+        expect(mockEventTracker.hasEventAround).toHaveBeenCalled();
         expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When displayState is DisplayStateLock and owner activity occurred within the grace period', () => {
+      let message: TelemetryMessage;
+
+      beforeEach(() => {
+        message = new TelemetryMessage();
+        message.vin = '123';
+        message.createdAt = new Date('2026-05-05T20:00:00Z').toISOString();
+        message.data = [];
+        jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
+        jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
+        mockEventTracker.hasEventAfter.mockImplementation((_vin, event) =>
+          event === BreakInTrackedEvent.CenterDisplayOwnerActivity
+        );
+      });
+
+      it('should suppress the alert, the offensive response and the auto sentry', async () => {
+        await service.handle(message);
+        await jest.advanceTimersByTimeAsync(3000);
+
+        expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
+        expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).not.toHaveBeenCalled();
+        expect(mockAutoSentryService.handleBreakInAutoSentry).not.toHaveBeenCalled();
       });
     });
 
@@ -140,23 +209,20 @@ describe('The BreakInAlertHandlerService class', () => {
         message.data = [];
         jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
         jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
-        mockChargeTracker.hasLatchEventAround.mockReturnValue(false);
+        mockEventTracker.hasEventAround.mockReturnValue(false);
         mockAlertNotifier.dispatch.mockResolvedValue({ userIds: ['user-1'] });
       });
 
-      it('should delay the verification by 2 seconds to account for telemetry lag, then dispatch the alert via alertNotifier', async () => {
+      it('should delay the verification by 3 seconds to account for telemetry lag, then dispatch the alert via alertNotifier', async () => {
         await service.handle(message);
         expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
 
-        jest.advanceTimersByTime(2000);
-
-        await Promise.resolve();
+        await jest.advanceTimersByTimeAsync(3000);
 
         expect(mockAlertNotifier.dispatch).toHaveBeenCalledWith(expect.objectContaining({
           telemetryMessage: message,
           alertName: 'BREAK_IN_ALERT',
           latencyLabel: 'BREAK_IN_LATENCY',
-          telegramNotifier: expect.any(Function),
         }));
       });
 
@@ -164,11 +230,10 @@ describe('The BreakInAlertHandlerService class', () => {
         process.env.BREAK_IN_ALERT_CHECK_DELAY_MS = '1500';
         try {
           await service.handle(message);
-          jest.advanceTimersByTime(1400);
+          await jest.advanceTimersByTimeAsync(1400);
           expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
 
-          jest.advanceTimersByTime(100);
-          await Promise.resolve();
+          await jest.advanceTimersByTimeAsync(100);
           expect(mockAlertNotifier.dispatch).toHaveBeenCalled();
         } finally {
           delete process.env.BREAK_IN_ALERT_CHECK_DELAY_MS;
@@ -177,31 +242,59 @@ describe('The BreakInAlertHandlerService class', () => {
 
       it('should trigger offensive response for the VIN with userIds', async () => {
         await service.handle(message);
-        jest.advanceTimersByTime(2000);
-        await Promise.resolve();
+        await jest.advanceTimersByTimeAsync(3000);
 
         expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).toHaveBeenCalledWith('123', ['user-1'], message.createdAt);
       });
 
-      it('should construct and send telegram message when notifier callback is invoked', async () => {
+      it('should trigger auto sentry for the VIN with userIds', async () => {
         await service.handle(message);
-        jest.advanceTimersByTime(2000);
-        await Promise.resolve();
+        await jest.advanceTimersByTimeAsync(3000);
 
-        const dispatchCall = mockAlertNotifier.dispatch.mock.calls[0][0];
-        const notifierCb = dispatchCall.telegramNotifier;
+        expect(mockAutoSentryService.handleBreakInAutoSentry).toHaveBeenCalledWith('123', ['user-1'], message.createdAt);
+      });
+    });
+  });
 
-        mockKeyboardBuilder.buildBreakInAlertKeyboard.mockReturnValue({ inline_keyboard: [] });
+  describe('The flushPendingVerifications() method', () => {
+    const createLockedDisplayMessage = (): TelemetryMessage => {
+      const message = new TelemetryMessage();
+      message.vin = '123';
+      message.createdAt = new Date('2026-05-05T20:00:00Z').toISOString();
+      message.data = [];
+      jest.spyOn(message, 'validateContainsCenterDisplay').mockReturnValue(true);
+      jest.spyOn(message, 'isCenterDisplayLocked').mockReturnValue(true);
+      return message;
+    };
 
-        await notifierCb('user-1', { vin: '123', display_name: 'Test Vehicle' }, 'en');
+    describe('When there are no pending verifications', () => {
+      it('should resolve immediately', async () => {
+        await expect(service.flushPendingVerifications(1000)).resolves.toBeUndefined();
+      });
+    });
 
-        expect(mockKeyboardBuilder.buildBreakInAlertKeyboard).toHaveBeenCalledWith('user-1', 'en');
-        expect(mockTelegramService.sendBreakInAlert).toHaveBeenCalledWith(
-          'user-1',
-          { vin: '123', display_name: 'Test Vehicle' },
-          'en',
-          { inline_keyboard: [] }
-        );
+    describe('When there is a pending verification', () => {
+      it('should wait for the verification to dispatch before resolving', async () => {
+        mockEventTracker.hasEventAround.mockReturnValue(false);
+        mockAlertNotifier.dispatch.mockResolvedValue({ userIds: ['user-1'] });
+
+        await service.handle(createLockedDisplayMessage());
+
+        const flushPromise = service.flushPendingVerifications(6000);
+        jest.advanceTimersByTime(3000);
+
+        await expect(flushPromise).resolves.toBeUndefined();
+        expect(mockAlertNotifier.dispatch).toHaveBeenCalled();
+      });
+
+      it('should resolve after the timeout when verifications are still pending', async () => {
+        await service.handle(createLockedDisplayMessage());
+
+        const flushPromise = service.flushPendingVerifications(1000);
+        jest.advanceTimersByTime(1000);
+
+        await expect(flushPromise).resolves.toBeUndefined();
+        expect(mockAlertNotifier.dispatch).not.toHaveBeenCalled();
       });
     });
   });

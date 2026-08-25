@@ -21,6 +21,7 @@ export interface TelemetryConfig {
     [key: string]: unknown;
   } | null;
   key_paired?: boolean;
+  vehicle_command_protocol_required?: boolean;
   [key: string]: unknown;
 }
 
@@ -80,7 +81,9 @@ export interface TeslaVehicle {
 
 export interface TeslaVehicleWithStatus extends TeslaVehicle {
   sentry_mode_monitoring_enabled: boolean;
+  break_in_monitoring_enabled: boolean;
+  break_in_offensive_response: string;
+  break_in_auto_sentry_mode_enabled: boolean;
   key_paired: boolean;
-  break_in_monitoring_enabled?: boolean;
-  break_in_offensive_response?: string;
+  vehicle_command_protocol_required?: boolean;
 }

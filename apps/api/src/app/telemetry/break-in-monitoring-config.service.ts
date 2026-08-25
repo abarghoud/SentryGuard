@@ -28,7 +28,7 @@ export class BreakInMonitoringConfigService {
     private readonly telemetryConfigService: TelemetryConfigService,
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>
-  ) { }
+  ) {}
 
   public async toggleBreakInMonitoring(
     vin: string,

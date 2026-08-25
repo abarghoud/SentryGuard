@@ -11,7 +11,7 @@ import { TelemetryMessageHandlerService } from './telemetry/handlers/telemetry-m
 import { TelemetryValidationService } from './telemetry/services/telemetry-validation.service';
 import { SentryAlertHandlerService } from './alerts/sentry/sentry-alert-handler.service';
 import { BreakInAlertHandlerService } from './alerts/break-in/break-in-alert-handler.service';
-import { ChargePortLatchTrackerService } from './alerts/break-in/charge-port-latch-tracker.service';
+import { BreakInEventTrackerService } from './alerts/break-in/break-in-event-tracker.service';
 import { VehicleAlertNotifierService } from './alerts/common/vehicle-alert-notifier.service';
 import { OffensiveResponseModule } from './offensive-response/offensive-response.module';
 import { AlertsModule } from './alerts/alerts.module';
@@ -33,12 +33,25 @@ import { KafkaLogContextService } from '../common/services/kafka-log-context.ser
 import { getDatabaseConfig } from '../config/database.config';
 import { getThrottleConfig } from '../config/throttle.config';
 import { getPinoConfig } from '../config/pino.config';
+import { HealthController } from './health/health.controller';
+import { HealthService } from './health/health.service';
 import { Vehicle } from '../entities/vehicle.entity';
 import { User } from '../entities/user.entity';
 import { NotificationPreferences } from '../entities/notification-preferences.entity';
 import { PushDeviceToken } from '../entities/push-device-token.entity';
 import { AlertEvent } from '../entities/alert-event.entity';
 import { RetryManager } from './shared/retry-manager.service';
+import { GracefulShutdownService } from './shared/graceful-shutdown.service';
+import { NotificationQueueService } from './notifications/notification-queue.service';
+import { TokenBucketRateLimiterService } from '../common/services/token-bucket-rate-limiter.service';
+import { NotificationSweeperService } from './notifications/notification-sweeper.service';
+import { AlertNotifierRegistry } from './alerts/common/alert-notifier.registry';
+import { DistributedLockService } from '../common/services/distributed-lock.service';
+import {
+  NOTIFICATION_QUEUE_SIZE,
+  NOTIFICATION_WORKER_COUNT,
+  TELEGRAM_NOTIFICATION_RATE_LIMIT_PER_SECOND,
+} from '../config/notification-queue.config';
 
 @Module({
   imports: [
@@ -59,10 +72,12 @@ import { RetryManager } from './shared/retry-manager.service';
     NotificationsModule,
     ThrottlerModule.forRoot([getThrottleConfig()]),
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthController],
   providers: [
     AppService,
+    HealthService,
     KafkaService,
+    GracefulShutdownService,
     TelemetryMessageHandlerService,
     {
       provide: RetryManager,
@@ -72,11 +87,24 @@ import { RetryManager } from './shared/retry-manager.service';
         parseInt(process.env.KAFKA_MESSAGE_RETRY_MAX_DELAY || '30000')
       ),
     },
+    {
+      provide: TokenBucketRateLimiterService,
+      useFactory: () => new TokenBucketRateLimiterService(TELEGRAM_NOTIFICATION_RATE_LIMIT_PER_SECOND),
+    },
+    {
+      provide: NotificationQueueService,
+      useFactory: (rateLimiter: TokenBucketRateLimiterService) =>
+        new NotificationQueueService(rateLimiter, NOTIFICATION_QUEUE_SIZE, NOTIFICATION_WORKER_COUNT),
+      inject: [TokenBucketRateLimiterService],
+    },
+    DistributedLockService,
+    AlertNotifierRegistry,
+    NotificationSweeperService,
     TelemetryValidationService,
     VehicleAlertNotifierService,
     SentryAlertHandlerService,
     BreakInAlertHandlerService,
-    ChargePortLatchTrackerService,
+    BreakInEventTrackerService,
     {
       provide: kafkaMessageHandler,
       useClass: TelemetryMessageHandlerService,

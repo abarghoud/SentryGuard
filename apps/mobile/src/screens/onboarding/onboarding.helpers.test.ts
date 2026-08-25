@@ -62,10 +62,16 @@ describe('The resolveVehicleStepKey() function', () => {
   });
 
   describe('When the vehicle is unmonitored without a paired key', () => {
-    it('should return the key-missing key', () => {
-      const vehicle = createVehicle({ key_paired: false });
+    it('should return the key-missing key if protocol is required', () => {
+      const vehicle = createVehicle({ key_paired: false, vehicle_command_protocol_required: true });
 
       expect(resolveVehicleStepKey(vehicle)).toBe('onboarding.vehicleKeyMissing');
+    });
+
+    it('should return the disabled key if protocol is not required', () => {
+      const vehicle = createVehicle({ key_paired: false, vehicle_command_protocol_required: false });
+
+      expect(resolveVehicleStepKey(vehicle)).toBe('onboarding.vehicleDisabled');
     });
   });
 

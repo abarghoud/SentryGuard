@@ -27,6 +27,11 @@ export const faqCategories: FaqCategoryData[] = [
         answerKey: 'Break-in detection explanation',
       },
       {
+        questionKey:
+          'Can SentryGuard turn on Sentry Mode automatically during a break-in?',
+        answerKey: 'Auto Sentry Mode explanation',
+      },
+      {
         questionKey: 'What is the Active Deterrent (Offensive Response) and how does it work?',
         answerKey: 'Active deterrent explanation',
       },
@@ -35,8 +40,17 @@ export const faqCategories: FaqCategoryData[] = [
         answerKey: 'Why we chose Telegram',
       },
       {
-        questionKey: "Why isn't there a mobile app?",
-        answerKey: 'Why no mobile app',
+        questionKey: 'Is there a SentryGuard mobile app?',
+        answerKey: 'SentryGuard mobile app explanation',
+      },
+      {
+        questionKey: 'Do I need the mobile app to receive alerts?',
+        answerKey: 'Mobile app vs Telegram alerts',
+      },
+      {
+        questionKey: 'How do I get the SentryGuard mobile app?',
+        answerKey: 'How to get the mobile app',
+        answerLinks: [{ href: '/#mobile-app' }],
       },
       {
         questionKey: 'Is SentryGuard free?',
@@ -151,6 +165,10 @@ export const faqCategories: FaqCategoryData[] = [
           'SentryGuard shows "Virtual Key Not Paired". What does this mean?',
         answerKey: 'Virtual key not paired help',
         answerLinks: [{ href: '/dashboard/vehicles' }],
+      },
+      {
+        questionKey: 'Does SentryGuard support older Model S/X vehicles?',
+        answerKey: 'Legacy vehicles support explanation',
       },
       {
         questionKey:

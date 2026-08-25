@@ -119,7 +119,6 @@ export class OnboardingService {
       user.pushDeviceTokens.some((token) => token.push_enabled === true);
 
     const vehiclesWithStatus = await this.telemetryConfigService.getVehicles(userId);
-    const isVirtualKeyPaired = vehiclesWithStatus.some((vehicle) => vehicle.key_paired);
     const isTelemetryEnabled =
       vehiclesWithStatus.some((vehicle) => vehicle.sentry_mode_monitoring_enabled) ||
       vehiclesWithStatus.some((vehicle) => vehicle.break_in_monitoring_enabled);
@@ -129,6 +128,10 @@ export class OnboardingService {
         'Either Telegram account must be linked or push notifications configured'
       );
     }
+
+    const isVirtualKeyPaired = vehiclesWithStatus.some(
+      (vehicle) => vehicle.key_paired === true || vehicle.vehicle_command_protocol_required === false
+    );
 
     if (!isVirtualKeyPaired) {
       throw new BadRequestException('Virtual key not paired');

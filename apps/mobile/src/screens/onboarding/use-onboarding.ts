@@ -128,12 +128,35 @@ export function useOnboarding(onComplete: () => void) {
   });
   const offensiveResponseMutation = useMutation({
     mutationFn: ({ vin, response }: { vin: string; response: OffensiveResponse }) =>
-      updateOffensiveResponseUseCase.execute(vin, response),
+      updateOffensiveResponseUseCase.execute(vin, { breakInOffensiveResponse: response }),
     onMutate: async ({ vin, response }: { vin: string; response: OffensiveResponse }) => {
       await queryClient.cancelQueries({ queryKey: ['vehicles'] });
       const previous = queryClient.getQueryData<Vehicle[]>(['vehicles']);
       queryClient.setQueryData<Vehicle[]>(['vehicles'], (current) =>
         (current ?? []).map((entry) => (entry.vin === vin ? { ...entry, break_in_offensive_response: response } : entry))
+      );
+      return { previous };
+    },
+    onError: (error: Error, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['vehicles'], context.previous);
+      }
+      setMessage(error.message);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+    },
+  });
+  const autoSentryMutation = useMutation({
+    mutationFn: async ({ vin, enabled }: { vin: string; enabled: boolean }) =>
+      updateOffensiveResponseUseCase.execute(vin, { autoSentryEnabled: enabled }),
+    onMutate: async ({ vin, enabled }: { vin: string; enabled: boolean }) => {
+      await queryClient.cancelQueries({ queryKey: ['vehicles'] });
+      const previous = queryClient.getQueryData<Vehicle[]>(['vehicles']);
+      queryClient.setQueryData<Vehicle[]>(['vehicles'], (current) =>
+        (current ?? []).map((entry) =>
+          entry.vin === vin ? { ...entry, break_in_auto_sentry_mode_enabled: enabled } : entry
+        )
       );
       return { previous };
     },
@@ -182,6 +205,7 @@ export function useOnboarding(onComplete: () => void) {
 
   return {
     acceptConsentMutation,
+    autoSentryMutation,
     completeMutation,
     consentStatusQuery,
     consentTextQuery,

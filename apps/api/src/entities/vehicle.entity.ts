@@ -39,6 +39,9 @@ export class Vehicle {
   })
   break_in_offensive_response!: OffensiveResponse;
 
+  @Column({ type: 'boolean', default: false })
+  break_in_auto_sentry_mode_enabled!: boolean;
+
   @CreateDateColumn()
   created_at!: Date;
 

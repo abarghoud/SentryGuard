@@ -196,6 +196,57 @@ describe('The TelegramService class', () => {
       });
     });
 
+    describe('When the bot UI update fails because the bot is blocked', () => {
+      const blockedBotError = new Error('403: Forbidden: bot was blocked by the user');
+
+      let result: boolean;
+
+      beforeEach(async () => {
+        mockTelegramBotUpdateService.ensureUserIsUpToDate.mockRejectedValue(blockedBotError);
+        mockTelegramFailureHandler.canHandle.mockReturnValue(true);
+        mockTelegramFailureHandler.handleFailure.mockResolvedValue(undefined);
+
+        result = await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
+      });
+
+      afterEach(() => {
+        mockTelegramBotUpdateService.ensureUserIsUpToDate.mockResolvedValue(undefined);
+      });
+
+      it('should route the error to the failure handler', () => {
+        expect(mockTelegramFailureHandler.handleFailure).toHaveBeenCalledWith(
+          blockedBotError,
+          fakeUserId
+        );
+      });
+
+      it('should return false instead of throwing', () => {
+        expect(result).toBe(false);
+      });
+
+      it('should not attempt to send the alert', () => {
+        expect(mockTelegramBotService.sendMessage).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When the rejection is not an Error instance', () => {
+      let act: () => Promise<boolean>;
+
+      beforeEach(() => {
+        mockTelegramBotService.sendMessage.mockRejectedValue('403: Forbidden');
+        act = () => service.sendSentryAlert(fakeUserId, alertInfo, 'en');
+      });
+
+      it('should propagate the original rejection unchanged', async () => {
+        await expect(act()).rejects.toBe('403: Forbidden');
+      });
+
+      it('should not ask the failure handler to inspect it', async () => {
+        await expect(act()).rejects.toBeDefined();
+        expect(mockTelegramFailureHandler.canHandle).not.toHaveBeenCalled();
+      });
+    });
+
     describe('When the failure handler cannot handle the error', () => {
       it('should rethrow the error', async () => {
         const testError = new Error('Unknown error');
@@ -236,6 +287,15 @@ describe('The TelegramService class', () => {
         expect(result).toBe(false);
         expect(mockRetryManager.addToRetry).toHaveBeenCalledTimes(1);
       });
+
+      it('should rethrow the error when retry scheduling is disabled', async () => {
+        const telegramError = new TelegramError({ error_code: 429, description: 'Too Many Requests' });
+
+        mockTelegramBotService.sendMessage.mockRejectedValue(telegramError);
+
+        await expect(service.sendSentryAlert(fakeUserId, alertInfo, 'en', undefined, false)).rejects.toThrow(telegramError);
+        expect(mockRetryManager.addToRetry).not.toHaveBeenCalled();
+      });
     });
 
     describe('When the error is a non-retryable TelegramError', () => {
@@ -275,6 +335,65 @@ describe('The TelegramService class', () => {
 
         expect(result).toBe(false);
         expect(mockRetryManager.addToRetry).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe('When the Telegram request times out', () => {
+      it('should rethrow the timeout when retry scheduling is disabled', async () => {
+        jest.useFakeTimers();
+        mockTelegramBotService.sendMessage.mockImplementation(() => new Promise<boolean>(() => undefined));
+
+        const result = service.sendSentryAlert(fakeUserId, alertInfo, 'en', undefined, false);
+        const rejection = expect(result).rejects.toThrow('ETIMEDOUT: Telegram notification request timed out after 10000ms');
+        await jest.advanceTimersByTimeAsync(10000);
+
+        await rejection;
+        jest.useRealTimers();
+      });
+    });
+  });
+
+  describe('The sendBreakInAlert() method', () => {
+    const alertInfo = { vin: 'TEST123456' };
+
+    describe('When the bot UI update fails because the bot is blocked', () => {
+      const blockedBotError = new Error('403: Forbidden: bot was blocked by the user');
+
+      let result: boolean;
+
+      beforeEach(async () => {
+        mockTelegramBotUpdateService.ensureUserIsUpToDate.mockRejectedValue(blockedBotError);
+        mockTelegramFailureHandler.canHandle.mockReturnValue(true);
+        mockTelegramFailureHandler.handleFailure.mockResolvedValue(undefined);
+
+        result = await service.sendBreakInAlert(fakeUserId, alertInfo, 'en');
+      });
+
+      afterEach(() => {
+        mockTelegramBotUpdateService.ensureUserIsUpToDate.mockResolvedValue(undefined);
+      });
+
+      it('should route the error to the failure handler', () => {
+        expect(mockTelegramFailureHandler.handleFailure).toHaveBeenCalledWith(
+          blockedBotError,
+          fakeUserId
+        );
+      });
+
+      it('should return false instead of throwing', () => {
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('When the alert is sent', () => {
+      beforeEach(() => {
+        mockTelegramBotService.sendMessage.mockResolvedValue(true);
+      });
+
+      it('should return true', async () => {
+        const result = await service.sendBreakInAlert(fakeUserId, alertInfo, 'en');
+
+        expect(result).toBe(true);
       });
     });
   });

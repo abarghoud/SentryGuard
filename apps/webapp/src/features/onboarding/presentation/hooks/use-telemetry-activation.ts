@@ -24,6 +24,7 @@ export function useTelemetryActivation(onCompleted?: () => Promise<void>) {
   const [deletingVins, setDeletingVins] = useState<Set<string>>(new Set());
   const [togglingBreakInVins, setTogglingBreakInVins] = useState<Set<string>>(new Set());
   const [togglingOffensiveVins, setTogglingOffensiveVins] = useState<Set<string>>(new Set());
+  const [togglingAutoSentryVins, setTogglingAutoSentryVins] = useState<Set<string>>(new Set());
   const [errors, setErrors] = useState<Map<string, string>>(new Map());
   const [isCompleting, setIsCompleting] = useState(false);
 
@@ -43,9 +44,10 @@ export function useTelemetryActivation(onCompleted?: () => Promise<void>) {
       activatingVins.has(vin) ||
       deletingVins.has(vin) ||
       togglingBreakInVins.has(vin) ||
-      togglingOffensiveVins.has(vin)
+      togglingOffensiveVins.has(vin) ||
+      togglingAutoSentryVins.has(vin)
     );
-  }, [activatingVins, deletingVins, togglingBreakInVins, togglingOffensiveVins]);
+  }, [activatingVins, deletingVins, togglingBreakInVins, togglingOffensiveVins, togglingAutoSentryVins]);
 
   const handleToggleBreakIn = useCallback(async (vin: string, currentEnabled: boolean) => {
     setTogglingBreakInVins((prev) => new Set(prev).add(vin));
@@ -95,6 +97,33 @@ export function useTelemetryActivation(onCompleted?: () => Promise<void>) {
       });
     } finally {
       setTogglingOffensiveVins((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(vin);
+        return newSet;
+      });
+    }
+  }, [updateOffensiveResponseMutation, t]);
+
+  const handleToggleAutoSentry = useCallback(async (vin: string, currentEnabled: boolean) => {
+    setTogglingAutoSentryVins((prev) => new Set(prev).add(vin));
+    setErrors((prev) => {
+      const newErrors = new Map(prev);
+      newErrors.delete(vin);
+      return newErrors;
+    });
+
+    try {
+      await updateOffensiveResponseMutation.mutateAsync({ vin, autoSentryEnabled: !currentEnabled });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+
+      setErrors((prev) => {
+        const newErrors = new Map(prev);
+        newErrors.set(vin, message || t('Failed to update auto sentry mode'));
+        return newErrors;
+      });
+    } finally {
+      setTogglingAutoSentryVins((prev) => {
         const newSet = new Set(prev);
         newSet.delete(vin);
         return newSet;
@@ -191,11 +220,13 @@ export function useTelemetryActivation(onCompleted?: () => Promise<void>) {
     deletingVins,
     togglingBreakInVins,
     togglingOffensiveVins,
+    togglingAutoSentryVins,
     errors,
     isCompleting,
     hasTelemetryEnabled,
     handleToggleBreakIn,
     handleToggleOffensive,
+    handleToggleAutoSentry,
     handleToggleSentry,
     handleCompleteOnboarding,
     isVehicleUpdating,
