@@ -9,7 +9,7 @@ import { useThemeColors } from '../core/theme';
 import { AppText, GlassButton, GlassButtonVariant, Surface } from '../core/ui';
 import { FixPermissionsScreen } from './FixPermissionsScreen';
 import { useAuthScreen } from './auth/use-auth-screen';
-import { openCrispSupport, resolveCrispWebsiteId } from './settings/settings.helpers';
+import { openCrispSupport, openFaq, resolveCrispWebsiteId, resolveFaqUrl } from './settings/settings.helpers';
 
 const appLogo = require('../../assets/icon.png');
 
@@ -92,6 +92,14 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
                 {t('auth.demo.toggleLink')}
               </AppText>
             </Pressable>
+
+            {resolveFaqUrl() ? (
+              <Pressable accessibilityRole="button" onPress={() => void openFaq()} style={styles.helpLink}>
+                <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel} style={styles.centerText}>
+                  {t('auth.faqLink')}
+                </AppText>
+              </Pressable>
+            ) : null}
 
             {resolveCrispWebsiteId() ? (
               <Pressable accessibilityRole="button" onPress={() => void openCrispSupport()} style={styles.helpLink}>

@@ -110,6 +110,23 @@ export async function openTermsOfService(locale: string): Promise<void> {
   await Linking.openURL(buildLegalUrl(locale, 'terms'));
 }
 
+export function resolveFaqUrl(): string | undefined {
+  const url = process.env.EXPO_PUBLIC_FAQ_URL?.trim();
+  return url && /^https?:\/\//i.test(url) ? url : undefined;
+}
+
+export async function openFaq(): Promise<void> {
+  const url = resolveFaqUrl();
+  if (!url) {
+    return;
+  }
+  if (Platform.OS === 'web') {
+    globalThis.open?.(url, '_blank');
+    return;
+  }
+  await WebBrowser.openBrowserAsync(url);
+}
+
 export function resolveCrispWebsiteId(): string | undefined {
   const id = process.env.EXPO_PUBLIC_CRISP_WEBSITE_ID?.trim();
   return id && /^[a-zA-Z0-9-]+$/.test(id) ? id : undefined;

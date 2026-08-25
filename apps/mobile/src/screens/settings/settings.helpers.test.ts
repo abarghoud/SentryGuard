@@ -47,9 +47,11 @@ import {
   openCrispSupport,
   openDiscordCommunity,
   openEmailSupport,
+  openFaq,
   resolveAvailablePushToken,
   resolveCrispWebsiteId,
   resolveDiscordUrl,
+  resolveFaqUrl,
   resolveSupportEmail,
 } from './settings.helpers';
 
@@ -268,6 +270,60 @@ describe('The openEmailSupport() function', () => {
       process.env.EXPO_PUBLIC_SUPPORT_EMAIL = 'contact@example.com';
       await openEmailSupport('Test Subject');
       expect(Linking.openURL).toHaveBeenCalledWith('mailto:contact@example.com?subject=Test%20Subject');
+    });
+  });
+});
+
+describe('The resolveFaqUrl() function', () => {
+  const originalEnv = process.env.EXPO_PUBLIC_FAQ_URL;
+
+  afterEach(() => {
+    process.env.EXPO_PUBLIC_FAQ_URL = originalEnv;
+  });
+
+  describe('When EXPO_PUBLIC_FAQ_URL is not configured', () => {
+    it('should return undefined', () => {
+      delete process.env.EXPO_PUBLIC_FAQ_URL;
+      expect(resolveFaqUrl()).toBeUndefined();
+    });
+  });
+
+  describe('When EXPO_PUBLIC_FAQ_URL is an invalid URL', () => {
+    it('should return undefined', () => {
+      process.env.EXPO_PUBLIC_FAQ_URL = 'invalid-url';
+      expect(resolveFaqUrl()).toBeUndefined();
+    });
+  });
+
+  describe('When EXPO_PUBLIC_FAQ_URL is configured', () => {
+    it('should return the configured FAQ URL', () => {
+      process.env.EXPO_PUBLIC_FAQ_URL = 'https://sentryguard.org/faq';
+      expect(resolveFaqUrl()).toBe('https://sentryguard.org/faq');
+    });
+  });
+});
+
+describe('The openFaq() function', () => {
+  const originalEnv = process.env.EXPO_PUBLIC_FAQ_URL;
+
+  afterEach(() => {
+    process.env.EXPO_PUBLIC_FAQ_URL = originalEnv;
+    jest.clearAllMocks();
+  });
+
+  describe('When EXPO_PUBLIC_FAQ_URL is not configured', () => {
+    it('should not open browser', async () => {
+      delete process.env.EXPO_PUBLIC_FAQ_URL;
+      await openFaq();
+      expect(WebBrowser.openBrowserAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('When EXPO_PUBLIC_FAQ_URL is configured', () => {
+    it('should open the in-app browser with the FAQ URL', async () => {
+      process.env.EXPO_PUBLIC_FAQ_URL = 'https://sentryguard.org/faq';
+      await openFaq();
+      expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith('https://sentryguard.org/faq');
     });
   });
 });

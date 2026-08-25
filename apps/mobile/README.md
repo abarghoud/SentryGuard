@@ -157,6 +157,10 @@ Discord invite URL for community support and announcements.
 
 Support email address for direct email inquiries.
 
+### `EXPO_PUBLIC_FAQ_URL`
+
+URL to the SentryGuard FAQ page (e.g. `https://sentryguard.org/faq`).
+
 ## Architecture
 
 ### App Initialization

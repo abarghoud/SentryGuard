@@ -18,10 +18,12 @@ import {
   openCrispSupport,
   openDiscordCommunity,
   openEmailSupport,
+  openFaq,
   openPrivacyPolicy,
   openTermsOfService,
   resolveCrispWebsiteId,
   resolveDiscordUrl,
+  resolveFaqUrl,
   resolveSettingsError,
   resolveSupportEmail,
   shareDebugLogs,
@@ -52,10 +54,11 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
 
   const isBusy = preferencesMutation.isPending;
   const language = languageQuery.data?.language ?? UserLanguage.French;
+  const faqUrl = resolveFaqUrl();
   const crispWebsiteId = resolveCrispWebsiteId();
   const discordUrl = resolveDiscordUrl();
   const supportEmail = resolveSupportEmail();
-  const hasSupportLinks = Boolean(crispWebsiteId || discordUrl || supportEmail);
+  const hasSupportLinks = Boolean(faqUrl || crispWebsiteId || discordUrl || supportEmail);
 
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const statusMessage =
@@ -153,6 +156,15 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
 
       {hasSupportLinks ? (
         <ListSection header={t('settings.supportSection')}>
+          {faqUrl ? (
+            <ListRow
+              icon="questionmark.circle.fill"
+              title={t('settings.faq')}
+              subtitle={t('settings.faqSubtitle')}
+              showChevron
+              onPress={() => void openFaq()}
+            />
+          ) : null}
           {crispWebsiteId ? (
             <ListRow
               icon="bubble.left.and.bubble.right.fill"

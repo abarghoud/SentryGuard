@@ -38,6 +38,7 @@ const ioniconsFallback: Record<string, keyof typeof Ionicons.glyphMap> = {
   'key.fill': 'key',
   'person.2.fill': 'people',
   'person.fill': 'person',
+  'questionmark.circle.fill': 'help-circle',
   'rectangle.portrait.and.arrow.right': 'log-out-outline',
   'shield.lefthalf.filled': 'shield-half',
   'star.fill': 'star',
