@@ -69,10 +69,12 @@ echo ""
 echo "Special Scenarios:"
 echo " 18) False Positive Charge Port # ⚡ Simulates CenterDisplay=Lock followed by ChargePortLatch=Disengaged"
 echo " 19) Delayed Break-in Alert    # ⏳ Simulates CenterDisplay=Lock with a timestamp 2 minutes in the past"
+echo " 20) False Positive Door Open  # 🚪 Simulates CenterDisplay=Lock followed by DoorState with an open door"
+echo " 21) DoorState door open       # 🚪 Sends a DoorState message with a passenger door open"
 echo ""
 
 # Ask for state
-read -p "Choose state (1-19, or Enter for alert): " CHOICE
+read -p "Choose state (1-21, or Enter for alert): " CHOICE
 
 if [ "$CHOICE" = "19" ]; then
     echo ""
@@ -124,6 +126,49 @@ if [ "$CHOICE" = "18" ]; then
       
     echo ""
     echo "✅ Scenario sent successfully! The Break-in alert should NOT be dispatched."
+    exit 0
+fi
+
+if [ "$CHOICE" = "20" ]; then
+    echo ""
+    echo "📤 Sending Scenario: False Positive Door Opening..."
+    echo "   VIN: $VIN"
+
+    echo "   Step 1: Sending CenterDisplay = DisplayStateLock"
+    printf '{"vin":"%s","createdAt":"%s","isResend":false,"data":[{"key":"CenterDisplay","value":{"stringValue":"DisplayStateLock"}}]}' \
+      "$VIN" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" | \
+    $DOCKER_COMPOSE_CMD exec -T kafka kafka-console-producer \
+      --bootstrap-server localhost:9092 \
+      --topic TeslaLogger_V
+
+    echo "   Waiting 1 second to simulate key recognition lag..."
+    sleep 1
+
+    echo "   Step 2: Sending DoorState = PassengerRear open"
+    printf '{"vin":"%s","createdAt":"%s","isResend":false,"data":[{"key":"DoorState","value":{"doorValue":{"DriverFront":false,"DriverRear":false,"PassengerFront":false,"PassengerRear":true,"TrunkFront":false,"TrunkRear":false}}}]}' \
+      "$VIN" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" | \
+    $DOCKER_COMPOSE_CMD exec -T kafka kafka-console-producer \
+      --bootstrap-server localhost:9092 \
+      --topic TeslaLogger_V
+
+    echo ""
+    echo "✅ Scenario sent successfully! The Break-in alert should NOT be dispatched."
+    exit 0
+fi
+
+if [ "$CHOICE" = "21" ]; then
+    echo ""
+    echo "📤 Sending DoorState: PassengerRear open..."
+    echo "   VIN: $VIN"
+
+    printf '{"vin":"%s","createdAt":"%s","isResend":false,"data":[{"key":"DoorState","value":{"doorValue":{"DriverFront":false,"DriverRear":false,"PassengerFront":false,"PassengerRear":true,"TrunkFront":false,"TrunkRear":false}}}]}' \
+      "$VIN" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" | \
+    $DOCKER_COMPOSE_CMD exec -T kafka kafka-console-producer \
+      --bootstrap-server localhost:9092 \
+      --topic TeslaLogger_V
+
+    echo ""
+    echo "✅ DoorState message sent successfully!"
     exit 0
 fi
 

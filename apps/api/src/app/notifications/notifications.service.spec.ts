@@ -28,9 +28,17 @@ describe('The NotificationsService class', () => {
     mockPreferencesRepository = mock<Repository<NotificationPreferences>>();
     mockPushDeviceTokenRepository = mock<Repository<PushDeviceToken>>();
     mockPushDeviceTokenRepository.find.mockResolvedValue([createDevice()]);
-    fetchMock = jest.fn().mockResolvedValue({ json: () => Promise.resolve({ data: { status: 'ok' } }) });
+    fetchMock = jest.fn().mockResolvedValue({
+      json: () => Promise.resolve({ data: { status: 'ok' } }),
+      ok: true,
+      statusText: 'OK',
+    });
     global.fetch = fetchMock as unknown as typeof fetch;
     service = new NotificationsService(mockPreferencesRepository, mockPushDeviceTokenRepository);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   describe('The sendPushAlert() method', () => {
@@ -87,13 +95,128 @@ describe('The NotificationsService class', () => {
     });
 
     describe('When the user has no eligible device', () => {
+      let result: boolean;
+
       beforeEach(async () => {
         mockPushDeviceTokenRepository.find.mockResolvedValue([]);
-        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'fr');
+        result = await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'fr');
       });
 
       it('should not call the push service', () => {
         expect(fetchMock).not.toHaveBeenCalled();
+      });
+
+      it('should return false', () => {
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('When Expo rejects the notification', () => {
+      beforeEach(() => {
+        fetchMock.mockResolvedValue({
+          json: () => Promise.resolve({ data: { message: 'Service unavailable', status: 'error' } }),
+          ok: false,
+          statusText: 'Service Unavailable',
+        });
+      });
+
+      it('should reject so the outbox can retry the notification', async () => {
+        await expect(
+          service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'en')
+        ).rejects.toThrow('Service unavailable');
+      });
+    });
+
+    describe('When the Expo request fails', () => {
+      beforeEach(() => {
+        fetchMock.mockRejectedValue(new Error('Network error'));
+      });
+
+      it('should reject so the outbox can retry the notification', async () => {
+        await expect(
+          service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'en')
+        ).rejects.toThrow('Network error');
+      });
+    });
+
+    describe('When the Expo request times out', () => {
+      it('should reject so the outbox can retry the notification', async () => {
+        jest.useFakeTimers();
+        fetchMock.mockImplementation((_url: string, options: RequestInit) => new Promise<Response>((_, reject) => {
+          options.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+        }));
+
+        const result = service.sendPushAlert(
+          fakeUserId,
+          AlertEventSeverity.Critical,
+          AlertEventType.BreakIn,
+          'en'
+        );
+        const rejection = expect(result).rejects.toThrow('ETIMEDOUT: Expo push request timed out after 10000ms');
+        await jest.advanceTimersByTimeAsync(10000);
+
+        await rejection;
+      });
+    });
+
+    describe('When Expo invalidates the device token and no other devices exist', () => {
+      beforeEach(() => {
+        fetchMock.mockResolvedValue({
+          json: () => Promise.resolve({
+            data: {
+              details: { error: 'DeviceNotRegistered' },
+              message: 'Device is not registered',
+              status: 'error',
+            },
+          }),
+          ok: false,
+          statusText: 'Bad Request',
+        });
+      });
+
+      it('should remove the invalid token before rejecting', async () => {
+        await expect(
+          service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'en')
+        ).rejects.toThrow('Device is not registered');
+        expect(mockPushDeviceTokenRepository.delete).toHaveBeenCalledWith({ id: undefined });
+      });
+    });
+
+    describe('When one device has a stale token but another device succeeds', () => {
+      let result: boolean;
+
+      beforeEach(async () => {
+        const staleDevice = { ...createDevice(), id: 'stale-device', token: 'ExponentPushToken[stale]' };
+        const healthyDevice = { ...createDevice(), id: 'healthy-device', token: 'ExponentPushToken[healthy]' };
+        mockPushDeviceTokenRepository.find.mockResolvedValue([staleDevice, healthyDevice]);
+
+        fetchMock.mockImplementation((_url: string, init: RequestInit) => {
+          const body = JSON.parse(init.body as string);
+          if (body.to === 'ExponentPushToken[stale]') {
+            return Promise.resolve({
+              json: () => Promise.resolve({
+                data: { details: { error: 'DeviceNotRegistered' }, message: 'Device is not registered', status: 'error' },
+              }),
+              ok: false,
+              statusText: 'Bad Request',
+            });
+          }
+          return Promise.resolve({
+            json: () => Promise.resolve({ data: { status: 'ok' } }),
+            ok: true,
+            statusText: 'OK',
+          });
+        });
+
+        result = await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'en');
+      });
+
+      it('should remove the stale device', () => {
+        expect(mockPushDeviceTokenRepository.delete).toHaveBeenCalledWith({ id: 'stale-device' });
+      });
+
+      it('should succeed and return true', () => {
+        expect(result).toBe(true);
       });
     });
   });

@@ -40,8 +40,17 @@ export const faqCategories: FaqCategoryData[] = [
         answerKey: 'Why we chose Telegram',
       },
       {
-        questionKey: "Why isn't there a mobile app?",
-        answerKey: 'Why no mobile app',
+        questionKey: 'Is there a SentryGuard mobile app?',
+        answerKey: 'SentryGuard mobile app explanation',
+      },
+      {
+        questionKey: 'Do I need the mobile app to receive alerts?',
+        answerKey: 'Mobile app vs Telegram alerts',
+      },
+      {
+        questionKey: 'How do I get the SentryGuard mobile app?',
+        answerKey: 'How to get the mobile app',
+        answerLinks: [{ href: '/#mobile-app' }],
       },
       {
         questionKey: 'Is SentryGuard free?',

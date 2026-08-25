@@ -270,6 +270,97 @@ describe('TelemetryMessage Model', () => {
 
       expect(message.isCenterDisplayLocked()).toBe(false);
     });
+
+    it.each(['DisplayStateAccessory', 'DisplayStateOn', 'DisplayStateDriving'])('should return true for owner activity state %s', (state) => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{ key: 'CenterDisplay', value: { displayStateValue: state } }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: '123',
+        isResend: false
+      });
+
+      expect(message.isCenterDisplayOwnerActivity()).toBe(true);
+    });
+
+    it('should return false for DisplayStateOff owner activity state', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{ key: 'CenterDisplay', value: { displayStateValue: 'DisplayStateOff' } }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: '123',
+        isResend: false
+      });
+
+      expect(message.isCenterDisplayOwnerActivity()).toBe(false);
+    });
+  });
+
+  describe('DoorState methods', () => {
+    it('should return the doorsValue of every DoorState datum', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [
+          { key: 'DoorState', value: { doorsValue: 'DoorTrunk' } },
+          { key: 'DoorState', value: { doorsValue: 'DoorFrunk' } },
+        ],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: '123',
+        isResend: false
+      });
+
+      expect(message.extractOpenDoors()).toStrictEqual(['DoorTrunk', 'DoorFrunk']);
+    });
+
+    it('should fallback to stringValue if doorsValue is absent', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{ key: 'DoorState', value: { stringValue: 'DoorTrunk' } }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: '123',
+        isResend: false
+      });
+
+      expect(message.extractOpenDoors()).toStrictEqual(['DoorTrunk']);
+    });
+
+    it('should return open doors from the doorValue object', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{
+          key: 'DoorState',
+          value: {
+            doorValue: {
+              DriverFront: false,
+              PassengerRear: true,
+              TrunkRear: false,
+            },
+          },
+        }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: '123',
+        isResend: false
+      });
+
+      expect(message.extractOpenDoors()).toStrictEqual(['PassengerRear']);
+    });
+
+    it('should return an empty array when no DoorState datum is present', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{ key: 'SentryMode', value: { stringValue: 'Off' } }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: '123',
+        isResend: false
+      });
+
+      expect(message.extractOpenDoors()).toStrictEqual([]);
+    });
+
+    it('should validate message containing only DoorState as monitored field', () => {
+      const message = plainToClass(TelemetryMessage, {
+        data: [{ key: 'DoorState', value: { doorsValue: 'DoorTrunk' } }],
+        createdAt: '2025-11-26T16:57:07.330713028Z',
+        vin: '123',
+        isResend: false
+      });
+
+      expect(message.validateContainsAnyMonitoredField()).toBe(true);
+    });
   });
 
 });

@@ -73,7 +73,7 @@ describe('The BreakInMonitoringConfigService class', () => {
           userId,
           {
             CenterDisplay: { interval_seconds: expectedInterval },
-            ChargePortLatch: { interval_seconds: expectedInterval }
+            ChargePortLatch: { interval_seconds: expectedInterval },
           },
           []
         );

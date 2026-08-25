@@ -1,8 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { SupportedLanguage } from '../../../common/utils/language.util';
-import { TelegramService } from '../../telegram/telegram.service';
-import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { TelemetryEventHandler } from '../../telemetry/interfaces/telemetry-event-handler.interface';
 import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
@@ -10,7 +7,7 @@ import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-
 import { AlertsAutoSentryService } from '../../offensive-response/alerts-auto-sentry.service';
 import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
 
-import { ChargePortLatchTrackerService } from './charge-port-latch-tracker.service';
+import { BreakInEventTrackerService, BreakInTrackedEvent } from './break-in-event-tracker.service';
 
 @Injectable()
 export class BreakInAlertHandlerService implements TelemetryEventHandler {
@@ -18,16 +15,14 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
   private readonly pendingVerifications = new Set<Promise<void>>();
 
   constructor(
-    private readonly telegramService: TelegramService,
-    private readonly keyboardBuilder: TelegramKeyboardBuilderService,
     private readonly alertNotifier: VehicleAlertNotifierService,
-    private readonly chargeTracker: ChargePortLatchTrackerService,
+    private readonly eventTracker: BreakInEventTrackerService,
     private readonly offensiveResponseService: AlertsOffensiveResponseService,
     private readonly autoSentryService: AlertsAutoSentryService,
   ) {}
 
   public async handle(telemetryMessage: TelemetryMessage): Promise<void> {
-    this.trackChargePortEvents(telemetryMessage);
+    this.trackBreakInEvents(telemetryMessage);
 
     if (!telemetryMessage.validateContainsCenterDisplay()) {
       return;
@@ -38,16 +33,21 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
     }
   }
 
-  private trackChargePortEvents(telemetryMessage: TelemetryMessage): void {
+  private trackBreakInEvents(telemetryMessage: TelemetryMessage): void {
+    const eventTime = new Date(telemetryMessage.createdAt).getTime();
+
     const latchDatum = telemetryMessage.data.find(d => d.key === 'ChargePortLatch');
-    if (latchDatum) {
-      const eventTime = new Date(telemetryMessage.createdAt).getTime();
-      this.chargeTracker.trackLatchEvent(telemetryMessage.vin, eventTime, latchDatum.value.chargePortLatchValue);
+    if (latchDatum?.value.chargePortLatchValue === 'ChargePortLatchDisengaged') {
+      this.eventTracker.track(telemetryMessage.vin, BreakInTrackedEvent.ChargePortLatchDisengaged, eventTime);
+    }
+
+    if (telemetryMessage.isCenterDisplayOwnerActivity()) {
+      this.eventTracker.track(telemetryMessage.vin, BreakInTrackedEvent.CenterDisplayOwnerActivity, eventTime);
     }
   }
 
   private scheduleAlertVerification(telemetryMessage: TelemetryMessage): void {
-    const delay = parseInt(process.env.BREAK_IN_ALERT_CHECK_DELAY_MS || '2000', 10);
+    const delay = parseInt(process.env.BREAK_IN_ALERT_CHECK_DELAY_MS || '3000', 10);
 
     const verification = new Promise<void>((resolve) => {
       setTimeout(async () => {
@@ -88,8 +88,13 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
   private async verifyAndDispatchAlert(telemetryMessage: TelemetryMessage): Promise<void> {
     try {
       const eventTime = new Date(telemetryMessage.createdAt).getTime();
-      if (this.chargeTracker.hasLatchEventAround(telemetryMessage.vin, eventTime)) {
+      if (this.eventTracker.hasEventAround(telemetryMessage.vin, BreakInTrackedEvent.ChargePortLatchDisengaged, eventTime)) {
         this.logger.log(`[False Positive Prevented] Suppressing break-in alert for VIN ${telemetryMessage.vin} due to correlated ChargePortLatch event.`);
+        return;
+      }
+
+      if (this.eventTracker.hasEventAfter(telemetryMessage.vin, BreakInTrackedEvent.CenterDisplayOwnerActivity, eventTime)) {
+        this.logger.log(`[False Positive Prevented] Suppressing break-in alert for VIN ${telemetryMessage.vin} due to correlated CenterDisplay owner activity.`);
         return;
       }
 
@@ -98,7 +103,6 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
         alertName: 'BREAK_IN_ALERT',
         latencyLabel: 'BREAK_IN_LATENCY',
         severity: AlertEventSeverity.Critical,
-        telegramNotifier: this.telegramNotifier,
         type: AlertEventType.BreakIn,
       });
 
@@ -113,9 +117,4 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
       this.logger.error('Failed to dispatch delayed break-in alert:', error);
     }
   }
-
-  private readonly telegramNotifier = async (userId: string, alertInfo: { vin: string; display_name?: string }, userLanguage: SupportedLanguage) => {
-    const keyboard = this.keyboardBuilder.buildBreakInAlertKeyboard(userId, userLanguage);
-    await this.telegramService.sendBreakInAlert(userId, alertInfo, userLanguage, keyboard);
-  };
 }

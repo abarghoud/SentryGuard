@@ -287,6 +287,15 @@ describe('The TelegramService class', () => {
         expect(result).toBe(false);
         expect(mockRetryManager.addToRetry).toHaveBeenCalledTimes(1);
       });
+
+      it('should rethrow the error when retry scheduling is disabled', async () => {
+        const telegramError = new TelegramError({ error_code: 429, description: 'Too Many Requests' });
+
+        mockTelegramBotService.sendMessage.mockRejectedValue(telegramError);
+
+        await expect(service.sendSentryAlert(fakeUserId, alertInfo, 'en', undefined, false)).rejects.toThrow(telegramError);
+        expect(mockRetryManager.addToRetry).not.toHaveBeenCalled();
+      });
     });
 
     describe('When the error is a non-retryable TelegramError', () => {
@@ -326,6 +335,20 @@ describe('The TelegramService class', () => {
 
         expect(result).toBe(false);
         expect(mockRetryManager.addToRetry).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe('When the Telegram request times out', () => {
+      it('should rethrow the timeout when retry scheduling is disabled', async () => {
+        jest.useFakeTimers();
+        mockTelegramBotService.sendMessage.mockImplementation(() => new Promise<boolean>(() => undefined));
+
+        const result = service.sendSentryAlert(fakeUserId, alertInfo, 'en', undefined, false);
+        const rejection = expect(result).rejects.toThrow('ETIMEDOUT: Telegram notification request timed out after 10000ms');
+        await jest.advanceTimersByTimeAsync(10000);
+
+        await rejection;
+        jest.useRealTimers();
       });
     });
   });

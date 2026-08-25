@@ -11,6 +11,10 @@ export enum SentryModeState {
   Unknown = 'Unknown',
 }
 
+export interface TelemetryDoorValue {
+  [door: string]: boolean;
+}
+
 const STRING_TO_SENTRY_MODE_MAP: Record<string, SentryModeState> = {
   'Off': SentryModeState.Off,
   'Aware': SentryModeState.Aware,
@@ -20,6 +24,15 @@ const STRING_TO_SENTRY_MODE_MAP: Record<string, SentryModeState> = {
   'Quiet': SentryModeState.Quiet,
   'Unknown': SentryModeState.Unknown,
 };
+
+const CENTER_DISPLAY_OWNER_ACTIVITY_STATES = new Set([
+  'DisplayStateAccessory',
+  'Accessory',
+  'DisplayStateOn',
+  'On',
+  'DisplayStateDriving',
+  'Driving',
+]);
 
 export class TelemetryValue {
   @IsOptional()
@@ -37,6 +50,18 @@ export class TelemetryValue {
   @IsOptional()
   @IsString()
   chargePortLatchValue?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  booleanValue?: boolean;
+
+  @IsOptional()
+  @IsString()
+  doorsValue?: string;
+
+  @IsOptional()
+  @IsObject()
+  doorValue?: TelemetryDoorValue;
 }
 
 export class TelemetryDatum {
@@ -78,7 +103,7 @@ export class TelemetryMessage {
   }
 
   validateContainsAnyMonitoredField(): boolean {
-    const monitoredKeys = new Set(['SentryMode', 'CenterDisplay', 'ChargePortLatch']);
+    const monitoredKeys = new Set(['SentryMode', 'CenterDisplay', 'ChargePortLatch', 'Locked', 'DoorState']);
     return this.data.some(datum => monitoredKeys.has(datum.key));
   }
 
@@ -123,6 +148,30 @@ export class TelemetryMessage {
     const { displayStateValue, stringValue } = displayDatum.value;
     const value = displayStateValue ?? stringValue;
     return value === 'DisplayStateLock' || value === 'Lock';
+  }
+
+  isCenterDisplayOwnerActivity(): boolean {
+    const displayDatum = this.data.find(d => d.key === 'CenterDisplay');
+    if (!displayDatum) return false;
+
+    const { displayStateValue, stringValue } = displayDatum.value;
+    const value = displayStateValue ?? stringValue;
+    return value !== undefined && CENTER_DISPLAY_OWNER_ACTIVITY_STATES.has(value);
+  }
+
+  extractOpenDoors(): string[] {
+    return this.data
+      .filter(d => d.key === 'DoorState')
+      .flatMap(({ value }) => {
+        if (value.doorValue) {
+          return Object.entries(value.doorValue)
+            .filter(([, isOpen]) => isOpen === true)
+            .map(([door]) => door);
+        }
+
+        const door = value.doorsValue ?? value.stringValue;
+        return door ? [door] : [];
+      });
   }
 
   calculateEndToEndLatency(): number | null {

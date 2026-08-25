@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '@/core/i18n/i18n-config';
 import { LOCALE_ROUTES } from '@/core/security/csp';
 
-function detectLocale(request: NextRequest): string {
+export function detectLocale(request: NextRequest): string {
   const localeCookie = request.cookies.get('locale')?.value;
 
   if (localeCookie && (SUPPORTED_LOCALES as readonly string[]).includes(localeCookie)) {
