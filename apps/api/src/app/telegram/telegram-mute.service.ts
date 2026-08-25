@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Context } from 'telegraf';
 import i18n from '../../i18n';
+import { SupportedLanguage } from '../../common/utils/language.util';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
@@ -143,7 +144,7 @@ export class TelegramMuteService implements OnModuleInit {
     );
   }
 
-  private async confirmMute(ctx: Context, mutedUntil: Date, lng: 'en' | 'fr'): Promise<void> {
+  private async confirmMute(ctx: Context, mutedUntil: Date, lng: SupportedLanguage): Promise<void> {
     const confirmation = i18n.t('muteConfirmed', { lng, duration: TelegramMessageHelper.formatRemainingTime(mutedUntil) });
     await ctx.answerCbQuery();
     await ctx.deleteMessage();

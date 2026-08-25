@@ -40,8 +40,20 @@ export function resolveAlertIcon(alert: AlertEvent): 'exclamationmark.triangle.f
   return alert.severity === AlertEventSeverity.Critical ? 'exclamationmark.triangle.fill' : 'bell.badge.fill';
 }
 
+const alertDateLocales: Record<string, string> = {
+  en: 'en-US',
+  fr: 'fr-FR',
+  de: 'de-DE',
+  nl: 'nl-NL',
+  no: 'nb-NO',
+  es: 'es-ES',
+  it: 'it-IT',
+  sv: 'sv-SE',
+  da: 'da-DK',
+};
+
 export function formatAlertDate(value: string, language: string): string {
-  return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'fr-FR', {
+  return new Intl.DateTimeFormat(alertDateLocales[language] ?? 'en-US', {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',

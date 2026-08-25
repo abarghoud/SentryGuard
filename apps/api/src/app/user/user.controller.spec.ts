@@ -73,8 +73,24 @@ describe('UserController', () => {
       );
     });
 
+    it('should update language to a newly supported language', async () => {
+      const body = { language: 'de' };
+      mockUserLanguageService.updateUserLanguage.mockResolvedValue(undefined);
+
+      const result = await controller.updateLanguage(mockUser, body);
+
+      expect(result).toEqual({
+        success: true,
+        language: 'de',
+      });
+      expect(userLanguageService.updateUserLanguage).toHaveBeenCalledWith(
+        'test-user-id',
+        'de'
+      );
+    });
+
     it('should throw BadRequestException for invalid language', async () => {
-      const body = { language: 'es' };
+      const body = { language: 'xx' };
 
       await expect(controller.updateLanguage(mockUser, body)).rejects.toThrow(
         BadRequestException

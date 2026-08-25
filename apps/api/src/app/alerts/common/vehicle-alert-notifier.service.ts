@@ -11,6 +11,7 @@ import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-even
 import { AlertsService } from '../alerts.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { NotificationQueueService } from '../../notifications/notification-queue.service';
+import { SupportedLanguage } from '../../../common/utils/language.util';
 import { AlertNotifierPayload, AlertNotifierRegistry } from './alert-notifier.registry';
 import { NOTIFICATION_SWEEP_MAX_ATTEMPTS } from '../../../config/notification-sweep-cron.config';
 
@@ -183,7 +184,7 @@ export class VehicleAlertNotifierService {
     }
   }
 
-  private async deliverNotifications(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<void> {
+  private async deliverNotifications(payload: AlertNotifierPayload, userLanguage: SupportedLanguage): Promise<void> {
     const [pushResult, telegramResult] = await Promise.allSettled([
       this.notificationsService.sendPushAlert(payload.userId, payload.severity, payload.type, userLanguage, payload.correlationId),
       this.sendTelegramNotification(payload, userLanguage),
@@ -197,7 +198,7 @@ export class VehicleAlertNotifierService {
     }
   }
 
-  private async sendTelegramNotification(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<boolean> {
+  private async sendTelegramNotification(payload: AlertNotifierPayload, userLanguage: SupportedLanguage): Promise<boolean> {
     if (!(await this.notificationsService.shouldSendTelegram(payload.userId, payload.severity))) {
       return false;
     }

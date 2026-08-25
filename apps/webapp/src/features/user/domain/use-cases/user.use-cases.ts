@@ -1,3 +1,4 @@
+import { SupportedLocale } from '../../../../core/i18n/i18n-config';
 import { UserRepositoryRequirements } from '../user.repository.requirements';
 import { UserLanguage, UpdateLanguageResponse } from '../entities';
 import {
@@ -16,7 +17,7 @@ export class GetUserLanguageUseCase implements GetUserLanguageRequirements {
 export class UpdateUserLanguageUseCase implements UpdateUserLanguageRequirements {
   constructor(private repository: UserRepositoryRequirements) {}
 
-  async execute(language: 'en' | 'fr'): Promise<UpdateLanguageResponse> {
+  async execute(language: SupportedLocale): Promise<UpdateLanguageResponse> {
     return this.repository.updateUserLanguage(language);
   }
 }

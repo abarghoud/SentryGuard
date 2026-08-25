@@ -1,4 +1,11 @@
-export const LOCALE_ROUTES = ['/', '/faq', '/en', '/fr', '/en/faq', '/fr/faq'];
+import { SUPPORTED_LOCALES } from '../i18n/i18n-config';
+
+export const LOCALE_ROUTES = [
+  '/',
+  '/faq',
+  ...SUPPORTED_LOCALES.map((locale) => `/${locale}`),
+  ...SUPPORTED_LOCALES.map((locale) => `/${locale}/faq`),
+];
 
 export function isLocaleRoute(pathname: string): boolean {
   return LOCALE_ROUTES.includes(pathname);

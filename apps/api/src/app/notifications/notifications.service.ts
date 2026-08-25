@@ -6,6 +6,7 @@ import { NotificationPreferences } from '../../entities/notification-preferences
 import { PushDeviceToken } from '../../entities/push-device-token.entity';
 import { AlertEventSeverity, AlertEventType } from '../../entities/alert-event.entity';
 import i18n from '../../i18n';
+import { SupportedLanguage } from '../../common/utils/language.util';
 import { NOTIFICATION_REQUEST_TIMEOUT_MS } from '../../config/notification-timeout.config';
 import { withTimeout } from '../../common/utils/with-timeout.util';
 
@@ -94,7 +95,7 @@ export class NotificationsService {
     userId: string,
     severity: AlertEventSeverity,
     type: AlertEventType,
-    userLanguage: 'en' | 'fr',
+    userLanguage: SupportedLanguage,
     correlationId?: string
   ): Promise<boolean> {
     const eligibleDevices = await this.findEligibleDevices(userId, severity);
@@ -120,7 +121,7 @@ export class NotificationsService {
     severity: AlertEventSeverity,
     type: AlertEventType,
     userId: string,
-    userLanguage: 'en' | 'fr',
+    userLanguage: SupportedLanguage,
     correlationId?: string
   ): Promise<void> {
     const { body, title } = this.resolveAlertTexts(type, userLanguage);
@@ -138,7 +139,7 @@ export class NotificationsService {
     }
   }
 
-  private resolveAlertTexts(type: AlertEventType, lng: 'en' | 'fr'): { body: string; title: string } {
+  private resolveAlertTexts(type: AlertEventType, lng: SupportedLanguage): { body: string; title: string } {
     if (type === AlertEventType.BreakIn) {
       return {
         body: i18n.t('A break-in attempt was detected.', { lng }),
@@ -232,7 +233,7 @@ export class NotificationsService {
     type: AlertEventType,
     criticalAlertsEnabled: boolean,
     userId: string,
-    userLanguage: 'en' | 'fr',
+    userLanguage: SupportedLanguage,
     correlationId?: string
   ): Promise<void> {
     try {
@@ -266,7 +267,7 @@ export class NotificationsService {
     type: AlertEventType,
     criticalAlertsEnabled: boolean,
     userId: string,
-    userLanguage: 'en' | 'fr'
+    userLanguage: SupportedLanguage
   ): object {
     const isPriorityAlert = criticalAlertsEnabled && this.shouldUsePriorityChannel(severity, type);
     const channelId = isPriorityAlert ? 'sentryguard-critical-alerts-v5' : 'sentryguard-alerts';
@@ -293,7 +294,7 @@ export class NotificationsService {
     return severity === AlertEventSeverity.Critical || type === AlertEventType.Sentry;
   }
 
-  private buildTeslaRedirectUrl(userId: string, userLanguage: 'en' | 'fr'): string {
+  private buildTeslaRedirectUrl(userId: string, userLanguage: SupportedLanguage): string {
     const baseUrl = process.env.TELEGRAM_WEBHOOK_BASE || 'http://localhost:3000';
     return `${baseUrl}/redirect/tesla-app?userId=${encodeURIComponent(userId)}&lang=${userLanguage}`;
   }

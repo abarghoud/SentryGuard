@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import i18n from '../../i18n';
+import { SupportedLanguage } from '../../common/utils/language.util';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
@@ -18,7 +19,7 @@ export class TelegramBotUpdateService {
     private readonly keyboardBuilderService: TelegramKeyboardBuilderService,
   ) {}
 
-  async ensureUserIsUpToDate(userId: string, chatId: string, lng: 'en' | 'fr'): Promise<void> {
+  async ensureUserIsUpToDate(userId: string, chatId: string, lng: SupportedLanguage): Promise<void> {
     const config = await this.telegramConfigRepository.findOne({
       where: { userId, status: TelegramLinkStatus.LINKED },
     });

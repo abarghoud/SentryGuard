@@ -364,7 +364,7 @@
   "offensiveResponseOn": "Horn activated",
   "offensiveResponseOff": "Horn disabled",
   "offensiveResponseInfo": "When an alert is triggered, the vehicle will sound its horn or fart for a few seconds.",
-  "Horn": "Horn ",
+  "Horn": "Horn",
   "Fart": "Fart",
   "offensiveResponseHonk": "Horn activated for intrusion alerts.",
   "offensiveResponseFart": "Fart (boombox) triggered for intrusion alerts.",

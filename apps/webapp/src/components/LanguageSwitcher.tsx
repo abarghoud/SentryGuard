@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { i18n, addLocaleIfNeeded } from './I18nProvider';
 import { hasToken } from '../core/api/token-manager';
 import { useUserQuery } from '../features/user/di';
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES, setLocaleCookie } from '../core/i18n/i18n-config';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, SupportedLocale, setLocaleCookie } from '../core/i18n/i18n-config';
 
 const FLAGS = {
   en: (
@@ -23,12 +23,69 @@ const FLAGS = {
       <rect width="1" height="2" x="1" fill="#fff" />
       <rect width="1" height="2" x="2" fill="#ED2939" />
     </svg>
+  ),
+  de: (
+    <svg viewBox="0 0 5 3" className="w-5 h-3.5 rounded-sm shadow-sm border border-gray-200 dark:border-gray-600">
+      <rect width="5" height="3" fill="#000" />
+      <rect y="1" width="5" height="1" fill="#D00" />
+      <rect y="2" width="5" height="1" fill="#FFCE00" />
+    </svg>
+  ),
+  nl: (
+    <svg viewBox="0 0 9 6" className="w-5 h-3.5 rounded-sm shadow-sm border border-gray-200 dark:border-gray-600">
+      <rect width="9" height="6" fill="#21468B" />
+      <rect width="9" height="4" fill="#fff" />
+      <rect width="9" height="2" fill="#AE1C28" />
+    </svg>
+  ),
+  no: (
+    <svg viewBox="0 0 16 12" className="w-5 h-3.5 rounded-sm shadow-sm border border-gray-200 dark:border-gray-600">
+      <rect width="16" height="12" fill="#BA0C2F" />
+      <rect x="4" width="3" height="12" fill="#fff" />
+      <rect y="4.5" width="16" height="3" fill="#fff" />
+      <rect x="4.75" width="1.5" height="12" fill="#00205B" />
+      <rect y="5.25" width="16" height="1.5" fill="#00205B" />
+    </svg>
+  ),
+  es: (
+    <svg viewBox="0 0 12 8" className="w-5 h-3.5 rounded-sm shadow-sm border border-gray-200 dark:border-gray-600">
+      <rect width="12" height="8" fill="#AA151B" />
+      <rect y="2" width="12" height="4" fill="#F1BF00" />
+    </svg>
+  ),
+  it: (
+    <svg viewBox="0 0 3 2" className="w-5 h-3.5 rounded-sm shadow-sm border border-gray-200 dark:border-gray-600">
+      <rect width="3" height="2" fill="#fff" />
+      <rect width="1" height="2" fill="#008C45" />
+      <rect x="2" width="1" height="2" fill="#CD212A" />
+    </svg>
+  ),
+  sv: (
+    <svg viewBox="0 0 16 10" className="w-5 h-3.5 rounded-sm shadow-sm border border-gray-200 dark:border-gray-600">
+      <rect width="16" height="10" fill="#006AA7" />
+      <rect x="5" width="2" height="10" fill="#FECC00" />
+      <rect y="4" width="16" height="2" fill="#FECC00" />
+    </svg>
+  ),
+  da: (
+    <svg viewBox="0 0 16 12" className="w-5 h-3.5 rounded-sm shadow-sm border border-gray-200 dark:border-gray-600">
+      <rect width="16" height="12" fill="#C8102E" />
+      <rect x="5" width="2" height="12" fill="#fff" />
+      <rect y="5" width="16" height="2" fill="#fff" />
+    </svg>
   )
 };
 
 const LANGUAGES = [
   { code: 'en', label: 'English', flag: FLAGS.en },
   { code: 'fr', label: 'Français', flag: FLAGS.fr },
+  { code: 'de', label: 'Deutsch', flag: FLAGS.de },
+  { code: 'nl', label: 'Nederlands', flag: FLAGS.nl },
+  { code: 'no', label: 'Norsk', flag: FLAGS.no },
+  { code: 'es', label: 'Español', flag: FLAGS.es },
+  { code: 'it', label: 'Italiano', flag: FLAGS.it },
+  { code: 'sv', label: 'Svenska', flag: FLAGS.sv },
+  { code: 'da', label: 'Dansk', flag: FLAGS.da },
 ];
 
 export default function LanguageSwitcher({
@@ -77,7 +134,7 @@ export default function LanguageSwitcher({
 
     if (hasToken()) {
       try {
-        await updateLanguageMutation.mutateAsync(lng as 'en' | 'fr');
+        await updateLanguageMutation.mutateAsync(lng as SupportedLocale);
       } catch (error) {
         console.warn('Failed to update language on server:', error);
       }

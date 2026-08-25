@@ -1,8 +1,50 @@
+export type SupportedLanguage =
+  | 'en'
+  | 'fr'
+  | 'de'
+  | 'nl'
+  | 'no'
+  | 'es'
+  | 'it'
+  | 'sv'
+  | 'da';
+
+export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
+  'en',
+  'fr',
+  'de',
+  'nl',
+  'no',
+  'es',
+  'it',
+  'sv',
+  'da',
+];
+
+const DEFAULT_LANGUAGE: SupportedLanguage = 'en';
+
+const LANGUAGE_ALIASES: Record<string, SupportedLanguage> = {
+  nb: 'no',
+  nn: 'no',
+};
+
+const TESLA_LOCALE_BY_LANGUAGE: Record<SupportedLanguage, string> = {
+  en: 'en-US',
+  fr: 'fr-FR',
+  de: 'de-DE',
+  nl: 'nl-NL',
+  no: 'nb-NO',
+  es: 'es-ES',
+  it: 'it-IT',
+  sv: 'sv-SE',
+  da: 'da-DK',
+};
+
 export function extractPreferredLanguage(
   acceptLanguageHeader?: string
-): 'en' | 'fr' {
+): SupportedLanguage {
   if (!acceptLanguageHeader) {
-    return 'en';
+    return DEFAULT_LANGUAGE;
   }
 
   const languages = acceptLanguageHeader
@@ -10,20 +52,24 @@ export function extractPreferredLanguage(
     .map((lang) => {
       const [code, qValue] = lang.trim().split(';');
       const quality = qValue ? parseFloat(qValue.split('=')[1]) : 1.0;
-      return { code: code.split('-')[0].toLowerCase(), quality };
+      const primaryTag = code.split('-')[0].toLowerCase();
+      return { code: LANGUAGE_ALIASES[primaryTag] ?? primaryTag, quality };
     })
+    .filter((lang) => lang.quality > 0)
     .sort((a, b) => b.quality - a.quality);
 
   for (const lang of languages) {
-    if (lang.code === 'fr' || lang.code === 'en') {
-      return lang.code as 'en' | 'fr';
+    const match = SUPPORTED_LANGUAGES.find(
+      (supported) => supported === lang.code
+    );
+    if (match) {
+      return match;
     }
   }
 
-  return 'en';
+  return DEFAULT_LANGUAGE;
 }
 
-export function normalizeTeslaLocale(locale: 'en' | 'fr'): string {
-  return locale === 'fr' ? 'fr-FR' : 'en-US';
+export function normalizeTeslaLocale(locale: SupportedLanguage): string {
+  return TESLA_LOCALE_BY_LANGUAGE[locale] ?? TESLA_LOCALE_BY_LANGUAGE[DEFAULT_LANGUAGE];
 }
-

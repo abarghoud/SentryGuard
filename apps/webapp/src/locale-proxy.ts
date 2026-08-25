@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '@/core/i18n/i18n-config';
+import { DEFAULT_LOCALE, detectSupportedLocale, SUPPORTED_LOCALES } from '@/core/i18n/i18n-config';
+import { LOCALE_ROUTES } from '@/core/security/csp';
 
 export function detectLocale(request: NextRequest): string {
   const localeCookie = request.cookies.get('locale')?.value;
@@ -10,11 +11,7 @@ export function detectLocale(request: NextRequest): string {
 
   const acceptLanguage = request.headers.get('accept-language') || '';
 
-  if (acceptLanguage.toLowerCase().startsWith('fr')) {
-    return 'fr';
-  }
-
-  return DEFAULT_LOCALE;
+  return detectSupportedLocale(acceptLanguage) ?? DEFAULT_LOCALE;
 }
 
 function extractLocaleFromPath(pathname: string): string | undefined {
@@ -52,5 +49,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/faq', '/en', '/fr', '/en/faq', '/fr/faq'],
+  matcher: LOCALE_ROUTES,
 };

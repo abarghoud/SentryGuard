@@ -1,3 +1,4 @@
+import { SUPPORTED_LOCALES } from '../i18n/i18n-config';
 import { buildCspHeader, isLocaleRoute } from './csp';
 
 describe('The buildCspHeader() function', () => {
@@ -36,6 +37,27 @@ describe('The isLocaleRoute() function', () => {
   describe('When the path is a public locale route', () => {
     it('should return true', () => {
       expect(isLocaleRoute('/en/faq')).toBe(true);
+    });
+  });
+
+  describe('When the path is a newly added locale route', () => {
+    it('should return true for the locale root', () => {
+      expect(isLocaleRoute('/de')).toBe(true);
+    });
+
+    it('should return true for the locale faq page', () => {
+      expect(isLocaleRoute('/da/faq')).toBe(true);
+    });
+  });
+
+  describe('When the path is every supported locale route', () => {
+    it('should return true for each of them', () => {
+      const localeRoutes = SUPPORTED_LOCALES.flatMap((locale) => [
+        `/${locale}`,
+        `/${locale}/faq`,
+      ]);
+
+      expect(localeRoutes.every(isLocaleRoute)).toBe(true);
     });
   });
 

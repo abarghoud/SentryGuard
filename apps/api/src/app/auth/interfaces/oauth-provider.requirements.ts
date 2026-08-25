@@ -1,3 +1,5 @@
+import { SupportedLanguage } from '../../../common/utils/language.util';
+
 export const oauthProviderRequirementsSymbol = Symbol('OAuthProviderRequirements');
 
 export interface OAuthUserProfile {
@@ -16,13 +18,13 @@ export interface OAuthAuthenticationResult {
   mobileRedirectUri?: string;
   tokens: OAuthTokensResponse;
   profile: OAuthUserProfile;
-  userLocale: 'en' | 'fr';
+  userLocale: SupportedLanguage;
 }
 
 export interface OAuthProviderRequirements {
-  generateLoginUrl(userLocale: 'en' | 'fr', mobileRedirectUri?: string): { url: string; state: string };
+  generateLoginUrl(userLocale: SupportedLanguage, mobileRedirectUri?: string): { url: string; state: string };
   generateScopeChangeUrl(
-    userLocale: 'en' | 'fr',
+    userLocale: SupportedLanguage,
     missingScopes?: string[],
     mobileRedirectUri?: string
   ): { url: string; state: string };

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { usePushToken } from '../../core/hooks/usePushToken';
 import { useTelegramStatusSync } from '../../core/hooks/useTelegramStatusSync';
-import { resolveDeviceLanguage } from '../../core/i18n';
+import { resolveDeviceLanguage, SupportedLanguage } from '../../core/i18n';
 import { acceptConsentUseCase, getConsentStatusUseCase, getConsentTextUseCase } from '../../features/consent/di';
 import { completeOnboardingUseCase, getOnboardingStatusUseCase, skipOnboardingUseCase } from '../../features/onboarding/di';
 import { getNotificationPreferencesUseCase, updateNotificationPreferencesUseCase, pushNotificationService } from '../../features/notifications/di';
@@ -23,6 +23,18 @@ import { selectTelemetryVehicle } from './onboarding.helpers';
 import { registerDeviceForPush } from '../settings/settings.helpers';
 import { requestVehicleCommandsScope } from '../vehicle-detail/vehicle-detail.helpers';
 
+const deviceLanguageToUserLanguage: Record<SupportedLanguage, UserLanguage> = {
+  en: UserLanguage.English,
+  fr: UserLanguage.French,
+  de: UserLanguage.German,
+  nl: UserLanguage.Dutch,
+  no: UserLanguage.Norwegian,
+  es: UserLanguage.Spanish,
+  it: UserLanguage.Italian,
+  sv: UserLanguage.Swedish,
+  da: UserLanguage.Danish,
+};
+
 export function useOnboarding(onComplete: () => void) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -30,7 +42,7 @@ export function useOnboarding(onComplete: () => void) {
   const { pushToken, setPushToken } = usePushToken();
   useTelegramStatusSync();
 
-  const deviceLanguage = resolveDeviceLanguage() === 'fr' ? UserLanguage.French : UserLanguage.English;
+  const deviceLanguage = deviceLanguageToUserLanguage[resolveDeviceLanguage()];
 
   useEffect(() => {
     updateUserLanguageUseCase

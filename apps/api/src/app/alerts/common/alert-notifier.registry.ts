@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { SupportedLanguage } from '../../../common/utils/language.util';
 import { TelegramService } from '../../telegram/telegram.service';
 import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
@@ -15,7 +16,7 @@ export interface AlertNotifierPayload {
 
 type TelegramNotifier = (
   payload: AlertNotifierPayload,
-  userLanguage: 'en' | 'fr'
+  userLanguage: SupportedLanguage
 ) => Promise<void>;
 
 @Injectable()
@@ -32,7 +33,7 @@ export class AlertNotifierRegistry {
     ]);
   }
 
-  public async notify(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<void> {
+  public async notify(payload: AlertNotifierPayload, userLanguage: SupportedLanguage): Promise<void> {
     const notifier = this.notifiers.get(payload.type);
 
     if (!notifier) {
@@ -49,12 +50,12 @@ export class AlertNotifierRegistry {
     };
   }
 
-  private async notifySentry(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<void> {
+  private async notifySentry(payload: AlertNotifierPayload, userLanguage: SupportedLanguage): Promise<void> {
     const keyboard = this.keyboardBuilder.buildSentryAlertKeyboard(payload.userId, userLanguage);
     await this.telegramService.sendSentryAlert(payload.userId, this.buildAlertInfo(payload), userLanguage, keyboard, false);
   }
 
-  private async notifyBreakIn(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<void> {
+  private async notifyBreakIn(payload: AlertNotifierPayload, userLanguage: SupportedLanguage): Promise<void> {
     const keyboard = this.keyboardBuilder.buildBreakInAlertKeyboard(payload.userId, userLanguage);
     await this.telegramService.sendBreakInAlert(payload.userId, this.buildAlertInfo(payload), userLanguage, keyboard, false);
   }

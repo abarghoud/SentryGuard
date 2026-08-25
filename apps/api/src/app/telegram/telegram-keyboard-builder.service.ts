@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import i18n from '../../i18n';
+import { SupportedLanguage } from '../../common/utils/language.util';
 import { TelegramMessageOptions } from './telegram.types';
 
 @Injectable()
@@ -7,7 +8,7 @@ export class TelegramKeyboardBuilderService {
 
   buildSentryAlertKeyboard(
     userId: string,
-    userLanguage: 'en' | 'fr'
+    userLanguage: SupportedLanguage
   ) {
     const baseUrl = process.env.TELEGRAM_WEBHOOK_BASE || 'http://localhost:3000';
     const redirectUrl = `${baseUrl}/redirect/tesla-app?userId=${userId}&lang=${userLanguage}`;
@@ -26,12 +27,12 @@ export class TelegramKeyboardBuilderService {
 
   buildBreakInAlertKeyboard(
     userId: string,
-    userLanguage: 'en' | 'fr'
+    userLanguage: SupportedLanguage
   ) {
     return this.buildSentryAlertKeyboard(userId, userLanguage);
   }
 
-  buildMainMenuKeyboard(lng: 'en' | 'fr', mutedUntil: Date | null | undefined = null): TelegramMessageOptions {
+  buildMainMenuKeyboard(lng: SupportedLanguage, mutedUntil: Date | null | undefined = null): TelegramMessageOptions {
     const isMuted = mutedUntil != null && new Date() < mutedUntil;
     const muteButtonKey = isMuted ? 'menuButtonMuteActive' : 'menuButtonMute';
 
@@ -46,7 +47,7 @@ export class TelegramKeyboardBuilderService {
     };
   }
 
-  buildMuteActiveKeyboard(lng: 'en' | 'fr'): TelegramMessageOptions {
+  buildMuteActiveKeyboard(lng: SupportedLanguage): TelegramMessageOptions {
     return {
       keyboard: {
         inline_keyboard: [

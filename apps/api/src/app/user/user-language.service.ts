@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../../entities/user.entity';
+import { SupportedLanguage } from '../../common/utils/language.util';
 
 @Injectable()
 export class UserLanguageService {
@@ -11,7 +12,7 @@ export class UserLanguageService {
     private readonly userRepository: Repository<User>
   ) {}
 
-  async getUserLanguage(userId: string): Promise<'en' | 'fr'> {
+  async getUserLanguage(userId: string): Promise<SupportedLanguage> {
     const dbStart = Date.now();
     const user = await this.userRepository.findOne({
       where: { userId },
@@ -27,12 +28,12 @@ export class UserLanguageService {
       return 'en';
     }
 
-    return user.preferred_language as 'en' | 'fr';
+    return user.preferred_language as SupportedLanguage;
   }
 
   async updateUserLanguage(
     userId: string,
-    language: 'en' | 'fr'
+    language: SupportedLanguage
   ): Promise<void> {
     await this.userRepository.update({ userId }, { preferred_language: language });
   }

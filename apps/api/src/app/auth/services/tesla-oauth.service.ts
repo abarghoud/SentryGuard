@@ -10,7 +10,10 @@ import * as crypto from 'crypto';
 import * as https from 'https';
 import { decode } from 'jsonwebtoken';
 import { TeslaScopes } from '@sentryguard/beta-domain';
-import { normalizeTeslaLocale } from '../../../common/utils/language.util';
+import {
+  normalizeTeslaLocale,
+  SupportedLanguage,
+} from '../../../common/utils/language.util';
 import { MissingPermissionsException } from '../../../common/exceptions/missing-permissions.exception';
 import {
   OAuthProviderRequirements,
@@ -22,7 +25,7 @@ import {
 interface StatePayload {
   mobileRedirectUri?: string;
   type: 'oauth_state';
-  userLocale: 'en' | 'fr';
+  userLocale: SupportedLanguage;
   nonce: string;
 }
 
@@ -62,7 +65,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
   }
 
   generateLoginUrl(
-    userLocale: 'en' | 'fr' = 'en',
+    userLocale: SupportedLanguage = 'en',
     mobileRedirectUri?: string
   ): { url: string; state: string } {
     const clientId = process.env.TESLA_CLIENT_ID;
@@ -90,7 +93,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
   }
 
   generateScopeChangeUrl(
-    userLocale: 'en' | 'fr' = 'en',
+    userLocale: SupportedLanguage = 'en',
     missingScopes?: TeslaScopes[],
     mobileRedirectUri?: string
   ): { url: string; state: string } {
@@ -149,7 +152,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
     }
   }
 
-  private validateOAuthState(state: string): { mobileRedirectUri?: string; userLocale: 'en' | 'fr' } {
+  private validateOAuthState(state: string): { mobileRedirectUri?: string; userLocale: SupportedLanguage } {
     try {
       const secret = process.env.JWT_OAUTH_STATE_SECRET;
 
@@ -268,7 +271,7 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
     }
   }
 
-  private createSignedState(userLocale: 'en' | 'fr', mobileRedirectUri?: string): string {
+  private createSignedState(userLocale: SupportedLanguage, mobileRedirectUri?: string): string {
     const payload: StatePayload = {
       mobileRedirectUri: this.resolveMobileRedirectUri(mobileRedirectUri),
       type: 'oauth_state',
