@@ -62,7 +62,8 @@ describe('Language Utilities', () => {
     });
 
     it('should exclude languages with zero quality', () => {
-      expect(extractPreferredLanguage('fr,de;q=0,en;q=0.8')).toBe('en');
+      expect(extractPreferredLanguage('de;q=0,en;q=0.3')).toBe('en');
+      expect(extractPreferredLanguage('fr,de;q=0,en;q=0.8')).toBe('fr');
     });
   });
 
