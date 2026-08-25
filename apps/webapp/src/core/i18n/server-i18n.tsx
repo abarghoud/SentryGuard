@@ -10,7 +10,7 @@ import es from '../../locales/es/common.json';
 import it from '../../locales/it/common.json';
 import sv from '../../locales/sv/common.json';
 import da from '../../locales/da/common.json';
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from './i18n-config';
+import { DEFAULT_LOCALE, detectSupportedLocale } from './i18n-config';
 
 const translations: Record<string, Record<string, string>> = {
   en,
@@ -47,21 +47,7 @@ export async function getLocale(): Promise<string> {
 function detectLocaleFromAcceptLanguage(
   acceptLanguage: string
 ): string | undefined {
-  const requestedCodes = acceptLanguage
-    .toLowerCase()
-    .split(',')
-    .map((part) => part.split(';')[0].trim().split('-')[0])
-    .filter((code) => code.length > 0);
-
-  for (const requestedCode of requestedCodes) {
-    const match = SUPPORTED_LOCALES.find((locale) => locale === requestedCode);
-
-    if (match) {
-      return match;
-    }
-  }
-
-  return undefined;
+  return detectSupportedLocale(acceptLanguage);
 }
 
 export function getTranslation(locale: string) {

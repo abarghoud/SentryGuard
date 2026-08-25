@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '@/core/i18n/i18n-config';
+import { DEFAULT_LOCALE, detectSupportedLocale, SUPPORTED_LOCALES } from '@/core/i18n/i18n-config';
 import { LOCALE_ROUTES } from '@/core/security/csp';
 
 export function detectLocale(request: NextRequest): string {
@@ -11,21 +11,7 @@ export function detectLocale(request: NextRequest): string {
 
   const acceptLanguage = request.headers.get('accept-language') || '';
 
-  const requestedCodes = acceptLanguage
-    .toLowerCase()
-    .split(',')
-    .map((part) => part.split(';')[0].trim().split('-')[0])
-    .filter((code) => code.length > 0);
-
-  for (const requestedCode of requestedCodes) {
-    const match = SUPPORTED_LOCALES.find((locale) => locale === requestedCode);
-
-    if (match) {
-      return match;
-    }
-  }
-
-  return DEFAULT_LOCALE;
+  return detectSupportedLocale(acceptLanguage) ?? DEFAULT_LOCALE;
 }
 
 function extractLocaleFromPath(pathname: string): string | undefined {

@@ -6,6 +6,7 @@ import { NotificationPreferences } from '../../entities/notification-preferences
 import { PushDeviceToken } from '../../entities/push-device-token.entity';
 import { AlertEventSeverity, AlertEventType } from '../../entities/alert-event.entity';
 import i18n from '../../i18n';
+import { SupportedLanguage } from '../../common/utils/language.util';
 import { NOTIFICATION_REQUEST_TIMEOUT_MS } from '../../config/notification-timeout.config';
 import { withTimeout } from '../../common/utils/with-timeout.util';
 

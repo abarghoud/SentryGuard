@@ -27,6 +27,15 @@ describe('Language Utilities', () => {
       expect(extractPreferredLanguage('da-DK')).toBe('da');
     });
 
+    it('should map Norwegian Bokmål and Nynorsk tags to "no"', () => {
+      expect(extractPreferredLanguage('nb-NO')).toBe('no');
+      expect(extractPreferredLanguage('nb')).toBe('no');
+      expect(extractPreferredLanguage('nn-NO')).toBe('no');
+      expect(
+        extractPreferredLanguage('nb-NO,nb;q=0.9,en-US;q=0.8,en;q=0.7')
+      ).toBe('no');
+    });
+
     it('should return "en" for unsupported languages', () => {
       expect(extractPreferredLanguage('ja-JP')).toBe('en');
       expect(extractPreferredLanguage('pt-BR')).toBe('en');
@@ -50,6 +59,10 @@ describe('Language Utilities', () => {
     it('should respect quality values', () => {
       expect(extractPreferredLanguage('en;q=0.5,fr;q=0.9')).toBe('fr');
       expect(extractPreferredLanguage('fr;q=0.3,en;q=0.8')).toBe('en');
+    });
+
+    it('should exclude languages with zero quality', () => {
+      expect(extractPreferredLanguage('fr,de;q=0,en;q=0.8')).toBe('en');
     });
   });
 

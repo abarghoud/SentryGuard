@@ -15,8 +15,15 @@ import sv from '../locales/sv.json';
 export const supportedLanguages = ['en', 'fr', 'de', 'nl', 'no', 'es', 'it', 'sv', 'da'] as const;
 export type SupportedLanguage = (typeof supportedLanguages)[number];
 
+const languageAliases: Record<string, SupportedLanguage> = {
+  nb: 'no',
+  nn: 'no',
+};
+
 export function resolveSupportedLanguage(languageCode: string | null | undefined): SupportedLanguage {
-  return supportedLanguages.find((language) => language === languageCode) ?? 'en';
+  const primaryTag = languageCode?.toLowerCase().split('-')[0] ?? '';
+  const normalized = languageAliases[primaryTag] ?? primaryTag;
+  return supportedLanguages.find((language) => language === normalized) ?? 'en';
 }
 
 export function resolveDeviceLanguage(): SupportedLanguage {

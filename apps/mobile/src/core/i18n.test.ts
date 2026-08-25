@@ -33,6 +33,12 @@ describe('The resolveSupportedLanguage() function', () => {
     it('should return Swedish for sv', () => {
       expect(resolveSupportedLanguage('sv')).toBe('sv');
     });
+
+    it('should return Norwegian for Norwegian Bokmål and Nynorsk codes', () => {
+      expect(resolveSupportedLanguage('nb')).toBe('no');
+      expect(resolveSupportedLanguage('nb-NO')).toBe('no');
+      expect(resolveSupportedLanguage('nn')).toBe('no');
+    });
   });
 
   describe('When the language code is not supported', () => {
@@ -66,6 +72,14 @@ describe('The resolveDeviceLanguage() function', () => {
       mockGetLocales.mockReturnValue([{ languageCode: 'de' }]);
 
       expect(resolveDeviceLanguage()).toBe('de');
+    });
+  });
+
+  describe('When the device locale is Norwegian Bokmål', () => {
+    it('should return Norwegian', () => {
+      mockGetLocales.mockReturnValue([{ languageCode: 'nb' }]);
+
+      expect(resolveDeviceLanguage()).toBe('no');
     });
   });
 

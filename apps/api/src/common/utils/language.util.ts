@@ -23,6 +23,11 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
 
 const DEFAULT_LANGUAGE: SupportedLanguage = 'en';
 
+const LANGUAGE_ALIASES: Record<string, SupportedLanguage> = {
+  nb: 'no',
+  nn: 'no',
+};
+
 const TESLA_LOCALE_BY_LANGUAGE: Record<SupportedLanguage, string> = {
   en: 'en-US',
   fr: 'fr-FR',
@@ -47,8 +52,10 @@ export function extractPreferredLanguage(
     .map((lang) => {
       const [code, qValue] = lang.trim().split(';');
       const quality = qValue ? parseFloat(qValue.split('=')[1]) : 1.0;
-      return { code: code.split('-')[0].toLowerCase(), quality };
+      const primaryTag = code.split('-')[0].toLowerCase();
+      return { code: LANGUAGE_ALIASES[primaryTag] ?? primaryTag, quality };
     })
+    .filter((lang) => lang.quality > 0)
     .sort((a, b) => b.quality - a.quality);
 
   for (const lang of languages) {
