@@ -37,6 +37,7 @@ export function CopyLinkButton({
         return true;
       }
     } catch {
+      console.error('Error when trying to copy text to clipboard');
     }
 
     try {
