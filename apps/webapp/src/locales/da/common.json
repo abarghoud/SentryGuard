@@ -364,7 +364,7 @@
   "offensiveResponseOn": "Horn aktiveret",
   "offensiveResponseOff": "Horn deaktiveret",
   "offensiveResponseInfo": "Når en alarm udløses, vil køretøjet dytte eller prutte i et par sekunder.",
-  "Horn": "Horn ",
+  "Horn": "Horn",
   "Fart": "Prut",
   "offensiveResponseHonk": "Horn aktiveret ved indbrudsalarmer.",
   "offensiveResponseFart": "Prut (boombox) udløst ved indbrudsalarmer.",

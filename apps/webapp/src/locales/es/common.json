@@ -364,7 +364,7 @@
   "offensiveResponseOn": "Claxon activado",
   "offensiveResponseOff": "Claxon desactivado",
   "offensiveResponseInfo": "Cuando se activa una alerta, el vehículo hará sonar su claxon o un pedo durante unos segundos.",
-  "Horn": "Claxon ",
+  "Horn": "Claxon",
   "Fart": "Pedo",
   "offensiveResponseHonk": "Claxon activado para las alertas de intrusión.",
   "offensiveResponseFart": "Pedo (boombox) activado para las alertas de intrusión.",

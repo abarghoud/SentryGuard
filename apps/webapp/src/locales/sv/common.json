@@ -364,7 +364,7 @@
   "offensiveResponseOn": "Signalhorn aktiverat",
   "offensiveResponseOff": "Signalhorn inaktiverat",
   "offensiveResponseInfo": "När en varning utlöses tutar fordonet med signalhornet eller pruttar i några sekunder.",
-  "Horn": "Signalhorn ",
+  "Horn": "Signalhorn",
   "Fart": "Prutt",
   "offensiveResponseHonk": "Signalhorn aktiverat vid inbrottsvarningar.",
   "offensiveResponseFart": "Prutt (boombox) utlöses vid inbrottsvarningar.",
