@@ -3,6 +3,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 export enum AppTab {
   Dashboard = 'dashboard',
   Alerts = 'alerts',
+  Supporters = 'supporters',
   Settings = 'settings',
 }
 
@@ -22,6 +23,7 @@ export type MainStackParamList = {
 export type AppTabParamList = {
   Dashboard: undefined;
   Alerts: undefined;
+  Supporters: undefined;
   Settings: undefined;
 };
 

@@ -1,4 +1,14 @@
-export const LOCALE_ROUTES = ['/', '/faq', '/en', '/fr', '/en/faq', '/fr/faq'];
+export const LOCALE_ROUTES = [
+  '/',
+  '/faq',
+  '/supporters',
+  '/en',
+  '/fr',
+  '/en/faq',
+  '/fr/faq',
+  '/en/supporters',
+  '/fr/supporters',
+];
 
 export function isLocaleRoute(pathname: string): boolean {
   return LOCALE_ROUTES.includes(pathname);

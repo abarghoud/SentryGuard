@@ -58,7 +58,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
   const crispWebsiteId = resolveCrispWebsiteId();
   const discordUrl = resolveDiscordUrl();
   const supportEmail = resolveSupportEmail();
-  const hasSupportLinks = Boolean(faqUrl || crispWebsiteId || discordUrl || supportEmail);
+  const hasSupportLinks = Boolean(faqUrl || crispWebsiteId || supportEmail);
 
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const statusMessage =
@@ -154,6 +154,18 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         <ListRow title={t('settings.deleteAccount')} showChevron onPress={() => navigation.navigate('DeleteAccount')} />
       </ListSection>
 
+      {discordUrl ? (
+        <ListSection header={t('settings.communitySection')}>
+          <ListRow
+            icon="person.2.fill"
+            title={t('settings.discordCommunity')}
+            subtitle={t('settings.discordCommunitySubtitle')}
+            showChevron
+            onPress={() => void openDiscordCommunity()}
+          />
+        </ListSection>
+      ) : null}
+
       {hasSupportLinks ? (
         <ListSection header={t('settings.supportSection')}>
           {faqUrl ? (
@@ -172,15 +184,6 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
               subtitle={t('settings.contactSupportSubtitle')}
               showChevron
               onPress={() => void openCrispSupport(profile?.email, profile?.full_name)}
-            />
-          ) : null}
-          {discordUrl ? (
-            <ListRow
-              icon="person.2.fill"
-              title={t('settings.discordCommunity')}
-              subtitle={t('settings.discordCommunitySubtitle')}
-              showChevron
-              onPress={() => void openDiscordCommunity()}
             />
           ) : null}
           {supportEmail ? (

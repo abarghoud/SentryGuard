@@ -12,8 +12,11 @@ import ComparisonItem from '@/components/home/ComparisonItem';
 import StepItem from '@/components/home/StepItem';
 import { StoreBadges } from '@/components/home/StoreBadges';
 import { getAppStoreUrls } from '@/core/site';
+import { getSupportersData } from '@/core/buymeacoffee/buymeacoffee.service';
+import { SupportersSocialProof } from '@/components/home/SupportersSocialProof';
 
 export const dynamicParams = false;
+export const revalidate = 60;
 
 export function generateStaticParams() {
   return SUPPORTED_LOCALES.map((locale) => ({ locale }));
@@ -77,6 +80,7 @@ export default async function HomePage({ params }: HomePageProps) {
   const jsonLd = buildSoftwareApplicationJsonLd(locale, t('meta.home.description'));
   const { appStoreUrl, googlePlayUrl } = getAppStoreUrls();
   const hasStoreUrls = Boolean(appStoreUrl || googlePlayUrl);
+  const supportersData = await getSupportersData();
 
   return (
     <PublicLayout
@@ -100,7 +104,15 @@ export default async function HomePage({ params }: HomePageProps) {
               />
             </svg>
           ),
-          primary: true,
+          primary: false,
+        },
+        {
+          label: 'Supporters',
+          href: `/${locale}/supporters`,
+          icon: (
+            <span className="text-sm">❤️</span>
+          ),
+          primary: false,
         },
       ]}
     >
@@ -145,9 +157,15 @@ export default async function HomePage({ params }: HomePageProps) {
                 <TeslaLoginButton />
               )}
               <p className="text-sm text-gray-500 flex items-center">
-                 <svg className="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                  {t('Secure OAuth authentication powered by Tesla')}
-                </p>
+                <svg className="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {t('Secure OAuth authentication powered by Tesla')}
+              </p>
             </div>
           </div>
           <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-gray-100">
@@ -319,18 +337,22 @@ export default async function HomePage({ params }: HomePageProps) {
         </div>
       </div>
 
-      <div className="container mx-auto px-6 py-12 border-t border-gray-100">
-        <div className="max-w-3xl mx-auto text-center">
-          <h3 className="text-2xl font-semibold mb-4 text-gray-700">
-            {t('Support a Community Project')}
-          </h3>
-          <p className="text-gray-600 mb-4">
-            {t(
-              'SentryGuard is a 100% free, open-source project built by Tesla owners, for Tesla owners. It is maintained entirely through community donations.'
-            )}
-          </p>
-        </div>
-      </div>
+      <SupportersSocialProof
+        locale={locale}
+        supporters={supportersData.supporters}
+        totalCoffeesCount={supportersData.totalCoffeesCount}
+        title={t('Supported by our community')}
+        subtitle={t('Community & Supporters')}
+        description={t(
+          'SentryGuard is an independent, 100% free and open-source project. Thank you to the wonderful backers keeping our servers running!'
+        )}
+        viewAllText={t('View all supporters')}
+        supportCtaText={t('Buy us a coffee')}
+        statsSummary={t('✨ +{{count}} contributors • {{total}} coffees to keep the servers running', {
+          count: supportersData.supporters.length,
+          total: supportersData.totalCoffeesCount,
+        })}
+      />
     </PublicLayout>
   );
 }

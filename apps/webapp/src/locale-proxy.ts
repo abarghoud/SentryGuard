@@ -52,5 +52,15 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/faq', '/en', '/fr', '/en/faq', '/fr/faq'],
+  matcher: [
+    '/',
+    '/faq',
+    '/supporters',
+    '/en',
+    '/fr',
+    '/en/faq',
+    '/fr/faq',
+    '/en/supporters',
+    '/fr/supporters',
+  ],
 };

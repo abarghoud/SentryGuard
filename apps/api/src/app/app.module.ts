@@ -26,6 +26,7 @@ import { UserModule } from './user/user.module';
 import { RedirectModule } from './redirect/redirect.module';
 import { TeslaPublicKeyModule } from './tesla-public-key/tesla-public-key.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
+import { SupportersModule } from './supporters/supporters.module';
 import { CloudflareThrottlerGuard } from '../common/guards/cloudflare-throttler.guard';
 import { LogContextInterceptor } from '../common/interceptors/log-context.interceptor';
 import { TokenRevokedExceptionFilter } from '../common/filters/token-revoked-exception.filter';
@@ -70,6 +71,7 @@ import {
     OffensiveResponseModule,
     AlertsModule,
     NotificationsModule,
+    SupportersModule,
     ThrottlerModule.forRoot([getThrottleConfig()]),
   ],
   controllers: [AppController, HealthController],

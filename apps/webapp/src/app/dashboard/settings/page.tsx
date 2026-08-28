@@ -7,7 +7,7 @@ import { useConsentQuery } from '../../../features/consent/di';
 import { useRouter } from 'next/navigation';
 
 export default function SettingsPage() {
-  const { t } = useTranslation('common');
+  const { i18n, t } = useTranslation('common');
   const { query: authQuery, logoutMutation } = useAuthQuery();
   const profile = authQuery.data?.profile;
   const router = useRouter();
@@ -51,7 +51,7 @@ export default function SettingsPage() {
           </div>
           <div className="px-4 sm:px-6 py-5">
             <dl className="space-y-4 sm:space-y-5">
-              {profile?.full_name && (
+              {profile?.full_name ? (
                 <div>
                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     {t('Name')}
@@ -60,8 +60,8 @@ export default function SettingsPage() {
                     {profile.full_name}
                   </dd>
                 </div>
-              )}
-              {profile?.email && (
+              ) : null}
+              {profile?.email ? (
                 <div>
                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     {t('Email')}
@@ -70,8 +70,44 @@ export default function SettingsPage() {
                     {profile.email}
                   </dd>
                 </div>
-              )}
+              ) : null}
             </dl>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 overflow-hidden border border-amber-200/70 dark:border-amber-900/40">
+          <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-amber-200/70 dark:border-amber-900/40 bg-gradient-to-r from-amber-50 to-orange-50/30 dark:from-amber-950/20 dark:to-orange-950/10 flex items-center gap-2">
+            <span className="text-lg">❤️</span>
+            <h2 className="text-base sm:text-lg font-medium text-amber-950 dark:text-amber-300">
+              {t('Community Wall of Fame')}
+            </h2>
+          </div>
+          <div className="px-4 sm:px-6 py-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex-1">
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                  {t('Discover all community members and donors supporting SentryGuard or buy us a coffee.')}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <a
+                  href={`/${i18n.language || 'fr'}/supporters`}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                >
+                  <span>{t('View Wall of Fame')}</span>
+                  <span>→</span>
+                </a>
+                <a
+                  href="https://buymeacoffee.com/sentryguardorg"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 transition-colors"
+                >
+                  <span>☕</span>
+                  <span>{t('Buy us a coffee')}</span>
+                </a>
+              </div>
+            </div>
           </div>
         </div>
 

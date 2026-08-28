@@ -18,6 +18,7 @@ import { DashboardScreen } from '../../screens/DashboardScreen';
 import { DeleteAccountScreen } from '../../screens/DeleteAccountScreen';
 import { OnboardingScreen } from '../../screens/OnboardingScreen';
 import { SettingsScreen } from '../../screens/SettingsScreen';
+import { SupportersScreen } from '../../screens/SupportersScreen';
 import { TelegramSettingsScreen } from '../../screens/TelegramSettingsScreen';
 import { VehicleDetailScreen } from '../../screens/VehicleDetailScreen';
 
@@ -96,6 +97,14 @@ function AppTabs({ onLogout }: { onLogout(): Promise<void> }): JSX.Element {
           tabBarBadge: unreadAlertCount > 0 ? unreadAlertCount : undefined,
           tabBarBadgeStyle: { backgroundColor: colors.criticalFill, color: colors.onCritical },
           tabBarIcon: ({ color, size }) => <Icon name="bell.fill" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="Supporters"
+        component={SupportersScreen}
+        options={{
+          title: t('tabs.supporters'),
+          tabBarIcon: ({ color, size }) => <Icon name="cup.and.saucer.fill" color={color} size={size} />,
         }}
       />
       <Tabs.Screen

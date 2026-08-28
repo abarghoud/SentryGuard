@@ -109,6 +109,10 @@ export default function PublicLayout({
             <Link href={`/${locale}/faq`} className="hover:text-red-600 underline-offset-4 hover:underline">
               {t('FAQ')}
             </Link>
+            <span aria-hidden className="text-gray-300">·</span>
+            <Link href={`/${locale}/supporters`} className="hover:text-red-600 underline-offset-4 hover:underline">
+              {t('Supporters')}
+            </Link>
             {appStoreUrl ? (
               <>
                 <span aria-hidden className="text-gray-300">·</span>

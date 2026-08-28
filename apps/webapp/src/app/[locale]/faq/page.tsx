@@ -103,6 +103,12 @@ export default async function FAQPage({ params }: FaqPageProps) {
           href: `/${locale}`,
           primary: false,
         },
+        {
+          label: 'Supporters',
+          href: `/${locale}/supporters`,
+          icon: <span className="text-sm">❤️</span>,
+          primary: false,
+        },
       ]}
     >
       <script

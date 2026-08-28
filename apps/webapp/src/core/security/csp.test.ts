@@ -34,8 +34,12 @@ describe('The buildCspHeader() function', () => {
 
 describe('The isLocaleRoute() function', () => {
   describe('When the path is a public locale route', () => {
-    it('should return true', () => {
+    it('should return true for FAQ route', () => {
       expect(isLocaleRoute('/en/faq')).toBe(true);
+    });
+
+    it('should return true for supporters route', () => {
+      expect(isLocaleRoute('/en/supporters')).toBe(true);
     });
   });
 
