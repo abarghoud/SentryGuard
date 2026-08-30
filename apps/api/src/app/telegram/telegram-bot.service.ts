@@ -1,11 +1,11 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Telegraf, Context } from 'telegraf';
 import type { Request, Response } from 'express';
 import { TelegramMessageOptions } from './telegram.types';
 import { TelegramMessageHelper } from './telegram-message.helper';
 
 @Injectable()
-export class TelegramBotService implements OnModuleInit {
+export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(TelegramBotService.name);
   private bot: Telegraf<Context> | null = null;
   private readonly botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -35,11 +35,19 @@ export class TelegramBotService implements OnModuleInit {
       } else {
         await this.setupWebhookMode();
       }
-
-      process.once('SIGINT', () => this.bot?.stop('SIGINT'));
-      process.once('SIGTERM', () => this.bot?.stop('SIGTERM'));
     } catch (error) {
       this.logger.error('❌ Telegram bot initialization error:', error);
+    }
+  }
+
+  public onModuleDestroy(): void {
+    if (this.bot && this.mode === 'polling') {
+      try {
+        this.bot.stop('SIGTERM');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`Error stopping Telegram bot: ${message}`);
+      }
     }
   }
 

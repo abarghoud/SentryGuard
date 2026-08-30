@@ -1,5 +1,5 @@
 ARG TARGETPLATFORM
-FROM --platform=$TARGETPLATFORM tesla/fleet-telemetry:v0.7.2 AS fleet-binary
+FROM --platform=$TARGETPLATFORM tesla/fleet-telemetry:v0.9.4 AS fleet-binary
 
 FROM --platform=$TARGETPLATFORM ubuntu:22.04
 
