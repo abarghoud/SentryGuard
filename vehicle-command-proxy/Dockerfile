@@ -2,7 +2,7 @@ ARG TARGETPLATFORM
 FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS vehicle-command-binary
 RUN apk add --no-cache git
 WORKDIR /go/src/github.com/teslamotors/vehicle-command
-RUN git clone https://github.com/abarghoud/vehicle-command-with-boombox.git . && git checkout e17c7d16919e23a0cb2f103e1ffdd3c6fbac27b9
+RUN git clone https://github.com/abarghoud/vehicle-command-with-boombox.git . && git checkout 0c73edf421b98abd26c7210edb767bf88ee9538a
 ARG TARGETOS TARGETARCH
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH CGO_ENABLED=0 go build -ldflags="-s -w" -o /usr/local/bin/tesla-http-proxy ./cmd/tesla-http-proxy
 
