@@ -38,8 +38,11 @@ describe('The supporter-sanitizer utility', () => {
       });
     });
 
-    describe('When supporter name is generic or offensive', () => {
+    describe('When supporter name is generic, empty, or offensive', () => {
       it('should return Anonyme', () => {
+        expect(sanitizeName('   ')).toBe('Anonyme');
+        expect(sanitizeName('""')).toBe('Anonyme');
+        expect(sanitizeName("''")).toBe('Anonyme');
         expect(sanitizeName('Someone')).toBe('Anonyme');
         expect(sanitizeName('Anonymous')).toBe('Anonyme');
         expect(sanitizeName('https://spam.com')).toBe('Anonyme');

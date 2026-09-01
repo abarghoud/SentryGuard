@@ -45,6 +45,7 @@ export function sanitizeName(rawName?: string | null, isPrivate = false): string
   const trimmed = rawName.replace(/^["']|["']$/g, '').trim();
 
   if (
+    !trimmed ||
     trimmed.includes('@') ||
     isProfaneOrSpam(trimmed) ||
     trimmed.toLowerCase() === 'someone' ||
