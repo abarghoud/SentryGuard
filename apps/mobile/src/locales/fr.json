@@ -145,6 +145,8 @@
   "supporters.bannerDescription": "SentryGuard est propulsé et maintenu grâce à la générosité et au soutien de ses contributeurs.",
   "supporters.monthlyContributors": "Contributeurs mensuels",
   "supporters.monthlyBadge": "Membre mensuel",
+  "supporters.member": "Membre",
+  "supporters.monthlyCount": "x{{count}}/mois",
   "supporters.donations": "Donateurs & Contributeurs",
   "supporters.emptyTitle": "Soyez le premier supporter !",
   "supporters.emptyDescription": "Aidez à financer les coûts d'infrastructure et votre pseudo apparaîtra ici.",

@@ -43,22 +43,19 @@ export function sanitizeName(rawName?: string | null, isPrivate = false): string
   }
 
   const trimmed = rawName.replace(/^["']|["']$/g, '').trim();
-  const withoutEmail = trimmed.includes('@') && !trimmed.startsWith('@')
-    ? trimmed.split('@')[0]
-    : trimmed;
 
   if (
-    !withoutEmail ||
-    isProfaneOrSpam(withoutEmail) ||
-    withoutEmail.toLowerCase() === 'someone' ||
-    withoutEmail.toLowerCase() === 'anonymous' ||
-    withoutEmail.toLowerCase() === 'anonyme' ||
-    withoutEmail.toLowerCase() === 'supporter'
+    trimmed.includes('@') ||
+    isProfaneOrSpam(trimmed) ||
+    trimmed.toLowerCase() === 'someone' ||
+    trimmed.toLowerCase() === 'anonymous' ||
+    trimmed.toLowerCase() === 'anonyme' ||
+    trimmed.toLowerCase() === 'supporter'
   ) {
     return 'Anonyme';
   }
 
-  return withoutEmail.length > 30 ? `${withoutEmail.slice(0, 27)}...` : withoutEmail;
+  return trimmed.length > 30 ? `${trimmed.slice(0, 27)}...` : trimmed;
 }
 
 export function sanitizeMessage(rawMessage?: string | null, isPrivate = false): string | undefined {

@@ -20,7 +20,6 @@ export function SupportersScreen(): JSX.Element {
     queryFn: () => getSupportersUseCase.execute(),
     queryKey: ['supporters'],
     staleTime: 30000,
-    refetchInterval: 60000,
   });
 
   const data = supportersQuery.data;
@@ -41,8 +40,9 @@ export function SupportersScreen(): JSX.Element {
       showsVerticalScrollIndicator={true}
       refreshControl={
         <RefreshControl
-          refreshing={supportersQuery.isFetching}
+          refreshing={supportersQuery.isRefetching}
           onRefresh={() => void supportersQuery.refetch()}
+          tintColor={colors.secondaryLabel}
         />
       }
     >
@@ -57,8 +57,8 @@ export function SupportersScreen(): JSX.Element {
 
       <Surface style={styles.bannerCard}>
         <View style={styles.bannerHeader}>
-          <View style={[styles.iconCircle, { backgroundColor: '#FEF3C7' }]}>
-            <Icon name="heart.fill" size={20} color="#D97706" />
+          <View style={[styles.iconCircle, { backgroundColor: colors.warningSurface }]}>
+            <Icon name="heart.fill" size={20} color={colors.warningFill} />
           </View>
           <View style={styles.bannerText}>
             <AppText variant={TextVariant.Headline}>
@@ -74,7 +74,7 @@ export function SupportersScreen(): JSX.Element {
       {supporters.length > 0 ? (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Icon name="cup.and.saucer.fill" size={18} color="#DC2626" />
+            <Icon name="cup.and.saucer.fill" size={18} color={colors.accent} />
             <AppText variant={TextVariant.Title3}>
               {t('supporters.donations')}
             </AppText>

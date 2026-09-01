@@ -1,4 +1,5 @@
 import type { JSX } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { radius, spacing } from '../../../core/design/metrics';
@@ -13,6 +14,7 @@ interface SupporterCardProps {
 }
 
 export function SupporterCard({ language, supporter }: SupporterCardProps): JSX.Element {
+  const { t } = useTranslation();
   const colors = useThemeColors();
   const isVip = supporter.coffees >= 10;
   const initial = (supporter.name || 'A').charAt(0).toUpperCase();
@@ -21,7 +23,7 @@ export function SupporterCard({ language, supporter }: SupporterCardProps): JSX.
     <Surface
       style={[
         styles.card,
-        isVip ? { borderColor: '#EAB308', borderWidth: 1.5 } : undefined,
+        isVip ? { borderColor: colors.warningBorder, borderWidth: 1.5 } : undefined,
       ]}
     >
       <View style={styles.header}>
@@ -29,13 +31,13 @@ export function SupporterCard({ language, supporter }: SupporterCardProps): JSX.
           style={[
             styles.avatar,
             {
-              backgroundColor: isVip ? '#FEF08A' : colors.secondaryFill,
-              borderColor: isVip ? '#F59E0B' : colors.separator,
+              backgroundColor: isVip ? colors.warningSurface : colors.secondaryFill,
+              borderColor: isVip ? colors.warningBorder : colors.separator,
             },
           ]}
         >
           {isVip ? (
-            <Icon name="crown.fill" size={20} color="#B45309" />
+            <Icon name="crown.fill" size={20} color={colors.warningFill} />
           ) : (
             <AppText
               variant={TextVariant.Headline}
@@ -56,8 +58,19 @@ export function SupporterCard({ language, supporter }: SupporterCardProps): JSX.
               {supporter.name}
             </AppText>
             {isVip ? (
-              <View style={styles.vipPill}>
-                <AppText variant={TextVariant.Caption2} style={styles.vipPillText}>
+              <View
+                style={[
+                  styles.vipPill,
+                  {
+                    backgroundColor: colors.warningSurface,
+                    borderColor: colors.warningBorder,
+                  },
+                ]}
+              >
+                <AppText
+                  variant={TextVariant.Caption2}
+                  style={[styles.vipPillText, { color: colors.warningFill }]}
+                >
                   VIP
                 </AppText>
               </View>
@@ -73,20 +86,22 @@ export function SupporterCard({ language, supporter }: SupporterCardProps): JSX.
               style={[
                 styles.badge,
                 {
-                  backgroundColor: '#FEF3C7',
-                  borderColor: '#FCD34D',
+                  backgroundColor: colors.warningSurface,
+                  borderColor: colors.warningBorder,
                 },
               ]}
             >
-              <Icon name="star.fill" size={11} color="#B45309" />
+              <Icon name="star.fill" size={11} color={colors.warningFill} />
               <AppText
                 variant={TextVariant.Caption2}
                 style={{
-                  color: '#B45309',
+                  color: colors.warningFill,
                   fontWeight: '700',
                 }}
               >
-                {supporter.monthlyCoffees ? `x${supporter.monthlyCoffees}/mo` : 'Membre'}
+                {supporter.monthlyCoffees
+                  ? t('supporters.monthlyCount', { count: supporter.monthlyCoffees })
+                  : t('supporters.member')}
               </AppText>
             </View>
           ) : null}
@@ -94,20 +109,20 @@ export function SupporterCard({ language, supporter }: SupporterCardProps): JSX.
             style={[
               styles.badge,
               {
-                backgroundColor: isVip ? '#FEF3C7' : '#FEE2E2',
-                borderColor: isVip ? '#FCD34D' : '#FECACA',
+                backgroundColor: isVip ? colors.warningSurface : colors.fill,
+                borderColor: isVip ? colors.warningBorder : colors.separator,
               },
             ]}
           >
             <Icon
               name="cup.and.saucer.fill"
               size={13}
-              color={isVip ? '#B45309' : '#DC2626'}
+              color={isVip ? colors.warningFill : colors.accent}
             />
             <AppText
               variant={TextVariant.Subhead}
               style={{
-                color: isVip ? '#B45309' : '#DC2626',
+                color: isVip ? colors.warningFill : colors.accent,
                 fontWeight: '700',
               }}
             >
@@ -189,13 +204,12 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   vipPill: {
-    backgroundColor: '#FEF08A',
     borderRadius: 4,
+    borderWidth: 1,
     paddingHorizontal: spacing.xs,
     paddingVertical: 2,
   },
   vipPillText: {
-    color: '#854D0E',
     fontWeight: '700',
   },
 });

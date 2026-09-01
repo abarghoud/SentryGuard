@@ -7,6 +7,7 @@ import { SupporterCard } from '@/components/supporters/SupporterCard';
 import { InfrastructureCostBanner } from '@/components/supporters/InfrastructureCostBanner';
 import { EmptySupportersState } from '@/components/supporters/EmptySupportersState';
 
+export const dynamicParams = false;
 export const revalidate = 60;
 
 export function generateStaticParams() {

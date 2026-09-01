@@ -48,8 +48,8 @@ describe('The supporter-sanitizer utility', () => {
     });
 
     describe('When supporter name is an email address', () => {
-      it('should strip the email domain', () => {
-        expect(sanitizeName('john.doe@example.com')).toBe('john.doe');
+      it('should return Anonyme to protect privacy', () => {
+        expect(sanitizeName('john.doe@example.com')).toBe('Anonyme');
       });
     });
 
