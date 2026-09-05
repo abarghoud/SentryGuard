@@ -31,6 +31,7 @@ export function useSettings() {
   const { i18n, t } = useTranslation();
   const [preferenceMessage, setPreferenceMessage] = useState<string | null>(null);
   const [isDndAccessModalOpen, setIsDndAccessModalOpen] = useState(false);
+  const [isSoundModalOpen, setIsSoundModalOpen] = useState(false);
   const { isTokenResolved, pushToken, setPushToken } = usePushToken();
   useTelegramStatusSync();
   const hasRegisteredPushToken = useRef(false);
@@ -162,6 +163,7 @@ export function useSettings() {
 
   return {
     isDndAccessModalOpen,
+    isSoundModalOpen,
     isTelegramLinked: telegramStatusQuery.data?.linked === true,
     languageMutation,
     languageQuery,
@@ -171,6 +173,7 @@ export function useSettings() {
     preferencesQuery,
     profile: profileQuery.data?.profile,
     setIsDndAccessModalOpen,
+    setIsSoundModalOpen,
     updatePreference,
   };
 }

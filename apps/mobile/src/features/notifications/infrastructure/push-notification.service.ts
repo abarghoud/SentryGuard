@@ -6,6 +6,7 @@ import { Platform } from 'react-native';
 
 import { i18n } from '../../../core/i18n';
 import { lightColors } from '../../../core/theme';
+import { ALERT_SOUNDS } from '../domain/alert-sounds';
 import { DndPolicyAccessRequirements } from './dnd-policy-access';
 
 export interface PushNotificationServiceRequirements {
@@ -123,6 +124,13 @@ export class PushNotificationService implements PushNotificationServiceRequireme
 
   private async configureAndroidChannels(): Promise<void> {
     await Promise.all([
+      this.configureDefaultAndroidChannels(),
+      this.configureSoundAndroidChannels(),
+    ]);
+  }
+
+  private async configureDefaultAndroidChannels(): Promise<void> {
+    await Promise.all([
       Notifications.setNotificationChannelAsync(this.notificationChannelId, {
         importance: Notifications.AndroidImportance.HIGH,
         lightColor: lightColors.systemGreen,
@@ -131,6 +139,34 @@ export class PushNotificationService implements PushNotificationServiceRequireme
       }),
       this.configureCriticalNotificationChannel(),
     ]);
+  }
+
+  private async configureSoundAndroidChannels(): Promise<void> {
+    await Promise.all([
+      ...this.buildStandardSoundChannels(),
+      ...this.buildCriticalSoundChannels(),
+    ]);
+  }
+
+  private buildStandardSoundChannels(): Promise<Notifications.NotificationChannel | null>[] {
+    return ALERT_SOUNDS.map((sound) =>
+      Notifications.setNotificationChannelAsync(`sentryguard-alerts-${sound.id.replace('.wav', '')}`, {
+        importance: Notifications.AndroidImportance.HIGH,
+        lightColor: lightColors.systemGreen,
+        name: `${i18n.t('notifications.channelName')} (${i18n.t(sound.labelKey)})`,
+        sound: sound.id,
+        vibrationPattern: [0, 250, 250, 250],
+      })
+    );
+  }
+
+  private buildCriticalSoundChannels(): Promise<boolean>[] {
+    return ALERT_SOUNDS.map((sound) =>
+      this.dndPolicyAccess.ensureCriticalNotificationChannel(
+        `sentryguard-critical-${sound.id.replace('.wav', '')}`,
+        `${i18n.t('notifications.criticalChannelName')} (${i18n.t(sound.labelKey)})`
+      )
+    );
   }
 
   private async configureCriticalNotificationChannel(): Promise<void> {
@@ -146,11 +182,21 @@ export class PushNotificationService implements PushNotificationServiceRequireme
 
   private async resolvePermissionStatus(): Promise<string> {
     const permissions = await Notifications.getPermissionsAsync();
-    const requestedPermissions = permissions.granted
-      ? permissions
-      : await Notifications.requestPermissionsAsync();
+    const needsCriticalPrompt = Platform.OS === 'ios' && !permissions.ios?.allowsCriticalAlerts;
 
-    return requestedPermissions.status;
+    if (!permissions.granted || needsCriticalPrompt) {
+      const requestedPermissions = await Notifications.requestPermissionsAsync({
+        ios: {
+          allowAlert: true,
+          allowBadge: true,
+          allowSound: true,
+          allowCriticalAlerts: true,
+        },
+      });
+      return requestedPermissions.status;
+    }
+
+    return permissions.status;
   }
 
   private async getExpoPushToken(): Promise<string | null> {

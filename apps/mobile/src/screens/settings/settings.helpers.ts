@@ -10,6 +10,7 @@ import { dndPolicyAccess, pushNotificationService, registerPushTokenUseCase } fr
 import { NotificationPreferences } from '../../features/notifications/domain/entities';
 
 export const defaultPreferences: NotificationPreferences = {
+  alert_sound: 'sentry_siren.wav',
   critical_alerts_enabled: false,
   critical_only: false,
   push_enabled: false,

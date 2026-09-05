@@ -12,6 +12,9 @@
       "icon": "./assets/icon.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.sentryguard.mobile",
+      "entitlements": {
+        "com.apple.developer.usernotifications.critical-alerts": true
+      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
@@ -65,7 +68,14 @@
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#dc2626"
+          "color": "#dc2626",
+          "sounds": [
+            "./assets/sounds/sentry_siren.wav",
+            "./assets/sounds/cyber_pulse.wav",
+            "./assets/sounds/tesla_horn.wav",
+            "./assets/sounds/danger_sonar.wav",
+            "./assets/sounds/klaxon_alarm.wav"
+          ]
         }
       ],
       [
