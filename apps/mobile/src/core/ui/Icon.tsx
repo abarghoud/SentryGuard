@@ -49,6 +49,11 @@ const ioniconsFallback: Record<string, keyof typeof Ionicons.glyphMap> = {
   'link': 'link',
   'eye': 'eye-outline',
   'eye.slash': 'eye-off-outline',
+  'play.fill': 'play',
+  'stop.fill': 'stop',
+  'speaker.wave.2.fill': 'volume-high',
+  'checkmark': 'checkmark',
+  'checkmark.circle.fill': 'checkmark-circle',
 };
 
 const useNativeSymbols = Platform.OS === 'ios';

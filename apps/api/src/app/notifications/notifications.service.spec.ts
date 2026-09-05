@@ -26,6 +26,17 @@ describe('The NotificationsService class', () => {
 
   beforeEach(() => {
     mockPreferencesRepository = mock<Repository<NotificationPreferences>>();
+    mockPreferencesRepository.findOne.mockResolvedValue({
+      alert_sound: 'sentry_siren.wav',
+      telegram_enabled: true,
+      userId: fakeUserId,
+    } as NotificationPreferences);
+    mockPreferencesRepository.create.mockReturnValue({
+      alert_sound: 'sentry_siren.wav',
+      telegram_enabled: true,
+      userId: fakeUserId,
+    } as NotificationPreferences);
+    mockPreferencesRepository.save.mockImplementation((pref) => Promise.resolve(pref as NotificationPreferences));
     mockPushDeviceTokenRepository = mock<Repository<PushDeviceToken>>();
     mockPushDeviceTokenRepository.find.mockResolvedValue([createDevice()]);
     fetchMock = jest.fn().mockResolvedValue({
@@ -274,6 +285,40 @@ describe('The NotificationsService class', () => {
       it('should keep push disabled on the saved device', () => {
         expect(mockPushDeviceTokenRepository.save).toHaveBeenCalledWith(
           expect.objectContaining({ push_enabled: false })
+        );
+      });
+    });
+  });
+
+  describe('The getPreferences() method', () => {
+    describe('When preferences exist for the user', () => {
+      it('should return the alert_sound from preferences', async () => {
+        mockPreferencesRepository.findOne.mockResolvedValue({
+          alert_sound: 'tesla_horn.wav',
+          telegram_enabled: true,
+          userId: fakeUserId,
+        } as NotificationPreferences);
+
+        const result = await service.getPreferences(fakeUserId);
+
+        expect(result.alert_sound).toBe('tesla_horn.wav');
+      });
+    });
+  });
+
+  describe('The updatePreferences() method', () => {
+    describe('When updating the alert sound', () => {
+      it('should persist the new alert_sound', async () => {
+        mockPreferencesRepository.findOne.mockResolvedValue({
+          alert_sound: 'sentry_siren.wav',
+          telegram_enabled: true,
+          userId: fakeUserId,
+        } as NotificationPreferences);
+
+        await service.updatePreferences(fakeUserId, { alert_sound: 'cyber_pulse.wav' });
+
+        expect(mockPreferencesRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({ alert_sound: 'cyber_pulse.wav' })
         );
       });
     });
