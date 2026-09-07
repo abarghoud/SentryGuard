@@ -3,8 +3,6 @@ import * as Sharing from 'expo-sharing';
 import * as WebBrowser from 'expo-web-browser';
 import { Alert, Platform, Share } from 'react-native';
 
-import { virtualKeyStore } from '../../core/api';
-import { buildAppUrl } from '../../core/config/app-domain';
 import { appLogger, buildLogsExportFileName, writeLogsExportFile } from '../../core/logging';
 import { dndPolicyAccess, pushNotificationService, registerPushTokenUseCase } from '../../features/notifications/di';
 import { NotificationPreferences } from '../../features/notifications/domain/entities';
@@ -91,23 +89,39 @@ export function resolveSettingsError(error: unknown, t: (key: string) => string)
   return error instanceof Error ? error.message : t('settings.error');
 }
 
-const fallbackDomain = 'sentryguard.org';
+const defaultLegalBaseUrl = 'https://sentryguard.org';
 
-function resolveLegalLocalePath(locale: string): string {
+export function resolveLegalBaseUrl(): string {
+  const customUrl = process.env.EXPO_PUBLIC_WEBAPP_URL?.trim();
+  if (customUrl && /^https?:\/\//i.test(customUrl)) {
+    return customUrl.replace(/\/+$/, '');
+  }
+
+  return defaultLegalBaseUrl;
+}
+
+export function resolveLegalLocalePath(locale: string): string {
   return locale.startsWith('fr') ? 'fr' : 'en';
 }
 
-function buildLegalUrl(locale: string, page: 'privacy' | 'terms'): string {
-  const domain = virtualKeyStore.resolveDomain() || fallbackDomain;
-  return buildAppUrl(domain, `/${resolveLegalLocalePath(locale)}/legal/${page}`);
+export function buildLegalUrl(locale: string, page: 'privacy' | 'terms'): string {
+  return `${resolveLegalBaseUrl()}/${resolveLegalLocalePath(locale)}/legal/${page}`;
+}
+
+async function openExternalWebPage(url: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    globalThis.open?.(url, '_blank');
+    return;
+  }
+  await WebBrowser.openBrowserAsync(url);
 }
 
 export async function openPrivacyPolicy(locale: string): Promise<void> {
-  await Linking.openURL(buildLegalUrl(locale, 'privacy'));
+  await openExternalWebPage(buildLegalUrl(locale, 'privacy'));
 }
 
 export async function openTermsOfService(locale: string): Promise<void> {
-  await Linking.openURL(buildLegalUrl(locale, 'terms'));
+  await openExternalWebPage(buildLegalUrl(locale, 'terms'));
 }
 
 export function resolveFaqUrl(): string | undefined {

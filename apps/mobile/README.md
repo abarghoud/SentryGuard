@@ -161,6 +161,10 @@ Support email address for direct email inquiries.
 
 URL to the SentryGuard FAQ page (e.g. `https://sentryguard.org/faq`).
 
+### `EXPO_PUBLIC_WEBAPP_URL`
+
+Base URL to the SentryGuard web application for legal pages (defaults to `https://sentryguard.org`).
+
 ## Architecture
 
 ### App Initialization

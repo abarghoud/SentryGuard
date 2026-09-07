@@ -14,9 +14,6 @@ jest.mock('react-native', () => ({
   Platform: { OS: 'android' },
   Share: { share: jest.fn(() => Promise.resolve()) },
 }));
-jest.mock('../../core/api', () => ({
-  virtualKeyStore: { resolveDomain: jest.fn(() => '') },
-}));
 jest.mock('../../core/logging', () => ({
   appLogger: {
     info: jest.fn(),
@@ -44,14 +41,19 @@ import * as WebBrowser from 'expo-web-browser';
 
 import {
   buildCrispChatUrl,
+  buildLegalUrl,
   openCrispSupport,
   openDiscordCommunity,
   openEmailSupport,
   openFaq,
+  openPrivacyPolicy,
+  openTermsOfService,
   resolveAvailablePushToken,
   resolveCrispWebsiteId,
   resolveDiscordUrl,
   resolveFaqUrl,
+  resolveLegalBaseUrl,
+  resolveLegalLocalePath,
   resolveSupportEmail,
 } from './settings.helpers';
 
@@ -324,6 +326,103 @@ describe('The openFaq() function', () => {
       process.env.EXPO_PUBLIC_FAQ_URL = 'https://sentryguard.org/faq';
       await openFaq();
       expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith('https://sentryguard.org/faq');
+    });
+  });
+});
+
+describe('The resolveLegalBaseUrl() function', () => {
+  const originalEnv = process.env.EXPO_PUBLIC_WEBAPP_URL;
+
+  afterEach(() => {
+    process.env.EXPO_PUBLIC_WEBAPP_URL = originalEnv;
+  });
+
+  describe('When EXPO_PUBLIC_WEBAPP_URL is not configured', () => {
+    it('should return the default domain', () => {
+      delete process.env.EXPO_PUBLIC_WEBAPP_URL;
+      expect(resolveLegalBaseUrl()).toBe('https://sentryguard.org');
+    });
+  });
+
+  describe('When EXPO_PUBLIC_WEBAPP_URL is configured with trailing slashes', () => {
+    it('should strip trailing slashes', () => {
+      process.env.EXPO_PUBLIC_WEBAPP_URL = 'https://custom.sentryguard.org///';
+      expect(resolveLegalBaseUrl()).toBe('https://custom.sentryguard.org');
+    });
+  });
+
+  describe('When EXPO_PUBLIC_WEBAPP_URL has an invalid scheme', () => {
+    it('should fallback to default domain', () => {
+      process.env.EXPO_PUBLIC_WEBAPP_URL = 'not-a-valid-url';
+      expect(resolveLegalBaseUrl()).toBe('https://sentryguard.org');
+    });
+  });
+});
+
+describe('The resolveLegalLocalePath() function', () => {
+  describe('When locale starts with fr', () => {
+    it('should return fr', () => {
+      expect(resolveLegalLocalePath('fr-FR')).toBe('fr');
+    });
+  });
+
+  describe('When locale starts with en', () => {
+    it('should return en', () => {
+      expect(resolveLegalLocalePath('en-US')).toBe('en');
+    });
+  });
+
+  describe('When locale is unsupported', () => {
+    it('should default to en', () => {
+      expect(resolveLegalLocalePath('de')).toBe('en');
+    });
+  });
+});
+
+describe('The buildLegalUrl() function', () => {
+  const originalEnv = process.env.EXPO_PUBLIC_WEBAPP_URL;
+
+  afterEach(() => {
+    process.env.EXPO_PUBLIC_WEBAPP_URL = originalEnv;
+  });
+
+  describe('When building privacy url with fr locale', () => {
+    it('should return the correct localized privacy url', () => {
+      delete process.env.EXPO_PUBLIC_WEBAPP_URL;
+      expect(buildLegalUrl('fr', 'privacy')).toBe('https://sentryguard.org/fr/legal/privacy');
+    });
+  });
+
+  describe('When building terms url with en locale', () => {
+    it('should return the correct localized terms url', () => {
+      delete process.env.EXPO_PUBLIC_WEBAPP_URL;
+      expect(buildLegalUrl('en', 'terms')).toBe('https://sentryguard.org/en/legal/terms');
+    });
+  });
+});
+
+describe('The openPrivacyPolicy() function', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('When invoked on native', () => {
+    it('should open in-app browser with privacy policy url', async () => {
+      await openPrivacyPolicy('fr');
+      expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith('https://sentryguard.org/fr/legal/privacy');
+    });
+  });
+});
+
+describe('The openTermsOfService() function', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('When invoked on native', () => {
+    it('should open in-app browser with terms url', async () => {
+      await openTermsOfService('en');
+      expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith('https://sentryguard.org/en/legal/terms');
     });
   });
 });
