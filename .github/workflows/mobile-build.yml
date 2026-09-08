@@ -33,6 +33,7 @@ on:
       - 'apps/mobile/ios/**'
       - 'apps/mobile/modules/**'
       - '.github/workflows/mobile-build.yml'
+      - 'scripts/bump-mobile-version.js'
       - 'yarn.lock'
   workflow_dispatch:
     inputs:
@@ -45,6 +46,16 @@ on:
           - preview
           - production-preview
           - production
+      bump:
+        description: 'Version bump'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - none
 
 permissions:
   contents: read
@@ -162,13 +173,59 @@ jobs:
             echo "::warning title=EXPO_TOKEN missing::Signed mobile builds skipped: the EXPO_TOKEN secret is not set. Add it in Settings -> Secrets and variables -> Actions to enable them."
           fi
 
+  bump-version:
+    name: Bump Version & Tag
+    needs: guard
+    if: github.event_name == 'workflow_dispatch' && needs.guard.outputs.has_token == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      commit_sha: ${{ steps.bump.outputs.commit_sha }}
+      version: ${{ steps.bump.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Bump mobile version
+        id: bump
+        run: |
+          if [ "${{ inputs.bump }}" != "none" ]; then
+            NEW_VERSION=$(node scripts/bump-mobile-version.js ${{ inputs.bump }})
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            if [ -n "$(git status --porcelain)" ]; then
+              git commit -am "chore(mobile): bump version to ${NEW_VERSION} [skip ci]"
+              git tag "mobile-v${NEW_VERSION}"
+              git push origin HEAD:${{ github.ref_name }}
+              git push origin "mobile-v${NEW_VERSION}"
+            fi
+            COMMIT_SHA=$(git rev-parse HEAD)
+            echo "commit_sha=${COMMIT_SHA}" >> "$GITHUB_OUTPUT"
+            echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Mobile Version Bumped::Version bumped to ${NEW_VERSION} (tag: mobile-v${NEW_VERSION})"
+          else
+            CURRENT_VERSION=$(node -p "require('./apps/mobile/app.json').expo.version")
+            echo "commit_sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            echo "version=${CURRENT_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "::notice title=No Version Bump::Using current version ${CURRENT_VERSION}"
+          fi
+
   build-android:
     name: Build Android (signed)
-    needs: guard
+    needs: [guard, bump-version]
     if: needs.guard.outputs.has_token == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump-version.outputs.commit_sha }}
 
       - name: Enable Corepack
         run: corepack enable
@@ -206,11 +263,13 @@ jobs:
 
   build-ios:
     name: Build iOS (signed, store)
-    needs: guard
+    needs: [guard, bump-version]
     if: needs.guard.outputs.has_token == 'true'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump-version.outputs.commit_sha }}
 
       - name: Select latest Xcode version
         uses: maxim-lobanov/setup-xcode@v1
