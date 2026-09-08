@@ -49,6 +49,13 @@ describe('The TelegramFailureHandlerService class', () => {
       });
     });
 
+    describe('When error message contains "user is deactivated"', () => {
+      it('should return true', () => {
+        const error = new Error('Forbidden: user is deactivated');
+        expect(service.canHandle(error)).toBe(true);
+      });
+    });
+
     describe('When error message uses mixed case', () => {
       it('should return true', () => {
         const error = new Error('Bot Was Blocked By The User');
