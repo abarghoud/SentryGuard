@@ -1,6 +1,6 @@
 {
   "name": "@tesla-guard/mobile",
-  "version": "0.0.1",
+  "version": "1.0.1",
   "private": true,
   "dependencies": {
     "@expo/vector-icons": "*",
