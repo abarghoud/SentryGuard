@@ -12,6 +12,7 @@ import { ThemeMode, useTheme } from '../core/theme';
 import { AppSwitch, AppText, GlassButton, GlassButtonVariant, ListRow, ListSection, SegmentedControl, Surface } from '../core/ui';
 import { UserLanguage } from '../features/user/domain/entities';
 import { resolveTelegramStatusKey } from './telegram-settings/telegram-settings.helpers';
+import { resolveAlertSound } from '../features/notifications/domain/alert-sounds';
 import {
   clearDebugLogs,
   openAndroidDoNotDisturbAccessSettings,
@@ -28,6 +29,7 @@ import {
   resolveSupportEmail,
   shareDebugLogs,
 } from './settings/settings.helpers';
+import { SoundSelectorModal } from './settings/SoundSelectorModal';
 import { useSettings } from './settings/use-settings';
 
 interface SettingsScreenProps {
@@ -40,6 +42,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
   const topInset = useScreenTopInset();
   const {
     isDndAccessModalOpen,
+    isSoundModalOpen,
     isTelegramLinked,
     languageMutation,
     languageQuery,
@@ -49,9 +52,11 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
     preferencesQuery,
     profile,
     setIsDndAccessModalOpen,
+    setIsSoundModalOpen,
     updatePreference,
   } = useSettings();
 
+  const selectedSound = resolveAlertSound(preferences.alert_sound);
   const isBusy = preferencesMutation.isPending;
   const language = languageQuery.data?.language ?? UserLanguage.French;
   const faqUrl = resolveFaqUrl();
@@ -124,6 +129,28 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
           title={t('settings.push')}
           accessory={<AppSwitch accessibilityLabel={t('settings.push')} disabled={isBusy} value={preferences.push_enabled} onValueChange={(value) => void updatePreference({ push_enabled: value })} />}
         />
+        {preferences.push_enabled ? (
+          <>
+            <ListRow
+              title={t('settings.criticalAlerts')}
+              subtitle={t('settings.criticalAlertsDescription')}
+              accessory={
+                <AppSwitch
+                  accessibilityLabel={t('settings.criticalAlerts')}
+                  disabled={isBusy}
+                  value={preferences.critical_alerts_enabled}
+                  onValueChange={(value) => void updatePreference({ critical_alerts_enabled: value })}
+                />
+              }
+            />
+            <ListRow
+              title={t('settings.alertSound')}
+              value={t(selectedSound.labelKey)}
+              showChevron
+              onPress={() => setIsSoundModalOpen(true)}
+            />
+          </>
+        ) : null}
       </ListSection>
 
       <ListSection header={t('settings.telegramSection')} footer={isTelegramLinked ? undefined : t('settings.telegramConnectSubtitle')}>
@@ -223,6 +250,15 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
           </Surface>
         </View>
       </Modal>
+
+      <SoundSelectorModal
+        isOpen={isSoundModalOpen}
+        onClose={() => setIsSoundModalOpen(false)}
+        selectedSoundId={preferences.alert_sound}
+        onSelectSound={(soundId) => {
+          void updatePreference({ alert_sound: soundId });
+        }}
+      />
     </ScrollView>
   );
 }
