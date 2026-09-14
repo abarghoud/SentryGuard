@@ -18,6 +18,7 @@ import { telegramRetryManager } from './telegram-retry-manager.token';
 import { TelegramConfig } from '../../entities/telegram-config.entity';
 import { User } from '../../entities/user.entity';
 import { Vehicle } from '../../entities/vehicle.entity';
+import { NotificationPreferences } from '../../entities/notification-preferences.entity';
 import { AuthModule } from '../auth/auth.module';
 import { ConsentModule } from '../consent/consent.module';
 import { UserModule } from '../user/user.module';
@@ -26,7 +27,7 @@ import { OffensiveResponseModule } from '../offensive-response/offensive-respons
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TelegramConfig, User, Vehicle]),
+    TypeOrmModule.forFeature([TelegramConfig, User, Vehicle, NotificationPreferences]),
     AuthModule,
     ConsentModule,
     UserModule,

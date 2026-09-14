@@ -33,4 +33,17 @@ export class NotificationApiRepository implements NotificationRepositoryRequirem
       method: 'DELETE',
     });
   }
+
+  public async muteNotifications(minutes: number): Promise<{ muted_until: string }> {
+    return this.client.request<{ muted_until: string }>('/notifications/mute', {
+      body: JSON.stringify({ minutes }),
+      method: 'POST',
+    });
+  }
+
+  public async unmuteNotifications(): Promise<{ muted_until: null }> {
+    return this.client.request<{ muted_until: null }>('/notifications/unmute', {
+      method: 'POST',
+    });
+  }
 }

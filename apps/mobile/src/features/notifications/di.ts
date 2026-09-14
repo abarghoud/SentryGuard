@@ -6,7 +6,9 @@ import { NotificationPreferences } from './domain/entities';
 import {
   DeletePushTokenUseCase,
   GetNotificationPreferencesUseCase,
+  MuteNotificationsUseCase,
   RegisterPushTokenUseCase,
+  UnmuteNotificationsUseCase,
   UpdateNotificationPreferencesUseCase,
 } from './domain/use-cases/notifications.use-cases';
 import { DndPolicyAccess } from './infrastructure/dnd-policy-access';
@@ -40,6 +42,14 @@ class DynamicNotificationRepository implements NotificationRepositoryRequirement
   ): Promise<NotificationPreferences> {
     return this.getRepo().updateNotificationPreferences(preferences, token);
   }
+
+  public async muteNotifications(minutes: number): Promise<{ muted_until: string }> {
+    return this.getRepo().muteNotifications(minutes);
+  }
+
+  public async unmuteNotifications(): Promise<{ muted_until: null }> {
+    return this.getRepo().unmuteNotifications();
+  }
 }
 
 export const notificationRepository = new DynamicNotificationRepository(
@@ -51,6 +61,8 @@ export const getNotificationPreferencesUseCase = new GetNotificationPreferencesU
 export const updateNotificationPreferencesUseCase = new UpdateNotificationPreferencesUseCase(notificationRepository);
 export const registerPushTokenUseCase = new RegisterPushTokenUseCase(notificationRepository);
 export const deletePushTokenUseCase = new DeletePushTokenUseCase(notificationRepository);
+export const muteNotificationsUseCase = new MuteNotificationsUseCase(notificationRepository);
+export const unmuteNotificationsUseCase = new UnmuteNotificationsUseCase(notificationRepository);
 
 export const dndPolicyAccess = new DndPolicyAccess();
 export const pushNotificationService = new PushNotificationService(dndPolicyAccess);

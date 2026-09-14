@@ -41,6 +41,39 @@ describe('The AlertsService class', () => {
     jest.clearAllMocks();
   });
 
+  describe('The listForUser() method', () => {
+    describe('When listing alerts for a user', () => {
+      beforeEach(() => {
+        mockAlertEventRepository.find.mockResolvedValue([
+          {
+            created_at: new Date('2026-09-11T20:00:00Z'),
+            id: fakeAlertId,
+            muted: true,
+            severity: AlertEventSeverity.Warning,
+            type: AlertEventType.Sentry,
+            vehicle_display_name: 'My Tesla',
+            vin: 'VIN-1',
+          } as AlertEvent,
+        ]);
+      });
+
+      it('should return the mapped alerts including the muted property', async () => {
+        const result = await service.listForUser(fakeUserId);
+        expect(result).toStrictEqual([
+          {
+            created_at: new Date('2026-09-11T20:00:00Z'),
+            id: fakeAlertId,
+            muted: true,
+            severity: AlertEventSeverity.Warning,
+            type: AlertEventType.Sentry,
+            vehicle_display_name: 'My Tesla',
+            vin: 'VIN-1',
+          },
+        ]);
+      });
+    });
+  });
+
   describe('The clearForUser() method', () => {
     describe('When clearing the alerts of a user', () => {
       beforeEach(async () => {
@@ -66,7 +99,7 @@ describe('The AlertsService class', () => {
   });
 
   describe('The record() method', () => {
-    describe('When recording an alert', () => {
+    describe('When recording an alert with default muted flag', () => {
       let result: string;
 
       beforeEach(async () => {
@@ -77,6 +110,26 @@ describe('The AlertsService class', () => {
 
       it('should return the created alert id', () => {
         expect(result).toBe(fakeAlertId);
+      });
+
+      it('should create the alert with muted set to false', () => {
+        expect(mockAlertEventRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({ muted: false })
+        );
+      });
+    });
+
+    describe('When recording an alert with muted set to true', () => {
+      beforeEach(async () => {
+        mockAlertEventRepository.save.mockResolvedValue({ id: fakeAlertId });
+        mockAlertEventRepository.find.mockResolvedValue([]);
+        await service.record(fakeUserId, 'VIN-1', AlertEventType.Sentry, AlertEventSeverity.Warning, 'My Tesla', true);
+      });
+
+      it('should create the alert with muted set to true', () => {
+        expect(mockAlertEventRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({ muted: true })
+        );
       });
     });
   });

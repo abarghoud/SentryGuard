@@ -14,6 +14,7 @@ const maxAlertEventsPerUser = 50;
 export interface AlertEventDto {
   created_at: Date;
   id: string;
+  muted: boolean;
   severity: AlertEventSeverity;
   type: AlertEventType;
   vehicle_display_name?: string | null;
@@ -49,10 +50,12 @@ export class AlertsService {
     vin: string,
     type: AlertEventType,
     severity: AlertEventSeverity,
-    vehicleDisplayName?: string
+    vehicleDisplayName?: string,
+    muted = false
   ): Promise<string> {
     const savedEvent = await this.alertEventRepository.save(
       this.alertEventRepository.create({
+        muted,
         notification_status: AlertEventNotificationStatus.Pending,
         userId,
         vin,
@@ -142,6 +145,7 @@ export class AlertsService {
     return {
       created_at: event.created_at,
       id: event.id,
+      muted: event.muted ?? false,
       severity: event.severity,
       type: event.type,
       vehicle_display_name: event.vehicle_display_name,

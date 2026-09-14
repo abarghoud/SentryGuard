@@ -45,6 +45,9 @@ export class AlertEvent {
   @Column({ type: 'int', default: 0 })
   notification_attempts!: number;
 
+  @Column({ type: 'boolean', default: false })
+  muted!: boolean;
+
   @CreateDateColumn()
   created_at!: Date;
 
