@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 
 import { NotificationPreferences } from '../../entities/notification-preferences.entity';
 import { PushDeviceToken } from '../../entities/push-device-token.entity';
+import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
 import { AlertEventSeverity, AlertEventType } from '../../entities/alert-event.entity';
 import i18n from '../../i18n';
 import { NOTIFICATION_REQUEST_TIMEOUT_MS } from '../../config/notification-timeout.config';
@@ -12,6 +13,7 @@ import { withTimeout } from '../../common/utils/with-timeout.util';
 export interface NotificationPreferencesDto {
   critical_alerts_enabled: boolean;
   critical_only: boolean;
+  muted_until: string | null;
   push_enabled: boolean;
   telegram_enabled: boolean;
 }
@@ -35,7 +37,9 @@ export class NotificationsService {
     @InjectRepository(NotificationPreferences)
     private readonly preferencesRepository: Repository<NotificationPreferences>,
     @InjectRepository(PushDeviceToken)
-    private readonly pushDeviceTokenRepository: Repository<PushDeviceToken>
+    private readonly pushDeviceTokenRepository: Repository<PushDeviceToken>,
+    @InjectRepository(TelegramConfig)
+    private readonly telegramConfigRepository: Repository<TelegramConfig>
   ) {}
 
   public async getPreferences(userId: string, token?: string): Promise<NotificationPreferencesDto> {
@@ -90,6 +94,36 @@ export class NotificationsService {
     return preferences.telegram_enabled;
   }
 
+  public async mute(userId: string, minutes: number): Promise<Date> {
+    const preferences = await this.findOrCreatePreferences(userId);
+    const mutedUntil = new Date(Date.now() + minutes * 60 * 1000);
+    preferences.muted_until = mutedUntil;
+    await this.preferencesRepository.save(preferences);
+    await this.telegramConfigRepository.update({ userId }, { muted_until: mutedUntil });
+    this.logger.log(`[NOTIFICATIONS_MUTE] User ${userId} muted for ${minutes}min until ${mutedUntil.toISOString()}`);
+    return mutedUntil;
+  }
+
+  public async unmute(userId: string): Promise<void> {
+    const preferences = await this.findOrCreatePreferences(userId);
+    preferences.muted_until = null;
+    await this.preferencesRepository.save(preferences);
+    await this.telegramConfigRepository.update({ userId }, { muted_until: null });
+    this.logger.log(`[NOTIFICATIONS_UNMUTE] User ${userId} alerts unmuted`);
+  }
+
+  public async isMuted(userId: string): Promise<boolean> {
+    const preferences = await this.preferencesRepository.findOne({ where: { userId } });
+    if (preferences?.muted_until) {
+      return new Date() < preferences.muted_until;
+    }
+
+    const config = await this.telegramConfigRepository.findOne({
+      where: { status: TelegramLinkStatus.LINKED, userId },
+    });
+    return Boolean(config?.muted_until && new Date() < config.muted_until);
+  }
+
   public async sendPushAlert(
     userId: string,
     severity: AlertEventSeverity,
@@ -97,6 +131,11 @@ export class NotificationsService {
     userLanguage: 'en' | 'fr',
     correlationId?: string
   ): Promise<boolean> {
+    if (await this.shouldSuppressPush(userId, type)) {
+      this.logger.log(`[EXPO_PUSH][${correlationId || 'none'}] Sentry push alert suppressed for muted user: ${userId}`);
+      return false;
+    }
+
     const eligibleDevices = await this.findEligibleDevices(userId, severity);
 
     if (eligibleDevices.length === 0) {
@@ -108,6 +147,10 @@ export class NotificationsService {
     await this.dispatchPushToDevices(eligibleDevices, severity, type, userId, userLanguage, correlationId);
 
     return true;
+  }
+
+  private async shouldSuppressPush(userId: string, type: AlertEventType): Promise<boolean> {
+    return type === AlertEventType.Sentry && (await this.isMuted(userId));
   }
 
   private async findEligibleDevices(userId: string, severity: AlertEventSeverity): Promise<PushDeviceToken[]> {
@@ -215,6 +258,7 @@ export class NotificationsService {
     return {
       critical_alerts_enabled: device?.critical_alerts_enabled ?? false,
       critical_only: device?.critical_only ?? false,
+      muted_until: preferences.muted_until ? preferences.muted_until.toISOString() : null,
       push_enabled: device?.push_enabled ?? false,
       telegram_enabled: preferences.telegram_enabled,
     };
@@ -270,9 +314,11 @@ export class NotificationsService {
   ): object {
     const isPriorityAlert = criticalAlertsEnabled && this.shouldUsePriorityChannel(severity, type);
     const channelId = isPriorityAlert ? 'sentryguard-critical-alerts-v5' : 'sentryguard-alerts';
+    const categoryId = type === AlertEventType.Sentry ? 'sentry_alert' : undefined;
 
     return {
       body,
+      categoryId,
       channelId,
       data: {
         channelId,

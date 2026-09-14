@@ -11,6 +11,7 @@ export enum AlertEventType {
 export interface AlertEvent {
   created_at: string;
   id: string;
+  muted?: boolean;
   severity: AlertEventSeverity;
   type: AlertEventType;
   vehicle_display_name?: string | null;

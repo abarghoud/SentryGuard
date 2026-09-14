@@ -13,6 +13,8 @@ jest.mock('../../i18n', () => ({
   default: { t: jest.fn((key: string) => key) },
 }));
 
+import { NotificationPreferences } from '../../entities/notification-preferences.entity';
+
 describe('The TelegramMuteService class', () => {
   const fakeUserId = 'user-123';
   const fakeChatId = '456';
@@ -27,6 +29,11 @@ describe('The TelegramMuteService class', () => {
   const mockTelegramConfigRepository = {
     findOne: jest.fn(),
     update: jest.fn(),
+  };
+  const mockNotificationPreferencesRepository = {
+    findOne: jest.fn(),
+    update: jest.fn(),
+    upsert: jest.fn(),
   };
   const mockBotService: MockProxy<TelegramBotService> = mock<TelegramBotService>();
   const mockKeyboardBuilderService: MockProxy<TelegramKeyboardBuilderService> = mock<TelegramKeyboardBuilderService>();
@@ -59,6 +66,7 @@ describe('The TelegramMuteService class', () => {
       providers: [
         TelegramMuteService,
         { provide: getRepositoryToken(TelegramConfig), useValue: mockTelegramConfigRepository },
+        { provide: getRepositoryToken(NotificationPreferences), useValue: mockNotificationPreferencesRepository },
         { provide: TelegramBotService, useValue: mockBotService },
         { provide: TelegramKeyboardBuilderService, useValue: mockKeyboardBuilderService },
         { provide: TelegramContextService, useValue: mockContextService },
@@ -116,6 +124,26 @@ describe('The TelegramMuteService class', () => {
       beforeEach(() => {
         mockTelegramConfigRepository.findOne.mockResolvedValue({
           muted_until: new Date(Date.now() + 60 * 60_000),
+        });
+      });
+
+      it('should return true', async () => {
+        const result = await service.checkIsNotificationMuted(fakeUserId);
+
+        expect(result).toBe(true);
+      });
+    });
+
+    describe('When preferences has active mute but telegram config has no mute', () => {
+      beforeEach(() => {
+        mockTelegramConfigRepository.findOne.mockResolvedValue({
+          muted_until: null,
+          status: TelegramLinkStatus.LINKED,
+          userId: fakeUserId,
+        });
+        mockNotificationPreferencesRepository.findOne.mockResolvedValue({
+          muted_until: new Date(Date.now() + 60 * 60_000),
+          userId: fakeUserId,
         });
       });
 
@@ -194,6 +222,22 @@ describe('The TelegramMuteService class', () => {
 
       expect(ctx.reply).toHaveBeenCalledWith('muteConfirmed', undefined);
     });
+
+    it('should upsert muted_until into notification preferences', async () => {
+      const ctx = buildCtx(fakeChatId, ['mute:60', '60']);
+      mockTelegramConfigRepository.findOne.mockResolvedValue({
+        chat_id: fakeChatId,
+        status: TelegramLinkStatus.LINKED,
+        userId: fakeUserId,
+      });
+
+      await muteDurationHandler(ctx);
+
+      expect(mockNotificationPreferencesRepository.upsert).toHaveBeenCalledWith(
+        { muted_until: expect.any(Date), userId: fakeUserId },
+        ['userId']
+      );
+    });
   });
 
   describe('When the user reactivates alerts', () => {
@@ -218,6 +262,22 @@ describe('The TelegramMuteService class', () => {
       await muteReactivateHandler(ctx);
 
       expect(ctx.reply).toHaveBeenCalledWith('muteReactivated', undefined);
+    });
+
+    it('should clear muted_until in notification preferences via upsert', async () => {
+      const ctx = buildCtx();
+      mockTelegramConfigRepository.findOne.mockResolvedValue({
+        chat_id: fakeChatId,
+        status: TelegramLinkStatus.LINKED,
+        userId: fakeUserId,
+      });
+
+      await muteReactivateHandler(ctx);
+
+      expect(mockNotificationPreferencesRepository.upsert).toHaveBeenCalledWith(
+        { muted_until: null, userId: fakeUserId },
+        ['userId']
+      );
     });
   });
 

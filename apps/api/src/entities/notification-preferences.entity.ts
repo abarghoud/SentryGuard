@@ -8,6 +8,9 @@ export class NotificationPreferences {
   @Column({ type: 'boolean', default: true })
   telegram_enabled!: boolean;
 
+  @Column({ type: 'timestamp', nullable: true })
+  muted_until!: Date | null;
+
   @CreateDateColumn()
   created_at!: Date;
 

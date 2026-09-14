@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Context } from 'telegraf';
 import i18n from '../../i18n';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
+import { NotificationPreferences } from '../../entities/notification-preferences.entity';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
 import { TelegramContextService } from './telegram-context.service';
@@ -17,31 +18,44 @@ export class TelegramMuteService implements OnModuleInit {
   constructor(
     @InjectRepository(TelegramConfig)
     private readonly telegramConfigRepository: Repository<TelegramConfig>,
+    @InjectRepository(NotificationPreferences)
+    private readonly preferencesRepository: Repository<NotificationPreferences>,
     private readonly botService: TelegramBotService,
     private readonly keyboardBuilderService: TelegramKeyboardBuilderService,
     private readonly contextService: TelegramContextService,
   ) {}
 
-  async checkIsNotificationMuted(userId: string): Promise<boolean> {
-    const config = await this.telegramConfigRepository.findOne({
-      where: { userId, status: TelegramLinkStatus.LINKED },
-    });
+  public async checkIsNotificationMuted(userId: string): Promise<boolean> {
+    const [config, preferences] = await Promise.all([
+      this.telegramConfigRepository.findOne({ where: { userId, status: TelegramLinkStatus.LINKED } }),
+      this.preferencesRepository.findOne({ where: { userId } }),
+    ]);
 
     if (!config) {
       this.logger.debug(`[MUTE_CHECK] No linked config found for user ${userId} — alert will be skipped`);
       return false;
     }
 
-    const mutedUntil = config.muted_until;
-    const isMuted = mutedUntil != null && new Date() < mutedUntil;
+    const effectiveMutedUntil = this.resolveEffectiveMutedUntil(preferences?.muted_until, config.muted_until);
+    const isMuted = effectiveMutedUntil != null && new Date() < effectiveMutedUntil;
 
     if (isMuted) {
-      this.logger.log(`[MUTE_CHECK] Alerts muted for user ${userId} until ${mutedUntil.toISOString()}`);
+      this.logger.log(`[MUTE_CHECK] Alerts muted for user ${userId} until ${effectiveMutedUntil?.toISOString()}`);
     } else {
       this.logger.debug(`[MUTE_CHECK] Alerts active for user ${userId}`);
     }
 
     return isMuted;
+  }
+
+  private resolveEffectiveMutedUntil(
+    preferenceMutedUntil: Date | null | undefined,
+    configMutedUntil: Date | null | undefined
+  ): Date | null {
+    if (preferenceMutedUntil && new Date() < preferenceMutedUntil) {
+      return preferenceMutedUntil;
+    }
+    return configMutedUntil ?? null;
   }
 
   onModuleInit(): void {
@@ -130,17 +144,31 @@ export class TelegramMuteService implements OnModuleInit {
   }
 
   private async saveMutedUntil(chatId: string, mutedUntil: Date): Promise<void> {
+    const config = await this.telegramConfigRepository.findOne({
+      where: { chat_id: chatId, status: TelegramLinkStatus.LINKED },
+    });
     await this.telegramConfigRepository.update(
       { chat_id: chatId, status: TelegramLinkStatus.LINKED },
       { muted_until: mutedUntil }
     );
+    await this.syncPreferencesMute(config?.userId, mutedUntil);
   }
 
   private async clearMutedUntil(chatId: string): Promise<void> {
+    const config = await this.telegramConfigRepository.findOne({
+      where: { chat_id: chatId, status: TelegramLinkStatus.LINKED },
+    });
     await this.telegramConfigRepository.update(
       { chat_id: chatId, status: TelegramLinkStatus.LINKED },
       { muted_until: null }
     );
+    await this.syncPreferencesMute(config?.userId, null);
+  }
+
+  private async syncPreferencesMute(userId: string | undefined, mutedUntil: Date | null): Promise<void> {
+    if (userId) {
+      await this.preferencesRepository.upsert({ userId, muted_until: mutedUntil }, ['userId']);
+    }
   }
 
   private async confirmMute(ctx: Context, mutedUntil: Date, lng: 'en' | 'fr'): Promise<void> {

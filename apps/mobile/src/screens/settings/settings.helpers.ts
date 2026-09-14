@@ -10,6 +10,7 @@ import { NotificationPreferences } from '../../features/notifications/domain/ent
 export const defaultPreferences: NotificationPreferences = {
   critical_alerts_enabled: false,
   critical_only: false,
+  muted_until: null,
   push_enabled: false,
   telegram_enabled: true,
 };

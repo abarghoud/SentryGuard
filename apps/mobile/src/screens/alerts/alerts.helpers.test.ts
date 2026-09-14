@@ -19,6 +19,7 @@ import {
   countUnreadAlerts,
   filterAlerts,
   isAlertUnread,
+  resolveAlertIcon,
   resolveAlertMessageKey,
   resolveAlertTitleKey,
   resolveAlertTone,
@@ -85,6 +86,31 @@ describe('The resolveAlertTone() function', () => {
         background: lightColors.warningFill,
         icon: lightColors.onWarning,
       });
+    });
+  });
+});
+
+describe('The resolveAlertIcon() function', () => {
+  describe('When the alert is critical', () => {
+    it('should return the warning triangle icon', () => {
+      expect(resolveAlertIcon(createAlert(AlertEventType.BreakIn, AlertEventSeverity.Critical))).toBe(
+        'exclamationmark.triangle.fill'
+      );
+    });
+  });
+
+  describe('When the alert is warning and not muted', () => {
+    it('should return the bell badge icon', () => {
+      expect(resolveAlertIcon(createAlert(AlertEventType.Sentry, AlertEventSeverity.Warning))).toBe(
+        'bell.badge.fill'
+      );
+    });
+  });
+
+  describe('When the alert is warning and muted', () => {
+    it('should return the bell slash icon', () => {
+      const mutedAlert = { ...createAlert(AlertEventType.Sentry, AlertEventSeverity.Warning), muted: true };
+      expect(resolveAlertIcon(mutedAlert)).toBe('bell.slash.fill');
     });
   });
 });
