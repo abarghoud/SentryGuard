@@ -2,7 +2,6 @@ import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import axios from 'axios';
-import * as https from 'https';
 import { AccessTokenService } from '../auth/services/access-token.service';
 import { AuthService } from '../auth/auth.service';
 import { TeslaPartnerAuthService } from '../auth/tesla-partner-auth.service';
@@ -18,7 +17,6 @@ import {
   TeslaVehicleWithStatus,
 } from './telemetry-config.types';
 import {
-  DEFAULT_TESLA_API_BASE_URL,
   ERROR_MESSAGES,
   GENERIC_ERROR_MESSAGES,
   INFO_MESSAGES,
@@ -34,19 +32,18 @@ import {
   isVehicleUnreachableError,
 } from './telemetry-config.helpers';
 import { TokenRevokedException } from '../../common/exceptions/token-revoked.exception';
+import {
+  createTeslaProxyHttpsAgent,
+  resolveTeslaProxyBaseUrl,
+} from '../../common/utils/tesla-proxy-agent.util';
 
 @Injectable()
 export class TelemetryConfigService {
   private readonly logger = new Logger(TelemetryConfigService.name);
 
-  // SECURITY NOTE: rejectUnauthorized: false is acceptable here because tesla-vehicle-command
-  // is a local service on the same Docker network with a self-signed certificate.
-  // ⚠️ DO NOT use this configuration for calls to the public Internet!
   private readonly teslaApi = axios.create({
-    baseURL: process.env.TESLA_API_BASE_URL ?? DEFAULT_TESLA_API_BASE_URL,
-    httpsAgent: new https.Agent({
-      rejectUnauthorized: false,
-    }),
+    baseURL: resolveTeslaProxyBaseUrl(),
+    httpsAgent: createTeslaProxyHttpsAgent(),
   });
 
   constructor(

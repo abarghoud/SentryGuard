@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import * as https from 'https';
 import { Test, TestingModule } from '@nestjs/testing';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { TeslaVehicleCommandService } from './tesla-vehicle-command.service';
@@ -14,6 +15,13 @@ const teslaApiOf = (target: TeslaVehicleCommandService): { post: jest.Mock } =>
 
 const loggerOf = (target: TeslaVehicleCommandService): Logger =>
   (target as unknown as { logger: Logger }).logger;
+
+const httpsAgentOptionsOf = (target: TeslaVehicleCommandService): https.AgentOptions =>
+  (
+    target as unknown as {
+      teslaApi: { defaults: { httpsAgent: { options: https.AgentOptions } } };
+    }
+  ).teslaApi.defaults.httpsAgent.options;
 
 describe('The TeslaVehicleCommandService class', () => {
   const fakeVin = 'TESTVIN1234567890';
@@ -42,6 +50,10 @@ describe('The TeslaVehicleCommandService class', () => {
   };
 
   beforeEach(async () => {
+    process.env.TESLA_API_BASE_URL = 'https://vehicle-command.test:4443';
+    process.env.TESLA_PROXY_CA_CERT_BASE64 =
+      Buffer.from('-----BEGIN CERTIFICATE-----\nfake\n-----END CERTIFICATE-----\n').toString('base64');
+
     mockAccessTokenService = mock<AccessTokenService>();
 
     const module: TestingModule = await Test.createTestingModule({
@@ -55,7 +67,17 @@ describe('The TeslaVehicleCommandService class', () => {
   });
 
   afterEach(() => {
+    delete process.env.TESLA_API_BASE_URL;
+    delete process.env.TESLA_PROXY_CA_CERT_BASE64;
     jest.restoreAllMocks();
+  });
+
+  describe('The TLS configuration of the vehicle-command client', () => {
+    describe('When a proxy CA certificate is configured', () => {
+      it('should verify the proxy certificate', () => {
+        expect(httpsAgentOptionsOf(service).rejectUnauthorized).toBe(true);
+      });
+    });
   });
 
   describe('The honkHorn() method', () => {

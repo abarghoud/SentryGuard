@@ -202,6 +202,6 @@ Conventional Commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`
 
 - Kafka topic differs: local-dev `TeslaLogger_V` vs self-host `FleetTelemetry_V` — set via `KAFKA_TOPIC`.
 - Mobile typecheck targets `tsconfig.app.json`; only mobile is typecheck-gated in CI.
-- Vehicle-command host default (`tesla-vehicle-command:8443`) differs from the compose service name (`vehicle-command`); `TESLA_API_BASE_URL` is set explicitly in self-host.
+- `TESLA_API_BASE_URL` is required (no compiled-in default) and the vehicle-command hop is TLS-pinned via `TESLA_PROXY_CA_CERT_BASE64` (required everywhere, no permissive fallback), with optional `TESLA_PROXY_TLS_SERVERNAME`. All three axios clients build their agent through `createTeslaProxyHttpsAgent()`.
 - Vitest is installed but unused — everything runs Jest.
 - Self-host via `docker-compose.selfhost.yml` (see SELF_HOSTING.md); `docker-compose.yml` is local Kafka only.

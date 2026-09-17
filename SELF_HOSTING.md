@@ -361,7 +361,10 @@ sudo certbot certonly --standalone -d fleet-telemetry.yourdomain.com
 # /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/chain.pem     (CA / Intermediate cert)
 ```
 
-> **Note:** You can reuse these same files for `vehicle-command` by encoding them into the `VEHICLE_COMMAND_TLS_*` variables. Even if the domain doesn't match, the API will accept them for internal communication.
+> **Note:** You can reuse these same files for `vehicle-command` by encoding them into the `VEHICLE_COMMAND_TLS_*` variables.
+> The API **verifies** that certificate, since it carries your decrypted Tesla access tokens, so you must also pin the root
+> that anchors it — see [7.6 Pinning the vehicle-command hop](#76-pinning-the-vehicle-command-hop). Compose aliases the proxy
+> to your `TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME`, so reusing the fleet-telemetry certificate keeps the names matching.
 
 Set up auto-renewal (Let's Encrypt certificates expire every 90 days):
 
@@ -440,6 +443,7 @@ echo "VEHICLE_COMMAND_PRIVATE_KEY_B64=$(base64 -w 0 fleet-telemetry/certs/privat
 # API
 echo "LETS_ENCRYPT_CERTIFICATE=$(base64 -w 0 /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/chain.pem)"
 echo "TESLA_PUBLIC_KEY_BASE64=$(base64 -w 0 fleet-telemetry/certs/public-key.pem)"
+echo "TESLA_PROXY_CA_CERT_BASE64=$(cat /etc/ssl/certs/ISRG_Root_X1.pem /etc/ssl/certs/ISRG_Root_X2.pem | base64 -w 0)"  # see 7.6
 ```
 
 **macOS** (uses `<` for input and `tr` to remove newlines):
@@ -458,6 +462,7 @@ echo "VEHICLE_COMMAND_PRIVATE_KEY_B64=$(base64 < fleet-telemetry/certs/private-k
 # API
 echo "LETS_ENCRYPT_CERTIFICATE=$(base64 < /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/chain.pem | tr -d '\n')"
 echo "TESLA_PUBLIC_KEY_BASE64=$(base64 < fleet-telemetry/certs/public-key.pem | tr -d '\n')"
+echo "TESLA_PROXY_CA_CERT_BASE64=$(cat /etc/ssl/certs/ISRG_Root_X1.pem /etc/ssl/certs/ISRG_Root_X2.pem | base64 | tr -d '\n')"  # see 7.6
 ```
 
 Save these values in your `.env` file.
@@ -470,10 +475,76 @@ Save these values in your `.env` file.
 | ------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------- |
 | `fullchain.pem` (Let's Encrypt) | TLS certificate for fleet-telemetry + vehicle-command | `FLEET_TELEMETRY_SERVER_CERT_B64`, `VEHICLE_COMMAND_TLS_CERT_B64` |
 | `chain.pem` (Let's Encrypt)     | CA certificate for telemetry verification             | `LETS_ENCRYPT_CERTIFICATE`                                        |
+| ISRG roots (system trust store) | Trust anchor pinning the vehicle-command hop (see 7.6) | `TESLA_PROXY_CA_CERT_BASE64`                                      |
 | `privkey.pem` (Let's Encrypt)   | TLS private key                                       | `FLEET_TELEMETRY_SERVER_KEY_B64`, `VEHICLE_COMMAND_TLS_KEY_B64`   |
 | `private-key.pem`               | Tesla vehicle command private key (**keep secret**)   | `VEHICLE_COMMAND_PRIVATE_KEY_B64`                                 |
 | `public-key.pem`                | Tesla vehicle command public key                      | `TESLA_PUBLIC_KEY_BASE64`                                         |
 | `config.json`                   | Fleet Telemetry configuration                         | `FLEET_TELEMETRY_CONFIG_B64`                                      |
+
+---
+
+### 7.6 Pinning the vehicle-command hop
+
+Every Tesla command the API sends — `honk_horn`, `remote_boombox`, `set_sentry_mode` — travels to the
+`vehicle-command` proxy carrying a **decrypted Tesla access token**. The API verifies the proxy's TLS
+certificate so that nothing else on the Docker network can answer in its place and harvest those tokens.
+
+Compose already aliases the `vehicle-command` service to your
+`TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME`, so the API dials the proxy under the very name your certificate
+was issued for and hostname verification matches on its own. **In the standard setup you only add one
+variable**, `TESLA_PROXY_CA_CERT_BASE64`.
+
+| Variable | Required | What it does |
+| --- | --- | --- |
+| `TESLA_PROXY_CA_CERT_BASE64` | **Yes** | Base64 of the **self-signed root** that anchors `VEHICLE_COMMAND_TLS_CERT_B64`. Let's Encrypt setup → the ISRG roots (command below). Own CA (`ca.crt`) → that file. Genuinely self-signed certificate (subject = issuer) → the certificate itself. |
+| `TESLA_PROXY_TLS_SERVERNAME` | Rarely | Only when your proxy certificate is issued for a name *other* than `TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME`. Set it to a name in the certificate's SAN. |
+
+> ⚠️ **`chain.pem` does not work here**, even though it is the right value for `LETS_ENCRYPT_CERTIFICATE`.
+> It contains the Let's Encrypt *intermediate*, and Node refuses a non-self-signed certificate as a trust
+> anchor — you get `UNABLE_TO_GET_ISSUER_CERT`. Pin the ISRG roots instead; they are valid until 2035/2040,
+> so your 90-day renewals keep working with no change to this variable.
+
+**Let's Encrypt setup** — take the ISRG roots from your system trust store:
+
+```bash
+echo "TESLA_PROXY_CA_CERT_BASE64=$(cat /etc/ssl/certs/ISRG_Root_X1.pem /etc/ssl/certs/ISRG_Root_X2.pem | base64 -w 0)"
+```
+
+If those files are missing (`ca-certificates` not installed), read them out of the API image instead:
+
+```bash
+docker run --rm ghcr.io/abarghoud/sentryguard-api:latest node -e \
+  "const t=require('tls'),{X509Certificate:X}=require('crypto');process.stdout.write(Buffer.from(t.rootCertificates.filter(c=>/ISRG/.test(new X(c).subject)).join('\n')).toString('base64'))"
+```
+
+**Own CA setup** — pin your root directly:
+
+```bash
+echo "TESLA_PROXY_CA_CERT_BASE64=$(base64 -w 0 fleet-telemetry/certs/ca.crt)"
+```
+
+Check what your certificate actually covers before starting the stack — the SAN must contain your
+`TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME`:
+
+```bash
+openssl x509 -noout -subject -issuer -ext subjectAltName -dates \
+  -in /etc/letsencrypt/live/fleet-telemetry.yourdomain.com/fullchain.pem
+```
+
+> **Upgrading an existing install:** `TESLA_PROXY_CA_CERT_BASE64` is required in every environment — the API
+> container refuses to start without it, and there is no flag that turns verification back off. Add it to
+> your `.env` **before** pulling the new image. Note this also fixes a previous inaccuracy in this guide,
+> which claimed the API would accept the `vehicle-command` certificate "even if the domain doesn't match":
+> it no longer does, and the compose alias is what makes the name line up.
+
+**Troubleshooting**, from the API logs:
+
+| Log line | Cause |
+| --- | --- |
+| `TESLA_PROXY_CA_CERT_BASE64 must be defined` (container will not start) | The variable is missing from `.env`. |
+| `UNABLE_TO_GET_ISSUER_CERT` | You pinned an intermediate (typically `chain.pem`). Pin a self-signed root. |
+| `UNABLE_TO_VERIFY_LEAF_SIGNATURE` / `SELF_SIGNED_CERT_IN_CHAIN` | The pinned certificate is not the one that anchors your proxy certificate (e.g. you passed `tls.crt` instead of `ca.crt`), or the value is truncated. |
+| `ERR_TLS_CERT_ALTNAME_INVALID` | The proxy certificate is valid but issued for another name. Check that its SAN covers `TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME`, or set `TESLA_PROXY_TLS_SERVERNAME`. |
 
 ---
 
@@ -516,6 +587,33 @@ curl -s http://localhost:3021/api/auth/status | head -c 100
 # Check webapp
 curl -s -o /dev/null -w "%{http_code}" http://localhost:3020
 ```
+
+### 8.4 Updating an existing installation
+
+Images are published as `:latest` on every push to `main`, so `docker compose pull` can bring in a change
+that needs a new variable. **Read [CHANGELOG.md](CHANGELOG.md) before pulling** — breaking changes are
+listed there, newest first, with the migration steps.
+
+```bash
+docker compose -f docker-compose.selfhost.yml pull
+docker compose -f docker-compose.selfhost.yml up -d
+docker compose -f docker-compose.selfhost.yml logs -f api
+```
+
+Watch the API logs on the first start after an update. When a release needs a new variable, the container
+stops immediately and prints what to add, why, and the command that produces the value — so a failed start
+right after a pull is almost always a missing variable rather than a broken image.
+
+To avoid surprise updates entirely, pin the images to a commit instead of `latest`. Every push to `main`
+also publishes a `ghcr.io/abarghoud/sentryguard-api:<commit-sha>` tag:
+
+```bash
+# in .env
+SENTRYGUARD_IMAGE_TAG=a1b2c3d
+```
+
+Then update deliberately, after reading the changelog.
+
 
 ---
 
@@ -618,6 +716,8 @@ You can use the official SentryGuard mobile app from the [App Store or Google Pl
 | `TESLA_REDIRECT_URI`                    | OAuth callback URL                                             | `https://api.yourdomain.com/callback/auth`          |
 | `TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME` | Fleet telemetry hostname (no protocol)                         | `fleet-telemetry.yourdomain.com`                    |
 | `LETS_ENCRYPT_CERTIFICATE`              | Base64 of fleet-telemetry CA cert                              | Output from `generate-certs.sh`                     |
+| `TESLA_PROXY_CA_CERT_BASE64`            | Base64 of the self-signed root anchoring the proxy cert (7.6)  | ISRG roots, or your own `ca.crt`                    |
+| `TESLA_PROXY_TLS_SERVERNAME`            | Override the verified name (rarely needed, see 7.6)            | —                                                   |
 | `TESLA_PUBLIC_KEY_BASE64`               | Base64 of Tesla public key                                     | Output from `generate-certs.sh`                     |
 | `WEBAPP_URL`                            | Webapp public URL (for CORS + redirects)                       | `https://yourdomain.com`                            |
 | `CORS_ALLOWED_ORIGINS`                  | Additional CORS origins (comma-separated)                      | `https://yourdomain.com,https://api.yourdomain.com` |

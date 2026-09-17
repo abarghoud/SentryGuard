@@ -179,6 +179,7 @@ Devices register through `NotificationsController` (`POST/DELETE /notifications/
 - Enum `OffensiveResponse { DISABLED, HONK, FART }` (`apps/api/src/app/alerts/enums/offensive-response.enum.ts`), stored per-vehicle in `Vehicle.break_in_offensive_response`.
 - Configured via `PATCH /offensive-response/:vin` (requires Tesla `vehicle_cmds` scope) or a Telegram button.
 - On a confirmed break-in within a latency threshold, `AlertsOffensiveResponseService` → `TeslaVehicleCommandService` (`apps/api/src/app/telemetry/services/tesla-vehicle-command.service.ts`) POSTs `honk_horn` / `remote_boombox` to `TESLA_API_BASE_URL` (the **vehicle-command proxy**) using the user's decrypted access token.
+- The three axios clients that talk to `TESLA_API_BASE_URL` (`tesla-oauth.service.ts`, `telemetry-config.service.ts`, `tesla-vehicle-command.service.ts`) all build their `https.Agent` through `createTeslaProxyHttpsAgent()`. That hop carries decrypted Tesla tokens, so its TLS certificate is **verified and pinned** — never reintroduce an inline `rejectUnauthorized: false` there.
 
 ### Authentication & Token Management
 - **OAuth 2.0 flow** with Tesla for user authentication (scopes `openid vehicle_device_data vehicle_cmds offline_access user_data`; CSRF via a signed `state` JWT)
@@ -255,7 +256,8 @@ features/<domain>/
 Critical environment variables:
 - **Database**: `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME`
 - **Security**: `ENCRYPTION_KEY` (min 32 chars), `JWT_SECRET`, `JWT_OAUTH_STATE_SECRET`
-- **Tesla**: `TESLA_CLIENT_ID`, `TESLA_CLIENT_SECRET`, `TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME`, `TESLA_API_BASE_URL` (vehicle-command proxy)
+- **Tesla**: `TESLA_CLIENT_ID`, `TESLA_CLIENT_SECRET`, `TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME`, `TESLA_API_BASE_URL` (vehicle-command proxy, required)
+- **Vehicle-command TLS pinning**: `TESLA_PROXY_CA_CERT_BASE64` (required, no fallback — the API will not boot without it), optional `TESLA_PROXY_TLS_SERVERNAME` — see `apps/api/src/common/utils/tesla-proxy-agent.util.ts`
 - **Telegram**: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_MODE`, `TELEGRAM_WEBHOOK_BASE`
 - **Kafka**: `KAFKA_BROKERS`, `KAFKA_TOPIC` (code default `TeslaLogger_V`; self-host uses `FleetTelemetry_V`)
 - **Rate Limiting**: See `apps/api/.env.example` for all `THROTTLE_*` variables
@@ -464,7 +466,7 @@ This is an Nx monorepo. Key points:
 
 - **Mobile typecheck** must target `tsconfig.app.json` (`npx nx typecheck mobile` does this); the plain `tsconfig.json` checks nothing
 - **Kafka topic name is inconsistent**: API code default + local scripts use `TeslaLogger_V`, while fleet-telemetry + self-host default to `FleetTelemetry_V`. Always configurable via `KAFKA_TOPIC` — match it to the producer
-- **Vehicle-command host default** in code is `https://tesla-vehicle-command:8443`, but the compose service is named `vehicle-command` and sets `TESLA_API_BASE_URL` explicitly
+- **`TESLA_API_BASE_URL` has no compiled-in default** — it is required and the API refuses to boot without it. The self-host compose service is named `vehicle-command` and sets it explicitly
 - Only **mobile** is currently typecheck-gated in CI; api/webapp typecheck is not yet enforced
 
 ## Additional Documentation

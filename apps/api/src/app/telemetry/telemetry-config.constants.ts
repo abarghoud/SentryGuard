@@ -1,11 +1,4 @@
 /**
- * Default Tesla API base URL
- * Points to the local tesla-vehicle-command proxy service
- */
-export const DEFAULT_TESLA_API_BASE_URL =
-  'https://tesla-vehicle-command:8443';
-
-/**
  * Error messages
  */
 export const ERROR_MESSAGES = {

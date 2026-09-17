@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios, { AxiosError, AxiosInstance } from 'axios';
-import * as https from 'https';
 import { AccessTokenService } from '../../auth/services/access-token.service';
-import { DEFAULT_TESLA_API_BASE_URL } from '../telemetry-config.constants';
+import {
+  createTeslaProxyHttpsAgent,
+  resolveTeslaProxyBaseUrl,
+} from '../../../common/utils/tesla-proxy-agent.util';
 import { isAxiosError } from '../telemetry-config.helpers';
 
 const MAX_LOGGED_RESPONSE_BODY_LENGTH = 500;
@@ -17,8 +19,8 @@ export class TeslaVehicleCommandService {
   private readonly logger = new Logger(TeslaVehicleCommandService.name);
 
   private readonly teslaApi: AxiosInstance = axios.create({
-    baseURL: process.env.TESLA_API_BASE_URL ?? DEFAULT_TESLA_API_BASE_URL,
-    httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+    baseURL: resolveTeslaProxyBaseUrl(),
+    httpsAgent: createTeslaProxyHttpsAgent(),
   });
 
   constructor(

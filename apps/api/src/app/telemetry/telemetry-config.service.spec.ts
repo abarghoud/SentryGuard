@@ -47,6 +47,9 @@ describe('TelemetryConfigService', () => {
     process.env.LETS_ENCRYPT_CERTIFICATE =
       Buffer.from('test_certificate').toString('base64');
     process.env.TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME = 'test-hostname';
+    process.env.TESLA_API_BASE_URL = 'https://vehicle-command.test:4443';
+    process.env.TESLA_PROXY_CA_CERT_BASE64 =
+      Buffer.from('-----BEGIN CERTIFICATE-----\nfake\n-----END CERTIFICATE-----\n').toString('base64');
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -79,6 +82,8 @@ describe('TelemetryConfigService', () => {
     delete process.env.ACCESS_TOKEN;
     delete process.env.LETS_ENCRYPT_CERTIFICATE;
     delete process.env.TESLA_FLEET_TELEMETRY_SERVER_HOSTNAME;
+    delete process.env.TESLA_API_BASE_URL;
+    delete process.env.TESLA_PROXY_CA_CERT_BASE64;
   });
 
   it('should be defined', () => {

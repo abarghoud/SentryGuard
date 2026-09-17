@@ -7,10 +7,13 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import axios from 'axios';
 import * as crypto from 'crypto';
-import * as https from 'https';
 import { decode } from 'jsonwebtoken';
 import { TeslaScopes } from '@sentryguard/beta-domain';
 import { normalizeTeslaLocale } from '../../../common/utils/language.util';
+import {
+  createTeslaProxyHttpsAgent,
+  resolveTeslaProxyBaseUrl,
+} from '../../../common/utils/tesla-proxy-agent.util';
 import { MissingPermissionsException } from '../../../common/exceptions/missing-permissions.exception';
 import {
   OAuthProviderRequirements,
@@ -31,14 +34,9 @@ export class TeslaOAuthService implements OAuthProviderRequirements, OnModuleIni
   private static readonly DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 3600;
 
   private readonly logger = new Logger(TeslaOAuthService.name);
-  // SECURITY NOTE: rejectUnauthorized: false is acceptable here because tesla-vehicle-command
-  // is a local service on the same Docker network with self-signed certificate.
   private readonly teslaApi = axios.create({
-    baseURL:
-      process.env.TESLA_API_BASE_URL || 'https://tesla-vehicle-command:8443',
-    httpsAgent: new https.Agent({
-      rejectUnauthorized: false,
-    }),
+    baseURL: resolveTeslaProxyBaseUrl(),
+    httpsAgent: createTeslaProxyHttpsAgent(),
   });
 
   private readonly redirectUri: string;

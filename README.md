@@ -340,6 +340,7 @@ Use this software at your own risk. The authors are not responsible for any dama
 - **Contributing**: [CONTRIBUTING.md](./CONTRIBUTING.md)
 - **Security**: [SECURITY.md](./SECURITY.md)
 - **Self-hosting**: [SELF_HOSTING.md](./SELF_HOSTING.md) — Complete Docker deployment guide
+- **Changelog**: [CHANGELOG.md](./CHANGELOG.md) — Read before updating a self-hosted install; breaking changes are listed there
 
 ## 🙏 Acknowledgments
 
