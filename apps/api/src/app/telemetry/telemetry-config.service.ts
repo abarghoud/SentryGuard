@@ -36,6 +36,7 @@ import {
   createTeslaProxyHttpsAgent,
   resolveTeslaProxyBaseUrl,
 } from '../../common/utils/tesla-proxy-agent.util';
+import { ErrorMeaningClassifierService } from '../../common/services/error-meaning-classifier.service';
 
 @Injectable()
 export class TelemetryConfigService {
@@ -50,6 +51,7 @@ export class TelemetryConfigService {
     private readonly accessTokenService: AccessTokenService,
     private readonly authService: AuthService,
     private readonly partnerAuthService: TeslaPartnerAuthService,
+    private readonly errorClassifier: ErrorMeaningClassifierService,
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>
   ) {}
@@ -80,7 +82,9 @@ export class TelemetryConfigService {
   }
 
   private async handleTokenRevocation(userId: string, error: unknown): Promise<void> {
-    if (!isTokenRevokedError(error)) {
+    const isRevoked = isTokenRevokedError(error) || (await this.errorClassifier.isTeslaTokenRevoked(error));
+
+    if (!isRevoked) {
       return;
     }
 

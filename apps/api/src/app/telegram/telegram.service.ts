@@ -1,5 +1,4 @@
 import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { TelegramError } from 'telegraf';
 import i18n from '../../i18n';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramMuteService } from './telegram-mute.service';
@@ -9,6 +8,7 @@ import type { ITelegramFailureHandler } from './interfaces/telegram-failure-hand
 import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import { telegramRetryManager } from './telegram-retry-manager.token';
 import { RetryManager } from '../shared/retry-manager.service';
+import { ErrorMeaningClassifierService } from '../../common/services/error-meaning-classifier.service';
 import { NOTIFICATION_REQUEST_TIMEOUT_MS } from '../../config/notification-timeout.config';
 import { withTimeout } from '../../common/utils/with-timeout.util';
 
@@ -30,6 +30,7 @@ export class TelegramService implements OnModuleDestroy {
     private readonly telegramBotUpdateService: TelegramBotUpdateService,
     @Inject(telegramFailureHandler) private readonly failureHandler: ITelegramFailureHandler,
     @Inject(telegramRetryManager) private readonly retryManager: RetryManager,
+    private readonly errorClassifier: ErrorMeaningClassifierService,
   ) { }
 
   async sendSentryAlert(
@@ -74,14 +75,14 @@ export class TelegramService implements OnModuleDestroy {
         `Telegram notification request timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
       );
     } catch (error) {
-      if (this.isBlockedBotFailure(error)) {
+      if (error instanceof Error && (await this.isBlockedBotFailure(error))) {
         await this.failureHandler.handleFailure(error, userId);
         this.logger.log(`[TELEGRAM_FAILURE_HANDLED] Error handled for user ${userId}`);
 
         return false;
       }
 
-      if (this.isRetryableTelegramError(error)) {
+      if (await this.isRetryableTelegramError(error)) {
         if (!shouldScheduleRetry) {
           throw error;
         }
@@ -150,14 +151,14 @@ export class TelegramService implements OnModuleDestroy {
         `Telegram notification request timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
       );
     } catch (error) {
-      if (this.isBlockedBotFailure(error)) {
+      if (error instanceof Error && (await this.isBlockedBotFailure(error))) {
         await this.failureHandler.handleFailure(error, userId);
         this.logger.log(`[TELEGRAM_FAILURE_HANDLED] Error handled for user ${userId}`);
 
         return false;
       }
 
-      if (this.isRetryableTelegramError(error)) {
+      if (await this.isRetryableTelegramError(error)) {
         if (!shouldScheduleRetry) {
           throw error;
         }
@@ -188,22 +189,12 @@ export class TelegramService implements OnModuleDestroy {
     this.retryManager.stop();
   }
 
-  private isBlockedBotFailure(error: unknown): error is Error {
-    return error instanceof Error && this.failureHandler.canHandle(error);
+  private isBlockedBotFailure(error: Error): Promise<boolean> {
+    return this.failureHandler.canHandle(error);
   }
 
-  private isRetryableTelegramError(error: unknown): boolean {
-    if (error instanceof TelegramError) {
-      const retryableStatusCodes = [429, 500, 502, 503, 504, 529];
-      return retryableStatusCodes.includes(error.code);
-    }
-
-    if (error instanceof Error) {
-      const networkErrors = ['ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'ECONNABORTED', 'ENOTFOUND'];
-      return networkErrors.some(code => error.message.includes(code));
-    }
-
-    return false;
+  private isRetryableTelegramError(error: unknown): Promise<boolean> {
+    return this.errorClassifier.isRetryableTelegramSend(error);
   }
 
   private shouldSimulateMessage(vin?: string): boolean {
