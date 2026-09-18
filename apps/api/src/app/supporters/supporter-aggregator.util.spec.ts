@@ -1,10 +1,13 @@
 import { Supporter, SupporterType } from '../../entities/supporter.entity';
+import { SupporterTextJudge } from './supporter-sanitizer.util';
 import { aggregateSupporters } from './supporter-aggregator.util';
 
 describe('The supporter-aggregator utility', () => {
+  const allowAll: SupporterTextJudge = async () => false;
+
   describe('The aggregateSupporters() function', () => {
     describe('When aggregating multiple donations from same user', () => {
-      it('should sum coffee counts and use latest date', () => {
+      it('should sum coffee counts and use latest date', async () => {
         const item1: Supporter = {
           id: '1',
           name: 'Yvan',
@@ -29,7 +32,7 @@ describe('The supporter-aggregator utility', () => {
           updated_at: new Date(),
         };
 
-        const result = aggregateSupporters([item1, item2]);
+        const result = await aggregateSupporters([item1, item2], allowAll);
 
         expect(result).toHaveLength(1);
         expect(result[0].coffees).toBe(15);
@@ -39,7 +42,7 @@ describe('The supporter-aggregator utility', () => {
     });
 
     describe('When grouping anonymous contributors without email', () => {
-      it('should not merge separate anonymous contributors', () => {
+      it('should not merge separate anonymous contributors', async () => {
         const item1: Supporter = {
           id: 'anon-1',
           name: 'Anonymous',
@@ -62,7 +65,7 @@ describe('The supporter-aggregator utility', () => {
           updated_at: new Date(),
         };
 
-        const result = aggregateSupporters([item1, item2]);
+        const result = await aggregateSupporters([item1, item2], allowAll);
 
         expect(result).toHaveLength(2);
         expect(result[0].coffees).toBe(2);

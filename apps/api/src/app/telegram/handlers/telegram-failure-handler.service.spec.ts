@@ -1,14 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { mock, MockProxy } from 'jest-mock-extended';
+import { ErrorMeaningClassifierService } from '../../../common/services/error-meaning-classifier.service';
 import { TelegramFailureHandlerService } from './telegram-failure-handler.service';
 import { TelegramConfigService } from '../telegram-config.service';
 
 describe('The TelegramFailureHandlerService class', () => {
   let service: TelegramFailureHandlerService;
   let mockTelegramConfigService: MockProxy<TelegramConfigService>;
+  let mockErrorClassifier: MockProxy<ErrorMeaningClassifierService>;
 
   beforeEach(async () => {
     mockTelegramConfigService = mock<TelegramConfigService>();
+    mockErrorClassifier = mock<ErrorMeaningClassifierService>();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -16,6 +19,10 @@ describe('The TelegramFailureHandlerService class', () => {
         {
           provide: TelegramConfigService,
           useValue: mockTelegramConfigService,
+        },
+        {
+          provide: ErrorMeaningClassifierService,
+          useValue: mockErrorClassifier,
         },
       ],
     }).compile();
@@ -28,52 +35,23 @@ describe('The TelegramFailureHandlerService class', () => {
   });
 
   describe('The canHandle() method', () => {
-    describe('When error message contains "bot was blocked by the user"', () => {
-      it('should return true', () => {
+    describe('When the error means the Telegram contact is gone', () => {
+      it('should return true', async () => {
         const error = new Error('bot was blocked by the user');
-        expect(service.canHandle(error)).toBe(true);
+        mockErrorClassifier.isTelegramContactGone.mockResolvedValue(true);
+
+        await expect(service.canHandle(error)).resolves.toBe(true);
+
+        expect(mockErrorClassifier.isTelegramContactGone).toHaveBeenCalledWith(error);
       });
     });
 
-    describe('When error message contains "forbidden: bot was blocked"', () => {
-      it('should return true', () => {
-        const error = new Error('forbidden: bot was blocked');
-        expect(service.canHandle(error)).toBe(true);
-      });
-    });
-
-    describe('When error message contains "chat not found"', () => {
-      it('should return true', () => {
-        const error = new Error('chat not found');
-        expect(service.canHandle(error)).toBe(true);
-      });
-    });
-
-    describe('When error message contains "user is deactivated"', () => {
-      it('should return true', () => {
-        const error = new Error('Forbidden: user is deactivated');
-        expect(service.canHandle(error)).toBe(true);
-      });
-    });
-
-    describe('When error message uses mixed case', () => {
-      it('should return true', () => {
-        const error = new Error('Bot Was Blocked By The User');
-        expect(service.canHandle(error)).toBe(true);
-      });
-    });
-
-    describe('When error message is not related to bot blocking', () => {
-      it('should return false', () => {
+    describe('When the error is unrelated to the Telegram contact', () => {
+      it('should return false', async () => {
         const error = new Error('network timeout');
-        expect(service.canHandle(error)).toBe(false);
-      });
-    });
+        mockErrorClassifier.isTelegramContactGone.mockResolvedValue(false);
 
-    describe('When error message is empty', () => {
-      it('should return false', () => {
-        const error = new Error('');
-        expect(service.canHandle(error)).toBe(false);
+        await expect(service.canHandle(error)).resolves.toBe(false);
       });
     });
   });

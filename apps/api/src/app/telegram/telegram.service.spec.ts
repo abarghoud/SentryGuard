@@ -10,6 +10,7 @@ import { telegramFailureHandler } from './interfaces/telegram-failure-handler.in
 import type { ITelegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import { telegramRetryManager } from './telegram-retry-manager.token';
 import { RetryManager } from '../shared/retry-manager.service';
+import { ErrorMeaningClassifierService } from '../../common/services/error-meaning-classifier.service';
 
 jest.mock('../../i18n', () => ({
   __esModule: true,
@@ -47,13 +48,15 @@ describe('The TelegramService class', () => {
   const mockTelegramBotUpdateService: MockProxy<TelegramBotUpdateService> = mock<TelegramBotUpdateService>();
   const mockTelegramFailureHandler: MockProxy<ITelegramFailureHandler> = mock<ITelegramFailureHandler>();
   const mockRetryManager: MockProxy<RetryManager> = mock<RetryManager>();
+  const mockErrorClassifier: MockProxy<ErrorMeaningClassifierService> = mock<ErrorMeaningClassifierService>();
 
   beforeEach(async () => {
     mockTelegramMuteService.checkIsNotificationMuted.mockResolvedValue(false);
     mockTelegramContextService.getChatIdFromUserId.mockResolvedValue(fakeChatId);
     mockTelegramBotUpdateService.ensureUserIsUpToDate.mockResolvedValue(undefined);
-    mockTelegramFailureHandler.canHandle.mockReturnValue(false);
+    mockTelegramFailureHandler.canHandle.mockResolvedValue(false);
     mockTelegramFailureHandler.handleFailure.mockResolvedValue(undefined);
+    mockErrorClassifier.isRetryableTelegramSend.mockResolvedValue(false);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -64,6 +67,7 @@ describe('The TelegramService class', () => {
         { provide: TelegramBotUpdateService, useValue: mockTelegramBotUpdateService },
         { provide: telegramFailureHandler, useValue: mockTelegramFailureHandler },
         { provide: telegramRetryManager, useValue: mockRetryManager },
+        { provide: ErrorMeaningClassifierService, useValue: mockErrorClassifier },
       ],
     }).compile();
 
@@ -186,7 +190,7 @@ describe('The TelegramService class', () => {
         const testError = new Error('Forbidden: bot was blocked by the user');
 
         mockTelegramBotService.sendMessage.mockRejectedValue(testError);
-        mockTelegramFailureHandler.canHandle.mockReturnValue(true);
+        mockTelegramFailureHandler.canHandle.mockResolvedValue(true);
 
         const result = await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
 
@@ -203,7 +207,7 @@ describe('The TelegramService class', () => {
 
       beforeEach(async () => {
         mockTelegramBotUpdateService.ensureUserIsUpToDate.mockRejectedValue(blockedBotError);
-        mockTelegramFailureHandler.canHandle.mockReturnValue(true);
+        mockTelegramFailureHandler.canHandle.mockResolvedValue(true);
         mockTelegramFailureHandler.handleFailure.mockResolvedValue(undefined);
 
         result = await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
@@ -252,7 +256,7 @@ describe('The TelegramService class', () => {
         const testError = new Error('Unknown error');
 
         mockTelegramBotService.sendMessage.mockRejectedValue(testError);
-        mockTelegramFailureHandler.canHandle.mockReturnValue(false);
+        mockTelegramFailureHandler.canHandle.mockResolvedValue(false);
 
         await expect(service.sendSentryAlert(fakeUserId, alertInfo, 'en')).rejects.toThrow(testError);
 
@@ -266,6 +270,7 @@ describe('The TelegramService class', () => {
         const telegramError = new TelegramError({ error_code: 429, description: 'Too Many Requests' });
 
         mockTelegramBotService.sendMessage.mockRejectedValue(telegramError);
+        mockErrorClassifier.isRetryableTelegramSend.mockResolvedValue(true);
 
         const result = await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
 
@@ -281,6 +286,7 @@ describe('The TelegramService class', () => {
         const telegramError = new TelegramError({ error_code: 502, description: 'Bad Gateway' });
 
         mockTelegramBotService.sendMessage.mockRejectedValue(telegramError);
+        mockErrorClassifier.isRetryableTelegramSend.mockResolvedValue(true);
 
         const result = await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
 
@@ -292,6 +298,7 @@ describe('The TelegramService class', () => {
         const telegramError = new TelegramError({ error_code: 429, description: 'Too Many Requests' });
 
         mockTelegramBotService.sendMessage.mockRejectedValue(telegramError);
+        mockErrorClassifier.isRetryableTelegramSend.mockResolvedValue(true);
 
         await expect(service.sendSentryAlert(fakeUserId, alertInfo, 'en', undefined, false)).rejects.toThrow(telegramError);
         expect(mockRetryManager.addToRetry).not.toHaveBeenCalled();
@@ -315,6 +322,7 @@ describe('The TelegramService class', () => {
         const networkError = new Error('connect ETIMEDOUT 149.154.167.220:443');
 
         mockTelegramBotService.sendMessage.mockRejectedValue(networkError);
+        mockErrorClassifier.isRetryableTelegramSend.mockResolvedValue(true);
 
         const result = await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
 
@@ -330,6 +338,7 @@ describe('The TelegramService class', () => {
         const networkError = new Error('read ECONNRESET');
 
         mockTelegramBotService.sendMessage.mockRejectedValue(networkError);
+        mockErrorClassifier.isRetryableTelegramSend.mockResolvedValue(true);
 
         const result = await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
 
@@ -363,7 +372,7 @@ describe('The TelegramService class', () => {
 
       beforeEach(async () => {
         mockTelegramBotUpdateService.ensureUserIsUpToDate.mockRejectedValue(blockedBotError);
-        mockTelegramFailureHandler.canHandle.mockReturnValue(true);
+        mockTelegramFailureHandler.canHandle.mockResolvedValue(true);
         mockTelegramFailureHandler.handleFailure.mockResolvedValue(undefined);
 
         result = await service.sendBreakInAlert(fakeUserId, alertInfo, 'en');
