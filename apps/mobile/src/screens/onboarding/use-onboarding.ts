@@ -20,13 +20,18 @@ import {
 import { OffensiveResponse, Vehicle } from '../../features/vehicles/domain/entities';
 import { getVehicleCommandsAuthorizationUseCase } from '../../features/auth/di';
 import { selectTelemetryVehicle } from './onboarding.helpers';
-import { registerDeviceForPush } from '../settings/settings.helpers';
+import {
+  CriticalAlertsAvailability,
+  registerDeviceForPush,
+  resolveCriticalAlertsAvailability,
+} from '../settings/settings.helpers';
 import { requestVehicleCommandsScope } from '../vehicle-detail/vehicle-detail.helpers';
 
 export function useOnboarding(onComplete: () => void) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState<string | null>(null);
+  const [isDndAccessModalOpen, setIsDndAccessModalOpen] = useState(false);
   const { pushToken, setPushToken } = usePushToken();
   useTelegramStatusSync();
 
@@ -195,12 +200,46 @@ export function useOnboarding(onComplete: () => void) {
     }
   };
 
+  const persistCriticalAlerts = async (enabled: boolean): Promise<void> => {
+    await updateNotificationPreferencesUseCase.execute({ critical_alerts_enabled: enabled }, pushToken ?? undefined);
+    await queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
+  };
+
+  const allowCriticalAlerts = async (): Promise<boolean> => {
+    const availability = await resolveCriticalAlertsAvailability();
+
+    if (availability === CriticalAlertsAvailability.NeedsDoNotDisturbAccess) {
+      setIsDndAccessModalOpen(true);
+    }
+
+    if (availability === CriticalAlertsAvailability.Denied) {
+      setMessage(t('settings.criticalAlertsDenied'));
+    }
+
+    return availability === CriticalAlertsAvailability.Allowed;
+  };
+
+  const handleToggleCriticalAlerts = async (enabled: boolean): Promise<void> => {
+    setMessage(null);
+
+    try {
+      if (enabled && !(await allowCriticalAlerts())) {
+        return;
+      }
+
+      await persistCriticalAlerts(enabled);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    }
+  };
+
   const vehicles = vehiclesQuery.data ?? [];
   const telemetryVehicle = selectTelemetryVehicle(vehicles);
   const monitoredVehicle = vehicles.find((vehicle) => vehicle.sentry_mode_monitoring_enabled) ?? vehicles[0] ?? null;
 
   const isTelegramLinked = telegramStatusQuery.data?.linked === true;
   const isPushEnabled = preferencesQuery.data?.push_enabled === true;
+  const isCriticalAlertsEnabled = preferencesQuery.data?.critical_alerts_enabled === true;
   const isNotificationConfigured = isTelegramLinked || isPushEnabled;
 
   return {
@@ -210,6 +249,11 @@ export function useOnboarding(onComplete: () => void) {
     consentStatusQuery,
     consentTextQuery,
     enablePush: handleEnablePush,
+    isCriticalAlertsActive: isCriticalAlertsEnabled,
+    isCriticalAlertsTogglable: pushToken !== null,
+    isDndAccessModalOpen,
+    setIsDndAccessModalOpen,
+    toggleCriticalAlerts: handleToggleCriticalAlerts,
     flags: {
       isConsentMissing: consentStatusQuery.data?.hasConsent !== true,
       isLoading:

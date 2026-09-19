@@ -14,6 +14,7 @@ export interface PushNotificationServiceRequirements {
   configure(): Promise<void>;
   getCachedExpoPushToken(): Promise<string | null>;
   getGrantedExpoPushToken(): Promise<string | null>;
+  requestCriticalAlertsPermission(): Promise<boolean>;
   requestExpoPushToken(): Promise<string | null>;
   isPushSetupCompleted(): Promise<boolean>;
   setPushSetupCompleted(completed: boolean): Promise<void>;
@@ -211,23 +212,34 @@ export class PushNotificationService implements PushNotificationServiceRequireme
     );
   }
 
-  private async resolvePermissionStatus(): Promise<string> {
-    const permissions = await Notifications.getPermissionsAsync();
-    const needsCriticalPrompt = Platform.OS === 'ios' && !permissions.ios?.allowsCriticalAlerts;
-
-    if (!permissions.granted || needsCriticalPrompt) {
-      const requestedPermissions = await Notifications.requestPermissionsAsync({
-        ios: {
-          allowAlert: true,
-          allowBadge: true,
-          allowSound: true,
-          allowCriticalAlerts: true,
-        },
-      });
-      return requestedPermissions.status;
+  public async requestCriticalAlertsPermission(): Promise<boolean> {
+    if (Platform.OS !== 'ios') {
+      return true;
     }
 
-    return permissions.status;
+    const permissions = await Notifications.getPermissionsAsync();
+
+    if (permissions.ios?.allowsCriticalAlerts) {
+      return true;
+    }
+
+    const requestedPermissions = await Notifications.requestPermissionsAsync({
+      ios: { allowAlert: true, allowBadge: true, allowCriticalAlerts: true, allowSound: true },
+    });
+    return requestedPermissions.ios?.allowsCriticalAlerts === true;
+  }
+
+  private async resolvePermissionStatus(): Promise<string> {
+    const permissions = await Notifications.getPermissionsAsync();
+
+    if (permissions.granted) {
+      return permissions.status;
+    }
+
+    const requestedPermissions = await Notifications.requestPermissionsAsync({
+      ios: { allowAlert: true, allowBadge: true, allowCriticalAlerts: true, allowSound: true },
+    });
+    return requestedPermissions.status;
   }
 
   private async getExpoPushToken(): Promise<string | null> {

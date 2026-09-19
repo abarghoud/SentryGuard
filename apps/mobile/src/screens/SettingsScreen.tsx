@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { radius, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
@@ -17,7 +17,6 @@ import { resolveTelegramStatusKey } from './telegram-settings/telegram-settings.
 import { resolveAlertSound } from '../features/notifications/domain/alert-sounds';
 import {
   clearDebugLogs,
-  openAndroidDoNotDisturbAccessSettings,
   openCrispSupport,
   openDiscordCommunity,
   openEmailSupport,
@@ -31,6 +30,7 @@ import {
   resolveSupportEmail,
   shareDebugLogs,
 } from './settings/settings.helpers';
+import { DndAccessModal } from './settings/DndAccessModal';
 import { SoundSelectorModal } from './settings/SoundSelectorModal';
 import { useSettings } from './settings/use-settings';
 import { muteNotificationsUseCase, unmuteNotificationsUseCase } from '../features/notifications/di';
@@ -273,18 +273,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         style={styles.logout}
       />
 
-      <Modal animationType="fade" onRequestClose={() => setIsDndAccessModalOpen(false)} transparent visible={isDndAccessModalOpen}>
-        <View style={[styles.modalBackdrop, { backgroundColor: colors.overlay }]}>
-          <Surface style={styles.modalCard}>
-            <AppText variant={TextVariant.Title3}>{t('settings.dndAccessTitle')}</AppText>
-            <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
-              {t('settings.dndAccessDescription')}
-            </AppText>
-            <GlassButton label={t('settings.dndAccessButton')} onPress={() => void openAndroidDoNotDisturbAccessSettings(setIsDndAccessModalOpen)} />
-            <GlassButton label={t('common.cancel')} variant={GlassButtonVariant.Plain} onPress={() => setIsDndAccessModalOpen(false)} />
-          </Surface>
-        </View>
-      </Modal>
+      <DndAccessModal isOpen={isDndAccessModalOpen} onClose={() => setIsDndAccessModalOpen(false)} />
 
       <SoundSelectorModal
         isOpen={isSoundModalOpen}

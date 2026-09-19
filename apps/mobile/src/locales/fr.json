@@ -122,6 +122,7 @@
   "settings.pushNoToken": "Les notifications push ne peuvent pas être activées sur cet appareil pour le moment. Les autres réglages sont enregistrés.",
   "settings.pushPermissionDenied": "Permission push refusée.",
   "settings.criticalAlertsUnavailable": "Cette option nécessite une mise à jour de l’API SentryGuard.",
+  "settings.criticalAlertsDenied": "Les alertes critiques ne sont pas autorisées sur cet appareil. Activez-les dans Réglages > Notifications > SentryGuard > Alertes critiques.",
   "settings.communitySection": "Communauté & Soutiens",
   "settings.supportSection": "Assistance & Support",
   "settings.faq": "Foire aux questions",
@@ -314,5 +315,8 @@
   "onboarding.notificationsConfigured": "Configuration des notifications validée !",
   "onboarding.notificationsNotConfigured": "Vous devez activer les notifications push pour continuer.",
   "onboarding.notificationsActivatePush": "Activer",
-  "onboarding.notificationsPushActive": "Notifications push actives sur cet appareil"
+  "onboarding.notificationsPushActive": "Notifications push actives sur cet appareil",
+  "onboarding.criticalAlerts": "Alertes critiques",
+  "onboarding.criticalAlertsDescription": "Permet aux alertes d'intrusion de sonner même en mode silencieux ou Ne pas déranger, si le téléphone l'autorise.",
+  "onboarding.criticalAlertsAndroidVolume": "L'alerte utilise le volume de l'alarme : pensez à le garder audible."
 }

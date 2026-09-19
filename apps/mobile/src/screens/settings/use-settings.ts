@@ -13,11 +13,12 @@ import { getTelegramStatusUseCase } from '../../features/telegram/di';
 import { getUserLanguageUseCase, updateUserLanguageUseCase } from '../../features/user/di';
 import { UserLanguage } from '../../features/user/domain/entities';
 import {
-  canEnableCriticalAlerts,
+  CriticalAlertsAvailability,
   defaultPreferences,
   registerDeviceForPush,
   requiresPushDevice,
   resolveAvailablePushToken,
+  resolveCriticalAlertsAvailability,
   resolvePreferenceUpdates,
   resolveSettingsError,
 } from './settings.helpers';
@@ -118,6 +119,20 @@ export function useSettings() {
     }
   };
 
+  const allowCriticalAlerts = async (): Promise<boolean> => {
+    const availability = await resolveCriticalAlertsAvailability();
+
+    if (availability === CriticalAlertsAvailability.NeedsDoNotDisturbAccess) {
+      setIsDndAccessModalOpen(true);
+    }
+
+    if (availability === CriticalAlertsAvailability.Denied) {
+      setPreferenceMessage(t('settings.criticalAlertsDenied'));
+    }
+
+    return availability === CriticalAlertsAvailability.Allowed;
+  };
+
   const updatePreference = async (updates: Partial<NotificationPreferences>): Promise<void> => {
     setPreferenceMessage(null);
     appLogger.info('settings', 'Notification preference update', resolvePreferenceUpdates(updates));
@@ -138,12 +153,12 @@ export function useSettings() {
       return;
     }
 
-    if (updates.critical_alerts_enabled === true && !(await canEnableCriticalAlerts(setIsDndAccessModalOpen))) {
-      rollback();
-      return;
-    }
-
     try {
+      if (updates.critical_alerts_enabled === true && !(await allowCriticalAlerts())) {
+        rollback();
+        return;
+      }
+
       const preferences = await preferencesMutation.mutateAsync({
         preferences: resolvePreferenceUpdates(updates),
         token: currentPushToken,

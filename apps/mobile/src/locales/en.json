@@ -122,6 +122,7 @@
   "settings.pushNoToken": "Push notifications cannot be enabled on this device right now. The other settings were saved.",
   "settings.pushPermissionDenied": "Push permission denied.",
   "settings.criticalAlertsUnavailable": "This option requires a SentryGuard API update.",
+  "settings.criticalAlertsDenied": "Critical alerts are not authorized on this device. Enable them in Settings > Notifications > SentryGuard > Critical Alerts.",
   "settings.communitySection": "Community & Backers",
   "settings.supportSection": "Help & Support",
   "settings.faq": "Frequently Asked Questions",
@@ -314,5 +315,8 @@
   "onboarding.notificationsConfigured": "Notification configuration verified!",
   "onboarding.notificationsNotConfigured": "You must enable push notifications to continue.",
   "onboarding.notificationsActivatePush": "Enable",
-  "onboarding.notificationsPushActive": "Push notifications enabled on this device"
+  "onboarding.notificationsPushActive": "Push notifications enabled on this device",
+  "onboarding.criticalAlerts": "Critical alerts",
+  "onboarding.criticalAlertsDescription": "Lets break-in alerts ring even in silent or Do Not Disturb mode, when the phone allows it.",
+  "onboarding.criticalAlertsAndroidVolume": "The alert plays at your alarm volume, so keep it turned up."
 }
