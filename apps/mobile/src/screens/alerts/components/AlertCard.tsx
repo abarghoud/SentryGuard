@@ -45,6 +45,18 @@ export function AlertCard({ alert, isUnread, language, onDelete, t }: AlertCardP
             <AppText variant={TextVariant.Headline} style={styles.cardTitle}>
               {t(resolveAlertTitleKey(alert))}
             </AppText>
+            {alert.muted ? (
+              <View
+                accessible
+                accessibilityLabel={t('alerts.muted')}
+                style={[styles.mutedBadge, { backgroundColor: colors.secondaryFill }]}
+              >
+                <Icon name="bell.slash.fill" size={10} color={colors.secondaryLabel} />
+                <AppText variant={TextVariant.Caption2} color={colors.secondaryLabel}>
+                  {t('alerts.muted')}
+                </AppText>
+              </View>
+            ) : null}
           </View>
           <AppText variant={TextVariant.Caption1} color={colors.secondaryLabel}>
             {formatAlertDate(alert.created_at, language)}
@@ -121,6 +133,14 @@ const styles = StyleSheet.create({
     height: 36,
     justifyContent: 'center',
     width: 36,
+  },
+  mutedBadge: {
+    alignItems: 'center',
+    borderRadius: radius.capsule,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: 2,
   },
   titleWrap: {
     alignItems: 'center',

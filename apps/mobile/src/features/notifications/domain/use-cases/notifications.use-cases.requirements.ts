@@ -15,3 +15,11 @@ export interface RegisterPushTokenRequirements {
 export interface DeletePushTokenRequirements {
   execute(token: string): Promise<{ success: boolean }>;
 }
+
+export interface MuteNotificationsRequirements {
+  execute(minutes: number): Promise<{ muted_until: string }>;
+}
+
+export interface UnmuteNotificationsRequirements {
+  execute(): Promise<{ muted_until: null }>;
+}

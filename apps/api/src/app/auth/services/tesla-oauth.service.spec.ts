@@ -41,7 +41,9 @@ describe('The TeslaOAuthService class', () => {
     process.env.TESLA_CLIENT_SECRET = 'test-client-secret';
     process.env.TESLA_REDIRECT_URI = 'https://test.com/callback';
     process.env.JWT_OAUTH_STATE_SECRET = 'test-oauth-state-secret';
-    delete process.env.TESLA_API_BASE_URL;
+    process.env.TESLA_API_BASE_URL = 'https://vehicle-command.test:4443';
+    process.env.TESLA_PROXY_CA_CERT_BASE64 =
+      Buffer.from('-----BEGIN CERTIFICATE-----\nfake\n-----END CERTIFICATE-----\n').toString('base64');
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [

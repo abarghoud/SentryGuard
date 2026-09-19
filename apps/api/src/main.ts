@@ -7,13 +7,15 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
 import { validateSecrets } from './common/utils/crypto.util';
+import { validateTeslaProxyConfiguration } from './common/utils/tesla-proxy-agent.util';
 
 async function bootstrap() {
   try {
     validateSecrets();
+    validateTeslaProxyConfiguration();
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`❌ Invalid secrets configuration: ${message}. Shutting down.`);
+    console.error(`\n❌ Invalid configuration — shutting down.\n\n${message}\n`);
     process.exit(1);
   }
 

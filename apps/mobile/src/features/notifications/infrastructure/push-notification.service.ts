@@ -94,9 +94,34 @@ export class PushNotificationService implements PushNotificationServiceRequireme
       }),
     });
 
+    await this.configureCategories();
+
     if (Platform.OS === 'android') {
       await this.configureAndroidChannels();
     }
+  }
+
+  private async configureCategories(): Promise<void> {
+    if (Platform.OS === 'web') {
+      return;
+    }
+    await Notifications.setNotificationCategoryAsync('sentry_alert', this.resolveSentryAlertActions());
+  }
+
+  private resolveSentryAlertActions(): Notifications.NotificationAction[] {
+    return [
+      this.createMuteAction(i18n.t('notifications.actionPause1h'), 'MUTE_1H'),
+      this.createMuteAction(i18n.t('notifications.actionPause4h'), 'MUTE_4H'),
+      this.createMuteAction(i18n.t('notifications.actionPause24h'), 'MUTE_24H'),
+    ];
+  }
+
+  private createMuteAction(buttonTitle: string, identifier: string): Notifications.NotificationAction {
+    return {
+      buttonTitle,
+      identifier,
+      options: { opensAppToForeground: true },
+    };
   }
 
   public async requestExpoPushToken(): Promise<string | null> {

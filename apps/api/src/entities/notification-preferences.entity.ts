@@ -11,6 +11,9 @@ export class NotificationPreferences {
   @Column({ type: 'varchar', length: 64, default: 'sentry_siren.wav' })
   alert_sound!: string;
 
+  @Column({ type: 'timestamp', nullable: true })
+  muted_until!: Date | null;
+
   @CreateDateColumn()
   created_at!: Date;
 

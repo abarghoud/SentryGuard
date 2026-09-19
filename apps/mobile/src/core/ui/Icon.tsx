@@ -23,6 +23,7 @@ const ioniconsFallback: Record<string, keyof typeof Ionicons.glyphMap> = {
   'arrow.up.right.square': 'open-outline',
   'bell.badge.fill': 'notifications',
   'bell.fill': 'notifications',
+  'bell.slash.fill': 'notifications-off',
   'bolt.car.fill': 'car-sport',
   'car.2.fill': 'car-sport',
   'car.fill': 'car',

@@ -11,6 +11,7 @@ export interface AlertNotifierPayload {
   type: AlertEventType;
   severity: AlertEventSeverity;
   correlationId?: string;
+  muted?: boolean;
 }
 
 type TelegramNotifier = (

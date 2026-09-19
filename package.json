@@ -38,6 +38,7 @@
     "lint": "nx lint",
     "serve": "nx serve",
     "dev": "nx dev",
+    "bump:mobile": "node scripts/bump-mobile-version.js",
     "kafka:start": "./scripts/start-kafka.sh",
     "kafka:send": "./scripts/send-interactive.sh",
     "kafka:stop": "./scripts/stop-kafka.sh"

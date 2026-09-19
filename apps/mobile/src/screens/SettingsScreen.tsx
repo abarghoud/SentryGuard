@@ -1,6 +1,8 @@
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useQueryClient } from '@tanstack/react-query';
 import type { JSX } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -31,6 +33,9 @@ import {
 } from './settings/settings.helpers';
 import { SoundSelectorModal } from './settings/SoundSelectorModal';
 import { useSettings } from './settings/use-settings';
+import { muteNotificationsUseCase, unmuteNotificationsUseCase } from '../features/notifications/di';
+import { MuteDurationModal } from './dashboard/components/MuteDurationModal';
+import { formatMutedUntilTime, isMuteActive } from './dashboard/dashboard.helpers';
 
 interface SettingsScreenProps {
   onLogout(): Promise<void>;
@@ -57,6 +62,30 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
   } = useSettings();
 
   const selectedSound = resolveAlertSound(preferences.alert_sound);
+  const queryClient = useQueryClient();
+  const [isMuteModalOpen, setIsMuteModalOpen] = useState(false);
+  const isMuted = isMuteActive(preferences.muted_until);
+
+  const handleMute = async (minutes: number): Promise<void> => {
+    try {
+      await muteNotificationsUseCase.execute(minutes);
+      setIsMuteModalOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
+    } catch {
+      setIsMuteModalOpen(false);
+    }
+  };
+
+  const handleResumeNotifications = async (): Promise<void> => {
+    try {
+      await unmuteNotificationsUseCase.execute();
+      setIsMuteModalOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
+    } catch {
+      setIsMuteModalOpen(false);
+    }
+  };
+
   const isBusy = preferencesMutation.isPending;
   const language = languageQuery.data?.language ?? UserLanguage.French;
   const faqUrl = resolveFaqUrl();
@@ -151,6 +180,12 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
             />
           </>
         ) : null}
+        <ListRow
+          title={t('settings.pauseAlerts')}
+          value={isMuted ? t('settings.pauseAlertsActive', { time: formatMutedUntilTime(preferences.muted_until, t) }) : t('settings.pauseAlertsInactive')}
+          showChevron
+          onPress={() => setIsMuteModalOpen(true)}
+        />
       </ListSection>
 
       <ListSection header={t('settings.telegramSection')} footer={isTelegramLinked ? undefined : t('settings.telegramConnectSubtitle')}>
@@ -258,6 +293,15 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         onSelectSound={(soundId) => {
           void updatePreference({ alert_sound: soundId });
         }}
+      />
+
+      <MuteDurationModal
+        isVisible={isMuteModalOpen}
+        mutedUntil={preferences.muted_until}
+        onClose={() => setIsMuteModalOpen(false)}
+        onMute={(minutes) => void handleMute(minutes)}
+        onResume={() => void handleResumeNotifications()}
+        t={t}
       />
     </ScrollView>
   );

@@ -23,8 +23,9 @@ export interface AlertDispatchConfig {
 }
 
 interface RecordedAlert {
-  userId: string;
   alertEventId: string;
+  isMuted: boolean;
+  userId: string;
 }
 
 @Injectable()
@@ -135,17 +136,24 @@ export class VehicleAlertNotifierService {
     alertInfo: { vin: string; display_name?: string },
     config: AlertDispatchConfig
   ): Promise<RecordedAlert[]> {
-    return Promise.all(userIds.map(async (userId) => {
-      const alertEventId = await this.alertsService.record(
-        userId,
-        alertInfo.vin,
-        config.type,
-        config.severity,
-        alertInfo.display_name
-      );
+    return Promise.all(
+      userIds.map(async (userId) => {
+        const isMuted = await this.resolveIsMuted(userId, config.type);
+        const alertEventId = await this.alertsService.record(
+          userId,
+          alertInfo.vin,
+          config.type,
+          config.severity,
+          alertInfo.display_name,
+          isMuted
+        );
+        return { alertEventId, isMuted, userId };
+      })
+    );
+  }
 
-      return { userId, alertEventId };
-    }));
+  private async resolveIsMuted(userId: string, type: AlertEventType): Promise<boolean> {
+    return type === AlertEventType.Sentry && (await this.notificationsService.isMuted(userId));
   }
 
   private enqueueUserNotifications(
@@ -155,15 +163,16 @@ export class VehicleAlertNotifierService {
     alertName: string,
     config: AlertDispatchConfig
   ): void {
-    for (const { userId, alertEventId } of recordedAlerts) {
+    for (const { userId, alertEventId, isMuted } of recordedAlerts) {
       this.enqueueNotification({
         alertEventId,
-        userId,
-        vin: alertInfo.vin,
-        vehicleDisplayName: alertInfo.display_name,
-        type: config.type,
-        severity: config.severity,
         correlationId,
+        muted: isMuted,
+        severity: config.severity,
+        type: config.type,
+        userId,
+        vehicleDisplayName: alertInfo.display_name,
+        vin: alertInfo.vin,
       });
     }
 
@@ -172,15 +181,32 @@ export class VehicleAlertNotifierService {
 
   private async notifyUser(payload: AlertNotifierPayload): Promise<void> {
     try {
-      const userLanguage = await this.userLanguageService.getUserLanguage(payload.userId);
-      await this.deliverNotifications(payload, userLanguage);
-      await this.alertsService.markNotificationSent(payload.alertEventId);
-      this.logger.log(`[${payload.type}] Notified user ${payload.userId} for VIN ${payload.vin} (correlation: ${payload.correlationId})`);
+      await this.executeUserNotification(payload);
     } catch (error) {
       this.logger.error(`[NOTIFICATION_ERROR] Failed to send ${payload.type} to user ${payload.userId} for VIN ${payload.vin}:`, error);
       await this.handleNotificationFailure(payload.alertEventId);
       throw error;
     }
+  }
+
+  private async executeUserNotification(payload: AlertNotifierPayload): Promise<void> {
+    if (payload.muted) {
+      await this.handleMutedNotification(payload);
+      return;
+    }
+    await this.handleActiveNotification(payload);
+  }
+
+  private async handleMutedNotification(payload: AlertNotifierPayload): Promise<void> {
+    await this.alertsService.markNotificationSent(payload.alertEventId);
+    this.logger.log(`[${payload.type}] Alert suppressed for muted user ${payload.userId} (correlation: ${payload.correlationId})`);
+  }
+
+  private async handleActiveNotification(payload: AlertNotifierPayload): Promise<void> {
+    const userLanguage = await this.userLanguageService.getUserLanguage(payload.userId);
+    await this.deliverNotifications(payload, userLanguage);
+    await this.alertsService.markNotificationSent(payload.alertEventId);
+    this.logger.log(`[${payload.type}] Notified user ${payload.userId} for VIN ${payload.vin} (correlation: ${payload.correlationId})`);
   }
 
   private async deliverNotifications(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<void> {

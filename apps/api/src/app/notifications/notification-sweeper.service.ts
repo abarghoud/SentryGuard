@@ -51,12 +51,13 @@ export class NotificationSweeperService {
 
       const wasEnqueued = this.vehicleAlertNotifierService.enqueueNotification({
         alertEventId: alert.id,
-        userId: alert.userId,
-        vin: alert.vin,
-        vehicleDisplayName: alert.vehicle_display_name,
-        type: alert.type,
-        severity: alert.severity,
         correlationId: `sweep-${alert.id}`,
+        muted: alert.muted,
+        severity: alert.severity,
+        type: alert.type,
+        userId: alert.userId,
+        vehicleDisplayName: alert.vehicle_display_name,
+        vin: alert.vin,
       });
 
       if (wasEnqueued) {

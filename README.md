@@ -4,8 +4,21 @@
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Cloudflare](https://img.shields.io/badge/Cloudflare-Compatible-orange.svg)](https://www.cloudflare.com)
+[![iOS](https://img.shields.io/badge/iOS-App%20Store-black.svg?logo=apple&logoColor=white)](https://sentryguard.org/download)
+[![Android](https://img.shields.io/badge/Android-Google%20Play-green.svg?logo=googleplay&logoColor=white)](https://sentryguard.org/download)
 
-**Real-time Tesla vehicle monitoring and security alerts via Telegram**
+**Real-time Tesla vehicle monitoring and security alerts via Mobile Push & Telegram**
+
+<p align="left">
+  <a href="https://sentryguard.org/download">
+    <img src="apps/webapp/public/images/badges/app-store.svg" alt="Download on the App Store" height="40" />
+  </a>
+  &nbsp;
+  <a href="https://sentryguard.org/download">
+    <img src="apps/webapp/public/images/badges/google-play.svg" alt="Get it on Google Play" height="40" />
+  </a>
+</p>
+
 
 ---
 
@@ -40,83 +53,109 @@ _Click the image above to watch the demo video on YouTube_
 
 ---
 
-SentryGuard is a comprehensive security monitoring solution for Tesla vehicles. It tracks your vehicle's Sentry Mode status and sends instant Telegram notifications when suspicious activity is detected.
+SentryGuard is a comprehensive security monitoring solution for Tesla vehicles. It tracks your vehicle's Sentry Mode status and sends instant push notifications to your mobile phone (iOS & Android) and Telegram alerts when suspicious activity is detected.
 
 ## ✨ Features
 
-- 🔐 **Tesla OAuth Authentication** - Secure login with your Tesla account
-- 📱 **Telegram Integration** - Instant alerts via deep linking (no manual chatId setup)
-- 🚗 **Multi-Vehicle Support** - Monitor all your Tesla vehicles
-- 📊 **Real-time Telemetry** - Track Sentry Mode and break-in events, receive instant Telegram notifications when security events occur
-- 🚨 **Break-in Offensive Response** - Automatically honk the horn or play a sound on the boombox (fart) when a break-in alert is triggered, configurable per vehicle via webapp or Telegram
-- 🌐 **SEO-Friendly WebApp** - Next.js with server-side rendering
-- 🔒 **Secure by Design** - Encrypted token storage, secure communication
-- 🎨 **Modern UI** - Responsive interface with Tailwind CSS
+- 📱 **Native Mobile App (iOS & Android)** - React Native / Expo application with live vehicle dashboard, alert history, dark/light themes, and bilingual support (FR/EN)
+- 🔔 **Instant Push Notifications** - High-priority alerts with sound delivered straight to your phone when an event is detected
+- 💬 **Telegram Integration** - Instant alerts and interactive control buttons via Telegram deep linking (no manual chatId setup)
+- 🔐 **Tesla OAuth Authentication** - Official, secure authentication powered by Tesla with deep-link support
+- 🚗 **Multi-Vehicle Support** - Monitor and configure all your Tesla vehicles from a single account
+- 📊 **Real-time Telemetry** - Detect Sentry Mode events and intrusion attempts even when Sentry Mode is turned off to save battery
+- 🚨 **Break-in Offensive Response** - Automatically honk the horn or trigger boombox sounds when a break-in is detected (configurable per vehicle via mobile, web, or Telegram)
+- 🌐 **Responsive WebApp** - Next.js web portal with SSR and clean, modern interface
+- 🔒 **Secure by Design** - End-to-end token encryption (AES-256-GCM), server-side session management, and Cloudflare WAF protection
+
+## 📱 Mobile App Showcase
+
+<p align="center">
+  <img src="docs/assets/screenshots/screen-1-protect.png" width="19%" alt="Protect your Tesla" />
+  <img src="docs/assets/screenshots/screen-2-dashboard.png" width="19%" alt="Vehicle Dashboard" />
+  <img src="docs/assets/screenshots/screen-3-offensive-response.png" width="19%" alt="Offensive Response" />
+  <img src="docs/assets/screenshots/screen-4-alerts.png" width="19%" alt="Instant Alerts" />
+  <img src="docs/assets/screenshots/screen-5-settings.png" width="19%" alt="Settings & Preferences" />
+</p>
 
 ## 🏗️ Architecture
 
 This is an Nx monorepo containing:
 
 - **`apps/api`** - NestJS backend API with TypeORM + PostgreSQL
-- **`apps/webapp`** - Next.js 15 frontend with App Router (SEO-optimized)
+- **`apps/webapp`** - Next.js frontend with App Router (SSR & SEO-optimized)
 - **`apps/mobile`** - Expo / React Native mobile app for iOS, Android and Expo Web
+- **`libs/`** - Shared domain libraries (`@sentryguard/telegram-domain`, `@sentryguard/beta-domain`)
 
-Mobile documentation: [apps/mobile/README.md](apps/mobile/README.md)
+Detailed mobile documentation: [apps/mobile/README.md](apps/mobile/README.md)
 
 ### Tech Stack
+
+**Mobile (iOS & Android):**
+
+- React Native & Expo
+- React Navigation (native stack + pager)
+- TanStack Query (React Query)
+- Native Push Notifications (`expo-notifications`)
+- Secure Storage (`expo-secure-store` / Keychain)
+- i18next & react-i18next (FR/EN)
+- EAS (Expo Application Services)
 
 **Backend:**
 
 - NestJS - Node.js framework
 - TypeORM - ORM with PostgreSQL
 - Telegraf - Telegram Bot API
-- Tesla Fleet API - Official Tesla API
-- Tesla Command Proxy
+- Tesla Fleet API & Tesla Command Proxy
+- Kafka & Fleet Telemetry TLS Ingest
 
-**Frontend:**
+**Frontend (Web):**
 
-- Next.js 15 - React framework with SSR
-- React 19 - UI library
+- Next.js - React framework with SSR
+- React - UI library
 - Tailwind CSS - Styling
 - TypeScript - Type safety
 
 ![SentryGuard.drawio.svg](SentryGuard.drawio.svg)
 
-## 📱 How to Use
+## 🚀 How to Use
 
-### 1. Login with Tesla
+### Option 1: Mobile App (Recommended)
 
-- Visit the webapp and click "Login with Tesla"
-- Authenticate with your Tesla account
-- You'll be redirected to your dashboard
+1. **Download the App**: Get SentryGuard on [iOS (App Store) or Android (Google Play)](https://sentryguard.org/download).
+2. **Login with Tesla**: Sign in securely with your Tesla account via official OAuth.
+3. **Automated Setup**: Grant push notification permissions, detect your vehicles, and pair your Tesla virtual key in a few taps.
+4. **Instant Alerts**: Receive immediate, high-priority push notifications for door dings, scratches, or unauthorized handle pulls.
+5. **Manage Vehicles & Offensive Response**: Configure horn/boombox break-in responses and alerts directly from the vehicle details screen.
 
-### 2. Configure Vehicles
+> 💡 **Self-hosting?** You can connect the official store app to your own server: on the mobile login screen, tap the shield logo **5 times** to enter your custom API URL. See the [Self-Hosting Guide](SELF_HOSTING.md#95-connect-mobile-apps-ios--android).
 
-- Go to the Vehicles page
-- Your Tesla vehicles will be automatically synced
-- Enable telemetry for each vehicle you want to monitor
+---
 
-### 3. Link Telegram
+### Option 2: WebApp & Telegram
 
-- Go to the Telegram page
-- Click "Generate Telegram Link"
-- Open the link in Telegram
-- Your account is now linked!
-- Test with "Send Test Message"
-
-### 4. Receive Alerts
-
-- When Sentry Mode or a break-in is detected, you'll receive an instant Telegram notification
-
-### 5. Configure Break-in Offensive Response
-
-Choose what happens when a break-in alert is triggered:
-
-- **🚨 Break-In** — Disabled / Honk / Fart (Boombox)
-
-Configure per vehicle from the **Vehicles page** (webapp toggle) or via **Telegram** button.
+1. **Login with Tesla**: Visit the [web application](https://sentryguard.org) and authenticate.
+2. **Configure Vehicles**: Sync your fleet and activate telemetry monitoring for each vehicle.
+3. **Link Telegram (Optional)**: Head to the Telegram section, generate your linking token, and start the SentryGuard bot.
+4. **Receive Dual-Channel Alerts**: Get alerts in your Telegram chat and toggle offensive responses with inline buttons.
 
 ## 🔧 Development
+
+### Run the Mobile App
+
+```bash
+# Start Expo Metro bundler (:8081)
+npx nx start mobile
+
+# Run directly on iOS simulator or Android emulator
+npx nx run-ios mobile
+npx nx run-android mobile
+
+# Run Expo Web (:3002)
+npx nx serve mobile
+
+# Check mobile types
+npx nx typecheck mobile
+```
 
 ### Run the API
 
@@ -138,6 +177,9 @@ npx nx build api
 
 # WebApp
 npx nx build webapp
+
+# Mobile bundle export
+npx nx export mobile
 ```
 
 ### Run tests
@@ -148,6 +190,9 @@ npx nx test api
 
 # WebApp tests
 npx nx test webapp
+
+# All tests
+npx nx run-many -t test
 ```
 
 ### Lint code
@@ -155,6 +200,7 @@ npx nx test webapp
 ```bash
 npx nx lint api
 npx nx lint webapp
+npx nx run-many -t lint
 ```
 
 ## 📊 Project Structure
@@ -165,25 +211,38 @@ SentryGuard/
 │   ├── api/                    # NestJS Backend
 │   │   ├── src/
 │   │   │   ├── app/
-│   │   │   │   ├── auth/       # Tesla OAuth
+│   │   │   │   ├── auth/       # Tesla OAuth & session management
 │   │   │   │   ├── telemetry/  # Vehicle telemetry & commands
 │   │   │   │   ├── alerts/     # Alert handlers & break-in offensive response
 │   │   │   │   ├── offensive-response/ # Offensive response API endpoints & config
+│   │   │   │   ├── notifications/ # Expo mobile push notifications
 │   │   │   │   └── telegram/   # Telegram bot
 │   │   │   ├── entities/       # TypeORM entities
-│   │   │   ├── config/         # Configuration
+│   │   │   ├── config/         # Centralized configuration
 │   │   │   ├── migrations/     # Database migrations
 │   │   │   └── common/         # Shared utilities
 │   │   └── env.example
 │   │
-│   └── webapp/                 # Next.js Frontend
+│   ├── webapp/                 # Next.js Frontend (SSR)
+│   │   ├── src/
+│   │   │   ├── app/            # Next.js pages (App Router)
+│   │   │   ├── components/     # React components & store badges
+│   │   │   ├── features/       # Domain features (Clean Architecture)
+│   │   │   └── core/           # API client, i18n, query provider
+│   │   └── tailwind.config.js
+│   │
+│   └── mobile/                 # React Native / Expo Mobile App (iOS & Android)
 │       ├── src/
-│       │   ├── app/            # Next.js pages (App Router)
-│       │   │   ├── dashboard/  # Protected dashboard
-│       │   │   └── callback/   # OAuth callback
-│       │   ├── components/     # React components
-│       │   └── lib/            # Utilities & hooks
-│       └── tailwind.config.js
+│       │   ├── core/           # Navigation, theme, session, API client
+│       │   ├── features/       # Domain features (Clean Architecture)
+│       │   ├── screens/        # Dashboard, Alerts, Vehicle detail, Settings
+│       │   └── locales/        # FR/EN translations
+│       ├── app.json            # Expo configuration & app permissions
+│       └── eas.json            # EAS Build & Store Submit profiles
+│
+├── libs/                       # Shared domain libraries
+│   ├── beta/domain/            # Tesla scopes & error codes
+│   └── telegram/domain/        # Telegram-linking use-cases
 │
 ├── nx.json                     # Nx configuration
 └── package.json
@@ -207,6 +266,11 @@ SentryGuard/
 - Link tokens for deep linking
 - Chat IDs for sending alerts
 - Mute status and duration
+
+### Push Device Tokens & Preferences
+
+- Native Expo push tokens per device (iOS / Android)
+- Notification preferences (Telegram vs Mobile Push toggles, critical-only filter)
 
 ## 🔐 Security
 
@@ -276,6 +340,7 @@ Use this software at your own risk. The authors are not responsible for any dama
 - **Contributing**: [CONTRIBUTING.md](./CONTRIBUTING.md)
 - **Security**: [SECURITY.md](./SECURITY.md)
 - **Self-hosting**: [SELF_HOSTING.md](./SELF_HOSTING.md) — Complete Docker deployment guide
+- **Changelog**: [CHANGELOG.md](./CHANGELOG.md) — Read before updating a self-hosted install; breaking changes are listed there
 
 ## 🙏 Acknowledgments
 

@@ -5,6 +5,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { User } from '../../entities/user.entity';
 import { ThrottleOptions } from '../../config/throttle.config';
+import { MuteNotificationsDto } from './mute-notifications.dto';
 import { NotificationPreferencesDto, NotificationsService } from './notifications.service';
 
 interface RegisterPushTokenBody {
@@ -58,5 +59,22 @@ export class NotificationsController {
     }
 
     return await this.notificationsService.removePushToken(user.userId, body.token);
+  }
+
+  @Throttle(ThrottleOptions.authenticatedWrite())
+  @Post('mute')
+  public async mute(
+    @CurrentUser() user: User,
+    @Body() body: MuteNotificationsDto
+  ): Promise<{ muted_until: string }> {
+    const mutedUntil = await this.notificationsService.mute(user.userId, body.minutes);
+    return { muted_until: mutedUntil.toISOString() };
+  }
+
+  @Throttle(ThrottleOptions.authenticatedWrite())
+  @Post('unmute')
+  public async unmute(@CurrentUser() user: User): Promise<{ muted_until: null }> {
+    await this.notificationsService.unmute(user.userId);
+    return { muted_until: null };
   }
 }

@@ -41,9 +41,7 @@ describe('The VehicleAlertNotifierService class', () => {
     mockAlertsService.markNotificationSent.mockResolvedValue(undefined);
     mockAlertsService.markNotificationAttemptFailed.mockResolvedValue(false);
     mockKafkaLogContextService.runWithContext.mockImplementation(
-      async (_context: { vin: string; correlationId: string }, callback: () => Promise<void>) => {
-        await callback();
-      }
+      (_context, callback) => callback()
     );
     mockNotificationQueueService.enqueue.mockImplementation((task: () => Promise<void>) => {
       enqueuedTasks.push(task);
@@ -202,6 +200,90 @@ describe('The VehicleAlertNotifierService class', () => {
       expect(mockAlertsService.markNotificationSent).not.toHaveBeenCalled();
     });
 
+    it('should record alerts with muted true when a Sentry alert is dispatched for a muted user', async () => {
+      mockVehicleRepository.find.mockResolvedValue([
+        { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
+      ]);
+      mockNotificationsService.isMuted.mockResolvedValue(true);
+      const sentryConfig: AlertDispatchConfig = {
+        ...config,
+        severity: AlertEventSeverity.Warning,
+        type: AlertEventType.Sentry,
+      };
+
+      await service.dispatch(sentryConfig);
+
+      expect(mockAlertsService.record).toHaveBeenCalledWith(
+        'user-1',
+        'TEST_VIN_123',
+        AlertEventType.Sentry,
+        AlertEventSeverity.Warning,
+        'My Tesla',
+        true
+      );
+    });
+
+    it('should record alerts with muted false when a BreakIn alert is dispatched for a muted user', async () => {
+      mockVehicleRepository.find.mockResolvedValue([
+        { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
+      ]);
+      mockNotificationsService.isMuted.mockResolvedValue(true);
+
+      await service.dispatch(config);
+
+      expect(mockAlertsService.record).toHaveBeenCalledWith(
+        'user-1',
+        'TEST_VIN_123',
+        AlertEventType.BreakIn,
+        AlertEventSeverity.Critical,
+        'My Tesla',
+        false
+      );
+    });
+
+    it('should record alerts with muted false when a Sentry alert is dispatched for an unmuted user', async () => {
+      mockVehicleRepository.find.mockResolvedValue([
+        { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
+      ]);
+      mockNotificationsService.isMuted.mockResolvedValue(false);
+      const sentryConfig: AlertDispatchConfig = {
+        ...config,
+        severity: AlertEventSeverity.Warning,
+        type: AlertEventType.Sentry,
+      };
+
+      await service.dispatch(sentryConfig);
+
+      expect(mockAlertsService.record).toHaveBeenCalledWith(
+        'user-1',
+        'TEST_VIN_123',
+        AlertEventType.Sentry,
+        AlertEventSeverity.Warning,
+        'My Tesla',
+        false
+      );
+    });
+
+    it('should bypass notification delivery and mark as sent when the alert is muted', async () => {
+      mockVehicleRepository.find.mockResolvedValue([
+        { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
+      ]);
+      mockNotificationsService.isMuted.mockResolvedValue(true);
+      const sentryConfig: AlertDispatchConfig = {
+        ...config,
+        severity: AlertEventSeverity.Warning,
+        type: AlertEventType.Sentry,
+      };
+
+      await service.dispatch(sentryConfig);
+      await executeEnqueuedTasks();
+
+      expect(mockAlertsService.markNotificationSent).toHaveBeenCalledWith('alert-user-1');
+      expect(mockNotificationsService.sendPushAlert).not.toHaveBeenCalled();
+      expect(mockAlertNotifierRegistry.notify).not.toHaveBeenCalled();
+      expect(mockUserLanguageService.getUserLanguage).not.toHaveBeenCalled();
+    });
+
     it('should surface database errors downstream', async () => {
       mockVehicleRepository.find.mockRejectedValue(new Error('DB Error'));
 
@@ -241,14 +323,16 @@ describe('The VehicleAlertNotifierService class', () => {
           'TEST_VIN_123',
           AlertEventType.BreakIn,
           AlertEventSeverity.Critical,
-          'My Tesla'
+          'My Tesla',
+          false
         );
         expect(mockAlertsService.record).toHaveBeenCalledWith(
           'user-2',
           'TEST_VIN_123',
           AlertEventType.BreakIn,
           AlertEventSeverity.Critical,
-          'My Tesla'
+          'My Tesla',
+          false
         );
       });
 

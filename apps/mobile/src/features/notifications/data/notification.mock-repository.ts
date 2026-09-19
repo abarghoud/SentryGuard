@@ -5,6 +5,7 @@ export class NotificationMockRepository implements NotificationRepositoryRequire
   private preferences: NotificationPreferences = {
     critical_alerts_enabled: true,
     critical_only: false,
+    muted_until: null,
     push_enabled: true,
     telegram_enabled: true,
   };
@@ -26,6 +27,17 @@ export class NotificationMockRepository implements NotificationRepositoryRequire
   ): Promise<NotificationPreferences> {
     this.preferences = { ...this.preferences, ...preferences };
     return { ...this.preferences };
+  }
+
+  public async muteNotifications(minutes: number): Promise<{ muted_until: string }> {
+    const mutedUntil = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+    this.preferences.muted_until = mutedUntil;
+    return { muted_until: mutedUntil };
+  }
+
+  public async unmuteNotifications(): Promise<{ muted_until: null }> {
+    this.preferences.muted_until = null;
+    return { muted_until: null };
   }
 }
 

@@ -3,7 +3,9 @@ import { NotificationRepositoryRequirements } from '../notification.repository.r
 import {
   DeletePushTokenRequirements,
   GetNotificationPreferencesRequirements,
+  MuteNotificationsRequirements,
   RegisterPushTokenRequirements,
+  UnmuteNotificationsRequirements,
   UpdateNotificationPreferencesRequirements,
 } from './notifications.use-cases.requirements';
 
@@ -39,5 +41,21 @@ export class DeletePushTokenUseCase implements DeletePushTokenRequirements {
 
   public async execute(token: string): Promise<{ success: boolean }> {
     return this.repository.deletePushToken(token);
+  }
+}
+
+export class MuteNotificationsUseCase implements MuteNotificationsRequirements {
+  public constructor(private readonly repository: NotificationRepositoryRequirements) {}
+
+  public async execute(minutes: number): Promise<{ muted_until: string }> {
+    return this.repository.muteNotifications(minutes);
+  }
+}
+
+export class UnmuteNotificationsUseCase implements UnmuteNotificationsRequirements {
+  public constructor(private readonly repository: NotificationRepositoryRequirements) {}
+
+  public async execute(): Promise<{ muted_until: null }> {
+    return this.repository.unmuteNotifications();
   }
 }

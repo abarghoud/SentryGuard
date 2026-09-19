@@ -10,15 +10,18 @@ export class TelegramFailureHandlerService implements ITelegramFailureHandler {
     private readonly telegramConfigService: TelegramConfigService,
   ) {}
 
-  canHandle(error: Error): boolean {
+  public canHandle(error: Error): boolean {
     const errorMessage = error.message.toLowerCase();
-    return errorMessage.includes('bot was blocked by the user') ||
-           errorMessage.includes('forbidden: bot was blocked') ||
-           errorMessage.includes('chat not found');
+    return (
+      errorMessage.includes('bot was blocked by the user') ||
+      errorMessage.includes('forbidden: bot was blocked') ||
+      errorMessage.includes('user is deactivated') ||
+      errorMessage.includes('chat not found')
+    );
   }
 
-  async handleFailure(error: Error, userId: string): Promise<void> {
-    this.logger.warn(`[TELEGRAM_BLOCKED] Bot blocked for user ${userId}, removing Telegram configuration`);
+  public async handleFailure(error: Error, userId: string): Promise<void> {
+    this.logger.warn(`[TELEGRAM_BLOCKED] Bot blocked or user deactivated for user ${userId}, removing Telegram configuration`);
 
     try {
       await this.telegramConfigService.removeTelegramConfig(userId);

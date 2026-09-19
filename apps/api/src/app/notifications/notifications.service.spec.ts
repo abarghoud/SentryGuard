@@ -4,12 +4,14 @@ import { Repository } from 'typeorm';
 import { NotificationsService } from './notifications.service';
 import { NotificationPreferences } from '../../entities/notification-preferences.entity';
 import { PushDeviceToken } from '../../entities/push-device-token.entity';
+import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
 import { AlertEventSeverity, AlertEventType } from '../../entities/alert-event.entity';
 
 describe('The NotificationsService class', () => {
   const fakeUserId = 'user-123';
   let mockPreferencesRepository: MockProxy<Repository<NotificationPreferences>>;
   let mockPushDeviceTokenRepository: MockProxy<Repository<PushDeviceToken>>;
+  let mockTelegramConfigRepository: MockProxy<Repository<TelegramConfig>>;
   let fetchMock: jest.Mock;
   let service: NotificationsService;
 
@@ -22,7 +24,7 @@ describe('The NotificationsService class', () => {
       userId: fakeUserId,
     }) as PushDeviceToken;
 
-  const lastPushPayload = (): { body: string; title: string } => JSON.parse(fetchMock.mock.calls[0][1].body);
+  const lastPushPayload = (): { body: string; sound?: string; title: string } => JSON.parse(fetchMock.mock.calls[0][1].body);
 
   beforeEach(() => {
     mockPreferencesRepository = mock<Repository<NotificationPreferences>>();
@@ -38,6 +40,7 @@ describe('The NotificationsService class', () => {
     } as NotificationPreferences);
     mockPreferencesRepository.save.mockImplementation((pref) => Promise.resolve(pref as NotificationPreferences));
     mockPushDeviceTokenRepository = mock<Repository<PushDeviceToken>>();
+    mockTelegramConfigRepository = mock<Repository<TelegramConfig>>();
     mockPushDeviceTokenRepository.find.mockResolvedValue([createDevice()]);
     fetchMock = jest.fn().mockResolvedValue({
       json: () => Promise.resolve({ data: { status: 'ok' } }),
@@ -45,7 +48,11 @@ describe('The NotificationsService class', () => {
       statusText: 'OK',
     });
     global.fetch = fetchMock as unknown as typeof fetch;
-    service = new NotificationsService(mockPreferencesRepository, mockPushDeviceTokenRepository);
+    service = new NotificationsService(
+      mockPreferencesRepository,
+      mockPushDeviceTokenRepository,
+      mockTelegramConfigRepository
+    );
   });
 
   afterEach(() => {
@@ -79,6 +86,10 @@ describe('The NotificationsService class', () => {
       it('should send the localized English body', () => {
         expect(lastPushPayload().body).toBe('A break-in attempt was detected.');
       });
+
+      it('should include the sound configured in preferences', () => {
+        expect(lastPushPayload().sound).toBe('sentry_siren.wav');
+      });
     });
 
     describe('When a French user receives a Sentry alert', () => {
@@ -88,6 +99,11 @@ describe('The NotificationsService class', () => {
 
       it('should send the localized French title', () => {
         expect(lastPushPayload().title).toBe('Alerte Sentinelle');
+      });
+
+      it('should include sentry_alert categoryId for quick actions', () => {
+        const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
+        expect(payload.categoryId).toBe('sentry_alert');
       });
     });
 
@@ -102,6 +118,42 @@ describe('The NotificationsService class', () => {
 
       it('should send the localized English body', () => {
         expect(lastPushPayload().body).toBe('A Sentry event was detected.');
+      });
+
+      it('should include sentry_alert categoryId for quick actions', () => {
+        const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
+        expect(payload.categoryId).toBe('sentry_alert');
+      });
+    });
+
+    describe('When the user has alerts muted', () => {
+      beforeEach(() => {
+        mockPreferencesRepository.findOne.mockResolvedValue({
+          muted_until: new Date(Date.now() + 3600000),
+          userId: fakeUserId,
+        } as NotificationPreferences);
+      });
+
+      it('should suppress Sentry alerts and return false', async () => {
+        const result = await service.sendPushAlert(
+          fakeUserId,
+          AlertEventSeverity.Warning,
+          AlertEventType.Sentry,
+          'fr'
+        );
+        expect(result).toBe(false);
+        expect(fetchMock).not.toHaveBeenCalled();
+      });
+
+      it('should not suppress break-in alerts and return true', async () => {
+        const result = await service.sendPushAlert(
+          fakeUserId,
+          AlertEventSeverity.Critical,
+          AlertEventType.BreakIn,
+          'fr'
+        );
+        expect(result).toBe(true);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
       });
     });
 
@@ -320,6 +372,119 @@ describe('The NotificationsService class', () => {
         expect(mockPreferencesRepository.save).toHaveBeenCalledWith(
           expect.objectContaining({ alert_sound: 'cyber_pulse.wav' })
         );
+      });
+    });
+  });
+
+  describe('The mute() method', () => {
+    describe('When muting notifications for 60 minutes', () => {
+      let mutedUntil: Date;
+
+      beforeEach(async () => {
+        mockPreferencesRepository.findOne.mockResolvedValue({
+          userId: fakeUserId,
+        } as NotificationPreferences);
+        mockPreferencesRepository.save.mockImplementation(async (pref) => pref as NotificationPreferences);
+        mutedUntil = await service.mute(fakeUserId, 60);
+      });
+
+      it('should save the future muted_until date in preferences', () => {
+        expect(mockPreferencesRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({ muted_until: mutedUntil })
+        );
+      });
+
+      it('should sync the muted_until date to telegram config', () => {
+        expect(mockTelegramConfigRepository.update).toHaveBeenCalledWith(
+          { userId: fakeUserId },
+          { muted_until: mutedUntil }
+        );
+      });
+    });
+  });
+
+  describe('The unmute() method', () => {
+    describe('When unmuting notifications', () => {
+      beforeEach(async () => {
+        mockPreferencesRepository.findOne.mockResolvedValue({
+          muted_until: new Date(),
+          userId: fakeUserId,
+        } as NotificationPreferences);
+        await service.unmute(fakeUserId);
+      });
+
+      it('should set muted_until to null in preferences', () => {
+        expect(mockPreferencesRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({ muted_until: null })
+        );
+      });
+
+      it('should set muted_until to null in telegram config', () => {
+        expect(mockTelegramConfigRepository.update).toHaveBeenCalledWith(
+          { userId: fakeUserId },
+          { muted_until: null }
+        );
+      });
+    });
+  });
+
+  describe('The isMuted() method', () => {
+    describe('When muted_until is in the future', () => {
+      beforeEach(() => {
+        mockPreferencesRepository.findOne.mockResolvedValue({
+          muted_until: new Date(Date.now() + 60000),
+          userId: fakeUserId,
+        } as NotificationPreferences);
+      });
+
+      it('should return true', async () => {
+        const result = await service.isMuted(fakeUserId);
+        expect(result).toBe(true);
+      });
+    });
+
+    describe('When muted_until is in the past', () => {
+      beforeEach(() => {
+        mockPreferencesRepository.findOne.mockResolvedValue({
+          muted_until: new Date(Date.now() - 60000),
+          userId: fakeUserId,
+        } as NotificationPreferences);
+      });
+
+      it('should return false', async () => {
+        const result = await service.isMuted(fakeUserId);
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('When muted_until is null', () => {
+      beforeEach(() => {
+        mockPreferencesRepository.findOne.mockResolvedValue({
+          muted_until: null,
+          userId: fakeUserId,
+        } as NotificationPreferences);
+        mockTelegramConfigRepository.findOne.mockResolvedValue(null);
+      });
+
+      it('should return false', async () => {
+        const result = await service.isMuted(fakeUserId);
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('When preferences has no mute but telegram config is muted', () => {
+      beforeEach(() => {
+        mockPreferencesRepository.findOne.mockResolvedValue(null);
+        mockTelegramConfigRepository.findOne.mockResolvedValue({
+          muted_until: new Date(Date.now() + 60000),
+          status: TelegramLinkStatus.LINKED,
+          userId: fakeUserId,
+        } as TelegramConfig);
+      });
+
+      it('should return true', async () => {
+        const result = await service.isMuted(fakeUserId);
+        expect(result).toBe(true);
       });
     });
   });

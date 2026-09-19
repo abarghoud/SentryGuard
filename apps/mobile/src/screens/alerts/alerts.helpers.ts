@@ -36,8 +36,14 @@ export function resolveAlertTone(alert: AlertEvent, colors: ThemeColors): AlertI
   return { background: colors.warningFill, icon: colors.onWarning };
 }
 
-export function resolveAlertIcon(alert: AlertEvent): 'exclamationmark.triangle.fill' | 'bell.badge.fill' {
-  return alert.severity === AlertEventSeverity.Critical ? 'exclamationmark.triangle.fill' : 'bell.badge.fill';
+export function resolveAlertIcon(
+  alert: AlertEvent
+): 'exclamationmark.triangle.fill' | 'bell.badge.fill' | 'bell.slash.fill' {
+  if (alert.severity === AlertEventSeverity.Critical) {
+    return 'exclamationmark.triangle.fill';
+  }
+
+  return alert.muted ? 'bell.slash.fill' : 'bell.badge.fill';
 }
 
 export function formatAlertDate(value: string, language: string): string {

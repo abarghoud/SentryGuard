@@ -1,6 +1,24 @@
 # SentryGuard Mobile
 
-React Native app (Expo SDK 54) for iOS and Android that lets Tesla owners monitor vehicles, receive alerts, and manage their SentryGuard account from a phone.
+React Native app (Expo) for iOS and Android that lets Tesla owners monitor vehicles, receive alerts, and manage their SentryGuard account from a phone.
+
+<p align="left">
+  <a href="https://sentryguard.org/download">
+    <img src="../../apps/webapp/public/images/badges/app-store.svg" alt="Download on the App Store" height="38" />
+  </a>
+  &nbsp;
+  <a href="https://sentryguard.org/download">
+    <img src="../../apps/webapp/public/images/badges/google-play.svg" alt="Get it on Google Play" height="38" />
+  </a>
+</p>
+
+<p align="center">
+  <img src="../../docs/assets/screenshots/screen-1-protect.png" width="19%" alt="Protect your Tesla" />
+  <img src="../../docs/assets/screenshots/screen-2-dashboard.png" width="19%" alt="Vehicle Dashboard" />
+  <img src="../../docs/assets/screenshots/screen-3-offensive-response.png" width="19%" alt="Offensive Response" />
+  <img src="../../docs/assets/screenshots/screen-4-alerts.png" width="19%" alt="Instant Alerts" />
+  <img src="../../docs/assets/screenshots/screen-5-settings.png" width="19%" alt="Settings & Preferences" />
+</p>
 
 ## Features
 
@@ -14,7 +32,7 @@ React Native app (Expo SDK 54) for iOS and Android that lets Tesla owners monito
 - **Telegram Settings** — dedicated screen for Telegram bot status, deep-linking, and sending test messages
 - **Delete Account** — self-service user account deletion with a confirmation cooldown step
 - **Push notifications** — native Expo push with `sentryguard-alerts` Android channel, foreground display, device token registration
-- **Hidden advanced settings** — tap "SentryGuard" 5 times on the login screen to reveal custom API URL and virtual key URL fields
+- **Hidden advanced settings (Self-hosting)** — tap the SentryGuard shield logo 5 times on the login screen to reveal custom API URL and virtual key pairing URL fields
 - **i18n** — French (default) and English, synced with the API
 - **Theming** — persistent light/dark mode stored in SecureStore (native) or localStorage (web)
 
@@ -22,7 +40,7 @@ React Native app (Expo SDK 54) for iOS and Android that lets Tesla owners monito
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Expo SDK 54, React Native 0.81, React 19 |
+| Framework | Expo, React Native, React |
 | Language | TypeScript (strict) |
 | Navigation | React Navigation (native stack) + horizontal ScrollView pager |
 | Data fetching | React Query (TanStack) |
@@ -160,6 +178,10 @@ Support email address for direct email inquiries.
 ### `EXPO_PUBLIC_FAQ_URL`
 
 URL to the SentryGuard FAQ page (e.g. `https://sentryguard.org/faq`).
+
+### `EXPO_PUBLIC_WEBAPP_URL`
+
+Base URL to the SentryGuard web application for legal pages (defaults to `https://sentryguard.org`).
 
 ## Architecture
 
@@ -332,8 +354,8 @@ Push notifications cannot be fully validated on Expo Web. On Android, Expo Go is
 
 ### Prerequisites
 
-- **Android**: Android SDK, NDK (see `android/app/build.gradle` for `ndkVersion`), Java 17+
-- **iOS**: Xcode 16+, CocoaPods (`bundle exec pod install` in `apps/mobile/ios`)
+- **Android**: Android SDK, NDK (see `android/app/build.gradle` for `ndkVersion`), Java
+- **iOS**: Xcode, CocoaPods (`bundle exec pod install` in `apps/mobile/ios`)
 
 ### Android Debug APK (Gradle)
 
@@ -466,14 +488,16 @@ yarn eas submit --platform android --profile production
 
 The submission destination (e.g. TestFlight for iOS, Internal vs Production track for Android) is configured in the `"submit"` section of your `eas.json`.
 
-## Hidden Advanced Settings
+## Hidden Advanced Settings (Self-Hosting)
 
-Tap "SentryGuard" 5 times on the login screen to reveal:
+If you self-host SentryGuard and use the mobile app downloaded from the App Store or Google Play, you can point it to your own self-hosted backend without rebuilding the application.
 
-- **Custom API address** — overrides `EXPO_PUBLIC_API_URL`
-- **Custom virtual key URL** — overrides `EXPO_PUBLIC_VIRTUAL_KEY_PAIRING_URL`
+Tap the **SentryGuard shield logo 5 times** on the login screen to reveal:
 
-Both are validated to start with `http://` or `https://`. The "Default" button clears custom values and falls back to the Expo environment variables.
+- **Custom API address** — overrides `EXPO_PUBLIC_API_URL` (e.g. `https://api.yourdomain.com`)
+- **Custom virtual key URL** — overrides `EXPO_PUBLIC_VIRTUAL_KEY_PAIRING_URL` (e.g. `https://tesla.com/_ak/yourdomain.com`)
+
+Both are validated to start with `http://` or `https://` (HTTPS required in production). Tap **Save** to apply the configuration. The "Default" button clears custom values and falls back to the default build environment variables.
 
 Storage: SecureStore (native) or localStorage (web).
 
