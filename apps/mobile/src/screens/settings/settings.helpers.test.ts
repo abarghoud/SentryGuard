@@ -28,6 +28,7 @@ jest.mock('../../features/notifications/di', () => ({
   },
   pushNotificationService: {
     configure: jest.fn(() => Promise.resolve()),
+    requestCriticalAlertsPermission: jest.fn(() => Promise.resolve(true)),
     getCachedExpoPushToken: jest.fn(() => Promise.resolve(null)),
     requestExpoPushToken: jest.fn(() => Promise.resolve(null)),
   },
@@ -39,9 +40,11 @@ jest.mock('../../features/notifications/di', () => ({
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 
+import { dndPolicyAccess, pushNotificationService } from '../../features/notifications/di';
 import {
   buildCrispChatUrl,
   buildLegalUrl,
+  CriticalAlertsAvailability,
   openCrispSupport,
   openDiscordCommunity,
   openEmailSupport,
@@ -50,6 +53,7 @@ import {
   openTermsOfService,
   resolveAvailablePushToken,
   resolveCrispWebsiteId,
+  resolveCriticalAlertsAvailability,
   resolveDiscordUrl,
   resolveFaqUrl,
   resolveLegalBaseUrl,
@@ -77,6 +81,72 @@ describe('The resolveAvailablePushToken() function', () => {
       await expect(
         resolveAvailablePushToken(null, { push_enabled: true }, async () => 'cached-token')
       ).resolves.toBeUndefined();
+    });
+  });
+});
+
+describe('The resolveCriticalAlertsAvailability() function', () => {
+  const mockIsGranted = dndPolicyAccess.isNotificationPolicyAccessGranted as jest.Mock;
+  const mockConfigure = pushNotificationService.configure as jest.Mock;
+  const mockRequestPermission = pushNotificationService.requestCriticalAlertsPermission as jest.Mock;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockRequestPermission.mockResolvedValue(true);
+  });
+
+  describe('When the permission is granted and the Do Not Disturb access is granted', () => {
+    let result: CriticalAlertsAvailability;
+
+    beforeEach(async () => {
+      mockIsGranted.mockResolvedValue(true);
+
+      result = await resolveCriticalAlertsAvailability();
+    });
+
+    it('should allow critical alerts', () => {
+      expect(result).toBe(CriticalAlertsAvailability.Allowed);
+    });
+
+    it('should recreate the notification channels', () => {
+      expect(mockConfigure).toHaveBeenCalled();
+    });
+  });
+
+  describe('When the permission is refused', () => {
+    let result: CriticalAlertsAvailability;
+
+    beforeEach(async () => {
+      mockRequestPermission.mockResolvedValue(false);
+      mockIsGranted.mockResolvedValue(true);
+
+      result = await resolveCriticalAlertsAvailability();
+    });
+
+    it('should report the refusal', () => {
+      expect(result).toBe(CriticalAlertsAvailability.Denied);
+    });
+
+    it('should not recreate the notification channels', () => {
+      expect(mockConfigure).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('When the Do Not Disturb access is missing', () => {
+    let result: CriticalAlertsAvailability;
+
+    beforeEach(async () => {
+      mockIsGranted.mockResolvedValue(false);
+
+      result = await resolveCriticalAlertsAvailability();
+    });
+
+    it('should report the missing Do Not Disturb access', () => {
+      expect(result).toBe(CriticalAlertsAvailability.NeedsDoNotDisturbAccess);
+    });
+
+    it('should not recreate the notification channels', () => {
+      expect(mockConfigure).not.toHaveBeenCalled();
     });
   });
 });

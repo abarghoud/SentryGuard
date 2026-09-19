@@ -8,6 +8,7 @@ import { dndPolicyAccess, pushNotificationService, registerPushTokenUseCase } fr
 import { NotificationPreferences } from '../../features/notifications/domain/entities';
 
 export const defaultPreferences: NotificationPreferences = {
+  alert_sound: 'sentry_siren.wav',
   critical_alerts_enabled: false,
   critical_only: false,
   muted_until: null,
@@ -63,16 +64,29 @@ export async function registerDeviceForPush(
   return token;
 }
 
-export async function canEnableCriticalAlerts(setIsDndAccessModalOpen: (isOpen: boolean) => void): Promise<boolean> {
-  const hasAccess = await dndPolicyAccess.isNotificationPolicyAccessGranted();
+export enum CriticalAlertsAvailability {
+  Allowed = 'allowed',
+  Denied = 'denied',
+  NeedsDoNotDisturbAccess = 'needs_do_not_disturb_access',
+}
 
-  if (hasAccess) {
-    await pushNotificationService.configure();
-    return true;
+export async function resolveCriticalAlertsAvailability(): Promise<CriticalAlertsAvailability> {
+  const availability = await computeCriticalAlertsAvailability();
+  appLogger.info('push', `Critical alerts availability: ${availability}`);
+  return availability;
+}
+
+async function computeCriticalAlertsAvailability(): Promise<CriticalAlertsAvailability> {
+  if (!(await pushNotificationService.requestCriticalAlertsPermission())) {
+    return CriticalAlertsAvailability.Denied;
   }
 
-  setIsDndAccessModalOpen(true);
-  return false;
+  if (!(await dndPolicyAccess.isNotificationPolicyAccessGranted())) {
+    return CriticalAlertsAvailability.NeedsDoNotDisturbAccess;
+  }
+
+  await pushNotificationService.configure();
+  return CriticalAlertsAvailability.Allowed;
 }
 
 export async function openAndroidDoNotDisturbAccessSettings(

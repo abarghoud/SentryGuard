@@ -24,10 +24,22 @@ describe('The NotificationsService class', () => {
       userId: fakeUserId,
     }) as PushDeviceToken;
 
-  const lastPushPayload = (): { body: string; sound?: string; title: string } => JSON.parse(fetchMock.mock.calls[0][1].body);
+  const lastPushPayload = (): { body: string; channelId: string; sound?: string; title: string } =>
+    JSON.parse(fetchMock.mock.calls[0][1].body);
 
   beforeEach(() => {
     mockPreferencesRepository = mock<Repository<NotificationPreferences>>();
+    mockPreferencesRepository.findOne.mockResolvedValue({
+      alert_sound: 'sentry_siren.wav',
+      telegram_enabled: true,
+      userId: fakeUserId,
+    } as NotificationPreferences);
+    mockPreferencesRepository.create.mockReturnValue({
+      alert_sound: 'sentry_siren.wav',
+      telegram_enabled: true,
+      userId: fakeUserId,
+    } as NotificationPreferences);
+    mockPreferencesRepository.save.mockImplementation((pref) => Promise.resolve(pref as NotificationPreferences));
     mockPushDeviceTokenRepository = mock<Repository<PushDeviceToken>>();
     mockTelegramConfigRepository = mock<Repository<TelegramConfig>>();
     mockPushDeviceTokenRepository.find.mockResolvedValue([createDevice()]);
@@ -76,8 +88,8 @@ describe('The NotificationsService class', () => {
         expect(lastPushPayload().body).toBe('A break-in attempt was detected.');
       });
 
-      it('should include the default sound', () => {
-        expect(lastPushPayload().sound).toBe('default');
+      it('should include the sound configured in preferences', () => {
+        expect(lastPushPayload().sound).toBe('sentry_siren.wav');
       });
     });
 
@@ -112,6 +124,39 @@ describe('The NotificationsService class', () => {
       it('should include sentry_alert categoryId for quick actions', () => {
         const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
         expect(payload.categoryId).toBe('sentry_alert');
+      });
+    });
+
+    describe('When the device has critical alerts enabled and the alert is critical', () => {
+      beforeEach(async () => {
+        mockPreferencesRepository.findOne.mockResolvedValue({
+          alert_sound: 'cyber_pulse.wav',
+          telegram_enabled: true,
+          userId: fakeUserId,
+        } as NotificationPreferences);
+        mockPushDeviceTokenRepository.find.mockResolvedValue([
+          { ...createDevice(), critical_alerts_enabled: true },
+        ]);
+        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'en');
+      });
+
+      it('should target the critical channel carrying the chosen sound', () => {
+        expect(lastPushPayload().channelId).toBe('sentryguard-critical-cyber_pulse');
+      });
+    });
+
+    describe('When the device has critical alerts disabled', () => {
+      beforeEach(async () => {
+        mockPreferencesRepository.findOne.mockResolvedValue({
+          alert_sound: 'cyber_pulse.wav',
+          telegram_enabled: true,
+          userId: fakeUserId,
+        } as NotificationPreferences);
+        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'en');
+      });
+
+      it('should target the standard channel carrying the chosen sound', () => {
+        expect(lastPushPayload().channelId).toBe('sentryguard-alerts-cyber_pulse');
       });
     });
 
@@ -326,6 +371,40 @@ describe('The NotificationsService class', () => {
       it('should keep push disabled on the saved device', () => {
         expect(mockPushDeviceTokenRepository.save).toHaveBeenCalledWith(
           expect.objectContaining({ push_enabled: false })
+        );
+      });
+    });
+  });
+
+  describe('The getPreferences() method', () => {
+    describe('When preferences exist for the user', () => {
+      it('should return the alert_sound from preferences', async () => {
+        mockPreferencesRepository.findOne.mockResolvedValue({
+          alert_sound: 'tesla_horn.wav',
+          telegram_enabled: true,
+          userId: fakeUserId,
+        } as NotificationPreferences);
+
+        const result = await service.getPreferences(fakeUserId);
+
+        expect(result.alert_sound).toBe('tesla_horn.wav');
+      });
+    });
+  });
+
+  describe('The updatePreferences() method', () => {
+    describe('When updating the alert sound', () => {
+      it('should persist the new alert_sound', async () => {
+        mockPreferencesRepository.findOne.mockResolvedValue({
+          alert_sound: 'sentry_siren.wav',
+          telegram_enabled: true,
+          userId: fakeUserId,
+        } as NotificationPreferences);
+
+        await service.updatePreferences(fakeUserId, { alert_sound: 'cyber_pulse.wav' });
+
+        expect(mockPreferencesRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({ alert_sound: 'cyber_pulse.wav' })
         );
       });
     });

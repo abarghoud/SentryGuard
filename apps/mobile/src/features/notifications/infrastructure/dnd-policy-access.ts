@@ -2,12 +2,12 @@ import { requireOptionalNativeModule } from 'expo';
 import { Platform } from 'react-native';
 
 interface DndAccessNativeModule {
-  ensureCriticalNotificationChannel(channelId: string, channelName: string): Promise<boolean>;
+  ensureCriticalNotificationChannel(channelId: string, channelName: string, soundName: string | null): Promise<boolean>;
   isNotificationPolicyAccessGranted(): Promise<boolean>;
 }
 
 export interface DndPolicyAccessRequirements {
-  ensureCriticalNotificationChannel(channelId: string, channelName: string): Promise<boolean>;
+  ensureCriticalNotificationChannel(channelId: string, channelName: string, soundName: string | null): Promise<boolean>;
   isNotificationPolicyAccessGranted(): Promise<boolean>;
 }
 
@@ -22,11 +22,11 @@ export class DndPolicyAccess implements DndPolicyAccessRequirements {
     return (await this.nativeModule?.isNotificationPolicyAccessGranted()) ?? false;
   }
 
-  public async ensureCriticalNotificationChannel(channelId: string, channelName: string): Promise<boolean> {
+  public async ensureCriticalNotificationChannel(channelId: string, channelName: string, soundName: string | null): Promise<boolean> {
     if (Platform.OS !== 'android') {
       return true;
     }
 
-    return (await this.nativeModule?.ensureCriticalNotificationChannel(channelId, channelName)) ?? false;
+    return (await this.nativeModule?.ensureCriticalNotificationChannel(channelId, channelName, soundName)) ?? false;
   }
 }
