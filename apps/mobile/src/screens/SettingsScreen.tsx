@@ -30,7 +30,7 @@ import {
   resolveSupportEmail,
   shareDebugLogs,
 } from './settings/settings.helpers';
-import { DndAccessModal } from './settings/DndAccessModal';
+import { CriticalAlertsAccessModal } from './settings/CriticalAlertsAccessModal';
 import { SoundSelectorModal } from './settings/SoundSelectorModal';
 import { useSettings } from './settings/use-settings';
 import { muteNotificationsUseCase, unmuteNotificationsUseCase } from '../features/notifications/di';
@@ -46,7 +46,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
   const { colors, mode, setMode } = useTheme();
   const topInset = useScreenTopInset();
   const {
-    isDndAccessModalOpen,
+    criticalAlertsBlocker,
     isSoundModalOpen,
     isTelegramLinked,
     languageMutation,
@@ -56,7 +56,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
     preferencesMutation,
     preferencesQuery,
     profile,
-    setIsDndAccessModalOpen,
+    setCriticalAlertsBlocker,
     setIsSoundModalOpen,
     updatePreference,
   } = useSettings();
@@ -273,7 +273,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         style={styles.logout}
       />
 
-      <DndAccessModal isOpen={isDndAccessModalOpen} onClose={() => setIsDndAccessModalOpen(false)} />
+      <CriticalAlertsAccessModal blocker={criticalAlertsBlocker} onClose={() => setCriticalAlertsBlocker(null)} />
 
       <SoundSelectorModal
         isOpen={isSoundModalOpen}

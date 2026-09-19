@@ -89,15 +89,43 @@ async function computeCriticalAlertsAvailability(): Promise<CriticalAlertsAvaila
   return CriticalAlertsAvailability.Allowed;
 }
 
-export async function openAndroidDoNotDisturbAccessSettings(
-  setIsDndAccessModalOpen: (isOpen: boolean) => void
-): Promise<void> {
+export async function openDoNotDisturbAccessSettings(): Promise<void> {
   if (Platform.OS !== 'android') {
     return;
   }
 
-  setIsDndAccessModalOpen(false);
   await Linking.sendIntent('android.settings.NOTIFICATION_POLICY_ACCESS_SETTINGS');
+}
+
+export async function openSystemNotificationSettings(): Promise<void> {
+  await Linking.openSettings();
+}
+
+export interface CriticalAlertsAccessContent {
+  buttonKey: string;
+  descriptionKey: string;
+  open(): Promise<void>;
+  titleKey: string;
+}
+
+export function resolveCriticalAlertsAccessContent(
+  availability: CriticalAlertsAvailability | null
+): CriticalAlertsAccessContent {
+  if (availability === CriticalAlertsAvailability.Denied) {
+    return {
+      buttonKey: 'settings.criticalAlertsOpenSettings',
+      descriptionKey: 'settings.criticalAlertsDeniedDescription',
+      open: openSystemNotificationSettings,
+      titleKey: 'settings.criticalAlertsDeniedTitle',
+    };
+  }
+
+  return {
+    buttonKey: 'settings.dndAccessButton',
+    descriptionKey: 'settings.dndAccessDescription',
+    open: openDoNotDisturbAccessSettings,
+    titleKey: 'settings.dndAccessTitle',
+  };
 }
 
 export function resolveSettingsError(error: unknown, t: (key: string) => string): string {

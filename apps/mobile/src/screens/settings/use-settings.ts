@@ -31,7 +31,7 @@ interface UpdateNotificationPreferencesMutation {
 export function useSettings() {
   const { i18n, t } = useTranslation();
   const [preferenceMessage, setPreferenceMessage] = useState<string | null>(null);
-  const [isDndAccessModalOpen, setIsDndAccessModalOpen] = useState(false);
+  const [criticalAlertsBlocker, setCriticalAlertsBlocker] = useState<CriticalAlertsAvailability | null>(null);
   const [isSoundModalOpen, setIsSoundModalOpen] = useState(false);
   const { isTokenResolved, pushToken, setPushToken } = usePushToken();
   useTelegramStatusSync();
@@ -122,12 +122,8 @@ export function useSettings() {
   const allowCriticalAlerts = async (): Promise<boolean> => {
     const availability = await resolveCriticalAlertsAvailability();
 
-    if (availability === CriticalAlertsAvailability.NeedsDoNotDisturbAccess) {
-      setIsDndAccessModalOpen(true);
-    }
-
-    if (availability === CriticalAlertsAvailability.Denied) {
-      setPreferenceMessage(t('settings.criticalAlertsDenied'));
+    if (availability !== CriticalAlertsAvailability.Allowed) {
+      setCriticalAlertsBlocker(availability);
     }
 
     return availability === CriticalAlertsAvailability.Allowed;
@@ -141,6 +137,7 @@ export function useSettings() {
     const previousPreferences = queryClient.getQueryData<NotificationPreferences>(queryKey) ?? defaultPreferences;
     const rollback = (): void => {
       queryClient.setQueryData(queryKey, previousPreferences);
+      void queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
     };
 
     // Optimistic: reflect the toggle immediately, before any network/registration work.
@@ -177,7 +174,7 @@ export function useSettings() {
   };
 
   return {
-    isDndAccessModalOpen,
+    criticalAlertsBlocker,
     isSoundModalOpen,
     isTelegramLinked: telegramStatusQuery.data?.linked === true,
     languageMutation,
@@ -187,7 +184,7 @@ export function useSettings() {
     preferencesMutation,
     preferencesQuery,
     profile: profileQuery.data?.profile,
-    setIsDndAccessModalOpen,
+    setCriticalAlertsBlocker,
     setIsSoundModalOpen,
     updatePreference,
   };

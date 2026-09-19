@@ -1,4 +1,5 @@
 jest.mock('expo-linking', () => ({
+  openSettings: jest.fn(() => Promise.resolve()),
   openURL: jest.fn(() => Promise.resolve()),
   sendIntent: jest.fn(() => Promise.resolve()),
 }));
@@ -53,6 +54,7 @@ import {
   openTermsOfService,
   resolveAvailablePushToken,
   resolveCrispWebsiteId,
+  resolveCriticalAlertsAccessContent,
   resolveCriticalAlertsAvailability,
   resolveDiscordUrl,
   resolveFaqUrl,
@@ -147,6 +149,36 @@ describe('The resolveCriticalAlertsAvailability() function', () => {
 
     it('should not recreate the notification channels', () => {
       expect(mockConfigure).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe('The resolveCriticalAlertsAccessContent() function', () => {
+  describe('When the permission was refused by the platform', () => {
+    const content = resolveCriticalAlertsAccessContent(CriticalAlertsAvailability.Denied);
+
+    it('should point the user at the system notification settings', () => {
+      expect(content.descriptionKey).toBe('settings.criticalAlertsDeniedDescription');
+    });
+
+    it('should open the application settings', async () => {
+      await content.open();
+
+      expect(Linking.openSettings).toHaveBeenCalled();
+    });
+  });
+
+  describe('When the Do Not Disturb access is missing', () => {
+    const content = resolveCriticalAlertsAccessContent(CriticalAlertsAvailability.NeedsDoNotDisturbAccess);
+
+    it('should explain the Do Not Disturb access', () => {
+      expect(content.descriptionKey).toBe('settings.dndAccessDescription');
+    });
+
+    it('should open the Do Not Disturb access settings', async () => {
+      await content.open();
+
+      expect(Linking.sendIntent).toHaveBeenCalledWith('android.settings.NOTIFICATION_POLICY_ACCESS_SETTINGS');
     });
   });
 });

@@ -8,6 +8,7 @@ import { resolveDeviceLanguage } from '../../core/i18n';
 import { acceptConsentUseCase, getConsentStatusUseCase, getConsentTextUseCase } from '../../features/consent/di';
 import { completeOnboardingUseCase, getOnboardingStatusUseCase, skipOnboardingUseCase } from '../../features/onboarding/di';
 import { getNotificationPreferencesUseCase, updateNotificationPreferencesUseCase, pushNotificationService } from '../../features/notifications/di';
+import { NotificationPreferences } from '../../features/notifications/domain/entities';
 import { getTelegramStatusUseCase } from '../../features/telegram/di';
 import { getUserLanguageUseCase, updateUserLanguageUseCase } from '../../features/user/di';
 import { UserLanguage } from '../../features/user/domain/entities';
@@ -31,7 +32,7 @@ export function useOnboarding(onComplete: () => void) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState<string | null>(null);
-  const [isDndAccessModalOpen, setIsDndAccessModalOpen] = useState(false);
+  const [criticalAlertsBlocker, setCriticalAlertsBlocker] = useState<CriticalAlertsAvailability | null>(null);
   const { pushToken, setPushToken } = usePushToken();
   useTelegramStatusSync();
 
@@ -205,15 +206,22 @@ export function useOnboarding(onComplete: () => void) {
     await queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
   };
 
+  const applyCriticalAlerts = (enabled: boolean): void => {
+    queryClient.setQueryData<NotificationPreferences>(['notification-preferences', pushToken], (current) =>
+      current ? { ...current, critical_alerts_enabled: enabled } : current
+    );
+  };
+
+  const revertCriticalAlerts = (enabled: boolean): void => {
+    applyCriticalAlerts(enabled);
+    void queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
+  };
+
   const allowCriticalAlerts = async (): Promise<boolean> => {
     const availability = await resolveCriticalAlertsAvailability();
 
-    if (availability === CriticalAlertsAvailability.NeedsDoNotDisturbAccess) {
-      setIsDndAccessModalOpen(true);
-    }
-
-    if (availability === CriticalAlertsAvailability.Denied) {
-      setMessage(t('settings.criticalAlertsDenied'));
+    if (availability !== CriticalAlertsAvailability.Allowed) {
+      setCriticalAlertsBlocker(availability);
     }
 
     return availability === CriticalAlertsAvailability.Allowed;
@@ -221,14 +229,17 @@ export function useOnboarding(onComplete: () => void) {
 
   const handleToggleCriticalAlerts = async (enabled: boolean): Promise<void> => {
     setMessage(null);
+    applyCriticalAlerts(enabled);
 
     try {
       if (enabled && !(await allowCriticalAlerts())) {
+        revertCriticalAlerts(false);
         return;
       }
 
       await persistCriticalAlerts(enabled);
     } catch (error) {
+      revertCriticalAlerts(!enabled);
       setMessage(error instanceof Error ? error.message : String(error));
     }
   };
@@ -251,8 +262,8 @@ export function useOnboarding(onComplete: () => void) {
     enablePush: handleEnablePush,
     isCriticalAlertsActive: isCriticalAlertsEnabled,
     isCriticalAlertsTogglable: pushToken !== null,
-    isDndAccessModalOpen,
-    setIsDndAccessModalOpen,
+    criticalAlertsBlocker,
+    setCriticalAlertsBlocker,
     toggleCriticalAlerts: handleToggleCriticalAlerts,
     flags: {
       isConsentMissing: consentStatusQuery.data?.hasConsent !== true,

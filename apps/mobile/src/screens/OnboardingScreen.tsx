@@ -11,7 +11,7 @@ import { PrimaryButton } from './onboarding/components/PrimaryButton';
 import { SecondaryButton } from './onboarding/components/SecondaryButton';
 import { StepList } from './onboarding/components/StepList';
 import { NotificationStep } from './onboarding/components/NotificationStep';
-import { DndAccessModal } from './settings/DndAccessModal';
+import { CriticalAlertsAccessModal } from './settings/CriticalAlertsAccessModal';
 import { openVirtualKey, resolveError, resolveVehicleName, resolveVehicleStepKey } from './onboarding/onboarding.helpers';
 import { useOnboarding } from './onboarding/use-onboarding';
 
@@ -35,7 +35,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
     flags,
     isCriticalAlertsActive,
     isCriticalAlertsTogglable,
-    isDndAccessModalOpen,
+    criticalAlertsBlocker,
     isPushActive,
     isTelegramLinked,
     message,
@@ -43,7 +43,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
     offensiveResponseMutation,
     onboardingQuery,
     scopeMutation,
-    setIsDndAccessModalOpen,
+    setCriticalAlertsBlocker,
     setMessage,
     skipMutation,
     toggleCriticalAlerts,
@@ -289,7 +289,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps): JSX.Ele
             isTelegramLinked={isTelegramLinked}
             onToggleCriticalAlerts={(enabled) => void toggleCriticalAlerts(enabled)}
           />
-          <DndAccessModal isOpen={isDndAccessModalOpen} onClose={() => setIsDndAccessModalOpen(false)} />
+          <CriticalAlertsAccessModal blocker={criticalAlertsBlocker} onClose={() => setCriticalAlertsBlocker(null)} />
         </>
       </OnboardingFrame>
     );
