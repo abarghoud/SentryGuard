@@ -173,9 +173,13 @@ export class PushNotificationService implements PushNotificationServiceRequireme
     ]);
   }
 
+  private toSoundBase(soundId: string): string {
+    return soundId.replace('.wav', '');
+  }
+
   private buildStandardSoundChannels(): Promise<Notifications.NotificationChannel | null>[] {
     return ALERT_SOUNDS.map((sound) =>
-      Notifications.setNotificationChannelAsync(`sentryguard-alerts-${sound.id.replace('.wav', '')}`, {
+      Notifications.setNotificationChannelAsync(`sentryguard-alerts-${this.toSoundBase(sound.id)}`, {
         importance: Notifications.AndroidImportance.HIGH,
         lightColor: lightColors.systemGreen,
         name: `${i18n.t('notifications.channelName')} (${i18n.t(sound.labelKey)})`,
@@ -188,8 +192,9 @@ export class PushNotificationService implements PushNotificationServiceRequireme
   private buildCriticalSoundChannels(): Promise<boolean>[] {
     return ALERT_SOUNDS.map((sound) =>
       this.dndPolicyAccess.ensureCriticalNotificationChannel(
-        `sentryguard-critical-${sound.id.replace('.wav', '')}`,
-        `${i18n.t('notifications.criticalChannelName')} (${i18n.t(sound.labelKey)})`
+        `sentryguard-critical-${this.toSoundBase(sound.id)}`,
+        `${i18n.t('notifications.criticalChannelName')} (${i18n.t(sound.labelKey)})`,
+        sound.id
       )
     );
   }
@@ -201,7 +206,8 @@ export class PushNotificationService implements PushNotificationServiceRequireme
 
     await this.dndPolicyAccess.ensureCriticalNotificationChannel(
       this.criticalNotificationChannelId,
-      i18n.t('notifications.criticalChannelName')
+      i18n.t('notifications.criticalChannelName'),
+      null
     );
   }
 

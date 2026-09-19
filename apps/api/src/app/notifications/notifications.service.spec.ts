@@ -24,7 +24,8 @@ describe('The NotificationsService class', () => {
       userId: fakeUserId,
     }) as PushDeviceToken;
 
-  const lastPushPayload = (): { body: string; sound?: string; title: string } => JSON.parse(fetchMock.mock.calls[0][1].body);
+  const lastPushPayload = (): { body: string; channelId: string; sound?: string; title: string } =>
+    JSON.parse(fetchMock.mock.calls[0][1].body);
 
   beforeEach(() => {
     mockPreferencesRepository = mock<Repository<NotificationPreferences>>();
@@ -123,6 +124,39 @@ describe('The NotificationsService class', () => {
       it('should include sentry_alert categoryId for quick actions', () => {
         const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
         expect(payload.categoryId).toBe('sentry_alert');
+      });
+    });
+
+    describe('When the device has critical alerts enabled and the alert is critical', () => {
+      beforeEach(async () => {
+        mockPreferencesRepository.findOne.mockResolvedValue({
+          alert_sound: 'cyber_pulse.wav',
+          telegram_enabled: true,
+          userId: fakeUserId,
+        } as NotificationPreferences);
+        mockPushDeviceTokenRepository.find.mockResolvedValue([
+          { ...createDevice(), critical_alerts_enabled: true },
+        ]);
+        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'en');
+      });
+
+      it('should target the critical channel carrying the chosen sound', () => {
+        expect(lastPushPayload().channelId).toBe('sentryguard-critical-cyber_pulse');
+      });
+    });
+
+    describe('When the device has critical alerts disabled', () => {
+      beforeEach(async () => {
+        mockPreferencesRepository.findOne.mockResolvedValue({
+          alert_sound: 'cyber_pulse.wav',
+          telegram_enabled: true,
+          userId: fakeUserId,
+        } as NotificationPreferences);
+        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'en');
+      });
+
+      it('should target the standard channel carrying the chosen sound', () => {
+        expect(lastPushPayload().channelId).toBe('sentryguard-alerts-cyber_pulse');
       });
     });
 
