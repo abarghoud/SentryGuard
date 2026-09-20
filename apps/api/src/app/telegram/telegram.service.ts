@@ -11,6 +11,7 @@ import { telegramRetryManager } from './telegram-retry-manager.token';
 import { RetryManager } from '../shared/retry-manager.service';
 import { NOTIFICATION_REQUEST_TIMEOUT_MS } from '../../config/notification-timeout.config';
 import { withTimeout } from '../../common/utils/with-timeout.util';
+import { resolveVehicleLabel } from '../../common/utils/vehicle-label.util';
 
 type TelegramKeyboard = {
   inline_keyboard?: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
@@ -237,7 +238,7 @@ export class TelegramService implements OnModuleDestroy {
     return `
 🚨 <b>${i18n.t('TESLA SENTRY ALERT', { lng })}</b> 🚨
 
-🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${display_name ?? vin}
+🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${resolveVehicleLabel(display_name, vin)}
 
 <i>${i18n.t('Sentry Mode activated - Check your vehicle!', { lng })}</i>
     `.trim();
@@ -250,7 +251,7 @@ export class TelegramService implements OnModuleDestroy {
     return `
 🚨 <b>${i18n.t('TESLA BREAK-IN ALERT', { lng })}</b> 🚨
 
-🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${display_name ?? vin}
+🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${resolveVehicleLabel(display_name, vin)}
 
 <i>${i18n.t('Break-in attempt detected. Check your vehicle immediately!', { lng })}</i>
     `.trim();

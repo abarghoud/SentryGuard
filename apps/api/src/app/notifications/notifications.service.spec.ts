@@ -115,9 +115,9 @@ describe('The NotificationsService class', () => {
       });
     });
 
-    describe('When a vehicle name is provided', () => {
+    describe('When a vehicle name is provided for an English user', () => {
       beforeEach(async () => {
-        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Warning, AlertEventType.Sentry, 'en', 'Model Y');
+        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Warning, AlertEventType.Sentry, 'en', undefined, 'Model Y');
       });
 
       it('should append the vehicle name to the title', () => {
@@ -126,6 +126,16 @@ describe('The NotificationsService class', () => {
 
       it('should leave the body unchanged', () => {
         expect(lastPushPayload().body).toBe('A Sentry event was detected.');
+      });
+    });
+
+    describe('When a vehicle name is provided for a French user', () => {
+      beforeEach(async () => {
+        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Warning, AlertEventType.Sentry, 'fr', undefined, 'Model Y');
+      });
+
+      it('should append the localized vehicle name suffix to the title', () => {
+        expect(lastPushPayload().title).toBe('Alerte Sentinelle - Model Y');
       });
     });
 

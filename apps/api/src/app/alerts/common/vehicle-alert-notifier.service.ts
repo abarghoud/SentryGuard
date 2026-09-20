@@ -13,6 +13,7 @@ import { NotificationsService } from '../../notifications/notifications.service'
 import { NotificationQueueService } from '../../notifications/notification-queue.service';
 import { AlertNotifierPayload, AlertNotifierRegistry } from './alert-notifier.registry';
 import { NOTIFICATION_SWEEP_MAX_ATTEMPTS } from '../../../config/notification-sweep-cron.config';
+import { resolveVehicleLabel } from '../../../common/utils/vehicle-label.util';
 
 export interface AlertDispatchConfig {
   telemetryMessage: TelemetryMessage;
@@ -216,8 +217,8 @@ export class VehicleAlertNotifierService {
         payload.severity,
         payload.type,
         userLanguage,
-        payload.vehicleDisplayName ?? payload.vin,
-        payload.correlationId
+        payload.correlationId,
+        resolveVehicleLabel(payload.vehicleDisplayName, payload.vin)
       ),
       this.sendTelegramNotification(payload, userLanguage),
     ]);
