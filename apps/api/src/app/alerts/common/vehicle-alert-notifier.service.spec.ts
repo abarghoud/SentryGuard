@@ -346,14 +346,16 @@ describe('The VehicleAlertNotifierService class', () => {
           AlertEventSeverity.Critical,
           AlertEventType.BreakIn,
           'en',
-          'corr-123'
+          'corr-123',
+          'My Tesla'
         );
         expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
           'user-2',
           AlertEventSeverity.Critical,
           AlertEventType.BreakIn,
           'fr',
-          'corr-123'
+          'corr-123',
+          'My Tesla'
         );
       });
     });
@@ -377,7 +379,50 @@ describe('The VehicleAlertNotifierService class', () => {
           AlertEventSeverity.Critical,
           AlertEventType.BreakIn,
           'en',
-          'corr-123'
+          'corr-123',
+          'My Tesla'
+        );
+      });
+    });
+
+    describe('When the vehicle has no display name', () => {
+      beforeEach(() => {
+        mockVehicleRepository.find.mockResolvedValue([{ userId: 'user-1', display_name: undefined } as Vehicle]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+      });
+
+      it('should fall back to the VIN when sending the push alert', async () => {
+        await service.dispatch(config);
+        await executeEnqueuedTasks();
+
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
+          'user-1',
+          AlertEventSeverity.Critical,
+          AlertEventType.BreakIn,
+          'en',
+          'corr-123',
+          'TEST_VIN_123'
+        );
+      });
+    });
+
+    describe('When the vehicle has an empty display name', () => {
+      beforeEach(() => {
+        mockVehicleRepository.find.mockResolvedValue([{ userId: 'user-1', display_name: '' } as Vehicle]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+      });
+
+      it('should fall back to the VIN when sending the push alert', async () => {
+        await service.dispatch(config);
+        await executeEnqueuedTasks();
+
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
+          'user-1',
+          AlertEventSeverity.Critical,
+          AlertEventType.BreakIn,
+          'en',
+          'corr-123',
+          'TEST_VIN_123'
         );
       });
     });
