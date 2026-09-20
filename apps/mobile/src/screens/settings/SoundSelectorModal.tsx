@@ -4,14 +4,16 @@ import { radius, spacing } from '../../core/design/metrics';
 import { TextVariant } from '../../core/design/typography';
 import { useTheme } from '../../core/theme';
 import { AppText, GlassButton, GlassButtonVariant, Icon, Surface } from '../../core/ui';
-import { ALERT_SOUNDS, AlertSoundItem, DEFAULT_ALERT_SOUND_ID } from '../../features/notifications/domain/alert-sounds';
+import { AlertSoundItem, PHONE_DEFAULT_ALERT_SOUND_ID, SELECTABLE_ALERT_SOUNDS } from '../../features/notifications/domain/alert-sounds';
 import { useSoundPlayer } from '../../core/hooks/useSoundPlayer';
 
 interface SoundSelectorModalProps {
   isOpen: boolean;
   onClose: () => void;
+  descriptionKey?: string;
   onSelectSound: (soundId: string) => void;
   selectedSoundId?: string;
+  titleKey?: string;
 }
 
 interface SoundItemRowProps {
@@ -48,30 +50,34 @@ function SoundItemRow({ isSelected, isPlaying, onPlay, onSelect, sound }: SoundI
         </AppText>
       </View>
 
-      <Pressable
-        accessibilityLabel={isPlaying ? t('common.stop') : t('common.play')}
-        onPress={onPlay}
-        hitSlop={8}
-        style={[
-          styles.playButton,
-          { backgroundColor: isPlaying ? colors.systemRed : colors.secondaryFill },
-        ]}
-      >
-        <Icon
-          name={isPlaying ? 'stop.fill' : 'play.fill'}
-          size={14}
-          color={isPlaying ? '#ffffff' : colors.label}
-        />
-      </Pressable>
+      {sound.asset === null ? null : (
+        <Pressable
+          accessibilityLabel={isPlaying ? t('common.stop') : t('common.play')}
+          onPress={onPlay}
+          hitSlop={8}
+          style={[
+            styles.playButton,
+            { backgroundColor: isPlaying ? colors.systemRed : colors.secondaryFill },
+          ]}
+        >
+          <Icon
+            name={isPlaying ? 'stop.fill' : 'play.fill'}
+            size={14}
+            color={isPlaying ? '#ffffff' : colors.label}
+          />
+        </Pressable>
+      )}
     </Pressable>
   );
 }
 
 export function SoundSelectorModal({
+  descriptionKey = 'settings.alertSoundDescription',
   isOpen,
   onClose,
   onSelectSound,
-  selectedSoundId = DEFAULT_ALERT_SOUND_ID,
+  selectedSoundId = PHONE_DEFAULT_ALERT_SOUND_ID,
+  titleKey = 'settings.alertSound',
 }: SoundSelectorModalProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -87,10 +93,15 @@ export function SoundSelectorModal({
   };
 
   const handleTogglePlayback = (sound: AlertSoundItem) => {
+    if (sound.asset === null) {
+      return;
+    }
+
     if (isPlaying(sound.id)) {
       stop();
       return;
     }
+
     play(sound.id, sound.asset);
   };
 
@@ -99,14 +110,14 @@ export function SoundSelectorModal({
       <View style={[styles.modalBackdrop, { backgroundColor: colors.overlay }]}>
         <Surface style={styles.modalCard}>
           <View style={styles.header}>
-            <AppText variant={TextVariant.Title3}>{t('settings.alertSound')}</AppText>
+            <AppText variant={TextVariant.Title3}>{t(titleKey)}</AppText>
             <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
-              {t('settings.alertSoundDescription')}
+              {t(descriptionKey)}
             </AppText>
           </View>
 
           <View style={styles.soundList}>
-            {ALERT_SOUNDS.map((sound) => (
+            {SELECTABLE_ALERT_SOUNDS.map((sound) => (
               <SoundItemRow
                 key={sound.id}
                 sound={sound}

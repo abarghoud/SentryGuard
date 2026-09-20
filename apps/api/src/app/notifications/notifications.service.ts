@@ -9,9 +9,18 @@ import { AlertEventSeverity, AlertEventType } from '../../entities/alert-event.e
 import i18n from '../../i18n';
 import { NOTIFICATION_REQUEST_TIMEOUT_MS } from '../../config/notification-timeout.config';
 import { withTimeout } from '../../common/utils/with-timeout.util';
+import { AlertSound } from '../alerts/enums/alert-sound.enum';
+
+export interface PushAlertContext {
+  alertSound: AlertSound;
+  correlationId?: string;
+  severity: AlertEventSeverity;
+  type: AlertEventType;
+  userId: string;
+  userLanguage: 'en' | 'fr';
+}
 
 export interface NotificationPreferencesDto {
-  alert_sound?: string;
   critical_alerts_enabled: boolean;
   critical_only: boolean;
   muted_until: string | null;
@@ -125,13 +134,9 @@ export class NotificationsService {
     return Boolean(config?.muted_until && new Date() < config.muted_until);
   }
 
-  public async sendPushAlert(
-    userId: string,
-    severity: AlertEventSeverity,
-    type: AlertEventType,
-    userLanguage: 'en' | 'fr',
-    correlationId?: string
-  ): Promise<boolean> {
+  public async sendPushAlert(context: PushAlertContext): Promise<boolean> {
+    const { correlationId, severity, type, userId } = context;
+
     if (await this.shouldSuppressPush(userId, type)) {
       this.logger.log(`[EXPO_PUSH][${correlationId || 'none'}] Sentry push alert suppressed for muted user: ${userId}`);
       return false;
@@ -143,12 +148,9 @@ export class NotificationsService {
       return false;
     }
 
-    const preferences = await this.findOrCreatePreferences(userId);
-    const alertSound = preferences.alert_sound || 'sentry_siren.wav';
-
     this.logger.log(`[EXPO_PUSH][${correlationId || 'none'}] Sending push to ${eligibleDevices.length} device(s) for user: ${userId}`);
 
-    await this.dispatchPushToDevices(eligibleDevices, severity, type, userId, userLanguage, alertSound, correlationId);
+    await this.dispatchPushToDevices(eligibleDevices, context);
 
     return true;
   }
@@ -162,20 +164,10 @@ export class NotificationsService {
     return devices.filter((device) => this.shouldSendPushToDevice(device, severity));
   }
 
-  private async dispatchPushToDevices(
-    devices: PushDeviceToken[],
-    severity: AlertEventSeverity,
-    type: AlertEventType,
-    userId: string,
-    userLanguage: 'en' | 'fr',
-    alertSound: string,
-    correlationId?: string
-  ): Promise<void> {
-    const { body, title } = this.resolveAlertTexts(type, userLanguage);
+  private async dispatchPushToDevices(devices: PushDeviceToken[], context: PushAlertContext): Promise<void> {
+    const { body, title } = this.resolveAlertTexts(context.type, context.userLanguage);
     const results = await Promise.allSettled(
-      devices.map((device) =>
-        this.sendExpoPush(device, title, body, severity, type, device.critical_alerts_enabled, userId, userLanguage, alertSound, correlationId)
-      )
+      devices.map((device) => this.sendExpoPush(device, title, body, context))
     );
 
     const hasSuccess = results.some((result) => result.status === 'fulfilled');
@@ -247,7 +239,6 @@ export class NotificationsService {
 
   private pickGlobalPreferenceUpdates(preferences: Partial<NotificationPreferencesDto>): Partial<NotificationPreferences> {
     return {
-      ...(preferences.alert_sound !== undefined ? { alert_sound: preferences.alert_sound } : {}),
       ...(preferences.telegram_enabled !== undefined ? { telegram_enabled: preferences.telegram_enabled } : {}),
     };
   }
@@ -262,7 +253,6 @@ export class NotificationsService {
 
   private toDto(preferences: NotificationPreferences, device: PushDeviceToken | null): NotificationPreferencesDto {
     return {
-      alert_sound: preferences.alert_sound ?? 'sentry_siren.wav',
       critical_alerts_enabled: device?.critical_alerts_enabled ?? false,
       critical_only: device?.critical_only ?? false,
       muted_until: preferences.muted_until ? preferences.muted_until.toISOString() : null,
@@ -279,19 +269,15 @@ export class NotificationsService {
     device: PushDeviceToken,
     title: string,
     body: string,
-    severity: AlertEventSeverity,
-    type: AlertEventType,
-    criticalAlertsEnabled: boolean,
-    userId: string,
-    userLanguage: 'en' | 'fr',
-    alertSound: string,
-    correlationId?: string
+    context: PushAlertContext
   ): Promise<void> {
+    const correlationId = context.correlationId;
+
     try {
       const pushStart = Date.now();
       const response = await withTimeout(
         (signal) => fetch('https://exp.host/--/api/v2/push/send', {
-          body: JSON.stringify(this.buildExpoPushBody(device.token, title, body, severity, type, criticalAlertsEnabled, userId, userLanguage, alertSound)),
+          body: JSON.stringify(this.buildExpoPushBody(device, title, body, context)),
           headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
           method: 'POST',
           signal,
@@ -311,24 +297,19 @@ export class NotificationsService {
   }
 
   private buildExpoPushBody(
-    token: string,
+    device: PushDeviceToken,
     title: string,
     body: string,
-    severity: AlertEventSeverity,
-    type: AlertEventType,
-    criticalAlertsEnabled: boolean,
-    userId: string,
-    userLanguage: 'en' | 'fr',
-    alertSound: string
+    context: PushAlertContext
   ): object {
+    const { alertSound, severity, type, userId, userLanguage } = context;
+    const criticalAlertsEnabled = device.critical_alerts_enabled;
     const isPriorityAlert = criticalAlertsEnabled && this.shouldUsePriorityChannel(severity, type);
-    const soundBase = alertSound.replace('.wav', '');
-    const channelId = isPriorityAlert ? `sentryguard-critical-${soundBase}` : `sentryguard-alerts-${soundBase}`;
-    const categoryId = type === AlertEventType.Sentry ? 'sentry_alert' : undefined;
+    const channelId = this.resolveChannelId(alertSound, isPriorityAlert);
 
     const pushMessage: Record<string, unknown> = {
       body,
-      categoryId,
+      categoryId: type === AlertEventType.Sentry ? 'sentry_alert' : undefined,
       channelId,
       data: {
         alertSound,
@@ -341,21 +322,33 @@ export class NotificationsService {
         type,
       },
       priority: 'high',
-      sound: 'default',
       title,
-      to: token,
+      to: device.token,
+      ...this.resolveIosSound(alertSound, criticalAlertsEnabled && severity === AlertEventSeverity.Critical),
     };
 
-    const isIosCritical = criticalAlertsEnabled && severity === AlertEventSeverity.Critical;
+    return pushMessage;
+  }
 
-    if (isIosCritical) {
-      pushMessage.interruptionLevel = 'critical';
-      pushMessage.sound = { critical: true, name: alertSound, volume: 1.0 };
-    } else {
-      pushMessage.sound = alertSound;
+  private resolveChannelId(alertSound: AlertSound, isPriorityAlert: boolean): string {
+    if (alertSound === AlertSound.PhoneDefault) {
+      return isPriorityAlert ? 'sentryguard-critical-alerts-v5' : 'sentryguard-alerts';
     }
 
-    return pushMessage;
+    const soundBase = alertSound.replace('.wav', '');
+    return isPriorityAlert ? `sentryguard-critical-${soundBase}` : `sentryguard-alerts-${soundBase}`;
+  }
+
+  private resolveIosSound(alertSound: AlertSound, isIosCritical: boolean): Record<string, unknown> {
+    if (!isIosCritical) {
+      return { sound: alertSound === AlertSound.PhoneDefault ? 'default' : alertSound };
+    }
+
+    if (alertSound === AlertSound.PhoneDefault) {
+      return { interruptionLevel: 'critical', sound: 'default' };
+    }
+
+    return { interruptionLevel: 'critical', sound: { critical: true, name: alertSound, volume: 1.0 } };
   }
 
   private shouldUsePriorityChannel(severity: AlertEventSeverity, type: AlertEventType): boolean {

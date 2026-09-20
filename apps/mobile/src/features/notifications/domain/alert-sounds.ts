@@ -1,10 +1,16 @@
 export interface AlertSoundItem {
+  asset: number | null;
   id: string;
   labelKey: string;
-  asset: number;
 }
 
-export const DEFAULT_ALERT_SOUND_ID = 'sentry_siren.wav';
+export const PHONE_DEFAULT_ALERT_SOUND_ID = 'default';
+
+export const PHONE_DEFAULT_ALERT_SOUND: AlertSoundItem = {
+  asset: null,
+  id: PHONE_DEFAULT_ALERT_SOUND_ID,
+  labelKey: 'settings.soundPhoneDefault',
+};
 
 export const ALERT_SOUNDS: readonly AlertSoundItem[] = [
   {
@@ -34,7 +40,12 @@ export const ALERT_SOUNDS: readonly AlertSoundItem[] = [
   },
 ] as const;
 
+export const SELECTABLE_ALERT_SOUNDS: readonly AlertSoundItem[] = [
+  PHONE_DEFAULT_ALERT_SOUND,
+  ...ALERT_SOUNDS,
+] as const;
+
 export function resolveAlertSound(id?: string): AlertSoundItem {
-  const found = ALERT_SOUNDS.find((sound) => sound.id === id);
-  return found ?? ALERT_SOUNDS[0];
+  const found = SELECTABLE_ALERT_SOUNDS.find((sound) => sound.id === id);
+  return found ?? PHONE_DEFAULT_ALERT_SOUND;
 }

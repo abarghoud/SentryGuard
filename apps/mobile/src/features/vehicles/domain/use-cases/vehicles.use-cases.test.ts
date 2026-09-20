@@ -7,6 +7,7 @@ import {
   DeleteTelemetryConfigUseCase,
   GetVehiclesUseCase,
   ToggleBreakInMonitoringUseCase,
+  UpdateAlertSoundsUseCase,
   UpdateOffensiveResponseUseCase,
 } from './vehicles.use-cases';
 
@@ -76,6 +77,20 @@ describe('The vehicles use cases', () => {
 
       it('should delegate to the repository with the vin and flag', () => {
         expect(mockRepository.toggleBreakInMonitoring).toHaveBeenCalledWith(fakeVin, true);
+      });
+    });
+  });
+
+  describe('The UpdateAlertSoundsUseCase class', () => {
+    describe('When updating the sentry alert sound', () => {
+      beforeEach(async () => {
+        await new UpdateAlertSoundsUseCase(mockRepository).execute(fakeVin, { sentryAlertSound: 'cyber_pulse.wav' });
+      });
+
+      it('should delegate to the repository', () => {
+        expect(mockRepository.updateAlertSounds).toHaveBeenCalledWith(fakeVin, {
+          sentryAlertSound: 'cyber_pulse.wav',
+        });
       });
     });
   });

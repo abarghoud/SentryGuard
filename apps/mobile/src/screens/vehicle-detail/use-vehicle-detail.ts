@@ -10,6 +10,7 @@ import {
   deleteTelemetryConfigUseCase,
   getVehiclesUseCase,
   toggleBreakInMonitoringUseCase,
+  updateAlertSoundsUseCase,
   updateOffensiveResponseUseCase,
 } from '../../features/vehicles/di';
 import {
@@ -17,13 +18,19 @@ import {
   resolveSuccessfulResponse,
   resolveTelemetryConfigurationResponse,
 } from './vehicle-detail.helpers';
-import { TranslationFunction, VehicleAction, VehicleMutationAction } from './vehicle-detail.types';
+import { AlertSoundTarget, TranslationFunction, VehicleAction, VehicleMutationAction } from './vehicle-detail.types';
+
+interface AlertSoundSelection {
+  soundId: string;
+  target: AlertSoundTarget;
+}
 
 export function useVehicleDetail(vehicleId: string) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const haptics = useHaptics();
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [openSoundSelector, setOpenSoundSelector] = useState<AlertSoundTarget | null>(null);
 
   const vehiclesQuery = useQuery({
     queryFn: () => getVehiclesUseCase.execute(),
@@ -66,6 +73,36 @@ export function useVehicleDetail(vehicleId: string) {
       await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
     },
   });
+  const alertSoundMutation = useMutation<VehicleActionResponse, Error, AlertSoundSelection, { previous?: Vehicle[] }>({
+    scope: { id: `vehicle-alert-sound-${vehicleId}` },
+    mutationFn: (selection: AlertSoundSelection) => runAlertSoundUpdate(vehicle, selection, t),
+    onMutate: async (selection) => {
+      setFeedback(null);
+      await queryClient.cancelQueries({ queryKey: ['vehicles'] });
+      const previous = queryClient.getQueryData<Vehicle[]>(['vehicles']);
+
+      if (vehicle) {
+        queryClient.setQueryData<Vehicle[]>(['vehicles'], (current) =>
+          (current ?? []).map((entry) => (entry.vin === vehicle.vin ? applyOptimisticSound(entry, selection) : entry))
+        );
+      }
+
+      return { previous };
+    },
+    onError: (error: Error, _selection, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['vehicles'], context.previous);
+      }
+      haptics.error();
+      setFeedback(error.message);
+    },
+    onSuccess: () => {
+      haptics.success();
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+    },
+  });
   const scopeMutation = useMutation({
     mutationFn: () => requestVehicleCommandsScope(t),
     onError: (error: Error) => {
@@ -81,14 +118,42 @@ export function useVehicleDetail(vehicleId: string) {
 
   return {
     actionMutation,
+    alertSoundMutation,
     feedback,
     isActionRunning: actionMutation.isPending,
+    openSoundSelector,
     scopeMutation,
     setFeedback,
+    setOpenSoundSelector,
     t,
     vehicle,
     vehicleCommandsAuthorized: vehicleCommandsQuery.data?.authorized === true,
   };
+}
+
+function applyOptimisticSound(vehicle: Vehicle, selection: AlertSoundSelection): Vehicle {
+  if (selection.target === AlertSoundTarget.BreakIn) {
+    return { ...vehicle, break_in_alert_sound: selection.soundId };
+  }
+
+  return { ...vehicle, sentry_alert_sound: selection.soundId };
+}
+
+async function runAlertSoundUpdate(
+  vehicle: Vehicle | undefined,
+  selection: AlertSoundSelection,
+  t: TranslationFunction
+): Promise<VehicleActionResponse> {
+  if (!vehicle) {
+    throw new Error(t('vehicle.actionRefused'));
+  }
+
+  const payload =
+    selection.target === AlertSoundTarget.BreakIn
+      ? { breakInAlertSound: selection.soundId }
+      : { sentryAlertSound: selection.soundId };
+
+  return resolveSuccessfulResponse(await updateAlertSoundsUseCase.execute(vehicle.vin, payload), t);
 }
 
 function applyOptimisticAction(vehicle: Vehicle, action: VehicleMutationAction): Vehicle {

@@ -4,8 +4,9 @@ import * as WebBrowser from 'expo-web-browser';
 
 import { tokenStore, virtualKeyStore } from '../../core/api';
 import { getTeslaScopeChangeUrlUseCase } from '../../features/auth/di';
-import { VehicleActionResponse } from '../../features/vehicles/domain/entities';
-import { TranslationFunction } from './vehicle-detail.types';
+import { PHONE_DEFAULT_ALERT_SOUND_ID } from '../../features/notifications/domain/alert-sounds';
+import { Vehicle, VehicleActionResponse } from '../../features/vehicles/domain/entities';
+import { AlertSoundTarget, TranslationFunction } from './vehicle-detail.types';
 
 
 export function resolveSuccessfulResponse(response: VehicleActionResponse, t: TranslationFunction): VehicleActionResponse {
@@ -155,4 +156,11 @@ function extractTokenFromCallbackUrl(callbackUrl: string): string | null {
 
   const hashToken = callbackUrl.match(/[#&]token=([^&]+)/)?.[1];
   return hashToken ? decodeURIComponent(hashToken) : null;
+}
+
+export function resolveVehicleAlertSoundId(vehicle: Vehicle, target: AlertSoundTarget): string {
+  const configuredSound =
+    target === AlertSoundTarget.BreakIn ? vehicle.break_in_alert_sound : vehicle.sentry_alert_sound;
+
+  return configuredSound ?? PHONE_DEFAULT_ALERT_SOUND_ID;
 }

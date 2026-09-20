@@ -28,6 +28,19 @@ export class VehicleApiRepository implements VehicleRepositoryRequirements {
     );
   }
 
+  public async updateAlertSounds(
+    vin: string,
+    payload: { breakInAlertSound?: string; sentryAlertSound?: string },
+  ): Promise<VehicleActionResponse> {
+    return this.client.request<VehicleActionResponse>(`/vehicle-alert-sounds/${vin}`, {
+      body: JSON.stringify({
+        ...(payload.sentryAlertSound !== undefined ? { sentry_alert_sound: payload.sentryAlertSound } : {}),
+        ...(payload.breakInAlertSound !== undefined ? { break_in_alert_sound: payload.breakInAlertSound } : {}),
+      }),
+      method: 'PATCH',
+    });
+  }
+
   public async updateOffensiveResponse(
     vin: string,
     payload: { breakInOffensiveResponse?: OffensiveResponse; autoSentryEnabled?: boolean },

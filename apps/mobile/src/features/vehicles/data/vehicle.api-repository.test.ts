@@ -75,6 +75,36 @@ describe('The VehicleApiRepository class', () => {
     });
   });
 
+  describe('The updateAlertSounds() method', () => {
+    describe('When only the sentry sound is provided', () => {
+      beforeEach(async () => {
+        mockClient.request.mockResolvedValue({} as VehicleActionResponse);
+        await repository.updateAlertSounds(fakeVin, { sentryAlertSound: 'cyber_pulse.wav' });
+      });
+
+      it('should PATCH the vehicle alert sounds endpoint with the sentry sound only', () => {
+        expect(mockClient.request).toHaveBeenCalledWith(`/vehicle-alert-sounds/${fakeVin}`, {
+          body: JSON.stringify({ sentry_alert_sound: 'cyber_pulse.wav' }),
+          method: 'PATCH',
+        });
+      });
+    });
+
+    describe('When only the break-in sound is provided', () => {
+      beforeEach(async () => {
+        mockClient.request.mockResolvedValue({} as VehicleActionResponse);
+        await repository.updateAlertSounds(fakeVin, { breakInAlertSound: 'default' });
+      });
+
+      it('should PATCH the vehicle alert sounds endpoint with the break-in sound only', () => {
+        expect(mockClient.request).toHaveBeenCalledWith(`/vehicle-alert-sounds/${fakeVin}`, {
+          body: JSON.stringify({ break_in_alert_sound: 'default' }),
+          method: 'PATCH',
+        });
+      });
+    });
+  });
+
   describe('The updateOffensiveResponse() method', () => {
     describe('When enabling the break-in offensive response', () => {
       beforeEach(async () => {

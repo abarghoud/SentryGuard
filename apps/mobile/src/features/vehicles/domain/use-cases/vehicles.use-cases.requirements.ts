@@ -16,6 +16,13 @@ export interface ToggleBreakInMonitoringRequirements {
   execute(vin: string, shouldEnable: boolean): Promise<VehicleActionResponse>;
 }
 
+export interface UpdateAlertSoundsRequirements {
+  execute(
+    vin: string,
+    payload: { breakInAlertSound?: string; sentryAlertSound?: string },
+  ): Promise<VehicleActionResponse>;
+}
+
 export interface UpdateOffensiveResponseRequirements {
   execute(
     vin: string,

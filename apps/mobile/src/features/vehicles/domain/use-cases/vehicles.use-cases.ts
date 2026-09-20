@@ -5,6 +5,7 @@ import {
   DeleteTelemetryConfigRequirements,
   GetVehiclesRequirements,
   ToggleBreakInMonitoringRequirements,
+  UpdateAlertSoundsRequirements,
   UpdateOffensiveResponseRequirements,
 } from './vehicles.use-cases.requirements';
 
@@ -37,6 +38,17 @@ export class ToggleBreakInMonitoringUseCase implements ToggleBreakInMonitoringRe
 
   public async execute(vin: string, shouldEnable: boolean): Promise<VehicleActionResponse> {
     return this.repository.toggleBreakInMonitoring(vin, shouldEnable);
+  }
+}
+
+export class UpdateAlertSoundsUseCase implements UpdateAlertSoundsRequirements {
+  public constructor(private readonly repository: VehicleRepositoryRequirements) {}
+
+  public async execute(
+    vin: string,
+    payload: { breakInAlertSound?: string; sentryAlertSound?: string },
+  ): Promise<VehicleActionResponse> {
+    return this.repository.updateAlertSounds(vin, payload);
   }
 }
 

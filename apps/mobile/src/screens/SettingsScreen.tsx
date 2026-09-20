@@ -14,7 +14,6 @@ import { ThemeMode, useTheme } from '../core/theme';
 import { AppSwitch, AppText, GlassButton, GlassButtonVariant, ListRow, ListSection, SegmentedControl, Surface } from '../core/ui';
 import { UserLanguage } from '../features/user/domain/entities';
 import { resolveTelegramStatusKey } from './telegram-settings/telegram-settings.helpers';
-import { resolveAlertSound } from '../features/notifications/domain/alert-sounds';
 import {
   clearDebugLogs,
   openCrispSupport,
@@ -31,7 +30,6 @@ import {
   shareDebugLogs,
 } from './settings/settings.helpers';
 import { CriticalAlertsAccessModal } from './settings/CriticalAlertsAccessModal';
-import { SoundSelectorModal } from './settings/SoundSelectorModal';
 import { useSettings } from './settings/use-settings';
 import { muteNotificationsUseCase, unmuteNotificationsUseCase } from '../features/notifications/di';
 import { MuteDurationModal } from './dashboard/components/MuteDurationModal';
@@ -47,7 +45,6 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
   const topInset = useScreenTopInset();
   const {
     criticalAlertsBlocker,
-    isSoundModalOpen,
     isTelegramLinked,
     languageMutation,
     languageQuery,
@@ -57,11 +54,9 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
     preferencesQuery,
     profile,
     setCriticalAlertsBlocker,
-    setIsSoundModalOpen,
     updatePreference,
   } = useSettings();
 
-  const selectedSound = resolveAlertSound(preferences.alert_sound);
   const queryClient = useQueryClient();
   const [isMuteModalOpen, setIsMuteModalOpen] = useState(false);
   const isMuted = isMuteActive(preferences.muted_until);
@@ -172,14 +167,12 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
                 />
               }
             />
-            <ListRow
-              title={t('settings.alertSound')}
-              value={t(selectedSound.labelKey)}
-              showChevron
-              onPress={() => setIsSoundModalOpen(true)}
-            />
           </>
         ) : null}
+        <ListRow
+          title={t('settings.alertSound')}
+          value={t('settings.alertSoundPerVehicle')}
+        />
         <ListRow
           title={t('settings.pauseAlerts')}
           value={isMuted ? t('settings.pauseAlertsActive', { time: formatMutedUntilTime(preferences.muted_until, t) }) : t('settings.pauseAlertsInactive')}
@@ -274,15 +267,6 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
       />
 
       <CriticalAlertsAccessModal blocker={criticalAlertsBlocker} onClose={() => setCriticalAlertsBlocker(null)} />
-
-      <SoundSelectorModal
-        isOpen={isSoundModalOpen}
-        onClose={() => setIsSoundModalOpen(false)}
-        selectedSoundId={preferences.alert_sound}
-        onSelectSound={(soundId) => {
-          void updatePreference({ alert_sound: soundId });
-        }}
-      />
 
       <MuteDurationModal
         isVisible={isMuteModalOpen}
