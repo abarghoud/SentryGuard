@@ -125,6 +125,8 @@
   "settings.criticalAlertsDeniedTitle": "Critical alerts not authorized",
   "settings.criticalAlertsDeniedDescription": "Turn Critical Alerts on for SentryGuard in the system notification settings.",
   "settings.criticalAlertsOpenSettings": "Open system settings",
+  "settings.criticalAlertsUnsupportedTitle": "Critical alerts unavailable",
+  "settings.criticalAlertsUnsupportedDescription": "iOS never offered this permission on this install, and it cannot be requested again. Delete SentryGuard and install it again to be asked for it.",
   "settings.communitySection": "Community & Backers",
   "settings.supportSection": "Help & Support",
   "settings.faq": "Frequently Asked Questions",

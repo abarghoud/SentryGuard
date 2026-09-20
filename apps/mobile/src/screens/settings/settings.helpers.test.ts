@@ -29,7 +29,7 @@ jest.mock('../../features/notifications/di', () => ({
   },
   pushNotificationService: {
     configure: jest.fn(() => Promise.resolve()),
-    requestCriticalAlertsPermission: jest.fn(() => Promise.resolve(true)),
+    requestCriticalAlertsPermission: jest.fn(() => Promise.resolve('granted')),
     getCachedExpoPushToken: jest.fn(() => Promise.resolve(null)),
     requestExpoPushToken: jest.fn(() => Promise.resolve(null)),
   },
@@ -42,6 +42,7 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 
 import { dndPolicyAccess, pushNotificationService } from '../../features/notifications/di';
+import { CriticalAlertsPermission } from '../../features/notifications/domain/entities';
 import {
   buildCrispChatUrl,
   buildLegalUrl,
@@ -94,7 +95,7 @@ describe('The resolveCriticalAlertsAvailability() function', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockRequestPermission.mockResolvedValue(true);
+    mockRequestPermission.mockResolvedValue(CriticalAlertsPermission.Granted);
   });
 
   describe('When the permission is granted and the Do Not Disturb access is granted', () => {
@@ -119,7 +120,7 @@ describe('The resolveCriticalAlertsAvailability() function', () => {
     let result: CriticalAlertsAvailability;
 
     beforeEach(async () => {
-      mockRequestPermission.mockResolvedValue(false);
+      mockRequestPermission.mockResolvedValue(CriticalAlertsPermission.Denied);
       mockIsGranted.mockResolvedValue(true);
 
       result = await resolveCriticalAlertsAvailability();
@@ -127,6 +128,25 @@ describe('The resolveCriticalAlertsAvailability() function', () => {
 
     it('should report the refusal', () => {
       expect(result).toBe(CriticalAlertsAvailability.Denied);
+    });
+
+    it('should not recreate the notification channels', () => {
+      expect(mockConfigure).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('When the platform never offered the permission', () => {
+    let result: CriticalAlertsAvailability;
+
+    beforeEach(async () => {
+      mockRequestPermission.mockResolvedValue(CriticalAlertsPermission.Unsupported);
+      mockIsGranted.mockResolvedValue(true);
+
+      result = await resolveCriticalAlertsAvailability();
+    });
+
+    it('should report the permission as unsupported', () => {
+      expect(result).toBe(CriticalAlertsAvailability.Unsupported);
     });
 
     it('should not recreate the notification channels', () => {
@@ -162,9 +182,21 @@ describe('The resolveCriticalAlertsAccessContent() function', () => {
     });
 
     it('should open the application settings', async () => {
-      await content.open();
+      await content.action?.open();
 
       expect(Linking.openSettings).toHaveBeenCalled();
+    });
+  });
+
+  describe('When the platform never offered the permission', () => {
+    const content = resolveCriticalAlertsAccessContent(CriticalAlertsAvailability.Unsupported);
+
+    it('should tell the user to reinstall the application', () => {
+      expect(content.descriptionKey).toBe('settings.criticalAlertsUnsupportedDescription');
+    });
+
+    it('should not offer a settings shortcut that leads nowhere', () => {
+      expect(content.action).toBeNull();
     });
   });
 
@@ -176,7 +208,7 @@ describe('The resolveCriticalAlertsAccessContent() function', () => {
     });
 
     it('should open the Do Not Disturb access settings', async () => {
-      await content.open();
+      await content.action?.open();
 
       expect(Linking.sendIntent).toHaveBeenCalledWith('android.settings.NOTIFICATION_POLICY_ACCESS_SETTINGS');
     });

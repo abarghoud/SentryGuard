@@ -7,6 +7,7 @@ import { Platform } from 'react-native';
 import { i18n } from '../../../core/i18n';
 import { lightColors } from '../../../core/theme';
 import { ALERT_SOUNDS } from '../domain/alert-sounds';
+import { CriticalAlertsPermission } from '../domain/entities';
 import { DndPolicyAccessRequirements } from './dnd-policy-access';
 
 export interface PushNotificationServiceRequirements {
@@ -14,7 +15,7 @@ export interface PushNotificationServiceRequirements {
   configure(): Promise<void>;
   getCachedExpoPushToken(): Promise<string | null>;
   getGrantedExpoPushToken(): Promise<string | null>;
-  requestCriticalAlertsPermission(): Promise<boolean>;
+  requestCriticalAlertsPermission(): Promise<CriticalAlertsPermission>;
   requestExpoPushToken(): Promise<string | null>;
   isPushSetupCompleted(): Promise<boolean>;
   setPushSetupCompleted(completed: boolean): Promise<void>;
@@ -212,21 +213,33 @@ export class PushNotificationService implements PushNotificationServiceRequireme
     );
   }
 
-  public async requestCriticalAlertsPermission(): Promise<boolean> {
+  public async requestCriticalAlertsPermission(): Promise<CriticalAlertsPermission> {
     if (Platform.OS !== 'ios') {
-      return true;
+      return CriticalAlertsPermission.Granted;
     }
 
     const permissions = await Notifications.getPermissionsAsync();
 
     if (permissions.ios?.allowsCriticalAlerts) {
-      return true;
+      return CriticalAlertsPermission.Granted;
     }
 
     const requestedPermissions = await Notifications.requestPermissionsAsync({
       ios: { allowAlert: true, allowBadge: true, allowCriticalAlerts: true, allowSound: true },
     });
-    return requestedPermissions.ios?.allowsCriticalAlerts === true;
+    return this.resolveCriticalAlertsPermission(requestedPermissions.ios?.allowsCriticalAlerts);
+  }
+
+  private resolveCriticalAlertsPermission(allowsCriticalAlerts?: boolean | null): CriticalAlertsPermission {
+    if (allowsCriticalAlerts === true) {
+      return CriticalAlertsPermission.Granted;
+    }
+
+    if (allowsCriticalAlerts === false) {
+      return CriticalAlertsPermission.Denied;
+    }
+
+    return CriticalAlertsPermission.Unsupported;
   }
 
   private async resolvePermissionStatus(): Promise<string> {

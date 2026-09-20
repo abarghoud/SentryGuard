@@ -5,7 +5,7 @@ import { Alert, Platform, Share } from 'react-native';
 
 import { appLogger, buildLogsExportFileName, writeLogsExportFile } from '../../core/logging';
 import { dndPolicyAccess, pushNotificationService, registerPushTokenUseCase } from '../../features/notifications/di';
-import { NotificationPreferences } from '../../features/notifications/domain/entities';
+import { CriticalAlertsPermission, NotificationPreferences } from '../../features/notifications/domain/entities';
 
 export const defaultPreferences: NotificationPreferences = {
   alert_sound: 'sentry_siren.wav',
@@ -68,6 +68,7 @@ export enum CriticalAlertsAvailability {
   Allowed = 'allowed',
   Denied = 'denied',
   NeedsDoNotDisturbAccess = 'needs_do_not_disturb_access',
+  Unsupported = 'unsupported',
 }
 
 export async function resolveCriticalAlertsAvailability(): Promise<CriticalAlertsAvailability> {
@@ -77,8 +78,12 @@ export async function resolveCriticalAlertsAvailability(): Promise<CriticalAlert
 }
 
 async function computeCriticalAlertsAvailability(): Promise<CriticalAlertsAvailability> {
-  if (!(await pushNotificationService.requestCriticalAlertsPermission())) {
-    return CriticalAlertsAvailability.Denied;
+  const permission = await pushNotificationService.requestCriticalAlertsPermission();
+
+  if (permission !== CriticalAlertsPermission.Granted) {
+    return permission === CriticalAlertsPermission.Unsupported
+      ? CriticalAlertsAvailability.Unsupported
+      : CriticalAlertsAvailability.Denied;
   }
 
   if (!(await dndPolicyAccess.isNotificationPolicyAccessGranted())) {
@@ -101,29 +106,39 @@ export async function openSystemNotificationSettings(): Promise<void> {
   await Linking.openSettings();
 }
 
-export interface CriticalAlertsAccessContent {
-  buttonKey: string;
-  descriptionKey: string;
+export interface CriticalAlertsAccessAction {
+  labelKey: string;
   open(): Promise<void>;
+}
+
+export interface CriticalAlertsAccessContent {
+  action: CriticalAlertsAccessAction | null;
+  descriptionKey: string;
   titleKey: string;
 }
 
 export function resolveCriticalAlertsAccessContent(
   availability: CriticalAlertsAvailability | null
 ): CriticalAlertsAccessContent {
+  if (availability === CriticalAlertsAvailability.Unsupported) {
+    return {
+      action: null,
+      descriptionKey: 'settings.criticalAlertsUnsupportedDescription',
+      titleKey: 'settings.criticalAlertsUnsupportedTitle',
+    };
+  }
+
   if (availability === CriticalAlertsAvailability.Denied) {
     return {
-      buttonKey: 'settings.criticalAlertsOpenSettings',
+      action: { labelKey: 'settings.criticalAlertsOpenSettings', open: openSystemNotificationSettings },
       descriptionKey: 'settings.criticalAlertsDeniedDescription',
-      open: openSystemNotificationSettings,
       titleKey: 'settings.criticalAlertsDeniedTitle',
     };
   }
 
   return {
-    buttonKey: 'settings.dndAccessButton',
+    action: { labelKey: 'settings.dndAccessButton', open: openDoNotDisturbAccessSettings },
     descriptionKey: 'settings.dndAccessDescription',
-    open: openDoNotDisturbAccessSettings,
     titleKey: 'settings.dndAccessTitle',
   };
 }

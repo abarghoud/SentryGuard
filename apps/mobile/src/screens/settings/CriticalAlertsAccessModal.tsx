@@ -18,9 +18,11 @@ export function CriticalAlertsAccessModal({ blocker, onClose }: CriticalAlertsAc
   const { colors } = useTheme();
   const content = resolveCriticalAlertsAccessContent(blocker);
 
+  const action = content.action;
+
   const onOpenSettings = (): void => {
     onClose();
-    void content.open();
+    void action?.open();
   };
 
   return (
@@ -31,8 +33,12 @@ export function CriticalAlertsAccessModal({ blocker, onClose }: CriticalAlertsAc
           <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
             {t(content.descriptionKey)}
           </AppText>
-          <GlassButton label={t(content.buttonKey)} onPress={onOpenSettings} />
-          <GlassButton label={t('common.cancel')} variant={GlassButtonVariant.Plain} onPress={onClose} />
+          {action ? <GlassButton label={t(action.labelKey)} onPress={onOpenSettings} /> : null}
+          <GlassButton
+            label={action ? t('common.cancel') : t('common.done')}
+            variant={GlassButtonVariant.Plain}
+            onPress={onClose}
+          />
         </Surface>
       </View>
     </Modal>
