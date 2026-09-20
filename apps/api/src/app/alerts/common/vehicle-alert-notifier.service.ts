@@ -14,6 +14,7 @@ import { NotificationQueueService } from '../../notifications/notification-queue
 import { AlertNotifierPayload, AlertNotifierRegistry } from './alert-notifier.registry';
 import { VehicleAlertSoundResolverService } from './vehicle-alert-sound-resolver.service';
 import { NOTIFICATION_SWEEP_MAX_ATTEMPTS } from '../../../config/notification-sweep-cron.config';
+import { resolveVehicleLabel } from '../../../common/utils/vehicle-label.util';
 
 export interface AlertDispatchConfig {
   telemetryMessage: TelemetryMessage;
@@ -221,6 +222,7 @@ export class VehicleAlertNotifierService {
       type: payload.type,
       userId: payload.userId,
       userLanguage,
+      vehicleName: resolveVehicleLabel(payload.vehicleDisplayName, payload.vin),
     });
   }
 

@@ -73,7 +73,9 @@
   "offensiveError": "❌ Error updating offensive response",
   "offensiveDisabledMsg": "📯 <b>{{vehicle}}</b>\n\nHorn deactivated",
   "Intrusion alert": "Intrusion alert",
+  "Intrusion alert_withVehicle": "Intrusion alert - {{vehicleName}}",
   "A break-in attempt was detected.": "A break-in attempt was detected.",
   "Sentry alert": "Sentry alert",
+  "Sentry alert_withVehicle": "Sentry alert - {{vehicleName}}",
   "A Sentry event was detected.": "A Sentry event was detected."
 }

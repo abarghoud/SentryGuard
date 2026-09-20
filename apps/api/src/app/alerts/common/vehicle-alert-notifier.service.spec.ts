@@ -354,6 +354,7 @@ describe('The VehicleAlertNotifierService class', () => {
           type: AlertEventType.BreakIn,
           userId: 'user-1',
           userLanguage: 'en',
+          vehicleName: 'My Tesla',
         });
         expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith({
           alertSound: AlertSound.SentrySiren,
@@ -362,6 +363,7 @@ describe('The VehicleAlertNotifierService class', () => {
           type: AlertEventType.BreakIn,
           userId: 'user-2',
           userLanguage: 'fr',
+          vehicleName: 'My Tesla',
         });
       });
     });
@@ -387,6 +389,7 @@ describe('The VehicleAlertNotifierService class', () => {
           type: AlertEventType.BreakIn,
           userId: 'user-1',
           userLanguage: 'en',
+          vehicleName: 'My Tesla',
         });
       });
     });
@@ -448,6 +451,38 @@ describe('The VehicleAlertNotifierService class', () => {
 
         expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
           expect.objectContaining({ alertSound: AlertSound.KlaxonAlarm })
+        );
+      });
+    });
+
+    describe('When the vehicle has no display name', () => {
+      beforeEach(() => {
+        mockVehicleRepository.find.mockResolvedValue([{ userId: 'user-1', display_name: undefined } as Vehicle]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+      });
+
+      it('should fall back to the VIN when sending the push alert', async () => {
+        await service.dispatch(config);
+        await executeEnqueuedTasks();
+
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
+          expect.objectContaining({ vehicleName: 'TEST_VIN_123' })
+        );
+      });
+    });
+
+    describe('When the vehicle has an empty display name', () => {
+      beforeEach(() => {
+        mockVehicleRepository.find.mockResolvedValue([{ userId: 'user-1', display_name: '' } as Vehicle]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+      });
+
+      it('should fall back to the VIN when sending the push alert', async () => {
+        await service.dispatch(config);
+        await executeEnqueuedTasks();
+
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
+          expect.objectContaining({ vehicleName: 'TEST_VIN_123' })
         );
       });
     });

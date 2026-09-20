@@ -18,6 +18,7 @@ export interface PushAlertContext {
   type: AlertEventType;
   userId: string;
   userLanguage: 'en' | 'fr';
+  vehicleName?: string;
 }
 
 export interface NotificationPreferencesDto {
@@ -165,7 +166,7 @@ export class NotificationsService {
   }
 
   private async dispatchPushToDevices(devices: PushDeviceToken[], context: PushAlertContext): Promise<void> {
-    const { body, title } = this.resolveAlertTexts(context.type, context.userLanguage);
+    const { body, title } = this.resolveAlertTexts(context.type, context.userLanguage, context.vehicleName);
     const results = await Promise.allSettled(
       devices.map((device) => this.sendExpoPush(device, title, body, context))
     );
@@ -178,17 +179,15 @@ export class NotificationsService {
     }
   }
 
-  private resolveAlertTexts(type: AlertEventType, lng: 'en' | 'fr'): { body: string; title: string } {
-    if (type === AlertEventType.BreakIn) {
-      return {
-        body: i18n.t('A break-in attempt was detected.', { lng }),
-        title: i18n.t('Intrusion alert', { lng }),
-      };
-    }
+  private resolveAlertTexts(type: AlertEventType, lng: 'en' | 'fr', vehicleName?: string): { body: string; title: string } {
+    const context = vehicleName ? 'withVehicle' : undefined;
+    const [bodyKey, titleKey] = type === AlertEventType.BreakIn
+      ? ['A break-in attempt was detected.', 'Intrusion alert']
+      : ['A Sentry event was detected.', 'Sentry alert'];
 
     return {
-      body: i18n.t('A Sentry event was detected.', { lng }),
-      title: i18n.t('Sentry alert', { lng }),
+      body: i18n.t(bodyKey, { lng }),
+      title: i18n.t(titleKey, { context, lng, vehicleName }),
     };
   }
 

@@ -73,7 +73,9 @@
   "offensiveError": "❌ Erreur lors de la mise à jour",
   "offensiveDisabledMsg": "📯 <b>{{vehicle}}</b>\n\nKlaxon désactivé",
   "Intrusion alert": "Alerte intrusion",
+  "Intrusion alert_withVehicle": "Alerte intrusion - {{vehicleName}}",
   "A break-in attempt was detected.": "Une tentative d’intrusion a été détectée.",
   "Sentry alert": "Alerte Sentinelle",
+  "Sentry alert_withVehicle": "Alerte Sentinelle - {{vehicleName}}",
   "A Sentry event was detected.": "Un événement Sentinelle a été détecté."
 }
