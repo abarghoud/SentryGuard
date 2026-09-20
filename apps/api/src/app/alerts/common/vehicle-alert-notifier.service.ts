@@ -211,7 +211,14 @@ export class VehicleAlertNotifierService {
 
   private async deliverNotifications(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<void> {
     const [pushResult, telegramResult] = await Promise.allSettled([
-      this.notificationsService.sendPushAlert(payload.userId, payload.severity, payload.type, userLanguage, payload.correlationId),
+      this.notificationsService.sendPushAlert(
+        payload.userId,
+        payload.severity,
+        payload.type,
+        userLanguage,
+        payload.vehicleDisplayName ?? payload.vin,
+        payload.correlationId
+      ),
       this.sendTelegramNotification(payload, userLanguage),
     ]);
 

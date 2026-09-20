@@ -346,6 +346,7 @@ describe('The VehicleAlertNotifierService class', () => {
           AlertEventSeverity.Critical,
           AlertEventType.BreakIn,
           'en',
+          'My Tesla',
           'corr-123'
         );
         expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
@@ -353,6 +354,7 @@ describe('The VehicleAlertNotifierService class', () => {
           AlertEventSeverity.Critical,
           AlertEventType.BreakIn,
           'fr',
+          'My Tesla',
           'corr-123'
         );
       });
@@ -377,6 +379,28 @@ describe('The VehicleAlertNotifierService class', () => {
           AlertEventSeverity.Critical,
           AlertEventType.BreakIn,
           'en',
+          'My Tesla',
+          'corr-123'
+        );
+      });
+    });
+
+    describe('When the vehicle has no display name', () => {
+      beforeEach(() => {
+        mockVehicleRepository.find.mockResolvedValue([{ userId: 'user-1', display_name: undefined } as Vehicle]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+      });
+
+      it('should fall back to the VIN when sending the push alert', async () => {
+        await service.dispatch(config);
+        await executeEnqueuedTasks();
+
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
+          'user-1',
+          AlertEventSeverity.Critical,
+          AlertEventType.BreakIn,
+          'en',
+          'TEST_VIN_123',
           'corr-123'
         );
       });

@@ -129,6 +129,7 @@ export class NotificationsService {
     severity: AlertEventSeverity,
     type: AlertEventType,
     userLanguage: 'en' | 'fr',
+    vehicleName?: string,
     correlationId?: string
   ): Promise<boolean> {
     if (await this.shouldSuppressPush(userId, type)) {
@@ -144,7 +145,7 @@ export class NotificationsService {
 
     this.logger.log(`[EXPO_PUSH][${correlationId || 'none'}] Sending push to ${eligibleDevices.length} device(s) for user: ${userId}`);
 
-    await this.dispatchPushToDevices(eligibleDevices, severity, type, userId, userLanguage, correlationId);
+    await this.dispatchPushToDevices(eligibleDevices, severity, type, userId, userLanguage, vehicleName, correlationId);
 
     return true;
   }
@@ -164,9 +165,10 @@ export class NotificationsService {
     type: AlertEventType,
     userId: string,
     userLanguage: 'en' | 'fr',
+    vehicleName?: string,
     correlationId?: string
   ): Promise<void> {
-    const { body, title } = this.resolveAlertTexts(type, userLanguage);
+    const { body, title } = this.resolveAlertTexts(type, userLanguage, vehicleName);
     const results = await Promise.allSettled(
       devices.map((device) =>
         this.sendExpoPush(device, title, body, severity, type, device.critical_alerts_enabled, userId, userLanguage, correlationId)
@@ -181,18 +183,18 @@ export class NotificationsService {
     }
   }
 
-  private resolveAlertTexts(type: AlertEventType, lng: 'en' | 'fr'): { body: string; title: string } {
-    if (type === AlertEventType.BreakIn) {
-      return {
+  private resolveAlertTexts(type: AlertEventType, lng: 'en' | 'fr', vehicleName?: string): { body: string; title: string } {
+    const texts = type === AlertEventType.BreakIn
+      ? {
         body: i18n.t('A break-in attempt was detected.', { lng }),
         title: i18n.t('Intrusion alert', { lng }),
+      }
+      : {
+        body: i18n.t('A Sentry event was detected.', { lng }),
+        title: i18n.t('Sentry alert', { lng }),
       };
-    }
 
-    return {
-      body: i18n.t('A Sentry event was detected.', { lng }),
-      title: i18n.t('Sentry alert', { lng }),
-    };
+    return vehicleName ? { ...texts, title: `${texts.title} - ${vehicleName}` } : texts;
   }
 
   private async findOrCreatePreferences(userId: string): Promise<NotificationPreferences> {

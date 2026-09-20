@@ -115,6 +115,20 @@ describe('The NotificationsService class', () => {
       });
     });
 
+    describe('When a vehicle name is provided', () => {
+      beforeEach(async () => {
+        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Warning, AlertEventType.Sentry, 'en', 'Model Y');
+      });
+
+      it('should append the vehicle name to the title', () => {
+        expect(lastPushPayload().title).toBe('Sentry alert - Model Y');
+      });
+
+      it('should leave the body unchanged', () => {
+        expect(lastPushPayload().body).toBe('A Sentry event was detected.');
+      });
+    });
+
     describe('When the user has alerts muted', () => {
       beforeEach(() => {
         mockPreferencesRepository.findOne.mockResolvedValue({
