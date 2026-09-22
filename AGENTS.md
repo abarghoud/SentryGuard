@@ -150,7 +150,7 @@ apps/mobile/src/
 ├── features/      # Same clean-architecture layout as webapp (domain/data/presentation/di.ts)
 └── screens/       # Presentational screens; logic in use-*.ts hooks
 ```
-Not Expo Router — uses `@react-navigation` (bottom tabs: Dashboard / Alerts / Settings). Tesla OAuth via `expo-web-browser` + deep link `sentryguard://callback`; JWT in `expo-secure-store`. Push via `expo-notifications`. API URL = build-time `EXPO_PUBLIC_API_URL`.
+Not Expo Router — uses `@react-navigation` (bottom tabs: Dashboard / Alerts / Settings). Tesla OAuth via `expo-web-browser` + deep link `sentryguard://callback`; JWT in `expo-secure-store`. Push via `expo-notifications`; tapping an alert push opens the Tesla sentry camera view of the alerting vehicle, from the `EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE` template (kept out of the repo, empty = disabled). API URL = build-time `EXPO_PUBLIC_API_URL`.
 
 ## Key Architecture Patterns
 

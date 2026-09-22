@@ -8,9 +8,16 @@ jest.mock('expo-linking', () => ({
 
 describe('The openTeslaApp() function', () => {
   const fallbackUrl = 'https://api.sentryguard.org/redirect/tesla-app?userId=user-123&lang=fr';
+  const fakeVin = '5YJ3E1EA7KF000316';
+  const fakeCameraTemplate = 'tesla://camera-view/{vin}';
+  const originalTemplate = process.env.EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE;
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    process.env.EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE = originalTemplate;
   });
 
   describe('When the Tesla app opens successfully', () => {
@@ -52,6 +59,64 @@ describe('The openTeslaApp() function', () => {
 
     it('should resolve without throwing', async () => {
       await expect(act()).resolves.toBeUndefined();
+    });
+  });
+  describe('When the camera deep link is configured and the alert carries a VIN', () => {
+    beforeEach(async () => {
+      process.env.EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE = fakeCameraTemplate;
+      (Linking.openURL as jest.Mock).mockResolvedValue(true);
+
+      await openTeslaApp(fallbackUrl, fakeVin);
+    });
+
+    it('should open the sentry camera view of that vehicle', () => {
+      expect((Linking.openURL as jest.Mock).mock.calls).toStrictEqual([
+        ['tesla://camera-view/5YJ3E1EA7KF000316'],
+      ]);
+    });
+  });
+
+  describe('When the camera deep link cannot be opened', () => {
+    beforeEach(async () => {
+      process.env.EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE = fakeCameraTemplate;
+      (Linking.openURL as jest.Mock)
+        .mockRejectedValueOnce(new Error('camera view unavailable'))
+        .mockResolvedValueOnce(true);
+
+      await openTeslaApp(fallbackUrl, fakeVin);
+    });
+
+    it('should fall back to the Tesla app home screen', () => {
+      expect((Linking.openURL as jest.Mock).mock.calls).toStrictEqual([
+        ['tesla://camera-view/5YJ3E1EA7KF000316'],
+        ['tesla://'],
+      ]);
+    });
+  });
+
+  describe('When the camera deep link is configured but the alert carries no VIN', () => {
+    beforeEach(async () => {
+      process.env.EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE = fakeCameraTemplate;
+      (Linking.openURL as jest.Mock).mockResolvedValue(true);
+
+      await openTeslaApp(fallbackUrl);
+    });
+
+    it('should open the Tesla app home screen', () => {
+      expect((Linking.openURL as jest.Mock).mock.calls).toStrictEqual([['tesla://']]);
+    });
+  });
+
+  describe('When the camera deep link is not configured', () => {
+    beforeEach(async () => {
+      delete process.env.EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE;
+      (Linking.openURL as jest.Mock).mockResolvedValue(true);
+
+      await openTeslaApp(fallbackUrl, fakeVin);
+    });
+
+    it('should open the Tesla app home screen', () => {
+      expect((Linking.openURL as jest.Mock).mock.calls).toStrictEqual([['tesla://']]);
     });
   });
 });

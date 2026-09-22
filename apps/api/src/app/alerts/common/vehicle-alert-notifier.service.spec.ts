@@ -347,7 +347,8 @@ describe('The VehicleAlertNotifierService class', () => {
           AlertEventType.BreakIn,
           'en',
           'corr-123',
-          'My Tesla'
+          'My Tesla',
+          'TEST_VIN_123'
         );
         expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
           'user-2',
@@ -355,7 +356,8 @@ describe('The VehicleAlertNotifierService class', () => {
           AlertEventType.BreakIn,
           'fr',
           'corr-123',
-          'My Tesla'
+          'My Tesla',
+          'TEST_VIN_123'
         );
       });
     });
@@ -380,7 +382,8 @@ describe('The VehicleAlertNotifierService class', () => {
           AlertEventType.BreakIn,
           'en',
           'corr-123',
-          'My Tesla'
+          'My Tesla',
+          'TEST_VIN_123'
         );
       });
     });
@@ -401,6 +404,7 @@ describe('The VehicleAlertNotifierService class', () => {
           AlertEventType.BreakIn,
           'en',
           'corr-123',
+          'TEST_VIN_123',
           'TEST_VIN_123'
         );
       });
@@ -422,6 +426,7 @@ describe('The VehicleAlertNotifierService class', () => {
           AlertEventType.BreakIn,
           'en',
           'corr-123',
+          'TEST_VIN_123',
           'TEST_VIN_123'
         );
       });

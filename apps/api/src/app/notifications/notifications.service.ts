@@ -29,6 +29,21 @@ interface ExpoPushResponse {
   };
 }
 
+interface PushAlertContent {
+  body: string;
+  title: string;
+}
+
+interface PushAlertContext {
+  correlationId?: string;
+  severity: AlertEventSeverity;
+  type: AlertEventType;
+  userId: string;
+  userLanguage: 'en' | 'fr';
+  vehicleName?: string;
+  vin?: string;
+}
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -130,7 +145,8 @@ export class NotificationsService {
     type: AlertEventType,
     userLanguage: 'en' | 'fr',
     correlationId?: string,
-    vehicleName?: string
+    vehicleName?: string,
+    vin?: string
   ): Promise<boolean> {
     if (await this.shouldSuppressPush(userId, type)) {
       this.logger.log(`[EXPO_PUSH][${correlationId || 'none'}] Sentry push alert suppressed for muted user: ${userId}`);
@@ -145,7 +161,15 @@ export class NotificationsService {
 
     this.logger.log(`[EXPO_PUSH][${correlationId || 'none'}] Sending push to ${eligibleDevices.length} device(s) for user: ${userId}`);
 
-    await this.dispatchPushToDevices(eligibleDevices, severity, type, userId, userLanguage, correlationId, vehicleName);
+    await this.dispatchPushToDevices(eligibleDevices, {
+      correlationId,
+      severity,
+      type,
+      userId,
+      userLanguage,
+      vehicleName,
+      vin,
+    });
 
     return true;
   }
@@ -159,20 +183,10 @@ export class NotificationsService {
     return devices.filter((device) => this.shouldSendPushToDevice(device, severity));
   }
 
-  private async dispatchPushToDevices(
-    devices: PushDeviceToken[],
-    severity: AlertEventSeverity,
-    type: AlertEventType,
-    userId: string,
-    userLanguage: 'en' | 'fr',
-    correlationId?: string,
-    vehicleName?: string
-  ): Promise<void> {
-    const { body, title } = this.resolveAlertTexts(type, userLanguage, vehicleName);
+  private async dispatchPushToDevices(devices: PushDeviceToken[], context: PushAlertContext): Promise<void> {
+    const content = this.resolveAlertTexts(context.type, context.userLanguage, context.vehicleName);
     const results = await Promise.allSettled(
-      devices.map((device) =>
-        this.sendExpoPush(device, title, body, severity, type, device.critical_alerts_enabled, userId, userLanguage, correlationId)
-      )
+      devices.map((device) => this.sendExpoPush(device, content, context))
     );
 
     const hasSuccess = results.some((result) => result.status === 'fulfilled');
@@ -183,7 +197,7 @@ export class NotificationsService {
     }
   }
 
-  private resolveAlertTexts(type: AlertEventType, lng: 'en' | 'fr', vehicleName?: string): { body: string; title: string } {
+  private resolveAlertTexts(type: AlertEventType, lng: 'en' | 'fr', vehicleName?: string): PushAlertContent {
     const context = vehicleName ? 'withVehicle' : undefined;
     const [bodyKey, titleKey] = type === AlertEventType.BreakIn
       ? ['A break-in attempt was detected.', 'Intrusion alert']
@@ -270,20 +284,16 @@ export class NotificationsService {
 
   private async sendExpoPush(
     device: PushDeviceToken,
-    title: string,
-    body: string,
-    severity: AlertEventSeverity,
-    type: AlertEventType,
-    criticalAlertsEnabled: boolean,
-    userId: string,
-    userLanguage: 'en' | 'fr',
-    correlationId?: string
+    content: PushAlertContent,
+    context: PushAlertContext
   ): Promise<void> {
+    const { correlationId } = context;
+
     try {
       const pushStart = Date.now();
       const response = await withTimeout(
         (signal) => fetch('https://exp.host/--/api/v2/push/send', {
-          body: JSON.stringify(this.buildExpoPushBody(device.token, title, body, severity, type, criticalAlertsEnabled, userId, userLanguage)),
+          body: JSON.stringify(this.buildExpoPushBody(device, content, context)),
           headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
           method: 'POST',
           signal,
@@ -302,22 +312,14 @@ export class NotificationsService {
     }
   }
 
-  private buildExpoPushBody(
-    token: string,
-    title: string,
-    body: string,
-    severity: AlertEventSeverity,
-    type: AlertEventType,
-    criticalAlertsEnabled: boolean,
-    userId: string,
-    userLanguage: 'en' | 'fr'
-  ): object {
-    const isPriorityAlert = criticalAlertsEnabled && this.shouldUsePriorityChannel(severity, type);
+  private buildExpoPushBody(device: PushDeviceToken, content: PushAlertContent, context: PushAlertContext): object {
+    const criticalAlertsEnabled = device.critical_alerts_enabled;
+    const isPriorityAlert = criticalAlertsEnabled && this.shouldUsePriorityChannel(context.severity, context.type);
     const channelId = isPriorityAlert ? 'sentryguard-critical-alerts-v5' : 'sentryguard-alerts';
-    const categoryId = type === AlertEventType.Sentry ? 'sentry_alert' : undefined;
+    const categoryId = context.type === AlertEventType.Sentry ? 'sentry_alert' : undefined;
 
     return {
-      body,
+      body: content.body,
       categoryId,
       channelId,
       data: {
@@ -325,14 +327,15 @@ export class NotificationsService {
         criticalAlertsEnabled,
         isCriticalAlert: isPriorityAlert,
         isPriorityAlert,
-        severity,
-        teslaRedirectUrl: this.buildTeslaRedirectUrl(userId, userLanguage),
-        type,
+        severity: context.severity,
+        teslaRedirectUrl: this.buildTeslaRedirectUrl(context.userId, context.userLanguage),
+        type: context.type,
+        vin: context.vin,
       },
       priority: 'high',
       sound: 'default',
-      title,
-      to: token,
+      title: content.title,
+      to: device.token,
     };
   }
 

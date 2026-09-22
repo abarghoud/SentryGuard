@@ -155,7 +155,7 @@ describe('The handleAlertNotificationResponse() function', () => {
     });
 
     it('should open tesla app with redirect url', () => {
-      expect(openTeslaApp).toHaveBeenCalledWith('https://tesla.com/redirect');
+      expect(openTeslaApp).toHaveBeenCalledWith('https://tesla.com/redirect', undefined);
     });
   });
 
@@ -167,7 +167,7 @@ describe('The handleAlertNotificationResponse() function', () => {
 
       await handleAlertNotificationResponse(response, mockQueryClient);
 
-      expect(openTeslaApp).toHaveBeenCalledWith('https://tesla.com/open');
+      expect(openTeslaApp).toHaveBeenCalledWith('https://tesla.com/open', undefined);
     });
   });
 
@@ -185,7 +185,33 @@ describe('The handleAlertNotificationResponse() function', () => {
 
     it('should log error and still attempt to open tesla app', () => {
       expect(appLogger.error).toHaveBeenCalledWith('api', 'Failed to validate session before notification response', sessionError);
-      expect(openTeslaApp).toHaveBeenCalledWith('https://tesla.com/open');
+      expect(openTeslaApp).toHaveBeenCalledWith('https://tesla.com/open', undefined);
+    });
+  });
+
+  describe('When the alert carries the VIN of the triggering vehicle', () => {
+    it('should open tesla app with that VIN', async () => {
+      const response = buildNotificationResponse('OPEN_TESLA', {
+        teslaRedirectUrl: 'https://tesla.com/open',
+        vin: '5YJ3E1EA7KF000316',
+      });
+
+      await handleAlertNotificationResponse(response, mockQueryClient);
+
+      expect(openTeslaApp).toHaveBeenCalledWith('https://tesla.com/open', '5YJ3E1EA7KF000316');
+    });
+  });
+
+  describe('When the alert carries a VIN that is not a string', () => {
+    it('should open tesla app without a VIN', async () => {
+      const response = buildNotificationResponse('OPEN_TESLA', {
+        teslaRedirectUrl: 'https://tesla.com/open',
+        vin: 42,
+      });
+
+      await handleAlertNotificationResponse(response, mockQueryClient);
+
+      expect(openTeslaApp).toHaveBeenCalledWith('https://tesla.com/open', undefined);
     });
   });
 
