@@ -25,7 +25,7 @@ describe('The NotificationsService class', () => {
       userId: fakeUserId,
     }) as PushDeviceToken;
 
-  const lastPushPayload = (): { body: string; channelId: string; sound?: string; title: string } =>
+  const lastPushPayload = (): { body: string; channelId: string; data: { vin?: string }; sound?: string; title: string } =>
     JSON.parse(fetchMock.mock.calls[0][1].body);
 
   beforeEach(() => {
@@ -227,6 +227,40 @@ describe('The NotificationsService class', () => {
 
       it('should append the localized vehicle name suffix to the title', () => {
         expect(lastPushPayload().title).toBe('Alerte Sentinelle - Model Y');
+      });
+    });
+
+    describe('When the alerting VIN is provided', () => {
+      beforeEach(async () => {
+        await service.sendPushAlert({
+          alertSound: AlertSound.SentrySiren,
+          severity: AlertEventSeverity.Warning,
+          type: AlertEventType.Sentry,
+          userId: fakeUserId,
+          userLanguage: 'en',
+          vehicleName: 'Model Y',
+          vin: '5YJ3E1EA7KF000316',
+        });
+      });
+
+      it('should carry it in the push data payload', () => {
+        expect(lastPushPayload().data.vin).toBe('5YJ3E1EA7KF000316');
+      });
+    });
+
+    describe('When no alerting VIN is provided', () => {
+      beforeEach(async () => {
+        await service.sendPushAlert({
+          alertSound: AlertSound.SentrySiren,
+          severity: AlertEventSeverity.Warning,
+          type: AlertEventType.Sentry,
+          userId: fakeUserId,
+          userLanguage: 'en',
+        });
+      });
+
+      it('should omit the VIN from the push data payload', () => {
+        expect(lastPushPayload().data.vin).toBeUndefined();
       });
     });
 

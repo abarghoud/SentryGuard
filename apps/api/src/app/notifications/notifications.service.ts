@@ -19,6 +19,7 @@ export interface PushAlertContext {
   userId: string;
   userLanguage: 'en' | 'fr';
   vehicleName?: string;
+  vin?: string;
 }
 
 export interface NotificationPreferencesDto {
@@ -38,6 +39,11 @@ interface ExpoPushResponse {
     message?: string;
     status?: string;
   };
+}
+
+interface PushAlertContent {
+  body: string;
+  title: string;
 }
 
 @Injectable()
@@ -166,9 +172,9 @@ export class NotificationsService {
   }
 
   private async dispatchPushToDevices(devices: PushDeviceToken[], context: PushAlertContext): Promise<void> {
-    const { body, title } = this.resolveAlertTexts(context.type, context.userLanguage, context.vehicleName);
+    const content = this.resolveAlertTexts(context.type, context.userLanguage, context.vehicleName);
     const results = await Promise.allSettled(
-      devices.map((device) => this.sendExpoPush(device, title, body, context))
+      devices.map((device) => this.sendExpoPush(device, content, context))
     );
 
     const hasSuccess = results.some((result) => result.status === 'fulfilled');
@@ -179,7 +185,7 @@ export class NotificationsService {
     }
   }
 
-  private resolveAlertTexts(type: AlertEventType, lng: 'en' | 'fr', vehicleName?: string): { body: string; title: string } {
+  private resolveAlertTexts(type: AlertEventType, lng: 'en' | 'fr', vehicleName?: string): PushAlertContent {
     const context = vehicleName ? 'withVehicle' : undefined;
     const [bodyKey, titleKey] = type === AlertEventType.BreakIn
       ? ['A break-in attempt was detected.', 'Intrusion alert']
@@ -266,17 +272,16 @@ export class NotificationsService {
 
   private async sendExpoPush(
     device: PushDeviceToken,
-    title: string,
-    body: string,
+    content: PushAlertContent,
     context: PushAlertContext
   ): Promise<void> {
-    const correlationId = context.correlationId;
+    const { correlationId } = context;
 
     try {
       const pushStart = Date.now();
       const response = await withTimeout(
         (signal) => fetch('https://exp.host/--/api/v2/push/send', {
-          body: JSON.stringify(this.buildExpoPushBody(device, title, body, context)),
+          body: JSON.stringify(this.buildExpoPushBody(device, content, context)),
           headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
           method: 'POST',
           signal,
@@ -295,19 +300,14 @@ export class NotificationsService {
     }
   }
 
-  private buildExpoPushBody(
-    device: PushDeviceToken,
-    title: string,
-    body: string,
-    context: PushAlertContext
-  ): object {
-    const { alertSound, severity, type, userId, userLanguage } = context;
+  private buildExpoPushBody(device: PushDeviceToken, content: PushAlertContent, context: PushAlertContext): object {
+    const { alertSound, severity, type } = context;
     const criticalAlertsEnabled = device.critical_alerts_enabled;
     const isPriorityAlert = criticalAlertsEnabled && this.shouldUsePriorityChannel(severity, type);
     const channelId = this.resolveChannelId(alertSound, isPriorityAlert);
 
     const pushMessage: Record<string, unknown> = {
-      body,
+      body: content.body,
       categoryId: type === AlertEventType.Sentry ? 'sentry_alert' : undefined,
       channelId,
       data: {
@@ -316,12 +316,13 @@ export class NotificationsService {
         criticalAlertsEnabled,
         isCriticalAlert: isPriorityAlert,
         isPriorityAlert,
-        severity,
-        teslaRedirectUrl: this.buildTeslaRedirectUrl(userId, userLanguage),
-        type,
+        severity: context.severity,
+        teslaRedirectUrl: this.buildTeslaRedirectUrl(context.userId, context.userLanguage),
+        type: context.type,
+        vin: context.vin,
       },
       priority: 'high',
-      title,
+      title: content.title,
       to: device.token,
       ...this.resolveIosSound(alertSound, criticalAlertsEnabled && severity === AlertEventSeverity.Critical),
     };

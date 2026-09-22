@@ -12,7 +12,7 @@ import { NotificationsService } from '../../notifications/notifications.service'
 import { NotificationQueueService } from '../../notifications/notification-queue.service';
 import { AlertNotifierRegistry } from './alert-notifier.registry';
 import { VehicleAlertSoundResolverService } from './vehicle-alert-sound-resolver.service';
-import { AlertSound } from '../enums/alert-sound.enum';
+import { AlertSound, DEFAULT_ALERT_SOUND } from '../enums/alert-sound.enum';
 import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
 
 describe('The VehicleAlertNotifierService class', () => {
@@ -355,6 +355,7 @@ describe('The VehicleAlertNotifierService class', () => {
           userId: 'user-1',
           userLanguage: 'en',
           vehicleName: 'My Tesla',
+          vin: 'TEST_VIN_123',
         });
         expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith({
           alertSound: AlertSound.SentrySiren,
@@ -364,6 +365,7 @@ describe('The VehicleAlertNotifierService class', () => {
           userId: 'user-2',
           userLanguage: 'fr',
           vehicleName: 'My Tesla',
+          vin: 'TEST_VIN_123',
         });
       });
     });
@@ -390,6 +392,7 @@ describe('The VehicleAlertNotifierService class', () => {
           userId: 'user-1',
           userLanguage: 'en',
           vehicleName: 'My Tesla',
+          vin: 'TEST_VIN_123',
         });
       });
     });
@@ -401,6 +404,22 @@ describe('The VehicleAlertNotifierService class', () => {
         ]);
         mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
         mockVehicleAlertSoundResolverService.resolve.mockRejectedValue(new Error('DB connection lost'));
+      });
+
+      it('should still send the push alert', async () => {
+        await service.dispatch(config);
+        await executeEnqueuedTasks();
+
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalled();
+      });
+
+      it('should fall back to the default alert sound', async () => {
+        await service.dispatch(config);
+        await executeEnqueuedTasks();
+
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
+          expect.objectContaining({ alertSound: DEFAULT_ALERT_SOUND })
+        );
       });
 
       it('should still notify via Telegram', async () => {
@@ -415,13 +434,6 @@ describe('The VehicleAlertNotifierService class', () => {
         await executeEnqueuedTasks();
 
         expect(mockAlertsService.markNotificationSent).toHaveBeenCalled();
-      });
-
-      it('should not send a push alert', async () => {
-        await service.dispatch(config);
-        await executeEnqueuedTasks();
-
-        expect(mockNotificationsService.sendPushAlert).not.toHaveBeenCalled();
       });
     });
 

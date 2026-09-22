@@ -13,6 +13,7 @@ import { NotificationsService } from '../../notifications/notifications.service'
 import { NotificationQueueService } from '../../notifications/notification-queue.service';
 import { AlertNotifierPayload, AlertNotifierRegistry } from './alert-notifier.registry';
 import { VehicleAlertSoundResolverService } from './vehicle-alert-sound-resolver.service';
+import { AlertSound, DEFAULT_ALERT_SOUND } from '../enums/alert-sound.enum';
 import { NOTIFICATION_SWEEP_MAX_ATTEMPTS } from '../../../config/notification-sweep-cron.config';
 import { resolveVehicleLabel } from '../../../common/utils/vehicle-label.util';
 
@@ -212,17 +213,28 @@ export class VehicleAlertNotifierService {
     this.logger.log(`[${payload.type}] Notified user ${payload.userId} for VIN ${payload.vin} (correlation: ${payload.correlationId})`);
   }
 
-  private async sendPushNotification(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<boolean> {
-    const alertSound = await this.vehicleAlertSoundResolverService.resolve(payload.userId, payload.vin, payload.type);
+  private async resolveAlertSound(payload: AlertNotifierPayload): Promise<AlertSound> {
+    try {
+      return await this.vehicleAlertSoundResolverService.resolve(payload.userId, payload.vin, payload.type);
+    } catch (error) {
+      this.logger.warn(
+        `[ALERT_SOUND_FALLBACK] Could not read the alert sound for VIN ${payload.vin}, falling back to the default:`,
+        error
+      );
+      return DEFAULT_ALERT_SOUND;
+    }
+  }
 
+  private async sendPushNotification(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<boolean> {
     return await this.notificationsService.sendPushAlert({
-      alertSound,
+      alertSound: await this.resolveAlertSound(payload),
       correlationId: payload.correlationId,
       severity: payload.severity,
       type: payload.type,
       userId: payload.userId,
       userLanguage,
       vehicleName: resolveVehicleLabel(payload.vehicleDisplayName, payload.vin),
+      vin: payload.vin,
     });
   }
 
