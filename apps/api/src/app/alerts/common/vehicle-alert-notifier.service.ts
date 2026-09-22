@@ -218,7 +218,8 @@ export class VehicleAlertNotifierService {
         payload.type,
         userLanguage,
         payload.correlationId,
-        resolveVehicleLabel(payload.vehicleDisplayName, payload.vin)
+        resolveVehicleLabel(payload.vehicleDisplayName, payload.vin),
+        payload.vin
       ),
       this.sendTelegramNotification(payload, userLanguage),
     ]);

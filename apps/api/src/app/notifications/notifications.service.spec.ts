@@ -24,7 +24,8 @@ describe('The NotificationsService class', () => {
       userId: fakeUserId,
     }) as PushDeviceToken;
 
-  const lastPushPayload = (): { body: string; sound?: string; title: string } => JSON.parse(fetchMock.mock.calls[0][1].body);
+  const lastPushPayload = (): { body: string; data: { vin?: string }; sound?: string; title: string } =>
+    JSON.parse(fetchMock.mock.calls[0][1].body);
 
   beforeEach(() => {
     mockPreferencesRepository = mock<Repository<NotificationPreferences>>();
@@ -136,6 +137,34 @@ describe('The NotificationsService class', () => {
 
       it('should append the localized vehicle name suffix to the title', () => {
         expect(lastPushPayload().title).toBe('Alerte Sentinelle - Model Y');
+      });
+    });
+
+    describe('When the alerting VIN is provided', () => {
+      beforeEach(async () => {
+        await service.sendPushAlert(
+          fakeUserId,
+          AlertEventSeverity.Warning,
+          AlertEventType.Sentry,
+          'en',
+          undefined,
+          'Model Y',
+          '5YJ3E1EA7KF000316'
+        );
+      });
+
+      it('should carry it in the push data payload', () => {
+        expect(lastPushPayload().data.vin).toBe('5YJ3E1EA7KF000316');
+      });
+    });
+
+    describe('When no alerting VIN is provided', () => {
+      beforeEach(async () => {
+        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Warning, AlertEventType.Sentry, 'en');
+      });
+
+      it('should omit the VIN from the push data payload', () => {
+        expect(lastPushPayload().data.vin).toBeUndefined();
       });
     });
 

@@ -248,6 +248,7 @@ features/<domain>/
 - **Login**: backend Tesla OAuth opened via `expo-web-browser` (iOS) / `Linking` (Android); callback caught by deep link `sentryguard://callback`; token → **expo-secure-store** (`sentryguard.jwt`)
 - **API URL** is **build-time** `EXPO_PUBLIC_API_URL` (inlined by Metro) with an optional user override saved in SecureStore
 - **Push**: `expo-notifications`; token registered to `POST /notifications/push-token`, cleared on logout. Android critical alerts use a custom native module (`apps/mobile/modules/dnd-access/`, Kotlin) for Do-Not-Disturb bypass
+- **Tapping an alert push** opens the Tesla app on the alerting vehicle's sentry camera view (`core/tesla-camera-link.ts`), falling back to `tesla://` then the web redirect. The deep link is **never hardcoded** — it is undocumented by Tesla and this repo is public, so it lives only in `EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE`; leaving it empty disables the feature
 - **UI**: Apple-style design system in `core/design/` + "liquid glass" components (`expo-glass-effect` with `expo-blur` fallback); theming via `core/theme.tsx`. Config split: static `app.json` + dynamic `app.config.js`
 
 ## Environment Configuration
@@ -269,6 +270,7 @@ Critical environment variables:
 
 ### Mobile (.env.local)
 - `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_VIRTUAL_KEY_PAIRING_URL`, optional `EXPO_PUBLIC_DEMO_*` (all inlined by Metro — never put real secrets here)
+- `EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE` — `tesla://…{vin}…` template opened when an alert push is tapped. Undocumented by Tesla, so it is kept out of the repo: set it in the gitignored `.env.local` and in the build environment, never in source, tests or `.env.example`. Empty disables the feature. Being `EXPO_PUBLIC_*` it is inlined by Metro, so changing it needs a new build
 
 ### Self-Hosting
 - `docker-compose.selfhost.yml` + `.env.selfhost.example` (fail-fast `${VAR:?}` syntax). Full guide in [SELF_HOSTING.md](SELF_HOSTING.md)

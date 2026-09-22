@@ -27,6 +27,10 @@ function resolveTeslaRedirectUrl(data?: Record<string, unknown>): string | null 
   return typeof data?.teslaRedirectUrl === 'string' ? data.teslaRedirectUrl : null;
 }
 
+function resolveAlertingVin(data?: Record<string, unknown>): string | undefined {
+  return typeof data?.vin === 'string' ? data.vin : undefined;
+}
+
 async function ensureTokenLoaded(): Promise<void> {
   if (!tokenStore.hasToken()) {
     await tokenStore.loadFromStorage();
@@ -54,9 +58,13 @@ async function validateSession(queryClient: QueryClient): Promise<void> {
   }
 }
 
-async function validateAndOpenTesla(teslaRedirectUrl: string, queryClient: QueryClient): Promise<void> {
+async function validateAndOpenTesla(
+  teslaRedirectUrl: string,
+  queryClient: QueryClient,
+  vin?: string
+): Promise<void> {
   await validateSession(queryClient);
-  await openTeslaApp(teslaRedirectUrl);
+  await openTeslaApp(teslaRedirectUrl, vin);
 }
 
 async function handleTeslaOpenAction(
@@ -69,7 +77,7 @@ async function handleTeslaOpenAction(
     return;
   }
   Notifications.clearLastNotificationResponse();
-  await validateAndOpenTesla(teslaRedirectUrl, queryClient);
+  await validateAndOpenTesla(teslaRedirectUrl, queryClient, resolveAlertingVin(data));
 }
 
 export async function handleAlertNotificationResponse(
