@@ -241,10 +241,12 @@ const styles = StyleSheet.create({
   headerTitleRow: {
     alignItems: 'flex-start',
     flexDirection: 'row',
+    gap: spacing.sm,
     justifyContent: 'space-between',
   },
   pauseButton: {
     borderRadius: 999,
+    flexShrink: 0,
     marginTop: spacing.sm,
     paddingHorizontal: spacing.sm + 2,
     paddingVertical: spacing.xs,
@@ -264,6 +266,7 @@ const styles = StyleSheet.create({
     height: spacing.md,
   },
   titleBlock: {
+    flexShrink: 1,
     gap: spacing.xs,
     paddingTop: spacing.sm,
   },
