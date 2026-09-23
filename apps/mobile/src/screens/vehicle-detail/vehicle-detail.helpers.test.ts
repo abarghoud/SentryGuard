@@ -32,8 +32,9 @@ import { AppState, Platform } from 'react-native';
 
 import { tokenStore } from '../../core/api';
 import { getTeslaScopeChangeUrlUseCase } from '../../features/auth/di';
-import { requestVehicleCommandsScope } from './vehicle-detail.helpers';
-import { TranslationFunction } from './vehicle-detail.types';
+import { Vehicle } from '../../features/vehicles/domain/entities';
+import { requestVehicleCommandsScope, resolveVehicleAlertSoundId } from './vehicle-detail.helpers';
+import { AlertSoundTarget, TranslationFunction } from './vehicle-detail.types';
 
 describe('The requestVehicleCommandsScope() function', () => {
   const translate: TranslationFunction = (key) => key;
@@ -134,6 +135,29 @@ describe('The requestVehicleCommandsScope() function', () => {
 
     it('should throw a cancellation error', async () => {
       await expect(act()).rejects.toThrow('vehicle.scopeCancelled');
+    });
+  });
+});
+
+describe('The resolveVehicleAlertSoundId() function', () => {
+  describe('When the vehicle defines a sound for each alert type', () => {
+    const vehicle = {
+      break_in_alert_sound: 'klaxon_alarm.wav',
+      sentry_alert_sound: 'cyber_pulse.wav',
+    } as Vehicle;
+
+    it('should return the sentry sound for the Sentry target', () => {
+      expect(resolveVehicleAlertSoundId(vehicle, AlertSoundTarget.Sentry)).toBe('cyber_pulse.wav');
+    });
+
+    it('should return the break-in sound for the BreakIn target', () => {
+      expect(resolveVehicleAlertSoundId(vehicle, AlertSoundTarget.BreakIn)).toBe('klaxon_alarm.wav');
+    });
+  });
+
+  describe('When the vehicle has no stored sound', () => {
+    it('should fall back to the phone default sound id', () => {
+      expect(resolveVehicleAlertSoundId({} as Vehicle, AlertSoundTarget.Sentry)).toBe('default');
     });
   });
 });

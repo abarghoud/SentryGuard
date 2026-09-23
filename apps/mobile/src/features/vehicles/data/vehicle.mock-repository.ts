@@ -45,6 +45,22 @@ export class VehicleMockRepository implements VehicleRepositoryRequirements {
     return { message: 'success', success: true };
   }
 
+  public async updateAlertSounds(
+    vin: string,
+    payload: { breakInAlertSound?: string; sentryAlertSound?: string },
+  ): Promise<VehicleActionResponse> {
+    const v = this.vehicles.find((vehicle) => vehicle.vin === vin);
+    if (v) {
+      if (payload.sentryAlertSound !== undefined) {
+        v.sentry_alert_sound = payload.sentryAlertSound;
+      }
+      if (payload.breakInAlertSound !== undefined) {
+        v.break_in_alert_sound = payload.breakInAlertSound;
+      }
+    }
+    return { message: 'success', success: true };
+  }
+
   public async updateOffensiveResponse(
     vin: string,
     payload: { breakInOffensiveResponse?: OffensiveResponse; autoSentryEnabled?: boolean },

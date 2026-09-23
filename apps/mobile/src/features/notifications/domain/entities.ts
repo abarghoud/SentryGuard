@@ -1,3 +1,9 @@
+export enum CriticalAlertsPermission {
+  Denied = 'denied',
+  Granted = 'granted',
+  Unsupported = 'unsupported',
+}
+
 export interface NotificationPreferences {
   critical_alerts_enabled: boolean;
   critical_only: boolean;

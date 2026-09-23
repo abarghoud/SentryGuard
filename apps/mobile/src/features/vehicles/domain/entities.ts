@@ -5,6 +5,7 @@ export enum OffensiveResponse {
 }
 
 export interface Vehicle {
+  break_in_alert_sound?: string;
   break_in_monitoring_enabled?: boolean;
   break_in_offensive_response?: string;
   break_in_auto_sentry_mode_enabled?: boolean;
@@ -14,6 +15,7 @@ export interface Vehicle {
   key_paired?: boolean;
   vehicle_command_protocol_required?: boolean;
   model?: string;
+  sentry_alert_sound?: string;
   sentry_mode_monitoring_enabled: boolean;
   updated_at: string;
   vin: string;

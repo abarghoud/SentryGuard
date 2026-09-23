@@ -10,3 +10,8 @@ export enum VehicleAction {
 }
 
 export type VehicleMutationAction = OffensiveResponse | VehicleAction;
+
+export enum AlertSoundTarget {
+  BreakIn = 'BreakIn',
+  Sentry = 'Sentry',
+}

@@ -13,11 +13,12 @@ import { getTelegramStatusUseCase } from '../../features/telegram/di';
 import { getUserLanguageUseCase, updateUserLanguageUseCase } from '../../features/user/di';
 import { UserLanguage } from '../../features/user/domain/entities';
 import {
-  canEnableCriticalAlerts,
+  CriticalAlertsAvailability,
   defaultPreferences,
   registerDeviceForPush,
   requiresPushDevice,
   resolveAvailablePushToken,
+  resolveCriticalAlertsAvailability,
   resolvePreferenceUpdates,
   resolveSettingsError,
 } from './settings.helpers';
@@ -30,7 +31,7 @@ interface UpdateNotificationPreferencesMutation {
 export function useSettings() {
   const { i18n, t } = useTranslation();
   const [preferenceMessage, setPreferenceMessage] = useState<string | null>(null);
-  const [isDndAccessModalOpen, setIsDndAccessModalOpen] = useState(false);
+  const [criticalAlertsBlocker, setCriticalAlertsBlocker] = useState<CriticalAlertsAvailability | null>(null);
   const { isTokenResolved, pushToken, setPushToken } = usePushToken();
   useTelegramStatusSync();
   const hasRegisteredPushToken = useRef(false);
@@ -117,6 +118,16 @@ export function useSettings() {
     }
   };
 
+  const allowCriticalAlerts = async (): Promise<boolean> => {
+    const availability = await resolveCriticalAlertsAvailability();
+
+    if (availability !== CriticalAlertsAvailability.Allowed) {
+      setCriticalAlertsBlocker(availability);
+    }
+
+    return availability === CriticalAlertsAvailability.Allowed;
+  };
+
   const updatePreference = async (updates: Partial<NotificationPreferences>): Promise<void> => {
     setPreferenceMessage(null);
     appLogger.info('settings', 'Notification preference update', resolvePreferenceUpdates(updates));
@@ -125,6 +136,7 @@ export function useSettings() {
     const previousPreferences = queryClient.getQueryData<NotificationPreferences>(queryKey) ?? defaultPreferences;
     const rollback = (): void => {
       queryClient.setQueryData(queryKey, previousPreferences);
+      void queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
     };
 
     // Optimistic: reflect the toggle immediately, before any network/registration work.
@@ -137,12 +149,12 @@ export function useSettings() {
       return;
     }
 
-    if (updates.critical_alerts_enabled === true && !(await canEnableCriticalAlerts(setIsDndAccessModalOpen))) {
-      rollback();
-      return;
-    }
-
     try {
+      if (updates.critical_alerts_enabled === true && !(await allowCriticalAlerts())) {
+        rollback();
+        return;
+      }
+
       const preferences = await preferencesMutation.mutateAsync({
         preferences: resolvePreferenceUpdates(updates),
         token: currentPushToken,
@@ -161,7 +173,7 @@ export function useSettings() {
   };
 
   return {
-    isDndAccessModalOpen,
+    criticalAlertsBlocker,
     isTelegramLinked: telegramStatusQuery.data?.linked === true,
     languageMutation,
     languageQuery,
@@ -170,7 +182,7 @@ export function useSettings() {
     preferencesMutation,
     preferencesQuery,
     profile: profileQuery.data?.profile,
-    setIsDndAccessModalOpen,
+    setCriticalAlertsBlocker,
     updatePreference,
   };
 }

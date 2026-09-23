@@ -5,7 +5,7 @@ import { Alert, Platform, Share } from 'react-native';
 
 import { appLogger, buildLogsExportFileName, writeLogsExportFile } from '../../core/logging';
 import { dndPolicyAccess, pushNotificationService, registerPushTokenUseCase } from '../../features/notifications/di';
-import { NotificationPreferences } from '../../features/notifications/domain/entities';
+import { CriticalAlertsPermission, NotificationPreferences } from '../../features/notifications/domain/entities';
 
 export const defaultPreferences: NotificationPreferences = {
   critical_alerts_enabled: false,
@@ -63,27 +63,83 @@ export async function registerDeviceForPush(
   return token;
 }
 
-export async function canEnableCriticalAlerts(setIsDndAccessModalOpen: (isOpen: boolean) => void): Promise<boolean> {
-  const hasAccess = await dndPolicyAccess.isNotificationPolicyAccessGranted();
-
-  if (hasAccess) {
-    await pushNotificationService.configure();
-    return true;
-  }
-
-  setIsDndAccessModalOpen(true);
-  return false;
+export enum CriticalAlertsAvailability {
+  Allowed = 'allowed',
+  Denied = 'denied',
+  NeedsDoNotDisturbAccess = 'needs_do_not_disturb_access',
+  Unsupported = 'unsupported',
 }
 
-export async function openAndroidDoNotDisturbAccessSettings(
-  setIsDndAccessModalOpen: (isOpen: boolean) => void
-): Promise<void> {
+export async function resolveCriticalAlertsAvailability(): Promise<CriticalAlertsAvailability> {
+  const availability = await computeCriticalAlertsAvailability();
+  appLogger.info('push', `Critical alerts availability: ${availability}`);
+  return availability;
+}
+
+async function computeCriticalAlertsAvailability(): Promise<CriticalAlertsAvailability> {
+  const permission = await pushNotificationService.requestCriticalAlertsPermission();
+
+  if (permission !== CriticalAlertsPermission.Granted) {
+    return permission === CriticalAlertsPermission.Unsupported
+      ? CriticalAlertsAvailability.Unsupported
+      : CriticalAlertsAvailability.Denied;
+  }
+
+  if (!(await dndPolicyAccess.isNotificationPolicyAccessGranted())) {
+    return CriticalAlertsAvailability.NeedsDoNotDisturbAccess;
+  }
+
+  await pushNotificationService.configure();
+  return CriticalAlertsAvailability.Allowed;
+}
+
+export async function openDoNotDisturbAccessSettings(): Promise<void> {
   if (Platform.OS !== 'android') {
     return;
   }
 
-  setIsDndAccessModalOpen(false);
   await Linking.sendIntent('android.settings.NOTIFICATION_POLICY_ACCESS_SETTINGS');
+}
+
+export async function openSystemNotificationSettings(): Promise<void> {
+  await Linking.openSettings();
+}
+
+export interface CriticalAlertsAccessAction {
+  labelKey: string;
+  open(): Promise<void>;
+}
+
+export interface CriticalAlertsAccessContent {
+  action: CriticalAlertsAccessAction | null;
+  descriptionKey: string;
+  titleKey: string;
+}
+
+export function resolveCriticalAlertsAccessContent(
+  availability: CriticalAlertsAvailability | null
+): CriticalAlertsAccessContent {
+  if (availability === CriticalAlertsAvailability.Unsupported) {
+    return {
+      action: null,
+      descriptionKey: 'settings.criticalAlertsUnsupportedDescription',
+      titleKey: 'settings.criticalAlertsUnsupportedTitle',
+    };
+  }
+
+  if (availability === CriticalAlertsAvailability.Denied) {
+    return {
+      action: { labelKey: 'settings.criticalAlertsOpenSettings', open: openSystemNotificationSettings },
+      descriptionKey: 'settings.criticalAlertsDeniedDescription',
+      titleKey: 'settings.criticalAlertsDeniedTitle',
+    };
+  }
+
+  return {
+    action: { labelKey: 'settings.dndAccessButton', open: openDoNotDisturbAccessSettings },
+    descriptionKey: 'settings.dndAccessDescription',
+    titleKey: 'settings.dndAccessTitle',
+  };
 }
 
 export function resolveSettingsError(error: unknown, t: (key: string) => string): string {

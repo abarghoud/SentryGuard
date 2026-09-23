@@ -13,7 +13,9 @@ import { SentryAlertHandlerService } from './alerts/sentry/sentry-alert-handler.
 import { BreakInAlertHandlerService } from './alerts/break-in/break-in-alert-handler.service';
 import { BreakInEventTrackerService } from './alerts/break-in/break-in-event-tracker.service';
 import { VehicleAlertNotifierService } from './alerts/common/vehicle-alert-notifier.service';
+import { VehicleAlertSoundResolverService } from './alerts/common/vehicle-alert-sound-resolver.service';
 import { OffensiveResponseModule } from './offensive-response/offensive-response.module';
+import { VehicleAlertSoundsModule } from './vehicle-alert-sounds/vehicle-alert-sounds.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { TelemetryEventHandlerSymbol } from './telemetry/interfaces/telemetry-event-handler.interface';
@@ -69,6 +71,7 @@ import {
     TeslaPublicKeyModule,
     OnboardingModule,
     OffensiveResponseModule,
+    VehicleAlertSoundsModule,
     AlertsModule,
     NotificationsModule,
     SupportersModule,
@@ -104,6 +107,7 @@ import {
     NotificationSweeperService,
     TelemetryValidationService,
     VehicleAlertNotifierService,
+    VehicleAlertSoundResolverService,
     SentryAlertHandlerService,
     BreakInAlertHandlerService,
     BreakInEventTrackerService,

@@ -9,6 +9,18 @@ import { AlertEventSeverity, AlertEventType } from '../../entities/alert-event.e
 import i18n from '../../i18n';
 import { NOTIFICATION_REQUEST_TIMEOUT_MS } from '../../config/notification-timeout.config';
 import { withTimeout } from '../../common/utils/with-timeout.util';
+import { AlertSound } from '../alerts/enums/alert-sound.enum';
+
+export interface PushAlertContext {
+  alertSound: AlertSound;
+  correlationId?: string;
+  severity: AlertEventSeverity;
+  type: AlertEventType;
+  userId: string;
+  userLanguage: 'en' | 'fr';
+  vehicleName?: string;
+  vin?: string;
+}
 
 export interface NotificationPreferencesDto {
   critical_alerts_enabled: boolean;
@@ -32,16 +44,6 @@ interface ExpoPushResponse {
 interface PushAlertContent {
   body: string;
   title: string;
-}
-
-interface PushAlertContext {
-  correlationId?: string;
-  severity: AlertEventSeverity;
-  type: AlertEventType;
-  userId: string;
-  userLanguage: 'en' | 'fr';
-  vehicleName?: string;
-  vin?: string;
 }
 
 @Injectable()
@@ -139,15 +141,9 @@ export class NotificationsService {
     return Boolean(config?.muted_until && new Date() < config.muted_until);
   }
 
-  public async sendPushAlert(
-    userId: string,
-    severity: AlertEventSeverity,
-    type: AlertEventType,
-    userLanguage: 'en' | 'fr',
-    correlationId?: string,
-    vehicleName?: string,
-    vin?: string
-  ): Promise<boolean> {
+  public async sendPushAlert(context: PushAlertContext): Promise<boolean> {
+    const { correlationId, severity, type, userId } = context;
+
     if (await this.shouldSuppressPush(userId, type)) {
       this.logger.log(`[EXPO_PUSH][${correlationId || 'none'}] Sentry push alert suppressed for muted user: ${userId}`);
       return false;
@@ -161,15 +157,7 @@ export class NotificationsService {
 
     this.logger.log(`[EXPO_PUSH][${correlationId || 'none'}] Sending push to ${eligibleDevices.length} device(s) for user: ${userId}`);
 
-    await this.dispatchPushToDevices(eligibleDevices, {
-      correlationId,
-      severity,
-      type,
-      userId,
-      userLanguage,
-      vehicleName,
-      vin,
-    });
+    await this.dispatchPushToDevices(eligibleDevices, context);
 
     return true;
   }
@@ -313,16 +301,17 @@ export class NotificationsService {
   }
 
   private buildExpoPushBody(device: PushDeviceToken, content: PushAlertContent, context: PushAlertContext): object {
+    const { alertSound, severity, type } = context;
     const criticalAlertsEnabled = device.critical_alerts_enabled;
-    const isPriorityAlert = criticalAlertsEnabled && this.shouldUsePriorityChannel(context.severity, context.type);
-    const channelId = isPriorityAlert ? 'sentryguard-critical-alerts-v5' : 'sentryguard-alerts';
-    const categoryId = context.type === AlertEventType.Sentry ? 'sentry_alert' : undefined;
+    const isPriorityAlert = criticalAlertsEnabled && this.shouldUsePriorityChannel(severity, type);
+    const channelId = this.resolveChannelId(alertSound, isPriorityAlert);
 
-    return {
+    const pushMessage: Record<string, unknown> = {
       body: content.body,
-      categoryId,
+      categoryId: type === AlertEventType.Sentry ? 'sentry_alert' : undefined,
       channelId,
       data: {
+        alertSound,
         channelId,
         criticalAlertsEnabled,
         isCriticalAlert: isPriorityAlert,
@@ -333,14 +322,37 @@ export class NotificationsService {
         vin: context.vin,
       },
       priority: 'high',
-      sound: 'default',
       title: content.title,
       to: device.token,
+      ...this.resolveIosSound(alertSound, criticalAlertsEnabled && severity === AlertEventSeverity.Critical),
     };
+
+    return pushMessage;
+  }
+
+  private resolveChannelId(alertSound: AlertSound, isPriorityAlert: boolean): string {
+    if (alertSound === AlertSound.PhoneDefault) {
+      return isPriorityAlert ? 'sentryguard-critical-alerts-v5' : 'sentryguard-alerts';
+    }
+
+    const soundBase = alertSound.replace('.wav', '');
+    return isPriorityAlert ? `sentryguard-critical-${soundBase}` : `sentryguard-alerts-${soundBase}`;
+  }
+
+  private resolveIosSound(alertSound: AlertSound, isIosCritical: boolean): Record<string, unknown> {
+    if (!isIosCritical) {
+      return { sound: alertSound === AlertSound.PhoneDefault ? 'default' : alertSound };
+    }
+
+    if (alertSound === AlertSound.PhoneDefault) {
+      return { interruptionLevel: 'critical', sound: 'default' };
+    }
+
+    return { interruptionLevel: 'critical', sound: { critical: true, name: alertSound, volume: 1.0 } };
   }
 
   private shouldUsePriorityChannel(severity: AlertEventSeverity, type: AlertEventType): boolean {
-    return severity === AlertEventSeverity.Critical || type === AlertEventType.Sentry;
+    return severity === AlertEventSeverity.Critical;
   }
 
   private buildTeslaRedirectUrl(userId: string, userLanguage: 'en' | 'fr'): string {

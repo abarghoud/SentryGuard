@@ -6,6 +6,8 @@ import { Platform } from 'react-native';
 
 import { i18n } from '../../../core/i18n';
 import { lightColors } from '../../../core/theme';
+import { ALERT_SOUNDS } from '../domain/alert-sounds';
+import { CriticalAlertsPermission } from '../domain/entities';
 import { DndPolicyAccessRequirements } from './dnd-policy-access';
 
 export interface PushNotificationServiceRequirements {
@@ -13,6 +15,7 @@ export interface PushNotificationServiceRequirements {
   configure(): Promise<void>;
   getCachedExpoPushToken(): Promise<string | null>;
   getGrantedExpoPushToken(): Promise<string | null>;
+  requestCriticalAlertsPermission(): Promise<CriticalAlertsPermission>;
   requestExpoPushToken(): Promise<string | null>;
   isPushSetupCompleted(): Promise<boolean>;
   setPushSetupCompleted(completed: boolean): Promise<void>;
@@ -148,6 +151,13 @@ export class PushNotificationService implements PushNotificationServiceRequireme
 
   private async configureAndroidChannels(): Promise<void> {
     await Promise.all([
+      this.configureDefaultAndroidChannels(),
+      this.configureSoundAndroidChannels(),
+    ]);
+  }
+
+  private async configureDefaultAndroidChannels(): Promise<void> {
+    await Promise.all([
       Notifications.setNotificationChannelAsync(this.notificationChannelId, {
         importance: Notifications.AndroidImportance.HIGH,
         lightColor: lightColors.systemGreen,
@@ -158,6 +168,39 @@ export class PushNotificationService implements PushNotificationServiceRequireme
     ]);
   }
 
+  private async configureSoundAndroidChannels(): Promise<void> {
+    await Promise.all([
+      ...this.buildStandardSoundChannels(),
+      ...this.buildCriticalSoundChannels(),
+    ]);
+  }
+
+  private toSoundBase(soundId: string): string {
+    return soundId.replace('.wav', '');
+  }
+
+  private buildStandardSoundChannels(): Promise<Notifications.NotificationChannel | null>[] {
+    return ALERT_SOUNDS.map((sound) =>
+      Notifications.setNotificationChannelAsync(`sentryguard-alerts-${this.toSoundBase(sound.id)}`, {
+        importance: Notifications.AndroidImportance.HIGH,
+        lightColor: lightColors.systemGreen,
+        name: `${i18n.t('notifications.channelName')} (${i18n.t(sound.labelKey)})`,
+        sound: sound.id,
+        vibrationPattern: [0, 250, 250, 250],
+      })
+    );
+  }
+
+  private buildCriticalSoundChannels(): Promise<boolean>[] {
+    return ALERT_SOUNDS.map((sound) =>
+      this.dndPolicyAccess.ensureCriticalNotificationChannel(
+        `sentryguard-critical-${this.toSoundBase(sound.id)}`,
+        `${i18n.t('notifications.criticalChannelName')} (${i18n.t(sound.labelKey)})`,
+        sound.id
+      )
+    );
+  }
+
   private async configureCriticalNotificationChannel(): Promise<void> {
     if (!(await this.dndPolicyAccess.isNotificationPolicyAccessGranted())) {
       return;
@@ -165,16 +208,50 @@ export class PushNotificationService implements PushNotificationServiceRequireme
 
     await this.dndPolicyAccess.ensureCriticalNotificationChannel(
       this.criticalNotificationChannelId,
-      i18n.t('notifications.criticalChannelName')
+      i18n.t('notifications.criticalChannelName'),
+      null
     );
+  }
+
+  public async requestCriticalAlertsPermission(): Promise<CriticalAlertsPermission> {
+    if (Platform.OS !== 'ios') {
+      return CriticalAlertsPermission.Granted;
+    }
+
+    const permissions = await Notifications.getPermissionsAsync();
+
+    if (permissions.ios?.allowsCriticalAlerts) {
+      return CriticalAlertsPermission.Granted;
+    }
+
+    const requestedPermissions = await Notifications.requestPermissionsAsync({
+      ios: { allowAlert: true, allowBadge: true, allowCriticalAlerts: true, allowSound: true },
+    });
+    return this.resolveCriticalAlertsPermission(requestedPermissions.ios?.allowsCriticalAlerts);
+  }
+
+  private resolveCriticalAlertsPermission(allowsCriticalAlerts?: boolean | null): CriticalAlertsPermission {
+    if (allowsCriticalAlerts === true) {
+      return CriticalAlertsPermission.Granted;
+    }
+
+    if (allowsCriticalAlerts === false) {
+      return CriticalAlertsPermission.Denied;
+    }
+
+    return CriticalAlertsPermission.Unsupported;
   }
 
   private async resolvePermissionStatus(): Promise<string> {
     const permissions = await Notifications.getPermissionsAsync();
-    const requestedPermissions = permissions.granted
-      ? permissions
-      : await Notifications.requestPermissionsAsync();
 
+    if (permissions.granted) {
+      return permissions.status;
+    }
+
+    const requestedPermissions = await Notifications.requestPermissionsAsync({
+      ios: { allowAlert: true, allowBadge: true, allowCriticalAlerts: true, allowSound: true },
+    });
     return requestedPermissions.status;
   }
 

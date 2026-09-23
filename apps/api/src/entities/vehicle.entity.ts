@@ -8,6 +8,7 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
+import { DEFAULT_ALERT_SOUND } from '../app/alerts/enums/alert-sound.enum';
 import { OffensiveResponse } from '../app/alerts/enums/offensive-response.enum';
 
 @Entity('vehicles')
@@ -41,6 +42,12 @@ export class Vehicle {
 
   @Column({ type: 'boolean', default: false })
   break_in_auto_sentry_mode_enabled!: boolean;
+
+  @Column({ type: 'varchar', length: 64, default: DEFAULT_ALERT_SOUND })
+  sentry_alert_sound!: string;
+
+  @Column({ type: 'varchar', length: 64, default: DEFAULT_ALERT_SOUND })
+  break_in_alert_sound!: string;
 
   @CreateDateColumn()
   created_at!: Date;
