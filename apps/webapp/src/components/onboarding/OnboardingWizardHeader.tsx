@@ -9,7 +9,7 @@ export default function OnboardingWizardHeader() {
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <img src="/sentry-guard-logo.svg" alt="SentryGuard Logo" className="w-10 h-10" />
+          <img src="/sentry-guard-logo.webp" alt="SentryGuard Logo" className="w-10 h-10 object-contain" />
           <span className="text-lg font-bold text-gray-900 dark:text-white">
             {t('SentryGuard')}
           </span>

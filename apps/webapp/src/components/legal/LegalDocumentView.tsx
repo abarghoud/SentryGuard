@@ -9,9 +9,9 @@ export function LegalDocumentView({ document, updatedLabel }: LegalDocumentViewP
   return (
     <div className="container mx-auto px-6 py-16">
       <div className="max-w-3xl mx-auto">
-        <h2 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-red-600 via-red-600 to-red-700 text-transparent bg-clip-text">
+        <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-red-600 via-red-600 to-red-700 text-transparent bg-clip-text">
           {document.title}
-        </h2>
+        </h1>
         <p className="text-sm text-gray-500 mb-10">
           {updatedLabel}: {document.lastUpdated}
         </p>

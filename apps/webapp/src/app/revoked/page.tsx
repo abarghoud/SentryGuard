@@ -13,9 +13,9 @@ export default function RevokedPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img
-              src="/sentry-guard-logo.svg"
+              src="/sentry-guard-logo.webp"
               alt="SentryGuard Logo"
-              className="w-8 h-8"
+              className="w-8 h-8 object-contain"
             />
             <h1 className="text-2xl font-bold">{t('SentryGuard')}</h1>
           </div>

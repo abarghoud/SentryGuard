@@ -23,9 +23,9 @@ export function Navigation({ navigationItems = [] }: { navigationItems?: Navigat
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-2">
           <img
-            src="/sentry-guard-logo.svg"
+            src="/sentry-guard-logo.webp"
             alt="SentryGuard Logo"
-            className="w-20 h-20"
+            className="w-20 h-20 object-contain"
           />
           <h1 className="text-2xl font-bold">{t('SentryGuard')}</h1>
         </div>
