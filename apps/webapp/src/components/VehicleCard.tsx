@@ -97,13 +97,13 @@ function BreakInOffensiveSelect({
                     }}
                     className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-all duration-200 ${
                       value === opt.value
-                        ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'
+                        ? 'bg-tesla-50 dark:bg-tesla-900/20 text-tesla-600 dark:text-tesla-400 font-bold'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                     }`}
                   >
                     <span>{opt.label}</span>
                     {value === opt.value && (
-                      <svg className="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-4 h-4 text-tesla-600 dark:text-tesla-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                       </svg>
                     )}
@@ -336,7 +336,7 @@ export default function VehicleCard({
                <span>{t('Break-in Monitoring')}</span>
             </span>
             {vehicle.break_in_monitoring_enabled ? (
-              <span className="shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+              <span className="shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                 <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
@@ -354,7 +354,7 @@ export default function VehicleCard({
           <button
               onClick={handleToggleBreakIn}
               disabled={isUpdating}
-              className={`w-full justify-center shrink-0 inline-flex items-center gap-1.5 px-2.5 py-2 text-xs font-medium rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm ${!vehicle.break_in_monitoring_enabled ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-400'}`}
+              className={`w-full justify-center shrink-0 inline-flex items-center gap-1.5 px-2.5 py-2 text-xs font-medium rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm ${!vehicle.break_in_monitoring_enabled ? 'bg-tesla-600 hover:bg-tesla-700 text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-400'}`}
               title={vehicle.break_in_monitoring_enabled ? t('Disable Break-in') : t('Enable Break-in')}
             >
               {isConfiguringBreakIn ? (
@@ -396,8 +396,8 @@ export default function VehicleCard({
                   type="button"
                   onClick={() => void handleUpdateAutoSentry()}
                   disabled={isUpdating}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                    vehicle.break_in_auto_sentry_mode_enabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tesla-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    vehicle.break_in_auto_sentry_mode_enabled ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-600'
                   }`}
                   role="switch"
                   aria-checked={vehicle.break_in_auto_sentry_mode_enabled === true}

@@ -510,5 +510,9 @@
   "Privacy & Display Preferences": "Privacy & Display Preferences",
   "Want to update your display name or hide your contribution from our public wall? Contact us at hello@sentryguard.org and we'll take care of it immediately.": "Want to update your display name or hide your contribution from our public wall? Contact us at hello@sentryguard.org and we'll take care of it immediately.",
   "Open menu": "Open menu",
-  "Close menu": "Close menu"
+  "Close menu": "Close menu",
+  "Enabling telemetry allows SentryGuard to monitor your vehicle's Sentry Mode status in real-time. When suspicious activity is detected, you'll receive instant alerts on your phone and via Telegram.": "Enabling telemetry allows SentryGuard to monitor your vehicle's Sentry Mode status in real-time. When suspicious activity is detected, you'll receive instant alerts on your phone and via Telegram.",
+  "Instant push and Telegram notifications": "Instant push and Telegram notifications",
+  "Configure Alerts": "Configure Alerts",
+  "Telegram Account": "Telegram Account"
 }

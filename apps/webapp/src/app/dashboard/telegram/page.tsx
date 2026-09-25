@@ -96,82 +96,83 @@ export default function TelegramPage() {
           onRefresh={fetchStatus}
         />
 
-        {/* How it Works */}
-        <div className="mt-8 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-            {t('How It Works')}
-          </h3>
-          <ol className="space-y-4">
-            <li className="flex gap-4">
-              <div className="flex-shrink-0">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-tesla-600 text-white font-semibold">
-                  1
+        {status?.linked ? null : (
+          <div className="mt-8 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              {t('How It Works')}
+            </h3>
+            <ol className="space-y-4">
+              <li className="flex gap-4">
+                <div className="flex-shrink-0">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-tesla-600 text-white font-semibold">
+                    1
+                  </div>
                 </div>
-              </div>
-              <div>
-                <h4 className="font-medium text-gray-900 dark:text-white">
-                  {t('Generate Link')}
-                </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {t(
-                    'Click "Generate Telegram Link" to create a unique connection link that expires in 15 minutes.'
-                  )}
-                </p>
-              </div>
-            </li>
-            <li className="flex gap-4">
-              <div className="flex-shrink-0">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-tesla-600 text-white font-semibold">
-                  2
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">
+                    {t('Generate Link')}
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {t(
+                      'Click "Generate Telegram Link" to create a unique connection link that expires in 15 minutes.'
+                    )}
+                  </p>
                 </div>
-              </div>
-              <div>
-                <h4 className="font-medium text-gray-900 dark:text-white">
-                  {t('Open Telegram')}
-                </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {t(
-                    'Click the link to open our Telegram bot. The bot will automatically send a /start command with your unique token.'
-                  )}
-                </p>
-              </div>
-            </li>
-            <li className="flex gap-4">
-              <div className="flex-shrink-0">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-tesla-600 text-white font-semibold">
-                  3
+              </li>
+              <li className="flex gap-4">
+                <div className="flex-shrink-0">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-tesla-600 text-white font-semibold">
+                    2
+                  </div>
                 </div>
-              </div>
-              <div>
-                <h4 className="font-medium text-gray-900 dark:text-white">
-                  {t('Confirm Connection')}
-                </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {t(
-                    'Your account will be linked instantly. Return to this page to see the confirmation and send a test message.'
-                  )}
-                </p>
-              </div>
-            </li>
-            <li className="flex gap-4">
-              <div className="flex-shrink-0">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 text-white font-semibold">
-                  ✓
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">
+                    {t('Open Telegram')}
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {t(
+                      'Click the link to open our Telegram bot. The bot will automatically send a /start command with your unique token.'
+                    )}
+                  </p>
                 </div>
-              </div>
-              <div>
-                <h4 className="font-medium text-gray-900 dark:text-white">
-                  {t('Receive Alerts')}
-                </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {t(
-                    "You're all set! You'll now receive instant Telegram notifications when your vehicle's Sentry Mode is triggered."
-                  )}
-                </p>
-              </div>
-            </li>
-          </ol>
-        </div>
+              </li>
+              <li className="flex gap-4">
+                <div className="flex-shrink-0">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-tesla-600 text-white font-semibold">
+                    3
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">
+                    {t('Confirm Connection')}
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {t(
+                      'Your account will be linked instantly. Return to this page to see the confirmation and send a test message.'
+                    )}
+                  </p>
+                </div>
+              </li>
+              <li className="flex gap-4">
+                <div className="flex-shrink-0">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 text-white font-semibold">
+                    ✓
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">
+                    {t('Receive Alerts')}
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {t(
+                      "You're all set! You'll now receive instant Telegram notifications when your vehicle's Sentry Mode is triggered."
+                    )}
+                  </p>
+                </div>
+              </li>
+            </ol>
+          </div>
+        )}
 
         {/* Security Notice */}
         <div className="mt-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
