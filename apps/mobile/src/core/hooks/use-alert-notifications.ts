@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
 import { useEffect } from 'react';
 
+import { getLastNotificationResponse } from './last-notification-response';
 import { handleAlertNotificationResponse } from './notification-response.helpers';
 
 export function useAlertNotifications(): void {
@@ -17,7 +18,7 @@ export function useAlertNotifications(): void {
 
     const receivedSubscription = Notifications.addNotificationReceivedListener(onAlertNotification);
     const responseSubscription = Notifications.addNotificationResponseReceivedListener(onAlertNotificationResponse);
-    const lastResponse = Notifications.getLastNotificationResponse();
+    const lastResponse = getLastNotificationResponse();
 
     if (lastResponse) {
       void handleAlertNotificationResponse(lastResponse, queryClient);
