@@ -140,9 +140,9 @@ export default function DashboardLayout({
               <div className="flex-shrink-0 flex items-center">
                 <Link href="/dashboard" className="flex items-center gap-2">
                   <img
-                    src="/sentry-guard-logo.svg"
+                    src="/sentry-guard-logo.webp"
                     alt="SentryGuard Logo"
-                    className="w-14 h-14"
+                    className="w-14 h-14 object-contain"
                   />
                   <div className="flex items-center gap-2">
                     <span className="text-xl font-bold text-gray-900 dark:text-white">

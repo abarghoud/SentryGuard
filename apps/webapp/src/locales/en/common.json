@@ -354,10 +354,10 @@
   "Why does the app crash when I use browser translation?": "Why does the app crash when I use browser translation?",
   "Browser translation issue explanation": "Using your browser's automatic translation feature (such as Chrome's \"Translate this page\" or similar features in other browsers) can cause the application to crash or behave unexpectedly. SentryGuard already supports multiple languages natively. Instead of using browser translation, please use the language selector in the application's navigation bar to switch between English and French. This ensures a stable experience without any technical issues.",
   "meta.home.title": "SentryGuard - Protect Your Tesla",
-  "meta.home.description": "Real-time monitoring and instant Telegram alerts for your Tesla vehicle's Sentry Mode. Battery-efficient, secure, and open-source.",
-  "meta.home.ogDescription": "Real-time monitoring and instant Telegram alerts for your Tesla vehicle's Sentry Mode.",
+  "meta.home.description": "Instant push alerts when Sentry Mode detects a threat or someone pulls your door handle, even with Sentry Mode off. Free, open-source iOS & Android app.",
+  "meta.home.ogDescription": "Instant push alerts on your phone when your Tesla is threatened, even with Sentry Mode off.",
   "meta.faq.title": "FAQ - SentryGuard",
-  "meta.faq.description": "Frequently asked questions about SentryGuard. Learn how to protect your Tesla with real-time Sentry Mode monitoring and Telegram alerts.",
+  "meta.faq.description": "Frequently asked questions about SentryGuard: push and Telegram alerts, break-in detection with Sentry Mode off, battery impact, privacy and setup.",
   "meta.faq.ogDescription": "Frequently asked questions about SentryGuard Tesla monitoring.",
   "Break-in Monitoring": "Break-in Monitoring",
   "Enable Break-in": "Enable Break-in",
@@ -508,5 +508,7 @@
   "Discover all community members and donors supporting SentryGuard or buy us a coffee.": "Discover all community members and donors supporting SentryGuard or buy us a coffee.",
   "View Wall of Fame": "View Wall of Fame",
   "Privacy & Display Preferences": "Privacy & Display Preferences",
-  "Want to update your display name or hide your contribution from our public wall? Contact us at hello@sentryguard.org and we'll take care of it immediately.": "Want to update your display name or hide your contribution from our public wall? Contact us at hello@sentryguard.org and we'll take care of it immediately."
+  "Want to update your display name or hide your contribution from our public wall? Contact us at hello@sentryguard.org and we'll take care of it immediately.": "Want to update your display name or hide your contribution from our public wall? Contact us at hello@sentryguard.org and we'll take care of it immediately.",
+  "Open menu": "Open menu",
+  "Close menu": "Close menu"
 }
