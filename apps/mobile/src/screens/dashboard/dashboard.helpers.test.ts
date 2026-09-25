@@ -9,10 +9,13 @@ jest.mock('../../core/api', () => ({
 
 import {
   formatMutedUntilTime,
+  formatRelativeAlertTime,
   isMuteActive,
   isVehicleProtected,
+  resolveLatestAlert,
   resolveSubtitle,
 } from './dashboard.helpers';
+import { AlertEvent, AlertEventSeverity, AlertEventType } from '../../features/alerts/domain/entities';
 import { Vehicle } from '../../features/vehicles/domain/entities';
 
 describe('The isMuteActive() function', () => {
@@ -141,6 +144,73 @@ describe('The resolveSubtitle() function', () => {
         { break_in_monitoring_enabled: false, sentry_mode_monitoring_enabled: false } as Vehicle,
       ];
       expect(resolveSubtitle(vehicles, fakeTranslation)).toBe('1/2');
+    });
+  });
+});
+
+describe('The resolveLatestAlert() function', () => {
+  const createAlert = (id: string, createdAt: string): AlertEvent => ({
+    created_at: createdAt,
+    id,
+    severity: AlertEventSeverity.Warning,
+    type: AlertEventType.Sentry,
+    vin: '5YJ3E1EA8KF123456',
+  });
+
+  describe('When there are no alerts', () => {
+    it('should return null for undefined', () => {
+      expect(resolveLatestAlert(undefined)).toBeNull();
+    });
+
+    it('should return null for an empty list', () => {
+      expect(resolveLatestAlert([])).toBeNull();
+    });
+  });
+
+  describe('When alerts are not sorted by date', () => {
+    const olderAlert = createAlert('older', '2026-09-24T10:00:00.000Z');
+    const latestAlert = createAlert('latest', '2026-09-25T08:00:00.000Z');
+    const middleAlert = createAlert('middle', '2026-09-24T22:00:00.000Z');
+
+    it('should return the most recent alert', () => {
+      expect(resolveLatestAlert([olderAlert, latestAlert, middleAlert])).toBe(latestAlert);
+    });
+  });
+});
+
+describe('The formatRelativeAlertTime() function', () => {
+  const now = new Date('2026-09-25T12:00:00.000Z').getTime();
+  const fakeTranslate = (key: string, options?: Record<string, unknown>): string =>
+    options ? `${key}:${String(options.count)}` : key;
+  const minutesBefore = (minutes: number): string => new Date(now - minutes * 60000).toISOString();
+
+  describe('When the alert happened less than a minute ago', () => {
+    it('should return the just now label', () => {
+      expect(formatRelativeAlertTime(minutesBefore(0.5), now, fakeTranslate)).toBe('common.justNow');
+    });
+  });
+
+  describe('When the alert happened minutes ago', () => {
+    it('should return the elapsed minutes', () => {
+      expect(formatRelativeAlertTime(minutesBefore(12), now, fakeTranslate)).toBe('common.minutesAgo:12');
+    });
+  });
+
+  describe('When the alert happened hours ago', () => {
+    it('should return the elapsed full hours', () => {
+      expect(formatRelativeAlertTime(minutesBefore(150), now, fakeTranslate)).toBe('common.hoursAgo:2');
+    });
+  });
+
+  describe('When the alert happened days ago', () => {
+    it('should return the elapsed full days', () => {
+      expect(formatRelativeAlertTime(minutesBefore(3 * 1440 + 30), now, fakeTranslate)).toBe('common.daysAgo:3');
+    });
+  });
+
+  describe('When the alert date is in the future', () => {
+    it('should return the just now label', () => {
+      expect(formatRelativeAlertTime(minutesBefore(-5), now, fakeTranslate)).toBe('common.justNow');
     });
   });
 });

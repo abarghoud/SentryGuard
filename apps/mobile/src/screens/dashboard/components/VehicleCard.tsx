@@ -42,10 +42,12 @@ export function VehicleCard({
 
           <View style={styles.metrics}>
             <Metric
+              isActive={vehicle.sentry_mode_monitoring_enabled}
               label={t('vehicle.alertSentry')}
               value={vehicle.sentry_mode_monitoring_enabled ? t('common.active') : t('common.inactive')}
             />
             <Metric
+              isActive={vehicle.break_in_monitoring_enabled === true}
               label={t('vehicle.alertIntrusion')}
               value={vehicle.break_in_monitoring_enabled ? t('common.active') : t('common.inactive')}
             />
@@ -78,15 +80,21 @@ export function VehicleCard({
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }): JSX.Element {
+function Metric({ isActive, label, value }: { isActive: boolean; label: string; value: string }): JSX.Element {
   const colors = useThemeColors();
+  const statusColor = isActive ? colors.systemGreen : colors.secondaryLabel;
 
   return (
-    <View style={[styles.metric, { backgroundColor: colors.fill }]}>
+    <View style={[styles.metric, { backgroundColor: isActive ? colors.successSurface : colors.fill }]}>
       <AppText variant={TextVariant.Caption1} color={colors.secondaryLabel}>
         {label}
       </AppText>
-      <AppText variant={TextVariant.Subhead}>{value}</AppText>
+      <View style={styles.metricStatus}>
+        <View style={[styles.metricDot, { backgroundColor: statusColor }]} />
+        <AppText variant={TextVariant.Subhead} color={statusColor} style={styles.metricValue}>
+          {value}
+        </AppText>
+      </View>
     </View>
   );
 }
@@ -131,6 +139,19 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.xs,
     padding: spacing.md,
+  },
+  metricDot: {
+    borderRadius: 999,
+    height: 8,
+    width: 8,
+  },
+  metricStatus: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.xs + 2,
+  },
+  metricValue: {
+    fontWeight: '600',
   },
   metrics: {
     flexDirection: 'row',

@@ -180,7 +180,7 @@
   "settings.pauseAlertsActive": "Paused until {{time}}",
   "settings.pauseAlertsInactive": "Alerts active",
   "tabs.alerts": "Alerts",
-  "tabs.dashboard": "Dashboard",
+  "tabs.dashboard": "Vehicles",
   "tabs.settings": "Settings",
   "tabs.supporters": "Supporters",
   "supporters.title": "Supporters & Contributors",
@@ -328,5 +328,13 @@
   "onboarding.notificationsPushActive": "Push notifications enabled on this device",
   "onboarding.criticalAlerts": "Critical alerts",
   "onboarding.criticalAlertsDescription": "Lets break-in alerts ring even in silent or Do Not Disturb mode, when the phone allows it.",
-  "onboarding.criticalAlertsAndroidVolume": "The alert plays at your alarm volume, so keep it turned up."
+  "onboarding.criticalAlertsAndroidVolume": "The alert plays at your alarm volume, so keep it turned up.",
+  "dashboard.latestAlert.title": "Latest alert",
+  "dashboard.latestAlert.emptyTitle": "All quiet",
+  "dashboard.latestAlert.emptyText": "No recent alerts on your vehicles.",
+  "dashboard.latestAlert.openHint": "Opens the alerts history",
+  "common.justNow": "Just now",
+  "common.minutesAgo": "{{count}} min ago",
+  "common.hoursAgo": "{{count}} h ago",
+  "common.daysAgo": "{{count}} d ago"
 }

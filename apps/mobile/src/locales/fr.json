@@ -180,7 +180,7 @@
   "settings.pauseAlertsActive": "En pause jusqu'à {{time}}",
   "settings.pauseAlertsInactive": "Alertes actives",
   "tabs.alerts": "Alertes",
-  "tabs.dashboard": "Dashboard",
+  "tabs.dashboard": "Véhicules",
   "tabs.settings": "Réglages",
   "tabs.supporters": "Contributeurs",
   "supporters.title": "Donateurs & Contributeurs",
@@ -328,5 +328,13 @@
   "onboarding.notificationsPushActive": "Notifications push actives sur cet appareil",
   "onboarding.criticalAlerts": "Alertes critiques",
   "onboarding.criticalAlertsDescription": "Permet aux alertes d'intrusion de sonner même en mode silencieux ou Ne pas déranger, si le téléphone l'autorise.",
-  "onboarding.criticalAlertsAndroidVolume": "L'alerte utilise le volume de l'alarme : pensez à le garder audible."
+  "onboarding.criticalAlertsAndroidVolume": "L'alerte utilise le volume de l'alarme : pensez à le garder audible.",
+  "dashboard.latestAlert.title": "Dernière alerte",
+  "dashboard.latestAlert.emptyTitle": "Tout est calme",
+  "dashboard.latestAlert.emptyText": "Aucune alerte récente sur vos véhicules.",
+  "dashboard.latestAlert.openHint": "Ouvre l’historique des alertes",
+  "common.justNow": "À l’instant",
+  "common.minutesAgo": "Il y a {{count}} min",
+  "common.hoursAgo": "Il y a {{count}} h",
+  "common.daysAgo": "Il y a {{count}} j"
 }
