@@ -8,6 +8,7 @@ import {
   DeleteTelemetryConfigUseCase,
   GetVehiclesUseCase,
   ToggleBreakInMonitoringUseCase,
+  UpdateAlertSoundsUseCase,
   UpdateOffensiveResponseUseCase,
 } from './domain/use-cases/vehicles.use-cases';
 import { createUseVehiclesQuery } from './presentation/queries/use-vehicles-query';
@@ -38,6 +39,13 @@ class DynamicVehicleRepository implements VehicleRepositoryRequirements {
     return this.getRepo().toggleBreakInMonitoring(vin, shouldEnable);
   }
 
+  public async updateAlertSounds(
+    vin: string,
+    payload: { breakInAlertSound?: string; sentryAlertSound?: string },
+  ): Promise<VehicleActionResponse> {
+    return this.getRepo().updateAlertSounds(vin, payload);
+  }
+
   public async updateOffensiveResponse(
     vin: string,
     payload: { breakInOffensiveResponse?: OffensiveResponse; autoSentryEnabled?: boolean },
@@ -55,6 +63,7 @@ export const getVehiclesUseCase = new GetVehiclesUseCase(vehicleRepository);
 export const configureTelemetryUseCase = new ConfigureTelemetryUseCase(vehicleRepository);
 export const deleteTelemetryConfigUseCase = new DeleteTelemetryConfigUseCase(vehicleRepository);
 export const toggleBreakInMonitoringUseCase = new ToggleBreakInMonitoringUseCase(vehicleRepository);
+export const updateAlertSoundsUseCase = new UpdateAlertSoundsUseCase(vehicleRepository);
 export const updateOffensiveResponseUseCase = new UpdateOffensiveResponseUseCase(vehicleRepository);
 
 export const useVehiclesQuery = createUseVehiclesQuery({ getVehiclesUseCase });

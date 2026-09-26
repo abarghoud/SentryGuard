@@ -24,6 +24,7 @@ import {
   TELEMETRY_CONFIG,
   TESLA_API_ENDPOINTS,
 } from './telemetry-config.constants';
+import { DEFAULT_ALERT_SOUND } from '../alerts/enums/alert-sound.enum';
 import { SkippedVehicleInfo } from './skipped-telemetry-config-vehicle';
 import {
   extractErrorDetails,
@@ -125,6 +126,8 @@ export class TelemetryConfigService {
           break_in_monitoring_enabled: dbVehicle?.break_in_monitoring_enabled ?? false,
           break_in_offensive_response: dbVehicle?.break_in_offensive_response ?? 'DISABLED',
           break_in_auto_sentry_mode_enabled: dbVehicle?.break_in_auto_sentry_mode_enabled ?? false,
+          sentry_alert_sound: dbVehicle?.sentry_alert_sound ?? DEFAULT_ALERT_SOUND,
+          break_in_alert_sound: dbVehicle?.break_in_alert_sound ?? DEFAULT_ALERT_SOUND,
           key_paired: telemetryConfigs.get(teslaVehicle.vin)?.key_paired ?? false,
           vehicle_command_protocol_required: telemetryConfigs.get(teslaVehicle.vin)?.vehicle_command_protocol_required,
         };

@@ -8,6 +8,7 @@ import { resolveDeviceLanguage } from '../../core/i18n';
 import { acceptConsentUseCase, getConsentStatusUseCase, getConsentTextUseCase } from '../../features/consent/di';
 import { completeOnboardingUseCase, getOnboardingStatusUseCase, skipOnboardingUseCase } from '../../features/onboarding/di';
 import { getNotificationPreferencesUseCase, updateNotificationPreferencesUseCase, pushNotificationService } from '../../features/notifications/di';
+import { NotificationPreferences } from '../../features/notifications/domain/entities';
 import { getTelegramStatusUseCase } from '../../features/telegram/di';
 import { getUserLanguageUseCase, updateUserLanguageUseCase } from '../../features/user/di';
 import { UserLanguage } from '../../features/user/domain/entities';
@@ -20,13 +21,18 @@ import {
 import { OffensiveResponse, Vehicle } from '../../features/vehicles/domain/entities';
 import { getVehicleCommandsAuthorizationUseCase } from '../../features/auth/di';
 import { selectTelemetryVehicle } from './onboarding.helpers';
-import { registerDeviceForPush } from '../settings/settings.helpers';
+import {
+  CriticalAlertsAvailability,
+  registerDeviceForPush,
+  resolveCriticalAlertsAvailability,
+} from '../settings/settings.helpers';
 import { requestVehicleCommandsScope } from '../vehicle-detail/vehicle-detail.helpers';
 
 export function useOnboarding(onComplete: () => void) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState<string | null>(null);
+  const [criticalAlertsBlocker, setCriticalAlertsBlocker] = useState<CriticalAlertsAvailability | null>(null);
   const { pushToken, setPushToken } = usePushToken();
   useTelegramStatusSync();
 
@@ -195,12 +201,56 @@ export function useOnboarding(onComplete: () => void) {
     }
   };
 
+  const persistCriticalAlerts = async (enabled: boolean): Promise<void> => {
+    await updateNotificationPreferencesUseCase.execute({ critical_alerts_enabled: enabled }, pushToken ?? undefined);
+    await queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
+  };
+
+  const applyCriticalAlerts = (enabled: boolean): void => {
+    queryClient.setQueryData<NotificationPreferences>(['notification-preferences', pushToken], (current) =>
+      current ? { ...current, critical_alerts_enabled: enabled } : current
+    );
+  };
+
+  const revertCriticalAlerts = (enabled: boolean): void => {
+    applyCriticalAlerts(enabled);
+    void queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
+  };
+
+  const allowCriticalAlerts = async (): Promise<boolean> => {
+    const availability = await resolveCriticalAlertsAvailability();
+
+    if (availability !== CriticalAlertsAvailability.Allowed) {
+      setCriticalAlertsBlocker(availability);
+    }
+
+    return availability === CriticalAlertsAvailability.Allowed;
+  };
+
+  const handleToggleCriticalAlerts = async (enabled: boolean): Promise<void> => {
+    setMessage(null);
+    applyCriticalAlerts(enabled);
+
+    try {
+      if (enabled && !(await allowCriticalAlerts())) {
+        revertCriticalAlerts(false);
+        return;
+      }
+
+      await persistCriticalAlerts(enabled);
+    } catch (error) {
+      revertCriticalAlerts(!enabled);
+      setMessage(error instanceof Error ? error.message : String(error));
+    }
+  };
+
   const vehicles = vehiclesQuery.data ?? [];
   const telemetryVehicle = selectTelemetryVehicle(vehicles);
   const monitoredVehicle = vehicles.find((vehicle) => vehicle.sentry_mode_monitoring_enabled) ?? vehicles[0] ?? null;
 
   const isTelegramLinked = telegramStatusQuery.data?.linked === true;
   const isPushEnabled = preferencesQuery.data?.push_enabled === true;
+  const isCriticalAlertsEnabled = preferencesQuery.data?.critical_alerts_enabled === true;
   const isNotificationConfigured = isTelegramLinked || isPushEnabled;
 
   return {
@@ -210,6 +260,11 @@ export function useOnboarding(onComplete: () => void) {
     consentStatusQuery,
     consentTextQuery,
     enablePush: handleEnablePush,
+    isCriticalAlertsActive: isCriticalAlertsEnabled,
+    isCriticalAlertsTogglable: pushToken !== null,
+    criticalAlertsBlocker,
+    setCriticalAlertsBlocker,
+    toggleCriticalAlerts: handleToggleCriticalAlerts,
     flags: {
       isConsentMissing: consentStatusQuery.data?.hasConsent !== true,
       isLoading:

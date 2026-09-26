@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { radius, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
@@ -16,7 +16,6 @@ import { UserLanguage } from '../features/user/domain/entities';
 import { resolveTelegramStatusKey } from './telegram-settings/telegram-settings.helpers';
 import {
   clearDebugLogs,
-  openAndroidDoNotDisturbAccessSettings,
   openCrispSupport,
   openDiscordCommunity,
   openEmailSupport,
@@ -30,6 +29,7 @@ import {
   resolveSupportEmail,
   shareDebugLogs,
 } from './settings/settings.helpers';
+import { CriticalAlertsAccessModal } from './settings/CriticalAlertsAccessModal';
 import { useSettings } from './settings/use-settings';
 import { muteNotificationsUseCase, unmuteNotificationsUseCase } from '../features/notifications/di';
 import { MuteDurationModal } from './dashboard/components/MuteDurationModal';
@@ -44,7 +44,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
   const { colors, mode, setMode } = useTheme();
   const topInset = useScreenTopInset();
   const {
-    isDndAccessModalOpen,
+    criticalAlertsBlocker,
     isTelegramLinked,
     languageMutation,
     languageQuery,
@@ -53,7 +53,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
     preferencesMutation,
     preferencesQuery,
     profile,
-    setIsDndAccessModalOpen,
+    setCriticalAlertsBlocker,
     updatePreference,
   } = useSettings();
 
@@ -153,6 +153,26 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
           title={t('settings.push')}
           accessory={<AppSwitch accessibilityLabel={t('settings.push')} disabled={isBusy} value={preferences.push_enabled} onValueChange={(value) => void updatePreference({ push_enabled: value })} />}
         />
+        {preferences.push_enabled ? (
+          <>
+            <ListRow
+              title={t('settings.criticalAlerts')}
+              subtitle={t('settings.criticalAlertsDescription')}
+              accessory={
+                <AppSwitch
+                  accessibilityLabel={t('settings.criticalAlerts')}
+                  disabled={isBusy}
+                  value={preferences.critical_alerts_enabled}
+                  onValueChange={(value) => void updatePreference({ critical_alerts_enabled: value })}
+                />
+              }
+            />
+          </>
+        ) : null}
+        <ListRow
+          title={t('settings.alertSound')}
+          value={t('settings.alertSoundPerVehicle')}
+        />
         <ListRow
           title={t('settings.pauseAlerts')}
           value={isMuted ? t('settings.pauseAlertsActive', { time: formatMutedUntilTime(preferences.muted_until, t) }) : t('settings.pauseAlertsInactive')}
@@ -246,18 +266,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         style={styles.logout}
       />
 
-      <Modal animationType="fade" onRequestClose={() => setIsDndAccessModalOpen(false)} transparent visible={isDndAccessModalOpen}>
-        <View style={[styles.modalBackdrop, { backgroundColor: colors.overlay }]}>
-          <Surface style={styles.modalCard}>
-            <AppText variant={TextVariant.Title3}>{t('settings.dndAccessTitle')}</AppText>
-            <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
-              {t('settings.dndAccessDescription')}
-            </AppText>
-            <GlassButton label={t('settings.dndAccessButton')} onPress={() => void openAndroidDoNotDisturbAccessSettings(setIsDndAccessModalOpen)} />
-            <GlassButton label={t('common.cancel')} variant={GlassButtonVariant.Plain} onPress={() => setIsDndAccessModalOpen(false)} />
-          </Surface>
-        </View>
-      </Modal>
+      <CriticalAlertsAccessModal blocker={criticalAlertsBlocker} onClose={() => setCriticalAlertsBlocker(null)} />
 
       <MuteDurationModal
         isVisible={isMuteModalOpen}

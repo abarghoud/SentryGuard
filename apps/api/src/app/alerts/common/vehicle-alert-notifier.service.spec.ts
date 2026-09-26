@@ -11,6 +11,8 @@ import { AlertsService } from '../alerts.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { NotificationQueueService } from '../../notifications/notification-queue.service';
 import { AlertNotifierRegistry } from './alert-notifier.registry';
+import { VehicleAlertSoundResolverService } from './vehicle-alert-sound-resolver.service';
+import { AlertSound, DEFAULT_ALERT_SOUND } from '../enums/alert-sound.enum';
 import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
 
 describe('The VehicleAlertNotifierService class', () => {
@@ -23,6 +25,7 @@ describe('The VehicleAlertNotifierService class', () => {
   let mockNotificationsService: MockProxy<NotificationsService>;
   let mockNotificationQueueService: MockProxy<NotificationQueueService>;
   let mockAlertNotifierRegistry: MockProxy<AlertNotifierRegistry>;
+  let mockVehicleAlertSoundResolverService: MockProxy<VehicleAlertSoundResolverService>;
   let enqueuedTasks: Array<() => Promise<void>>;
 
   beforeEach(async () => {
@@ -33,6 +36,8 @@ describe('The VehicleAlertNotifierService class', () => {
     mockNotificationsService = mock<NotificationsService>();
     mockNotificationQueueService = mock<NotificationQueueService>();
     mockAlertNotifierRegistry = mock<AlertNotifierRegistry>();
+    mockVehicleAlertSoundResolverService = mock<VehicleAlertSoundResolverService>();
+    mockVehicleAlertSoundResolverService.resolve.mockResolvedValue(AlertSound.SentrySiren);
     enqueuedTasks = [];
 
     mockNotificationsService.shouldSendTelegram.mockResolvedValue(true);
@@ -57,6 +62,7 @@ describe('The VehicleAlertNotifierService class', () => {
         { provide: NotificationsService, useValue: mockNotificationsService },
         { provide: NotificationQueueService, useValue: mockNotificationQueueService },
         { provide: AlertNotifierRegistry, useValue: mockAlertNotifierRegistry },
+        { provide: VehicleAlertSoundResolverService, useValue: mockVehicleAlertSoundResolverService },
         { provide: getRepositoryToken(Vehicle), useValue: mockVehicleRepository },
       ],
     }).compile();
@@ -341,20 +347,26 @@ describe('The VehicleAlertNotifierService class', () => {
         await executeEnqueuedTasks();
 
         expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledTimes(2);
-        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
-          'user-1',
-          AlertEventSeverity.Critical,
-          AlertEventType.BreakIn,
-          'en',
-          'corr-123'
-        );
-        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
-          'user-2',
-          AlertEventSeverity.Critical,
-          AlertEventType.BreakIn,
-          'fr',
-          'corr-123'
-        );
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith({
+          alertSound: AlertSound.SentrySiren,
+          correlationId: 'corr-123',
+          severity: AlertEventSeverity.Critical,
+          type: AlertEventType.BreakIn,
+          userId: 'user-1',
+          userLanguage: 'en',
+          vehicleName: 'My Tesla',
+          vin: 'TEST_VIN_123',
+        });
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith({
+          alertSound: AlertSound.SentrySiren,
+          correlationId: 'corr-123',
+          severity: AlertEventSeverity.Critical,
+          type: AlertEventType.BreakIn,
+          userId: 'user-2',
+          userLanguage: 'fr',
+          vehicleName: 'My Tesla',
+          vin: 'TEST_VIN_123',
+        });
       });
     });
 
@@ -372,12 +384,117 @@ describe('The VehicleAlertNotifierService class', () => {
         await executeEnqueuedTasks();
 
         expect(mockAlertNotifierRegistry.notify).not.toHaveBeenCalled();
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith({
+          alertSound: AlertSound.SentrySiren,
+          correlationId: 'corr-123',
+          severity: AlertEventSeverity.Critical,
+          type: AlertEventType.BreakIn,
+          userId: 'user-1',
+          userLanguage: 'en',
+          vehicleName: 'My Tesla',
+          vin: 'TEST_VIN_123',
+        });
+      });
+    });
+
+    describe('When resolving the alert sound fails', () => {
+      beforeEach(() => {
+        mockVehicleRepository.find.mockResolvedValue([
+          { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
+        ]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+        mockVehicleAlertSoundResolverService.resolve.mockRejectedValue(new Error('DB connection lost'));
+      });
+
+      it('should still send the push alert', async () => {
+        await service.dispatch(config);
+        await executeEnqueuedTasks();
+
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalled();
+      });
+
+      it('should fall back to the default alert sound', async () => {
+        await service.dispatch(config);
+        await executeEnqueuedTasks();
+
         expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
+          expect.objectContaining({ alertSound: DEFAULT_ALERT_SOUND })
+        );
+      });
+
+      it('should still notify via Telegram', async () => {
+        await service.dispatch(config);
+        await executeEnqueuedTasks();
+
+        expect(mockAlertNotifierRegistry.notify).toHaveBeenCalled();
+      });
+
+      it('should mark the notification as sent', async () => {
+        await service.dispatch(config);
+        await executeEnqueuedTasks();
+
+        expect(mockAlertsService.markNotificationSent).toHaveBeenCalled();
+      });
+    });
+
+    describe('When the vehicle uses a dedicated sound for the alert type', () => {
+      beforeEach(() => {
+        mockVehicleRepository.find.mockResolvedValue([
+          { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
+        ]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+        mockVehicleAlertSoundResolverService.resolve.mockResolvedValue(AlertSound.KlaxonAlarm);
+      });
+
+      it('should resolve the sound for the alerted vehicle and type', async () => {
+        await service.dispatch(config);
+        await executeEnqueuedTasks();
+
+        expect(mockVehicleAlertSoundResolverService.resolve).toHaveBeenCalledWith(
           'user-1',
-          AlertEventSeverity.Critical,
-          AlertEventType.BreakIn,
-          'en',
-          'corr-123'
+          config.telemetryMessage.vin,
+          AlertEventType.BreakIn
+        );
+      });
+
+      it('should send the resolved sound to the push alert', async () => {
+        await service.dispatch(config);
+        await executeEnqueuedTasks();
+
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
+          expect.objectContaining({ alertSound: AlertSound.KlaxonAlarm })
+        );
+      });
+    });
+
+    describe('When the vehicle has no display name', () => {
+      beforeEach(() => {
+        mockVehicleRepository.find.mockResolvedValue([{ userId: 'user-1', display_name: undefined } as Vehicle]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+      });
+
+      it('should fall back to the VIN when sending the push alert', async () => {
+        await service.dispatch(config);
+        await executeEnqueuedTasks();
+
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
+          expect.objectContaining({ vehicleName: 'TEST_VIN_123' })
+        );
+      });
+    });
+
+    describe('When the vehicle has an empty display name', () => {
+      beforeEach(() => {
+        mockVehicleRepository.find.mockResolvedValue([{ userId: 'user-1', display_name: '' } as Vehicle]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+      });
+
+      it('should fall back to the VIN when sending the push alert', async () => {
+        await service.dispatch(config);
+        await executeEnqueuedTasks();
+
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith(
+          expect.objectContaining({ vehicleName: 'TEST_VIN_123' })
         );
       });
     });

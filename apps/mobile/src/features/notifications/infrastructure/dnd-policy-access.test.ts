@@ -47,14 +47,25 @@ describe('The DndPolicyAccess class', () => {
   });
 
   describe('The ensureCriticalNotificationChannel() method', () => {
-    describe('When the native module recreates the channel', () => {
-      it('should forward the channel id and name', async () => {
+    describe('When the channel is created for a chosen alert sound', () => {
+      it('should forward the channel id, name and sound to the native module', async () => {
         const ensureChannel = jest.fn().mockResolvedValue(true);
         mockRequireOptionalNativeModule.mockReturnValue({ ensureCriticalNotificationChannel: ensureChannel });
 
-        await new DndPolicyAccess().ensureCriticalNotificationChannel('channel-id', 'Channel name');
+        await new DndPolicyAccess().ensureCriticalNotificationChannel('channel-id', 'Channel name', 'cyber_pulse.wav');
 
-        expect(ensureChannel).toHaveBeenCalledWith('channel-id', 'Channel name');
+        expect(ensureChannel).toHaveBeenCalledWith('channel-id', 'Channel name', 'cyber_pulse.wav');
+      });
+    });
+
+    describe('When the channel is created without a sound', () => {
+      it('should forward a null sound to the native module', async () => {
+        const ensureChannel = jest.fn().mockResolvedValue(true);
+        mockRequireOptionalNativeModule.mockReturnValue({ ensureCriticalNotificationChannel: ensureChannel });
+
+        await new DndPolicyAccess().ensureCriticalNotificationChannel('channel-id', 'Channel name', null);
+
+        expect(ensureChannel).toHaveBeenCalledWith('channel-id', 'Channel name', null);
       });
     });
 
@@ -62,7 +73,9 @@ describe('The DndPolicyAccess class', () => {
       it('should return false instead of throwing', async () => {
         mockRequireOptionalNativeModule.mockReturnValue(null);
 
-        await expect(new DndPolicyAccess().ensureCriticalNotificationChannel('channel-id', 'Channel name')).resolves.toBe(false);
+        await expect(
+          new DndPolicyAccess().ensureCriticalNotificationChannel('channel-id', 'Channel name', 'cyber_pulse.wav')
+        ).resolves.toBe(false);
       });
     });
   });

@@ -6,6 +6,7 @@ import { NotificationPreferences } from '../../entities/notification-preferences
 import { PushDeviceToken } from '../../entities/push-device-token.entity';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
 import { AlertEventSeverity, AlertEventType } from '../../entities/alert-event.entity';
+import { AlertSound } from '../alerts/enums/alert-sound.enum';
 
 describe('The NotificationsService class', () => {
   const fakeUserId = 'user-123';
@@ -24,10 +25,20 @@ describe('The NotificationsService class', () => {
       userId: fakeUserId,
     }) as PushDeviceToken;
 
-  const lastPushPayload = (): { body: string; sound?: string; title: string } => JSON.parse(fetchMock.mock.calls[0][1].body);
+  const lastPushPayload = (): { body: string; channelId: string; data: { vin?: string }; sound?: string; title: string } =>
+    JSON.parse(fetchMock.mock.calls[0][1].body);
 
   beforeEach(() => {
     mockPreferencesRepository = mock<Repository<NotificationPreferences>>();
+    mockPreferencesRepository.findOne.mockResolvedValue({
+      telegram_enabled: true,
+      userId: fakeUserId,
+    } as NotificationPreferences);
+    mockPreferencesRepository.create.mockReturnValue({
+      telegram_enabled: true,
+      userId: fakeUserId,
+    } as NotificationPreferences);
+    mockPreferencesRepository.save.mockImplementation((pref) => Promise.resolve(pref as NotificationPreferences));
     mockPushDeviceTokenRepository = mock<Repository<PushDeviceToken>>();
     mockTelegramConfigRepository = mock<Repository<TelegramConfig>>();
     mockPushDeviceTokenRepository.find.mockResolvedValue([createDevice()]);
@@ -51,7 +62,7 @@ describe('The NotificationsService class', () => {
   describe('The sendPushAlert() method', () => {
     describe('When a French user receives a break-in alert', () => {
       beforeEach(async () => {
-        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'fr');
+        await service.sendPushAlert({ alertSound: AlertSound.SentrySiren, severity: AlertEventSeverity.Critical, type: AlertEventType.BreakIn, userId: fakeUserId, userLanguage: 'fr' });
       });
 
       it('should send the localized French title', () => {
@@ -65,7 +76,7 @@ describe('The NotificationsService class', () => {
 
     describe('When an English user receives a break-in alert', () => {
       beforeEach(async () => {
-        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'en');
+        await service.sendPushAlert({ alertSound: AlertSound.SentrySiren, severity: AlertEventSeverity.Critical, type: AlertEventType.BreakIn, userId: fakeUserId, userLanguage: 'en' });
       });
 
       it('should send the localized English title', () => {
@@ -76,14 +87,14 @@ describe('The NotificationsService class', () => {
         expect(lastPushPayload().body).toBe('A break-in attempt was detected.');
       });
 
-      it('should include the default sound', () => {
-        expect(lastPushPayload().sound).toBe('default');
+      it('should include the sound configured in preferences', () => {
+        expect(lastPushPayload().sound).toBe('sentry_siren.wav');
       });
     });
 
     describe('When a French user receives a Sentry alert', () => {
       beforeEach(async () => {
-        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Warning, AlertEventType.Sentry, 'fr');
+        await service.sendPushAlert({ alertSound: AlertSound.SentrySiren, severity: AlertEventSeverity.Warning, type: AlertEventType.Sentry, userId: fakeUserId, userLanguage: 'fr' });
       });
 
       it('should send the localized French title', () => {
@@ -98,7 +109,7 @@ describe('The NotificationsService class', () => {
 
     describe('When an English user receives a Sentry alert', () => {
       beforeEach(async () => {
-        await service.sendPushAlert(fakeUserId, AlertEventSeverity.Warning, AlertEventType.Sentry, 'en');
+        await service.sendPushAlert({ alertSound: AlertSound.SentrySiren, severity: AlertEventSeverity.Warning, type: AlertEventType.Sentry, userId: fakeUserId, userLanguage: 'en' });
       });
 
       it('should send the localized English title', () => {
@@ -115,6 +126,144 @@ describe('The NotificationsService class', () => {
       });
     });
 
+    describe('When the device has critical alerts enabled and the alert is critical', () => {
+      beforeEach(async () => {
+        mockPushDeviceTokenRepository.find.mockResolvedValue([
+          { ...createDevice(), critical_alerts_enabled: true },
+        ]);
+        await service.sendPushAlert({ alertSound: AlertSound.CyberPulse, severity: AlertEventSeverity.Critical, type: AlertEventType.BreakIn, userId: fakeUserId, userLanguage: 'en' });
+      });
+
+      it('should target the critical channel carrying the chosen sound', () => {
+        expect(lastPushPayload().channelId).toBe('sentryguard-critical-cyber_pulse');
+      });
+    });
+
+    describe('When the device has critical alerts disabled', () => {
+      beforeEach(async () => {
+        await service.sendPushAlert({ alertSound: AlertSound.CyberPulse, severity: AlertEventSeverity.Critical, type: AlertEventType.BreakIn, userId: fakeUserId, userLanguage: 'en' });
+      });
+
+      it('should target the standard channel carrying the chosen sound', () => {
+        expect(lastPushPayload().channelId).toBe('sentryguard-alerts-cyber_pulse');
+      });
+    });
+
+    describe('When the alert sound is the phone default and the alert is critical', () => {
+      beforeEach(async () => {
+        mockPushDeviceTokenRepository.find.mockResolvedValue([
+          { ...createDevice(), critical_alerts_enabled: true },
+        ]);
+        await service.sendPushAlert({
+          alertSound: AlertSound.PhoneDefault,
+          severity: AlertEventSeverity.Critical,
+          type: AlertEventType.BreakIn,
+          userId: fakeUserId,
+          userLanguage: 'en',
+        });
+      });
+
+      it('should target the channel that carries no custom sound', () => {
+        expect(lastPushPayload().channelId).toBe('sentryguard-critical-alerts-v5');
+      });
+
+      it('should ask iOS for its own sound', () => {
+        expect(lastPushPayload().sound).toBe('default');
+      });
+    });
+
+    describe('When the alert sound is the phone default and the alert is not critical', () => {
+      beforeEach(async () => {
+        await service.sendPushAlert({
+          alertSound: AlertSound.PhoneDefault,
+          severity: AlertEventSeverity.Warning,
+          type: AlertEventType.Sentry,
+          userId: fakeUserId,
+          userLanguage: 'en',
+        });
+      });
+
+      it('should target the channel that carries no custom sound', () => {
+        expect(lastPushPayload().channelId).toBe('sentryguard-alerts');
+      });
+
+      it('should ask iOS for its own sound', () => {
+        expect(lastPushPayload().sound).toBe('default');
+      });
+    });
+
+    describe('When a vehicle name is provided for an English user', () => {
+      beforeEach(async () => {
+        await service.sendPushAlert({
+          alertSound: AlertSound.SentrySiren,
+          severity: AlertEventSeverity.Warning,
+          type: AlertEventType.Sentry,
+          userId: fakeUserId,
+          userLanguage: 'en',
+          vehicleName: 'Model Y',
+        });
+      });
+
+      it('should append the vehicle name to the title', () => {
+        expect(lastPushPayload().title).toBe('Sentry alert - Model Y');
+      });
+
+      it('should leave the body unchanged', () => {
+        expect(lastPushPayload().body).toBe('A Sentry event was detected.');
+      });
+    });
+
+    describe('When a vehicle name is provided for a French user', () => {
+      beforeEach(async () => {
+        await service.sendPushAlert({
+          alertSound: AlertSound.SentrySiren,
+          severity: AlertEventSeverity.Warning,
+          type: AlertEventType.Sentry,
+          userId: fakeUserId,
+          userLanguage: 'fr',
+          vehicleName: 'Model Y',
+        });
+      });
+
+      it('should append the localized vehicle name suffix to the title', () => {
+        expect(lastPushPayload().title).toBe('Alerte Sentinelle - Model Y');
+      });
+    });
+
+    describe('When the alerting VIN is provided', () => {
+      beforeEach(async () => {
+        await service.sendPushAlert({
+          alertSound: AlertSound.SentrySiren,
+          severity: AlertEventSeverity.Warning,
+          type: AlertEventType.Sentry,
+          userId: fakeUserId,
+          userLanguage: 'en',
+          vehicleName: 'Model Y',
+          vin: '5YJ3E1EA7KF000316',
+        });
+      });
+
+      it('should carry it in the push data payload', () => {
+        expect(lastPushPayload().data.vin).toBe('5YJ3E1EA7KF000316');
+      });
+    });
+
+    describe('When no alerting VIN is provided', () => {
+      beforeEach(async () => {
+        await service.sendPushAlert({
+          alertSound: AlertSound.SentrySiren,
+          severity: AlertEventSeverity.Warning,
+          type: AlertEventType.Sentry,
+          userId: fakeUserId,
+          userLanguage: 'en',
+        });
+      });
+
+      it('should omit the VIN from the push data payload', () => {
+        expect(lastPushPayload().data.vin).toBeUndefined();
+      });
+    });
+
     describe('When the user has alerts muted', () => {
       beforeEach(() => {
         mockPreferencesRepository.findOne.mockResolvedValue({
@@ -124,23 +273,13 @@ describe('The NotificationsService class', () => {
       });
 
       it('should suppress Sentry alerts and return false', async () => {
-        const result = await service.sendPushAlert(
-          fakeUserId,
-          AlertEventSeverity.Warning,
-          AlertEventType.Sentry,
-          'fr'
-        );
+        const result = await service.sendPushAlert({ alertSound: AlertSound.SentrySiren, severity: AlertEventSeverity.Warning, type: AlertEventType.Sentry, userId: fakeUserId, userLanguage: 'fr' });
         expect(result).toBe(false);
         expect(fetchMock).not.toHaveBeenCalled();
       });
 
       it('should not suppress break-in alerts and return true', async () => {
-        const result = await service.sendPushAlert(
-          fakeUserId,
-          AlertEventSeverity.Critical,
-          AlertEventType.BreakIn,
-          'fr'
-        );
+        const result = await service.sendPushAlert({ alertSound: AlertSound.SentrySiren, severity: AlertEventSeverity.Critical, type: AlertEventType.BreakIn, userId: fakeUserId, userLanguage: 'fr' });
         expect(result).toBe(true);
         expect(fetchMock).toHaveBeenCalledTimes(1);
       });
@@ -151,7 +290,7 @@ describe('The NotificationsService class', () => {
 
       beforeEach(async () => {
         mockPushDeviceTokenRepository.find.mockResolvedValue([]);
-        result = await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'fr');
+        result = await service.sendPushAlert({ alertSound: AlertSound.SentrySiren, severity: AlertEventSeverity.Critical, type: AlertEventType.BreakIn, userId: fakeUserId, userLanguage: 'fr' });
       });
 
       it('should not call the push service', () => {
@@ -174,7 +313,7 @@ describe('The NotificationsService class', () => {
 
       it('should reject so the outbox can retry the notification', async () => {
         await expect(
-          service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'en')
+          service.sendPushAlert({ alertSound: AlertSound.SentrySiren, severity: AlertEventSeverity.Critical, type: AlertEventType.BreakIn, userId: fakeUserId, userLanguage: 'en' })
         ).rejects.toThrow('Service unavailable');
       });
     });
@@ -186,7 +325,7 @@ describe('The NotificationsService class', () => {
 
       it('should reject so the outbox can retry the notification', async () => {
         await expect(
-          service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'en')
+          service.sendPushAlert({ alertSound: AlertSound.SentrySiren, severity: AlertEventSeverity.Critical, type: AlertEventType.BreakIn, userId: fakeUserId, userLanguage: 'en' })
         ).rejects.toThrow('Network error');
       });
     });
@@ -198,12 +337,7 @@ describe('The NotificationsService class', () => {
           options.signal?.addEventListener('abort', () => reject(new Error('aborted')));
         }));
 
-        const result = service.sendPushAlert(
-          fakeUserId,
-          AlertEventSeverity.Critical,
-          AlertEventType.BreakIn,
-          'en'
-        );
+        const result = service.sendPushAlert({ alertSound: AlertSound.SentrySiren, severity: AlertEventSeverity.Critical, type: AlertEventType.BreakIn, userId: fakeUserId, userLanguage: 'en' });
         const rejection = expect(result).rejects.toThrow('ETIMEDOUT: Expo push request timed out after 10000ms');
         await jest.advanceTimersByTimeAsync(10000);
 
@@ -228,7 +362,7 @@ describe('The NotificationsService class', () => {
 
       it('should remove the invalid token before rejecting', async () => {
         await expect(
-          service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'en')
+          service.sendPushAlert({ alertSound: AlertSound.SentrySiren, severity: AlertEventSeverity.Critical, type: AlertEventType.BreakIn, userId: fakeUserId, userLanguage: 'en' })
         ).rejects.toThrow('Device is not registered');
         expect(mockPushDeviceTokenRepository.delete).toHaveBeenCalledWith({ id: undefined });
       });
@@ -260,7 +394,7 @@ describe('The NotificationsService class', () => {
           });
         });
 
-        result = await service.sendPushAlert(fakeUserId, AlertEventSeverity.Critical, AlertEventType.BreakIn, 'en');
+        result = await service.sendPushAlert({ alertSound: AlertSound.SentrySiren, severity: AlertEventSeverity.Critical, type: AlertEventType.BreakIn, userId: fakeUserId, userLanguage: 'en' });
       });
 
       it('should remove the stale device', () => {

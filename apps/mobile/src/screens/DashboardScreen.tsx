@@ -13,6 +13,7 @@ import { useThemeColors } from '../core/theme';
 import { AppText, Icon } from '../core/ui';
 import { MainStackParamList } from '../core/navigation';
 import { usePushToken } from '../core/hooks/usePushToken';
+import { useUserInitiatedRefresh } from '../core/hooks/use-user-initiated-refresh';
 import {
   getNotificationPreferencesUseCase,
   muteNotificationsUseCase,
@@ -40,6 +41,7 @@ export function DashboardScreen(): JSX.Element {
   const colors = useThemeColors();
   const topInset = useScreenTopInset();
   const vehiclesQuery = useVehiclesQuery();
+  const { isRefreshing, onRefresh } = useUserInitiatedRefresh([vehiclesQuery.refetch]);
   const queryClient = useQueryClient();
   const { isTokenResolved, pushToken } = usePushToken();
 
@@ -136,7 +138,7 @@ export function DashboardScreen(): JSX.Element {
       data={vehiclesQuery.data ?? []}
       keyExtractor={(vehicle) => vehicle.id}
       ItemSeparatorComponent={() => <View style={styles.separator} />}
-      refreshControl={<RefreshControl refreshing={vehiclesQuery.isFetching} onRefresh={() => void vehiclesQuery.refetch()} />}
+      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
       ListHeaderComponent={
         <View style={styles.headerBlock}>
           <View style={styles.headerTitleRow}>
@@ -241,10 +243,12 @@ const styles = StyleSheet.create({
   headerTitleRow: {
     alignItems: 'flex-start',
     flexDirection: 'row',
+    gap: spacing.sm,
     justifyContent: 'space-between',
   },
   pauseButton: {
     borderRadius: 999,
+    flexShrink: 0,
     marginTop: spacing.sm,
     paddingHorizontal: spacing.sm + 2,
     paddingVertical: spacing.xs,
@@ -264,6 +268,7 @@ const styles = StyleSheet.create({
     height: spacing.md,
   },
   titleBlock: {
+    flexShrink: 1,
     gap: spacing.xs,
     paddingTop: spacing.sm,
   },

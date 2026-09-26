@@ -11,9 +11,12 @@ import { AppSwitch, AppText, GlassButton, GlassButtonVariant, Icon, ListRow, Lis
 import {
   confirmTelemetryDeletion,
   openVirtualKey,
+  resolveVehicleAlertSoundId,
 } from './vehicle-detail/vehicle-detail.helpers';
 import { OffensiveResponse } from '../features/vehicles/domain/entities';
-import { VehicleAction } from './vehicle-detail/vehicle-detail.types';
+import { resolveAlertSound } from '../features/notifications/domain/alert-sounds';
+import { SoundSelectorModal } from './settings/SoundSelectorModal';
+import { AlertSoundTarget, VehicleAction } from './vehicle-detail/vehicle-detail.types';
 import { useVehicleDetail } from './vehicle-detail/use-vehicle-detail';
 import type { VehicleDetailScreenProps } from '../core/navigation';
 
@@ -21,10 +24,13 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
   const colors = useThemeColors();
   const {
     actionMutation,
+    alertSoundMutation,
     feedback,
     isActionRunning,
+    openSoundSelector,
     scopeMutation,
     setFeedback,
+    setOpenSoundSelector,
     t,
     vehicle,
     vehicleCommandsAuthorized,
@@ -90,6 +96,14 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
             />
           }
         />
+        {vehicle.sentry_mode_monitoring_enabled ? (
+          <ListRow
+            title={t('vehicle.sentryAlertSound')}
+            value={t(resolveAlertSound(resolveVehicleAlertSoundId(vehicle, AlertSoundTarget.Sentry)).labelKey)}
+            showChevron
+            onPress={() => setOpenSoundSelector(AlertSoundTarget.Sentry)}
+          />
+        ) : null}
       </ListSection>
 
       <ListSection header={t('vehicle.intrusionSection')}>
@@ -140,6 +154,14 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
             />
           </>
         ) : null}
+        {vehicle.break_in_monitoring_enabled ? (
+          <ListRow
+            title={t('vehicle.breakInAlertSound')}
+            value={t(resolveAlertSound(resolveVehicleAlertSoundId(vehicle, AlertSoundTarget.BreakIn)).labelKey)}
+            showChevron
+            onPress={() => setOpenSoundSelector(AlertSoundTarget.BreakIn)}
+          />
+        ) : null}
       </ListSection>
 
       {vehicle.break_in_monitoring_enabled && !vehicleCommandsAuthorized ? (
@@ -161,6 +183,29 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
           {feedback}
         </AppText>
       ) : null}
+
+      <SoundSelectorModal
+        isOpen={openSoundSelector !== null}
+        onClose={() => setOpenSoundSelector(null)}
+        selectedSoundId={
+          openSoundSelector === null ? undefined : resolveVehicleAlertSoundId(vehicle, openSoundSelector)
+        }
+        titleKey={
+          openSoundSelector === AlertSoundTarget.BreakIn ? 'vehicle.breakInAlertSound' : 'vehicle.sentryAlertSound'
+        }
+        descriptionKey={
+          openSoundSelector === AlertSoundTarget.BreakIn
+            ? 'vehicle.breakInAlertSoundDescription'
+            : 'vehicle.sentryAlertSoundDescription'
+        }
+        onSelectSound={(soundId) => {
+          if (openSoundSelector === null) {
+            return;
+          }
+
+          alertSoundMutation.mutate({ soundId, target: openSoundSelector });
+        }}
+      />
     </ScrollView>
   );
 }

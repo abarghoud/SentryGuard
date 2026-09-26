@@ -295,8 +295,8 @@ describe('TelemetryConfigService', () => {
       const result = await service.getVehicles(userId);
 
       expect(result).toEqual([
-        { ...mockVehicles[0], sentry_mode_monitoring_enabled: true, break_in_monitoring_enabled: false, key_paired: true, break_in_offensive_response: 'DISABLED', break_in_auto_sentry_mode_enabled: false },
-        { ...mockVehicles[1], sentry_mode_monitoring_enabled: false, break_in_monitoring_enabled: false, key_paired: true, break_in_offensive_response: 'DISABLED', break_in_auto_sentry_mode_enabled: false },
+        { ...mockVehicles[0], sentry_mode_monitoring_enabled: true, break_in_monitoring_enabled: false, key_paired: true, break_in_offensive_response: 'DISABLED', break_in_auto_sentry_mode_enabled: false, sentry_alert_sound: 'default', break_in_alert_sound: 'default' },
+        { ...mockVehicles[1], sentry_mode_monitoring_enabled: false, break_in_monitoring_enabled: false, key_paired: true, break_in_offensive_response: 'DISABLED', break_in_auto_sentry_mode_enabled: false, sentry_alert_sound: 'default', break_in_alert_sound: 'default' },
       ]);
     });
 
