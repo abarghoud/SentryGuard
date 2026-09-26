@@ -9,6 +9,7 @@ import { screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
 import { useHaptics } from '../core/design/use-haptics';
 import { useScreenTopInset } from '../core/design/use-screen-inset';
+import { useUserInitiatedRefresh } from '../core/hooks/use-user-initiated-refresh';
 import { useThemeColors } from '../core/theme';
 import { AppText, SegmentedControl, Surface } from '../core/ui';
 import { clearAlertsUseCase, deleteAlertUseCase, getAlertsUseCase } from '../features/alerts/di';
@@ -43,6 +44,7 @@ export function AlertsScreen(): JSX.Element {
   const filteredAlerts = useMemo(() => filterAlerts(alerts, activeFilter), [activeFilter, alerts]);
 
   const refetchAlerts = alertsQuery.refetch;
+  const { isRefreshing, onRefresh } = useUserInitiatedRefresh([refetchAlerts]);
   useFocusEffect(
     useCallback(() => {
       void refetchAlerts();
@@ -96,7 +98,7 @@ export function AlertsScreen(): JSX.Element {
       style={{ backgroundColor: colors.systemGroupedBackground }}
       contentContainerStyle={[styles.content, { paddingTop: topInset + spacing.sm }]}
       contentInsetAdjustmentBehavior="automatic"
-      refreshControl={<RefreshControl refreshing={alertsQuery.isFetching} onRefresh={() => void alertsQuery.refetch()} />}
+      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
     >
       <View style={styles.titleRow}>
         <AppText variant={TextVariant.LargeTitle}>{t('alerts.title')}</AppText>
