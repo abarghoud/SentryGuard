@@ -10,6 +10,8 @@ import { Vehicle } from '../../entities/vehicle.entity';
 import { User } from '../../entities/user.entity';
 import { AuthModule } from '../auth/auth.module';
 import { ConsentModule } from '../consent/consent.module';
+import { ErrorMeaningClassifierService } from '../../common/services/error-meaning-classifier.service';
+import { typeSafeClientProvider } from '../../common/utils/typesafe-client.token';
 
 @Module({
   imports: [
@@ -18,7 +20,7 @@ import { ConsentModule } from '../consent/consent.module';
     ConsentModule,
   ],
   controllers: [TelemetryConfigController, BreakInMonitoringController],
-  providers: [TelemetryConfigService, SentryModeConfigService, BreakInMonitoringConfigService, TeslaVehicleCommandService],
+  providers: [TelemetryConfigService, SentryModeConfigService, BreakInMonitoringConfigService, TeslaVehicleCommandService, ErrorMeaningClassifierService, typeSafeClientProvider],
   exports: [TelemetryConfigService, SentryModeConfigService, BreakInMonitoringConfigService, TeslaVehicleCommandService],
 })
 export class TelemetryModule {}

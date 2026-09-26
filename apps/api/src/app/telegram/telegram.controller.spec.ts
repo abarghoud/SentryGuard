@@ -92,7 +92,7 @@ describe('The TelegramController class', () => {
 
       beforeEach(async () => {
         mockTelegramBotService.sendMessage.mockRejectedValue(blockedBotError);
-        mockFailureHandler.canHandle.mockReturnValue(true);
+        mockFailureHandler.canHandle.mockResolvedValue(true);
         mockFailureHandler.handleFailure.mockResolvedValue(undefined);
 
         result = await controller.sendTestMessage(fakeUser);
@@ -115,7 +115,7 @@ describe('The TelegramController class', () => {
 
       beforeEach(async () => {
         mockTelegramBotService.sendMessage.mockRejectedValue(blockedBotError);
-        mockFailureHandler.canHandle.mockReturnValue(true);
+        mockFailureHandler.canHandle.mockResolvedValue(true);
         mockFailureHandler.handleFailure.mockRejectedValue(new Error('Database connection failed'));
 
         result = await controller.sendTestMessage(fakeUser);
@@ -157,7 +157,7 @@ describe('The TelegramController class', () => {
       beforeEach(async () => {
         errorSpy = jest.spyOn(controller['logger'], 'error').mockImplementation();
         mockTelegramBotService.sendMessage.mockRejectedValue(new Error('network timeout'));
-        mockFailureHandler.canHandle.mockReturnValue(false);
+        mockFailureHandler.canHandle.mockResolvedValue(false);
 
         result = await controller.sendTestMessage(fakeUser);
       });

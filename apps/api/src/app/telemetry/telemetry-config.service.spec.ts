@@ -5,6 +5,7 @@ import { AccessTokenService } from '../auth/services/access-token.service';
 import { AuthService } from '../auth/auth.service';
 import { TeslaPartnerAuthService } from '../auth/tesla-partner-auth.service';
 import { Vehicle } from '../../entities/vehicle.entity';
+import { ErrorMeaningClassifierService } from '../../common/services/error-meaning-classifier.service';
 import axios from 'axios';
 
 jest.mock('axios');
@@ -29,6 +30,10 @@ const mockAuthService = {
 
 const mockPartnerAuthService = {
   getPartnerToken: jest.fn(),
+};
+
+const mockErrorClassifier = {
+  isTeslaTokenRevoked: jest.fn(),
 };
 
 const mockVehicleRepository = {
@@ -65,6 +70,10 @@ describe('TelemetryConfigService', () => {
         {
           provide: TeslaPartnerAuthService,
           useValue: mockPartnerAuthService,
+        },
+        {
+          provide: ErrorMeaningClassifierService,
+          useValue: mockErrorClassifier,
         },
         {
           provide: getRepositoryToken(Vehicle),

@@ -14,6 +14,8 @@ import { TelegramConfigService } from './telegram-config.service';
 import { TelegramFailureHandlerService } from './handlers/telegram-failure-handler.service';
 import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import { RetryManager } from '../shared/retry-manager.service';
+import { ErrorMeaningClassifierService } from '../../common/services/error-meaning-classifier.service';
+import { typeSafeClientProvider } from '../../common/utils/typesafe-client.token';
 import { telegramRetryManager } from './telegram-retry-manager.token';
 import { TelegramConfig } from '../../entities/telegram-config.entity';
 import { User } from '../../entities/user.entity';
@@ -46,6 +48,8 @@ import { OffensiveResponseModule } from '../offensive-response/offensive-respons
     TelegramBotUpdateService,
     TelegramConfigService,
     TelegramFailureHandlerService,
+    ErrorMeaningClassifierService,
+    typeSafeClientProvider,
     {
       provide: telegramFailureHandler,
       useClass: TelegramFailureHandlerService,
