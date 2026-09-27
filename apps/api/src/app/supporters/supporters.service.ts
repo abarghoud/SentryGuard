@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Supporter, SupporterType } from '../../entities/supporter.entity';
 import { BmcWebhookPayload, verifyWebhookSignature } from './bmc-webhook-parser.util';
 import { aggregateSupporters } from './supporter-aggregator.util';
+import { judgeSupporterTextWithTypeSafe } from './supporter-sanitizer.util';
 
 export interface PublicSupporterDto {
   id: string;
@@ -45,7 +46,7 @@ export class SupportersService {
       order: { support_date: 'DESC' },
     });
     const totalCoffeesCount = activeItems.reduce((acc, item) => acc + item.coffees, 0);
-    const unifiedSupporters = aggregateSupporters(activeItems);
+    const unifiedSupporters = await aggregateSupporters(activeItems);
 
     return {
       subscribers: [],
@@ -65,7 +66,7 @@ export class SupportersService {
       throw new UnauthorizedException('Invalid webhook signature');
     }
 
-    const supporterData = new BmcWebhookPayload(payload).toSupporter();
+    const supporterData = await new BmcWebhookPayload(payload).toSupporter(judgeSupporterTextWithTypeSafe);
     return this.upsertSupporter(supporterData);
   }
 

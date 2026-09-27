@@ -1,5 +1,5 @@
 import { Supporter, SupporterType } from '../../entities/supporter.entity';
-import { sanitizeMessage, sanitizeName } from './supporter-sanitizer.util';
+import { SupporterTextJudge, sanitizeMessage, sanitizeName } from './supporter-sanitizer.util';
 import { PublicSupporterDto } from './supporters.service';
 
 const ANONYMOUS_NAMES = ['someone', 'anonymous', 'supporter', 'anonyme'];
@@ -7,12 +7,13 @@ const ANONYMOUS_NAMES = ['someone', 'anonymous', 'supporter', 'anonyme'];
 export class SupporterAggregator {
   constructor(private readonly items: Supporter[]) {}
 
-  public aggregate(): PublicSupporterDto[] {
+  public async aggregate(judge?: SupporterTextJudge): Promise<PublicSupporterDto[]> {
     const groups = this.groupItems();
+    const merged = await Promise.all(
+      Array.from(groups.values()).map((group) => this.mergeGroup(group, judge))
+    );
 
-    return Array.from(groups.values())
-      .map((group) => this.mergeGroup(group))
-      .sort((a, b) => this.compareSupporters(a, b));
+    return merged.sort((a, b) => this.compareSupporters(a, b));
   }
 
   private groupItems(): Map<string, Supporter[]> {
@@ -38,19 +39,19 @@ export class SupporterAggregator {
     return new Date(b.supportDate).getTime() - new Date(a.supportDate).getTime();
   }
 
-  private mergeGroup(group: Supporter[]): PublicSupporterDto {
+  private async mergeGroup(group: Supporter[], judge?: SupporterTextJudge): Promise<PublicSupporterDto> {
     const sorted = [...group].sort((a, b) => b.support_date.getTime() - a.support_date.getTime());
     const latest = sorted[0];
     const isSubscriber = group.some((s) => s.type === SupporterType.Membership);
 
     return {
       id: latest.id,
-      name: this.findBestName(sorted),
+      name: await this.findBestName(sorted, judge),
       coffees: this.computeTotalCoffees(group, isSubscriber),
       isSubscriber,
       monthlyCoffees: this.computeMonthlyCoffees(group, isSubscriber),
       supportDate: latest.support_date.toISOString(),
-      message: sanitizeMessage(sorted.find((s) => s.message?.trim())?.message),
+      message: await sanitizeMessage(sorted.find((s) => s.message?.trim())?.message, false, judge),
     };
   }
 
@@ -91,16 +92,16 @@ export class SupporterAggregator {
     return `name:${name}`;
   }
 
-  private findBestName(sorted: Supporter[]): string {
+  private async findBestName(sorted: Supporter[], judge?: SupporterTextJudge): Promise<string> {
     const valid = sorted.find(
       (s) => s.name && !ANONYMOUS_NAMES.includes(s.name.trim().toLowerCase())
     );
 
     const chosen = valid || sorted[0];
-    return sanitizeName(chosen.name);
+    return sanitizeName(chosen.name, false, judge);
   }
 }
 
-export function aggregateSupporters(items: Supporter[]): PublicSupporterDto[] {
-  return new SupporterAggregator(items).aggregate();
+export function aggregateSupporters(items: Supporter[], judge?: SupporterTextJudge): Promise<PublicSupporterDto[]> {
+  return new SupporterAggregator(items).aggregate(judge);
 }

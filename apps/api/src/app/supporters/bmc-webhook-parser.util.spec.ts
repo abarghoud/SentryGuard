@@ -1,11 +1,13 @@
 import * as crypto from 'crypto';
 import { SupporterType } from '../../entities/supporter.entity';
+import { SupporterTextJudge } from './supporter-sanitizer.util';
 import {
   BmcWebhookPayload,
   verifyWebhookSignature,
 } from './bmc-webhook-parser.util';
 
 describe('The bmc-webhook-parser utility', () => {
+  const allowAll: SupporterTextJudge = async () => false;
   const originalSecret = process.env.BUYMEACOFFEE_WEBHOOK_SECRET;
 
   afterEach(() => {
@@ -34,7 +36,7 @@ describe('The bmc-webhook-parser utility', () => {
 
   describe('The BmcWebhookPayload class', () => {
     describe('When instantiated with a donation payload', () => {
-      it('should transform into a complete active donation supporter entity', () => {
+      it('should transform into a complete active donation supporter entity', async () => {
         const payload = {
           type: 'donation.created',
           data: {
@@ -47,7 +49,7 @@ describe('The bmc-webhook-parser utility', () => {
           },
         };
 
-        const result = new BmcWebhookPayload(payload).toSupporter();
+        const result = await new BmcWebhookPayload(payload).toSupporter(allowAll);
 
         expect(result).toStrictEqual({
           external_id: 'txn-123',
@@ -63,7 +65,7 @@ describe('The bmc-webhook-parser utility', () => {
     });
 
     describe('When instantiated with a membership payload', () => {
-      it('should transform into an active membership supporter entity with calculated coffees', () => {
+      it('should transform into an active membership supporter entity with calculated coffees', async () => {
         const payload = {
           type: 'membership.started',
           data: {
@@ -75,7 +77,7 @@ describe('The bmc-webhook-parser utility', () => {
           },
         };
 
-        const result = new BmcWebhookPayload(payload).toSupporter();
+        const result = await new BmcWebhookPayload(payload).toSupporter(allowAll);
 
         expect(result).toStrictEqual({
           external_id: 'sub-456',
@@ -91,7 +93,7 @@ describe('The bmc-webhook-parser utility', () => {
     });
 
     describe('When instantiated with a cancellation or refund event', () => {
-      it('should mark isActive as false', () => {
+      it('should mark isActive as false', async () => {
         const payload = {
           type: 'membership.cancelled',
           data: {
@@ -100,7 +102,7 @@ describe('The bmc-webhook-parser utility', () => {
           },
         };
 
-        const result = new BmcWebhookPayload(payload).toSupporter();
+        const result = await new BmcWebhookPayload(payload).toSupporter(allowAll);
 
         expect(result.is_active).toBe(false);
       });
