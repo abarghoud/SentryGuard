@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect } from '@react-navigation/native';
 import type { JSX } from 'react';
 import { useCallback, useMemo, useState } from 'react';
@@ -12,7 +12,7 @@ import { useScreenTopInset } from '../core/design/use-screen-inset';
 import { useUserInitiatedRefresh } from '../core/hooks/use-user-initiated-refresh';
 import { useThemeColors } from '../core/theme';
 import { AppText, SegmentedControl, Surface } from '../core/ui';
-import { clearAlertsUseCase, deleteAlertUseCase, getAlertsUseCase } from '../features/alerts/di';
+import { clearAlertsUseCase, deleteAlertUseCase, useAlertsQuery } from '../features/alerts/di';
 import { AlertEvent } from '../features/alerts/domain/entities';
 import { AlertCard } from './alerts/components/AlertCard';
 import {
@@ -34,11 +34,7 @@ export function AlertsScreen(): JSX.Element {
   const colors = useThemeColors();
   const topInset = useScreenTopInset();
   const { lastSeenAt, markAlertsSeen } = useAlertsSeen();
-  const alertsQuery = useQuery({
-    queryFn: () => getAlertsUseCase.execute(),
-    queryKey: ['alerts'],
-    refetchInterval: 30000,
-  });
+  const alertsQuery = useAlertsQuery();
   const alerts = alertsQuery.data ?? [];
   const hasClearableAlerts = alerts.length > 0;
   const filteredAlerts = useMemo(() => filterAlerts(alerts, activeFilter), [activeFilter, alerts]);

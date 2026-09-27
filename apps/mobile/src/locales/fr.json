@@ -331,6 +331,7 @@
   "onboarding.criticalAlertsAndroidVolume": "L'alerte utilise le volume de l'alarme : pensez à le garder audible.",
   "dashboard.latestAlert.title": "Dernière alerte",
   "dashboard.latestAlert.emptyTitle": "Tout est calme",
+  "dashboard.latestAlert.errorTitle": "Dernière alerte indisponible",
   "dashboard.latestAlert.emptyText": "Aucune alerte récente sur vos véhicules.",
   "dashboard.latestAlert.openHint": "Ouvre l’historique des alertes",
   "common.justNow": "À l’instant",

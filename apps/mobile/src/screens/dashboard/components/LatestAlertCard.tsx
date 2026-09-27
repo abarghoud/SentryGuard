@@ -6,18 +6,34 @@ import { TextVariant } from '../../../core/design/typography';
 import { useThemeColors } from '../../../core/theme';
 import { AppText, Icon, Surface } from '../../../core/ui';
 import { AlertEvent } from '../../../features/alerts/domain/entities';
-import { resolveAlertIcon, resolveAlertTitleKey, resolveAlertTone } from '../../alerts/alerts.helpers';
+import { resolveAlertError, resolveAlertIcon, resolveAlertTitleKey, resolveAlertTone } from '../../alerts/alerts.helpers';
 import { TranslationFunction, formatRelativeAlertTime } from '../dashboard.helpers';
 
 interface LatestAlertCardProps {
   alert: AlertEvent | null;
+  error: Error | null;
   isLoading: boolean;
   now: number;
   onPress(): void;
   t: TranslationFunction;
 }
 
-export function LatestAlertCard({ alert, isLoading, now, onPress, t }: LatestAlertCardProps): JSX.Element | null {
+interface LatestAlertRowProps {
+  alert: AlertEvent;
+  now: number;
+  onPress(): void;
+  t: TranslationFunction;
+}
+
+interface LatestAlertStatusRowProps {
+  iconBackground: string;
+  iconColor: string;
+  iconName: 'checkmark.shield.fill' | 'exclamationmark.triangle.fill';
+  text: string;
+  title: string;
+}
+
+export function LatestAlertCard({ alert, error, isLoading, now, onPress, t }: LatestAlertCardProps): JSX.Element | null {
   const colors = useThemeColors();
 
   if (isLoading) {
@@ -31,34 +47,46 @@ export function LatestAlertCard({ alert, isLoading, now, onPress, t }: LatestAle
       </AppText>
       {alert ? (
         <LatestAlertRow alert={alert} now={now} onPress={onPress} t={t} />
+      ) : error ? (
+        <LatestAlertStatusRow
+          iconBackground={colors.warningFill}
+          iconColor={colors.onWarning}
+          iconName="exclamationmark.triangle.fill"
+          text={resolveAlertError(error, t)}
+          title={t('dashboard.latestAlert.errorTitle')}
+        />
       ) : (
-        <Surface style={styles.row}>
-          <View style={[styles.iconWrap, { backgroundColor: colors.successSurface }]}>
-            <Icon name="checkmark.shield.fill" size={18} color={colors.systemGreen} />
-          </View>
-          <View style={styles.text}>
-            <AppText variant={TextVariant.Headline}>{t('dashboard.latestAlert.emptyTitle')}</AppText>
-            <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
-              {t('dashboard.latestAlert.emptyText')}
-            </AppText>
-          </View>
-        </Surface>
+        <LatestAlertStatusRow
+          iconBackground={colors.successSurface}
+          iconColor={colors.systemGreen}
+          iconName="checkmark.shield.fill"
+          text={t('dashboard.latestAlert.emptyText')}
+          title={t('dashboard.latestAlert.emptyTitle')}
+        />
       )}
     </View>
   );
 }
 
-function LatestAlertRow({
-  alert,
-  now,
-  onPress,
-  t,
-}: {
-  alert: AlertEvent;
-  now: number;
-  onPress(): void;
-  t: TranslationFunction;
-}): JSX.Element {
+function LatestAlertStatusRow({ iconBackground, iconColor, iconName, text, title }: LatestAlertStatusRowProps): JSX.Element {
+  const colors = useThemeColors();
+
+  return (
+    <Surface style={styles.row}>
+      <View style={[styles.iconWrap, { backgroundColor: iconBackground }]}>
+        <Icon name={iconName} size={18} color={iconColor} />
+      </View>
+      <View style={styles.text}>
+        <AppText variant={TextVariant.Headline}>{title}</AppText>
+        <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
+          {text}
+        </AppText>
+      </View>
+    </Surface>
+  );
+}
+
+function LatestAlertRow({ alert, now, onPress, t }: LatestAlertRowProps): JSX.Element {
   const colors = useThemeColors();
   const tone = resolveAlertTone(alert, colors);
 

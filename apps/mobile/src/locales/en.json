@@ -331,6 +331,7 @@
   "onboarding.criticalAlertsAndroidVolume": "The alert plays at your alarm volume, so keep it turned up.",
   "dashboard.latestAlert.title": "Latest alert",
   "dashboard.latestAlert.emptyTitle": "All quiet",
+  "dashboard.latestAlert.errorTitle": "Latest alert unavailable",
   "dashboard.latestAlert.emptyText": "No recent alerts on your vehicles.",
   "dashboard.latestAlert.openHint": "Opens the alerts history",
   "common.justNow": "Just now",

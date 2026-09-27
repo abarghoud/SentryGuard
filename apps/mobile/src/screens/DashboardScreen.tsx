@@ -12,6 +12,7 @@ import { useScreenTopInset } from '../core/design/use-screen-inset';
 import { useThemeColors } from '../core/theme';
 import { AppText, Icon } from '../core/ui';
 import { AppTabParamList, MainStackParamList } from '../core/navigation';
+import { useCurrentTime } from '../core/hooks/use-current-time';
 import { usePushToken } from '../core/hooks/usePushToken';
 import { useUserInitiatedRefresh } from '../core/hooks/use-user-initiated-refresh';
 import {
@@ -21,7 +22,7 @@ import {
   unmuteNotificationsUseCase,
   updateNotificationPreferencesUseCase,
 } from '../features/notifications/di';
-import { getAlertsUseCase } from '../features/alerts/di';
+import { useAlertsQuery } from '../features/alerts/di';
 import { getOnboardingStatusUseCase } from '../features/onboarding/di';
 import { useVehiclesQuery } from '../features/vehicles/di';
 import { EmptyState } from './dashboard/components/EmptyState';
@@ -35,6 +36,8 @@ import { VirtualKeyBanner } from './dashboard/components/VirtualKeyBanner';
 import { isMuteActive, openVirtualKey, resolveLatestAlert, resolveSubtitle } from './dashboard/dashboard.helpers';
 import { registerDeviceForPush } from './settings/settings.helpers';
 
+const RELATIVE_TIME_REFRESH_INTERVAL_MILLISECONDS = 30000;
+
 export function DashboardScreen(): JSX.Element {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
@@ -47,13 +50,10 @@ export function DashboardScreen(): JSX.Element {
   const queryClient = useQueryClient();
   const { isTokenResolved, pushToken } = usePushToken();
 
-  const alertsQuery = useQuery({
-    queryFn: () => getAlertsUseCase.execute(),
-    queryKey: ['alerts'],
-    refetchInterval: 30000,
-  });
+  const alertsQuery = useAlertsQuery();
   const latestAlert = resolveLatestAlert(alertsQuery.data);
   const { isRefreshing, onRefresh } = useUserInitiatedRefresh([vehiclesQuery.refetch, alertsQuery.refetch]);
+  const now = useCurrentTime(RELATIVE_TIME_REFRESH_INTERVAL_MILLISECONDS);
 
   const onboardingQuery = useQuery({
     queryFn: () => getOnboardingStatusUseCase.execute(),
@@ -221,8 +221,9 @@ export function DashboardScreen(): JSX.Element {
         vehiclesQuery.data && vehiclesQuery.data.length > 0 ? (
           <LatestAlertCard
             alert={latestAlert}
+            error={alertsQuery.error}
             isLoading={alertsQuery.isLoading}
-            now={Date.now()}
+            now={now}
             onPress={() => tabNavigation.navigate('Alerts')}
             t={t}
           />
