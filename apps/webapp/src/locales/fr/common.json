@@ -511,7 +511,7 @@
   "Want to update your display name or hide your contribution from our public wall? Contact us at hello@sentryguard.org and we'll take care of it immediately.": "Vous souhaitez modifier votre nom affiché ou masquer votre contribution du mur public ? Contactez-nous à hello@sentryguard.org et nous le ferons immédiatement.",
   "Open menu": "Ouvrir le menu",
   "Close menu": "Fermer le menu",
-  "Enabling telemetry allows SentryGuard to monitor your vehicle's Sentry Mode status in real-time. When suspicious activity is detected, you'll receive instant alerts on your phone and via Telegram.": "L'activation de la télémétrie permet à SentryGuard de surveiller le statut du mode Sentinelle de votre véhicule en temps réel sans épuiser votre batterie. Lorsqu'une activité suspecte est détectée, vous recevez des alertes instantanées sur votre téléphone et via Telegram.",
+  "Enabling telemetry allows SentryGuard to monitor your vehicle's Sentry Mode status in real-time. When suspicious activity is detected, you'll receive instant alerts on your phone and via Telegram.": "L'activation de la télémétrie permet à SentryGuard de surveiller le statut du mode Sentinelle de votre véhicule en temps réel. Lorsqu'une activité suspecte est détectée, vous recevez des alertes instantanées sur votre téléphone et via Telegram.",
   "Instant push and Telegram notifications": "Notifications push et Telegram instantanées",
   "Configure Alerts": "Configurer les alertes",
   "Telegram Account": "Compte Telegram"

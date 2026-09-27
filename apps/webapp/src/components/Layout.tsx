@@ -27,7 +27,7 @@ export function Navigation({ navigationItems = [] }: { navigationItems?: Navigat
             alt="SentryGuard Logo"
             className="w-20 h-20 object-contain"
           />
-          <h1 className="text-2xl font-bold">{t('SentryGuard')}</h1>
+          <span className="text-2xl font-bold">{t('SentryGuard')}</span>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
           {navigationItems.map((item, index) => (

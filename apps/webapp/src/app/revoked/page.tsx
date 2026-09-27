@@ -17,7 +17,7 @@ export default function RevokedPage() {
               alt="SentryGuard Logo"
               className="w-8 h-8 object-contain"
             />
-            <h1 className="text-2xl font-bold">{t('SentryGuard')}</h1>
+            <span className="text-2xl font-bold">{t('SentryGuard')}</span>
           </div>
           <LanguageSwitcher />
         </div>

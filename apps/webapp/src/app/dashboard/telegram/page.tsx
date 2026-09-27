@@ -15,6 +15,7 @@ export default function TelegramPage() {
   } = useTelegramQuery();
 
   const { data: status, isLoading, error } = query;
+  const isTelegramLinked = status ? status.linked : false;
 
   const generateLink = async () => {
     try {
@@ -96,7 +97,7 @@ export default function TelegramPage() {
           onRefresh={fetchStatus}
         />
 
-        {status?.linked ? null : (
+        {isTelegramLinked ? null : (
           <div className="mt-8 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
               {t('How It Works')}
