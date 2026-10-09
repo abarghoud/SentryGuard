@@ -185,7 +185,7 @@ Devices register through `NotificationsController` (`POST/DELETE /notifications/
 - **OAuth 2.0 flow** with Tesla for user authentication (scopes `openid vehicle_device_data vehicle_cmds offline_access user_data`; CSRF via a signed `state` JWT)
 - **JWT tokens** for API authentication (managed by Passport.js), but **sessions are tracked server-side**: `UserSessionService` stores a SHA-256 hash of each JWT (`UserSession` entity), enforces **max 5 sessions/user**, and supports revocation
 - **Tesla access tokens** are stored ENCRYPTED in the database (using `ENCRYPTION_KEY`)
-- Token encryption/decryption is handled in **`apps/api/src/common/utils/crypto.util.ts`** (AES-256-CBC, key derived via `scryptSync`, random IV, `iv:cipher` hex) — *not* in an `auth/services/token-encryption.service.ts` (that file does not exist)
+- Token encryption/decryption is handled in **`apps/api/src/common/utils/crypto.util.ts`** (AES-256-GCM, key derived via `scryptSync`, random 12-byte IV, `iv:tag:cipher` hex; legacy two-part `iv:cipher` AES-256-CBC values are still decrypted as a fallback) — *not* in an `auth/services/token-encryption.service.ts` (that file does not exist)
 - **Refresh on a cron**: `TeslaTokenRefreshSchedulerService` (`@Cron`, default 02:00 daily) → `TeslaTokenRefreshService` (row-locked)
 - **Distributed lock**: cron jobs are guarded by `DistributedLockService` (Postgres `pg_try_advisory_xact_lock`) so only one instance runs each job (keys in `config/scheduler-lock-key.config.ts`)
 
