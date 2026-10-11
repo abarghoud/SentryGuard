@@ -18,6 +18,7 @@ import {
   clearDebugLogs,
   openCrispSupport,
   openDiscordCommunity,
+  openXAccount,
   openEmailSupport,
   openFaq,
   openPrivacyPolicy,
@@ -209,8 +210,8 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         <ListRow title={t('settings.deleteAccount')} showChevron onPress={() => navigation.navigate('DeleteAccount')} />
       </ListSection>
 
-      {discordUrl ? (
-        <ListSection header={t('settings.communitySection')}>
+      <ListSection header={t('settings.communitySection')}>
+        {discordUrl ? (
           <ListRow
             icon="person.2.fill"
             title={t('settings.discordCommunity')}
@@ -218,8 +219,15 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
             showChevron
             onPress={() => void openDiscordCommunity()}
           />
-        </ListSection>
-      ) : null}
+        ) : null}
+        <ListRow
+          icon="at"
+          title={t('settings.xAccount')}
+          subtitle={t('settings.xAccountSubtitle')}
+          showChevron
+          onPress={() => void openXAccount()}
+        />
+      </ListSection>
 
       {hasSupportLinks ? (
         <ListSection header={t('settings.supportSection')}>
