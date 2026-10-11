@@ -208,6 +208,12 @@ export function resolveDiscordUrl(): string | undefined {
   return url && /^https?:\/\//i.test(url) ? url : undefined;
 }
 
+export const X_ACCOUNT_URL = 'https://x.com/sentryguardorg';
+
+export async function openXAccount(): Promise<void> {
+  await Linking.openURL(X_ACCOUNT_URL);
+}
+
 export function resolveSupportEmail(): string | undefined {
   const email = process.env.EXPO_PUBLIC_SUPPORT_EMAIL?.trim();
   return email && email.includes('@') && !/[\r\n]/.test(email) ? email : undefined;

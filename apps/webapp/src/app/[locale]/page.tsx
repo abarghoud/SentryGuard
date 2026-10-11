@@ -135,9 +135,9 @@ export default async function HomePage({ params }: HomePageProps) {
               </span>
               {t('Detects break-ins even with Sentry Mode OFF')}
             </div>
-            <h2 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-red-500 via-red-600 to-red-700 text-transparent bg-clip-text p-1 leading-tight">
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-red-500 via-red-600 to-red-700 text-transparent bg-clip-text p-1 leading-tight">
               {t('The missing security alerts for your Tesla.')}
-            </h2>
+            </h1>
             <p className="text-xl md:text-2xl text-gray-700 mb-8">
               {t('Get an instant push notification the second Sentry Mode records a threat, or when someone pulls your door handle—even if you disabled Sentry Mode to save battery.')}
             </p>

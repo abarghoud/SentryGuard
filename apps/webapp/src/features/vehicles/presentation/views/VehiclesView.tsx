@@ -262,12 +262,12 @@ export function VehiclesView({
             <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
               <p>
                 {t(
-                  "Enabling telemetry allows SentryGuard to monitor your vehicle's Sentry Mode status in real-time. When suspicious activity is detected, you'll receive instant alerts via Telegram."
+                  "Enabling telemetry allows SentryGuard to monitor your vehicle's Sentry Mode status in real-time. When suspicious activity is detected, you'll receive instant alerts on your phone and via Telegram."
                 )}
               </p>
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li>{t('Real-time Sentry Mode monitoring')}</li>
-                <li>{t('Instant Telegram notifications')}</li>
+                <li>{t('Instant push and Telegram notifications')}</li>
                 <li>{t('Secure end-to-end encryption')}</li>
               </ul>
             </div>

@@ -316,7 +316,9 @@ Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md)
 
 ## 📄 License
 
-This project is licensed under the GNU Affero General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+Copyright (C) 2025 Anas Barghoud
+
+This project is licensed under the GNU Affero General Public License v3.0, either version 3 of the License or (at your option) any later version - see the [LICENSE](LICENSE) file for details.
 
 ### Why AGPL-3.0?
 

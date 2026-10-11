@@ -4,6 +4,7 @@ import { AlertMockRepository } from './data/alert.mock-repository';
 import { AlertRepositoryRequirements } from './domain/alert.repository.requirements';
 import { AlertEvent } from './domain/entities';
 import { ClearAlertsUseCase, DeleteAlertUseCase, GetAlertsUseCase } from './domain/use-cases/alerts.use-cases';
+import { createUseAlertsQuery } from './presentation/queries/use-alerts-query';
 
 class DynamicAlertRepository implements AlertRepositoryRequirements {
   public constructor(
@@ -36,3 +37,5 @@ export const alertRepository = new DynamicAlertRepository(
 export const getAlertsUseCase = new GetAlertsUseCase(alertRepository);
 export const clearAlertsUseCase = new ClearAlertsUseCase(alertRepository);
 export const deleteAlertUseCase = new DeleteAlertUseCase(alertRepository);
+
+export const useAlertsQuery = createUseAlertsQuery({ getAlertsUseCase });

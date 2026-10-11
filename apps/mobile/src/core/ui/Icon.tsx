@@ -20,6 +20,7 @@ interface IconProps {
  * unavailable. Keep this in sync with the symbols referenced across the app.
  */
 const ioniconsFallback: Record<string, keyof typeof Ionicons.glyphMap> = {
+  'at': 'at',
   'arrow.up.right.square': 'open-outline',
   'bell.badge.fill': 'notifications',
   'bell.fill': 'notifications',

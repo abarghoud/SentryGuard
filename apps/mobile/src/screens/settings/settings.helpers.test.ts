@@ -49,6 +49,7 @@ import {
   CriticalAlertsAvailability,
   openCrispSupport,
   openDiscordCommunity,
+  openXAccount,
   openEmailSupport,
   openFaq,
   openPrivacyPolicy,
@@ -558,5 +559,16 @@ describe('The openTermsOfService() function', () => {
       await openTermsOfService('en');
       expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith('https://sentryguard.org/en/legal/terms');
     });
+  });
+});
+
+describe('The openXAccount() function', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should open the SentryGuard X account', async () => {
+    await openXAccount();
+    expect(Linking.openURL).toHaveBeenCalledWith('https://x.com/sentryguardorg');
   });
 });

@@ -1,6 +1,7 @@
 import * as Linking from 'expo-linking';
 
 import { virtualKeyStore } from '../../core/api';
+import { AlertEvent } from '../../features/alerts/domain/entities';
 import { Vehicle } from '../../features/vehicles/domain/entities';
 
 export type TranslationFunction = (key: string, options?: Record<string, unknown>) => string;
@@ -84,4 +85,36 @@ function formatFutureDate(date: Date, time: string, t?: TranslationFunction): st
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
   const dateStr = `${day}/${month}`;
   return t ? t('common.dateAtTime', { date: dateStr, time }) : `${dateStr} à ${time}`;
+}
+
+export function resolveLatestAlert(alerts: AlertEvent[] | undefined): AlertEvent | null {
+  if (!alerts || alerts.length === 0) {
+    return null;
+  }
+
+  return alerts.reduce((latest, alert) => (toTimestamp(alert.created_at) > toTimestamp(latest.created_at) ? alert : latest));
+}
+
+export function formatRelativeAlertTime(value: string, now: number, t: TranslationFunction): string {
+  const elapsedMinutes = Math.max(0, Math.floor((now - toTimestamp(value)) / MILLISECONDS_PER_MINUTE));
+
+  if (elapsedMinutes < 1) {
+    return t('common.justNow');
+  }
+  if (elapsedMinutes < MINUTES_PER_HOUR) {
+    return t('common.minutesAgo', { count: elapsedMinutes });
+  }
+  if (elapsedMinutes < MINUTES_PER_DAY) {
+    return t('common.hoursAgo', { count: Math.floor(elapsedMinutes / MINUTES_PER_HOUR) });
+  }
+  return t('common.daysAgo', { count: Math.floor(elapsedMinutes / MINUTES_PER_DAY) });
+}
+
+const MILLISECONDS_PER_MINUTE = 60000;
+const MINUTES_PER_HOUR = 60;
+const MINUTES_PER_DAY = 1440;
+
+function toTimestamp(value: string): number {
+  const timestamp = new Date(value).getTime();
+  return isNaN(timestamp) ? 0 : timestamp;
 }

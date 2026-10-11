@@ -32,13 +32,13 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+    <div className="px-4 sm:px-0">
+      <div className="max-w-3xl">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             {t('Settings')}
           </h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
             {t('Manage your account settings and preferences')}
           </p>
         </div>
@@ -129,7 +129,7 @@ export default function SettingsPage() {
               </div>
               <button
                 onClick={handleDeleteAccount}
-                className="w-full sm:w-auto sm:flex-shrink-0 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                className="w-full sm:w-auto sm:flex-shrink-0 inline-flex items-center justify-center px-4 py-2 border border-red-300 dark:border-red-800 text-sm font-medium rounded-md text-red-700 dark:text-red-400 bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
               >
                 {t('Delete Account')}
               </button>

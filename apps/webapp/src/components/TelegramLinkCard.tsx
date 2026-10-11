@@ -87,7 +87,7 @@ export default function TelegramLinkCard({
           >
             <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18 1.897-.962 6.502-1.359 8.627-.168.9-.5 1.201-.82 1.23-.697.064-1.226-.461-1.901-.903-1.056-.693-1.653-1.124-2.678-1.8-1.185-.781-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.015-.15-.056-.212s-.174-.041-.248-.024c-.106.024-1.793 1.139-5.062 3.345-.479.329-.913.489-1.302.481-.428-.009-1.252-.241-1.865-.44-.752-.244-1.349-.374-1.297-.789.027-.216.324-.437.892-.663 3.498-1.524 5.831-2.529 6.998-3.015 3.333-1.386 4.025-1.627 4.477-1.635.099-.001.321.023.465.14.122.099.155.232.171.325.016.093.036.305.02.47z" />
           </svg>
-          {t('Telegram Configuration')}
+          {t('Telegram Account')}
         </h2>
         {isLinked && (
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
@@ -119,7 +119,7 @@ export default function TelegramLinkCard({
         <button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full bg-tesla-600 hover:bg-tesla-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isGenerating ? t('Generating...') : t('Generate Telegram Link')}
         </button>
@@ -162,7 +162,7 @@ export default function TelegramLinkCard({
             href={linkInfo.link}
             target="_blank"
             rel="noopener noreferrer"
-            className="block w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 text-center"
+            className="block w-full bg-tesla-600 hover:bg-tesla-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 text-center"
           >
             {t('Open in Telegram')}
           </a>
@@ -187,14 +187,14 @@ export default function TelegramLinkCard({
             <button
               onClick={handleTest}
               disabled={isTesting}
-              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="flex-1 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               {isTesting ? t('Sending...') : t('Send Test Message')}
             </button>
             <button
               onClick={handleUnlink}
               disabled={isUnlinking}
-              className="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="flex-1 bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-400 font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               {isUnlinking ? t('Unlinking...') : t('Unlink')}
             </button>
