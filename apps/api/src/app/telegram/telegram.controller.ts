@@ -216,19 +216,19 @@ export class TelegramController {
   }
 
   private async handleTestMessageFailure(error: unknown, userId: string): Promise<void> {
-    if (!this.isBlockedBotFailure(error)) {
-      this.logger.error(
-        `[TELEGRAM_TEST] Failed to send test message for user ${userId}:`,
-        error
-      );
+    if (error instanceof Error && (await this.isBlockedBotFailure(error))) {
+      await this.disableTelegramSafely(error, userId);
       return;
     }
 
-    await this.disableTelegramSafely(error, userId);
+    this.logger.error(
+      `[TELEGRAM_TEST] Failed to send test message for user ${userId}:`,
+      error
+    );
   }
 
-  private isBlockedBotFailure(error: unknown): error is Error {
-    return error instanceof Error && this.failureHandler.canHandle(error);
+  private isBlockedBotFailure(error: Error): Promise<boolean> {
+    return this.failureHandler.canHandle(error);
   }
 
   private async disableTelegramSafely(error: Error, userId: string): Promise<void> {

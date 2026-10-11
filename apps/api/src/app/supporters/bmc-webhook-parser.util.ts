@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
 import { Supporter, SupporterType } from '../../entities/supporter.entity';
 import {
+  SupporterTextJudge,
   isPrivateSupporter,
   sanitizeMessage,
   sanitizeName,
@@ -34,15 +35,15 @@ export class BmcWebhookPayload {
     this.isPrivate = isPrivateSupporter(this.data) || isPrivateSupporter(payload);
   }
 
-  public toSupporter(): Partial<Supporter> {
+  public async toSupporter(judge?: SupporterTextJudge): Promise<Partial<Supporter>> {
     return {
       external_id: this.resolveExternalId(),
-      name: this.resolveName(),
+      name: await this.resolveName(judge),
       email: this.resolveEmail(),
       coffees: this.resolveCoffees(),
       type: this.resolveType(),
       is_active: this.resolveIsActive(),
-      message: this.resolveMessage(),
+      message: await this.resolveMessage(judge),
       support_date: this.resolveSupportDate(),
     };
   }
@@ -58,14 +59,14 @@ export class BmcWebhookPayload {
     return id || null;
   }
 
-  private resolveName(): string {
+  private async resolveName(judge?: SupporterTextJudge): Promise<string> {
     const raw = String(
       this.data['supporter_name'] ||
       this.data['payer_name'] ||
       this.data['name'] ||
       'Anonymous'
     );
-    return sanitizeName(raw, this.isPrivate);
+    return sanitizeName(raw, this.isPrivate, judge);
   }
 
   private resolveEmail(): string | null {
@@ -114,9 +115,9 @@ export class BmcWebhookPayload {
     return !isInactiveEvent && !isInactiveStatus && !isInactiveFlag;
   }
 
-  private resolveMessage(): string | null {
+  private async resolveMessage(judge?: SupporterTextJudge): Promise<string | null> {
     const raw = this.data['support_note'] || this.data['message'] || null;
-    return sanitizeMessage(raw ? String(raw) : null, this.isPrivate) || null;
+    return (await sanitizeMessage(raw ? String(raw) : null, this.isPrivate, judge)) || null;
   }
 
   private resolveSupportDate(): Date {

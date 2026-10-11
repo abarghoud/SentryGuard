@@ -1,6 +1,6 @@
 export const telegramFailureHandler = Symbol('TelegramFailureHandler');
 
 export interface ITelegramFailureHandler {
-  canHandle(error: Error): boolean;
+  canHandle(error: Error): Promise<boolean>;
   handleFailure(error: Error, userId: string): Promise<void>;
 }

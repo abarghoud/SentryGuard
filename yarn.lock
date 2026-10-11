@@ -9350,6 +9350,7 @@ __metadata:
     "@types/react": "npm:^19.2.13"
     "@types/react-dom": "npm:^19.2.3"
     "@types/supertest": "npm:^6.0.3"
+    "@typesafe-ai/sdk": "npm:^0.6.0"
     "@vitejs/plugin-react": "npm:^4.2.0"
     "@vitest/coverage-v8": "npm:^3.0.5"
     "@vitest/ui": "npm:^3.0.0"
@@ -10299,6 +10300,13 @@ __metadata:
   dependencies:
     "@types/yargs-parser": "npm:*"
   checksum: 10c0/d16937d7ac30dff697801c3d6f235be2166df42e4a88bf730fa6dc09201de3727c0a9500c59a672122313341de5f24e45ee0ff579c08ce91928e519090b7906b
+  languageName: node
+  linkType: hard
+
+"@typesafe-ai/sdk@npm:^0.6.0":
+  version: 0.6.0
+  resolution: "@typesafe-ai/sdk@npm:0.6.0"
+  checksum: 10c0/588bee41cea853f94d7c5c3b6d23c4040bc49ebe92294f2c75d3196958ed3ef7dd74031365f3a249de019c2ee9c81a27a7ff25e8086e91805e8e2301141f9375
   languageName: node
   linkType: hard
 
