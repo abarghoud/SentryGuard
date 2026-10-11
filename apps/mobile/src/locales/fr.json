@@ -137,6 +137,8 @@
   "settings.contactSupportSubtitle": "Discutez avec l’équipe via Crisp",
   "settings.discordCommunity": "Communauté Discord",
   "settings.discordCommunitySubtitle": "Entraide, actualités et échanges",
+  "settings.xAccount": "Suivez-nous sur X",
+  "settings.xAccountSubtitle": "Actualités et nouveautés @sentryguardorg",
   "settings.emailSupport": "Nous contacter par e-mail",
   "settings.diagnosticSection": "Diagnostic",
   "settings.exportLogs": "Exporter les logs de debug",

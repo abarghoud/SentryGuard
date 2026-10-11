@@ -36,7 +36,7 @@ export function PublicNavigationMenu({
   return (
     <div className="flex flex-wrap items-center justify-between gap-y-3">
       <div className="order-1">{brand}</div>
-      <div className="order-2 lg:order-3 flex items-center gap-2 lg:ml-4">
+      <div className="order-2 lg:order-3 flex items-center gap-2 lg:ml-2 xl:ml-4">
         {persistentControls}
         <button
           type="button"
@@ -63,7 +63,7 @@ export function PublicNavigationMenu({
           isMenuOpen ? 'max-h-screen opacity-100 visible' : 'max-h-0 opacity-0 invisible'
         }`}
       >
-        <div className="flex flex-col lg:flex-row lg:items-center gap-1 lg:gap-4 p-2 lg:p-0 rounded-xl lg:rounded-none bg-white lg:bg-transparent border border-gray-200 lg:border-0 shadow-sm lg:shadow-none">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-1 lg:gap-2 xl:gap-4 p-2 lg:p-0 rounded-xl lg:rounded-none bg-white lg:bg-transparent border border-gray-200 lg:border-0 shadow-sm lg:shadow-none">
           {menuItems}
         </div>
       </div>
