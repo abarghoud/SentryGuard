@@ -32,8 +32,8 @@ import { AppState, Platform } from 'react-native';
 
 import { tokenStore } from '../../core/api';
 import { getTeslaScopeChangeUrlUseCase } from '../../features/auth/di';
-import { Vehicle } from '../../features/vehicles/domain/entities';
-import { requestVehicleCommandsScope, resolveVehicleAlertSoundId } from './vehicle-detail.helpers';
+import { OffensiveResponse, Vehicle } from '../../features/vehicles/domain/entities';
+import { hasBreakInCounterMeasure, requestVehicleCommandsScope, resolveVehicleAlertSoundId } from './vehicle-detail.helpers';
 import { AlertSoundTarget, TranslationFunction } from './vehicle-detail.types';
 
 describe('The requestVehicleCommandsScope() function', () => {
@@ -158,6 +158,38 @@ describe('The resolveVehicleAlertSoundId() function', () => {
   describe('When the vehicle has no stored sound', () => {
     it('should fall back to the phone default sound id', () => {
       expect(resolveVehicleAlertSoundId({} as Vehicle, AlertSoundTarget.Sentry)).toBe('default');
+    });
+  });
+});
+
+describe('The hasBreakInCounterMeasure() function', () => {
+  describe('When neither the offensive response nor auto Sentry Mode is enabled', () => {
+    it('should report no counter-measure', () => {
+      const vehicle = { break_in_auto_sentry_mode_enabled: false, break_in_offensive_response: OffensiveResponse.Disabled } as Vehicle;
+
+      expect(hasBreakInCounterMeasure(vehicle)).toBe(false);
+    });
+  });
+
+  describe('When the vehicle stores no counter-measure setting', () => {
+    it('should report no counter-measure', () => {
+      expect(hasBreakInCounterMeasure({} as Vehicle)).toBe(false);
+    });
+  });
+
+  describe('When the offensive response is enabled', () => {
+    it('should report a counter-measure', () => {
+      const vehicle = { break_in_auto_sentry_mode_enabled: false, break_in_offensive_response: OffensiveResponse.Fart } as Vehicle;
+
+      expect(hasBreakInCounterMeasure(vehicle)).toBe(true);
+    });
+  });
+
+  describe('When only auto Sentry Mode is enabled', () => {
+    it('should report a counter-measure', () => {
+      const vehicle = { break_in_auto_sentry_mode_enabled: true, break_in_offensive_response: OffensiveResponse.Disabled } as Vehicle;
+
+      expect(hasBreakInCounterMeasure(vehicle)).toBe(true);
     });
   });
 });

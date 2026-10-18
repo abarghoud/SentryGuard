@@ -15,6 +15,7 @@ import { useThemeColors } from '../core/theme';
 import { AppSwitch, AppText, GlassButton, GlassButtonVariant, Icon, ListRow, ListSection, SegmentedControl, Surface, VinMask } from '../core/ui';
 import {
   confirmTelemetryDeletion,
+  hasBreakInCounterMeasure,
   openVirtualKey,
   resolveVehicleAlertSoundId,
 } from './vehicle-detail/vehicle-detail.helpers';
@@ -56,6 +57,8 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
   const statusSurface = isProtected ? colors.successFill : colors.fill;
   const statusGlyph = isProtected ? colors.onSuccess : colors.secondaryLabel;
   const breakInDetection = readBreakInDetection(vehicle);
+  const isBreakInDetectionVisible =
+    vehicle.break_in_monitoring_enabled === true && vehicleCommandsAuthorized && hasBreakInCounterMeasure(vehicle);
 
   return (
     <ScrollView
@@ -171,7 +174,7 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
         ) : null}
       </ListSection>
 
-      {vehicle.break_in_monitoring_enabled ? (
+      {isBreakInDetectionVisible ? (
         <ListSection header={t('vehicle.breakInDetectionSection')} footer={t('vehicle.breakInDetectionFooter')}>
           <View style={styles.detectionRow}>
             <AppText variant={TextVariant.Body}>{t('vehicle.breakInSensitivity')}</AppText>
