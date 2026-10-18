@@ -260,6 +260,24 @@ describe('The AlertsOffensiveResponseService class', () => {
       it('should trigger honk horn', () => {
         expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1');
       });
+
+      it('should report the offensive response that went off', async () => {
+        expect(await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1'], createdAt)).toBe(OffensiveResponse.HONK);
+      });
+    });
+
+    describe('When the alert was intentionally delayed by the reaction delay', () => {
+      beforeEach(async () => {
+        mockVehicleRepository.findOne.mockResolvedValue(null);
+
+        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1'], createdAt, 20_000);
+      });
+
+      it('should exclude the reaction delay from the latency check', () => {
+        expect(mockLatencyGuardService.checkLatency).toHaveBeenCalledWith(
+          expect.objectContaining({ intentionalDelayMs: 20_000 })
+        );
+      });
     });
 
     describe('When latency guard blocks the request', () => {
@@ -278,6 +296,10 @@ describe('The AlertsOffensiveResponseService class', () => {
         expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
       });
 
+      it('should report that no offensive response went off', async () => {
+        expect(await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1'], createdAt)).toBeNull();
+      });
+
       it('should have called checkLatency with correct options', () => {
         expect(mockLatencyGuardService.checkLatency).toHaveBeenCalledWith({
           vin: '5YJ3E1EA123456789',
@@ -287,6 +309,7 @@ describe('The AlertsOffensiveResponseService class', () => {
           defaultThresholdMs: 60000,
           alertPrefix: 'OFFENSIVE_LATENCY_ALERT',
           actionName: 'Offensive response',
+          intentionalDelayMs: 0,
         });
       });
     });

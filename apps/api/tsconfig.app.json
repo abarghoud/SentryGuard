@@ -24,6 +24,9 @@
   "references": [
     {
       "path": "../../libs/beta/domain/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/vehicles/domain/tsconfig.lib.json"
     }
   ]
 }

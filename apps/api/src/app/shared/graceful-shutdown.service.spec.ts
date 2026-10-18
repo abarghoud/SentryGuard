@@ -79,7 +79,7 @@ describe('The GracefulShutdownService class', () => {
 
     it('should flush pending display-lock alert verifications with the default timeout', async () => {
       await service.initiateShutdown();
-      expect(mockBreakInAlertHandler.flushPendingVerifications).toHaveBeenCalledWith(30000);
+      expect(mockBreakInAlertHandler.flushPendingVerifications).toHaveBeenCalledWith(75000);
     });
 
     it('should drain the notification queue with the default timeout', async () => {

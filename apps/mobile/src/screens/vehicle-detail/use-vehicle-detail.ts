@@ -1,16 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toBreakInDetectionFields } from '@sentryguard/vehicles-domain';
 
 import { useHaptics } from '../../core/design/use-haptics';
 import { getVehicleCommandsAuthorizationUseCase } from '../../features/auth/di';
-import { Vehicle, VehicleActionResponse } from '../../features/vehicles/domain/entities';
+import { BreakInDetection, Vehicle, VehicleActionResponse } from '../../features/vehicles/domain/entities';
 import {
   configureTelemetryUseCase,
   deleteTelemetryConfigUseCase,
   getVehiclesUseCase,
   toggleBreakInMonitoringUseCase,
   updateAlertSoundsUseCase,
+  updateBreakInDetectionUseCase,
   updateOffensiveResponseUseCase,
 } from '../../features/vehicles/di';
 import {
@@ -103,6 +105,38 @@ export function useVehicleDetail(vehicleId: string) {
       await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
     },
   });
+  const breakInDetectionMutation = useMutation<VehicleActionResponse, Error, BreakInDetection, { previous?: Vehicle[] }>({
+    scope: { id: `vehicle-break-in-detection-${vehicleId}` },
+    mutationFn: (breakInDetection: BreakInDetection) => runBreakInDetectionUpdate(vehicle, breakInDetection, t),
+    onMutate: async (breakInDetection) => {
+      setFeedback(null);
+      await queryClient.cancelQueries({ queryKey: ['vehicles'] });
+      const previous = queryClient.getQueryData<Vehicle[]>(['vehicles']);
+
+      if (vehicle) {
+        queryClient.setQueryData<Vehicle[]>(['vehicles'], (current) =>
+          (current ?? []).map((entry) =>
+            entry.vin === vehicle.vin ? { ...entry, ...toBreakInDetectionFields(breakInDetection) } : entry
+          )
+        );
+      }
+
+      return { previous };
+    },
+    onError: (error: Error, _breakInDetection, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['vehicles'], context.previous);
+      }
+      haptics.error();
+      setFeedback(error.message);
+    },
+    onSuccess: () => {
+      haptics.success();
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+    },
+  });
   const scopeMutation = useMutation({
     mutationFn: () => requestVehicleCommandsScope(t),
     onError: (error: Error) => {
@@ -119,6 +153,7 @@ export function useVehicleDetail(vehicleId: string) {
   return {
     actionMutation,
     alertSoundMutation,
+    breakInDetectionMutation,
     feedback,
     isActionRunning: actionMutation.isPending,
     openSoundSelector,
@@ -129,6 +164,18 @@ export function useVehicleDetail(vehicleId: string) {
     vehicle,
     vehicleCommandsAuthorized: vehicleCommandsQuery.data?.authorized === true,
   };
+}
+
+async function runBreakInDetectionUpdate(
+  vehicle: Vehicle | undefined,
+  breakInDetection: BreakInDetection,
+  t: TranslationFunction
+): Promise<VehicleActionResponse> {
+  if (!vehicle) {
+    throw new Error(t('vehicle.actionRefused'));
+  }
+
+  return resolveSuccessfulResponse(await updateBreakInDetectionUseCase.execute(vehicle.vin, breakInDetection), t);
 }
 
 function applyOptimisticSound(vehicle: Vehicle, selection: AlertSoundSelection): Vehicle {

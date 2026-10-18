@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { MAX_VEHICLE_CLOCK_AHEAD_MS } from '../utils/vehicle-clock.util';
+
 export interface LatencyGuardOptions {
   vin: string;
   createdAt: string;
@@ -8,11 +10,12 @@ export interface LatencyGuardOptions {
   defaultThresholdMs: number;
   alertPrefix: string;
   actionName: string;
+  intentionalDelayMs?: number;
 }
 
 @Injectable()
 export class LatencyGuardService {
-  private readonly clockSkewToleranceMs = 300_000;
+  private readonly clockSkewToleranceMs = MAX_VEHICLE_CLOCK_AHEAD_MS;
 
   public checkLatency(options: LatencyGuardOptions): boolean {
     const {
@@ -23,6 +26,7 @@ export class LatencyGuardService {
       defaultThresholdMs,
       alertPrefix,
       actionName,
+      intentionalDelayMs = 0,
     } = options;
     
     const logger = new Logger(logContext);
@@ -33,7 +37,7 @@ export class LatencyGuardService {
       return true;
     }
     
-    const latency = Date.now() - time;
+    const latency = Date.now() - time - intentionalDelayMs;
     if (latency < -this.clockSkewToleranceMs) {
       logger.error(`[${logContext}] Future createdAt timestamp received: "${createdAt}"`);
       return true;

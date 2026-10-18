@@ -1,5 +1,5 @@
 import { ApiClientRequirements } from '../../../core/api/api-client';
-import { OffensiveResponse, Vehicle, VehicleActionResponse } from '../domain/entities';
+import { BreakInDetection, OffensiveResponse, Vehicle, VehicleActionResponse } from '../domain/entities';
 import { VehicleRepositoryRequirements } from '../domain/vehicle.repository.requirements';
 
 export class VehicleApiRepository implements VehicleRepositoryRequirements {
@@ -37,6 +37,13 @@ export class VehicleApiRepository implements VehicleRepositoryRequirements {
         ...(payload.sentryAlertSound !== undefined ? { sentry_alert_sound: payload.sentryAlertSound } : {}),
         ...(payload.breakInAlertSound !== undefined ? { break_in_alert_sound: payload.breakInAlertSound } : {}),
       }),
+      method: 'PATCH',
+    });
+  }
+
+  public async updateBreakInDetection(vin: string, breakInDetection: BreakInDetection): Promise<VehicleActionResponse> {
+    return this.client.request<VehicleActionResponse>(`/vehicles/${vin}/break-in-detection`, {
+      body: JSON.stringify(breakInDetection),
       method: 'PATCH',
     });
   }

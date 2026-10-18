@@ -1,4 +1,4 @@
-import { OffensiveResponse, Vehicle, VehicleActionResponse } from './entities';
+import { BreakInDetection, OffensiveResponse, Vehicle, VehicleActionResponse } from './entities';
 
 export interface VehicleRepositoryRequirements {
   configureTelemetry(vin: string): Promise<VehicleActionResponse>;
@@ -9,6 +9,7 @@ export interface VehicleRepositoryRequirements {
     vin: string,
     payload: { breakInAlertSound?: string; sentryAlertSound?: string },
   ): Promise<VehicleActionResponse>;
+  updateBreakInDetection(vin: string, breakInDetection: BreakInDetection): Promise<VehicleActionResponse>;
   updateOffensiveResponse(
     vin: string,
     payload: { breakInOffensiveResponse?: OffensiveResponse; autoSentryEnabled?: boolean },

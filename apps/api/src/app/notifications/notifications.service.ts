@@ -10,6 +10,8 @@ import i18n from '../../i18n';
 import { NOTIFICATION_REQUEST_TIMEOUT_MS } from '../../config/notification-timeout.config';
 import { withTimeout } from '../../common/utils/with-timeout.util';
 import { AlertSound } from '../alerts/enums/alert-sound.enum';
+import { CounterMeasure } from '../alerts/enums/counter-measure.enum';
+import { describeCounterMeasures } from '../alerts/common/counter-measure-description.util';
 
 export interface PushAlertContext {
   alertSound: AlertSound;
@@ -20,6 +22,18 @@ export interface PushAlertContext {
   userLanguage: 'en' | 'fr';
   vehicleName?: string;
   vin?: string;
+}
+
+export interface PushCounterMeasureContext {
+  counterMeasures: CounterMeasure[];
+  userId: string;
+  userLanguage: 'en' | 'fr';
+  vehicleName: string;
+  vin: string;
+}
+
+export interface PushDeliveryResult {
+  isDelivered: boolean;
 }
 
 export interface NotificationPreferencesDto {
@@ -157,9 +171,33 @@ export class NotificationsService {
 
     this.logger.log(`[EXPO_PUSH][${correlationId || 'none'}] Sending push to ${eligibleDevices.length} device(s) for user: ${userId}`);
 
-    await this.dispatchPushToDevices(eligibleDevices, context);
+    await this.dispatchPushToDevices(
+      eligibleDevices,
+      this.resolveAlertTexts(context.type, context.userLanguage, context.vehicleName),
+      context
+    );
 
     return true;
+  }
+
+  public async sendCounterMeasurePush(context: PushCounterMeasureContext): Promise<PushDeliveryResult> {
+    const eligibleDevices = await this.findEligibleDevices(context.userId, AlertEventSeverity.Warning);
+
+    if (eligibleDevices.length === 0) {
+      return { isDelivered: false };
+    }
+
+    await this.dispatchPushToDevices(eligibleDevices, this.resolveCounterMeasureTexts(context), {
+      alertSound: AlertSound.PhoneDefault,
+      severity: AlertEventSeverity.Warning,
+      type: AlertEventType.BreakIn,
+      userId: context.userId,
+      userLanguage: context.userLanguage,
+      vehicleName: context.vehicleName,
+      vin: context.vin,
+    });
+
+    return { isDelivered: true };
   }
 
   private async shouldSuppressPush(userId: string, type: AlertEventType): Promise<boolean> {
@@ -171,8 +209,11 @@ export class NotificationsService {
     return devices.filter((device) => this.shouldSendPushToDevice(device, severity));
   }
 
-  private async dispatchPushToDevices(devices: PushDeviceToken[], context: PushAlertContext): Promise<void> {
-    const content = this.resolveAlertTexts(context.type, context.userLanguage, context.vehicleName);
+  private async dispatchPushToDevices(
+    devices: PushDeviceToken[],
+    content: PushAlertContent,
+    context: PushAlertContext
+  ): Promise<void> {
     const results = await Promise.allSettled(
       devices.map((device) => this.sendExpoPush(device, content, context))
     );
@@ -194,6 +235,13 @@ export class NotificationsService {
     return {
       body: i18n.t(bodyKey, { lng }),
       title: i18n.t(titleKey, { context, lng, vehicleName }),
+    };
+  }
+
+  private resolveCounterMeasureTexts({ counterMeasures, userLanguage, vehicleName }: PushCounterMeasureContext): PushAlertContent {
+    return {
+      body: describeCounterMeasures(counterMeasures, userLanguage),
+      title: i18n.t('Response triggered', { context: 'withVehicle', lng: userLanguage, vehicleName }),
     };
   }
 

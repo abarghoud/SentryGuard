@@ -20,7 +20,8 @@ export class AlertsOffensiveResponseService {
     vin: string,
     userIds: string[],
     createdAt: string,
-  ): Promise<void> {
+    reactionDelayMs = 0,
+  ): Promise<OffensiveResponse | null> {
     if (
       this.latencyGuardService.checkLatency({
         vin,
@@ -29,16 +30,17 @@ export class AlertsOffensiveResponseService {
         envVarThresholdName: 'OFFENSIVE_RESPONSE_LATENCY_THRESHOLD_MS',
         defaultThresholdMs: 60000,
         alertPrefix: 'OFFENSIVE_LATENCY_ALERT',
+        intentionalDelayMs: reactionDelayMs,
         actionName: 'Offensive response',
       })
     ) {
-      return;
+      return null;
     }
 
-    await this.processOffensiveResponseForUsers(vin, userIds);
+    return await this.processOffensiveResponseForUsers(vin, userIds);
   }
 
-  private async processOffensiveResponseForUsers(vin: string, userIds: string[]): Promise<void> {
+  private async processOffensiveResponseForUsers(vin: string, userIds: string[]): Promise<OffensiveResponse | null> {
     for (const userId of userIds) {
       const vehicle = await this.findVehicleByVin(vin, userId);
 
@@ -47,12 +49,13 @@ export class AlertsOffensiveResponseService {
         vehicle.break_in_offensive_response !== OffensiveResponse.DISABLED &&
         await this.executeOffensiveResponse(vehicle)
       ) {
-        return;
+        return vehicle.break_in_offensive_response;
       }
     }
     this.logger.debug(
       `[OFFENSIVE] No eligible user found for break-in offensive response on VIN ${vin}`,
     );
+    return null;
   }
 
   private async findVehicleByVin(vin: string, userId: string): Promise<Vehicle | null> {

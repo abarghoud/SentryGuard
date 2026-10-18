@@ -1,6 +1,11 @@
 import * as WebBrowser from 'expo-web-browser';
 import type { JSX } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import {
+  BREAK_IN_REACTION_DELAYS_SECONDS,
+  BreakInSensitivity,
+  readBreakInDetection,
+} from '@sentryguard/vehicles-domain';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -25,6 +30,7 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
   const {
     actionMutation,
     alertSoundMutation,
+    breakInDetectionMutation,
     feedback,
     isActionRunning,
     openSoundSelector,
@@ -49,6 +55,7 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
   const isProtected = vehicle.sentry_mode_monitoring_enabled || vehicle.break_in_monitoring_enabled;
   const statusSurface = isProtected ? colors.successFill : colors.fill;
   const statusGlyph = isProtected ? colors.onSuccess : colors.secondaryLabel;
+  const breakInDetection = readBreakInDetection(vehicle);
 
   return (
     <ScrollView
@@ -164,6 +171,43 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
         ) : null}
       </ListSection>
 
+      {vehicle.break_in_monitoring_enabled ? (
+        <ListSection header={t('vehicle.breakInDetectionSection')} footer={t('vehicle.breakInDetectionFooter')}>
+          <View style={styles.detectionRow}>
+            <AppText variant={TextVariant.Body}>{t('vehicle.breakInSensitivity')}</AppText>
+            <SegmentedControl
+              value={breakInDetection.sensitivity}
+              onChange={(sensitivity) => breakInDetectionMutation.mutate({ ...breakInDetection, sensitivity })}
+              options={[
+                { label: t('vehicle.breakInSinglePull'), value: BreakInSensitivity.SinglePull },
+                { label: t('vehicle.breakInRepeatedPulls'), value: BreakInSensitivity.RepeatedPulls },
+              ]}
+            />
+            <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
+              {breakInDetection.sensitivity === BreakInSensitivity.RepeatedPulls
+                ? t('vehicle.breakInRepeatedPullsDescription')
+                : t('vehicle.breakInSinglePullDescription')}
+            </AppText>
+          </View>
+          <View style={styles.detectionRow}>
+            <AppText variant={TextVariant.Body}>{t('vehicle.breakInReactionDelay')}</AppText>
+            <SegmentedControl
+              value={String(breakInDetection.reactionDelaySeconds)}
+              onChange={(value) =>
+                breakInDetectionMutation.mutate({ ...breakInDetection, reactionDelaySeconds: Number(value) })
+              }
+              options={BREAK_IN_REACTION_DELAYS_SECONDS.map((seconds) => ({
+                label: t('vehicle.breakInReactionDelaySeconds', { seconds }),
+                value: String(seconds),
+              }))}
+            />
+            <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
+              {t('vehicle.breakInReactionDelayDescription')}
+            </AppText>
+          </View>
+        </ListSection>
+      ) : null}
+
       {vehicle.break_in_monitoring_enabled && !vehicleCommandsAuthorized ? (
         <Surface style={styles.lockedCard}>
           <AppText variant={TextVariant.Headline}>{t('vehicle.offensive')}</AppText>
@@ -216,6 +260,11 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl * 2,
     paddingHorizontal: screenPadding,
     paddingTop: spacing.md,
+  },
+  detectionRow: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
   feedback: {
     paddingHorizontal: spacing.xs,

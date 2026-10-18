@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { mock, MockProxy } from 'jest-mock-extended';
@@ -367,6 +368,26 @@ describe('The VehicleAlertNotifierService class', () => {
           vehicleName: 'My Tesla',
           vin: 'TEST_VIN_123',
         });
+      });
+    });
+
+    describe('When the alert was intentionally delayed by the reaction delay', () => {
+      let loggerLogSpy: jest.SpyInstance;
+
+      beforeEach(async () => {
+        loggerLogSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+        jest.spyOn(telemetryMessage, 'calculateEndToEndLatency').mockReturnValue(21_500);
+        mockVehicleRepository.find.mockResolvedValue([{ userId: 'user-1', display_name: 'My Tesla' } as Vehicle]);
+
+        await service.dispatch({ ...config, reactionDelayMs: 20_000 });
+      });
+
+      afterEach(() => {
+        loggerLogSpy.mockRestore();
+      });
+
+      it('should log the latency without the reaction delay', () => {
+        expect(loggerLogSpy).toHaveBeenCalledWith(expect.stringContaining('[TEST_LATENCY] CorrelationId: corr-123 - Total: 1500ms'));
       });
     });
 

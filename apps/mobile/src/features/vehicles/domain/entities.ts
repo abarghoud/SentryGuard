@@ -1,10 +1,14 @@
+import type { BreakInDetectionFields } from '@sentryguard/vehicles-domain';
+
+export type { BreakInDetection } from '@sentryguard/vehicles-domain';
+
 export enum OffensiveResponse {
   Disabled = 'DISABLED',
   Honk = 'HONK',
   Fart = 'FART',
 }
 
-export interface Vehicle {
+export interface Vehicle extends BreakInDetectionFields {
   break_in_alert_sound?: string;
   break_in_monitoring_enabled?: boolean;
   break_in_offensive_response?: string;

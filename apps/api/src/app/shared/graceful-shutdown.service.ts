@@ -51,7 +51,7 @@ export class GracefulShutdownService {
   }
 
   private getAlertFlushTimeoutMs(): number {
-    return parseInt(process.env.GRACEFUL_SHUTDOWN_ALERT_FLUSH_TIMEOUT_MS || '30000', 10);
+    return parseInt(process.env.GRACEFUL_SHUTDOWN_ALERT_FLUSH_TIMEOUT_MS || '75000', 10);
   }
 
   private getNotificationDrainTimeoutMs(): number {

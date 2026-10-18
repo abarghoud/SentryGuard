@@ -1,61 +1,106 @@
 import { Injectable } from '@nestjs/common';
 
 export enum BreakInTrackedEvent {
-  ChargePortLatchDisengaged = 'ChargePortLatchDisengaged',
+  CenterDisplayLock = 'CenterDisplayLock',
   CenterDisplayOwnerActivity = 'CenterDisplayOwnerActivity',
+  ChargePortLatchDisengaged = 'ChargePortLatchDisengaged',
 }
 
-const EVENT_TRACKING_CONFIG: Record<BreakInTrackedEvent, { windowMs: number; cleanupMs: number }> = {
-  [BreakInTrackedEvent.ChargePortLatchDisengaged]: { windowMs: 5000, cleanupMs: 15000 },
-  [BreakInTrackedEvent.CenterDisplayOwnerActivity]: { windowMs: 5000, cleanupMs: 15000 },
-};
+export interface BreakInTrackingResult {
+  isAlreadyTracked: boolean;
+}
+
+export interface BreakInTrigger {
+  burstStartTime: number;
+  lockTime: number;
+}
+
+interface TrackedEvent {
+  receivedAt: number;
+  vehicleTime: number;
+}
+
+const EVENT_PROXIMITY_WINDOW_MS = 5_000;
+const REPEATED_PULLS_WINDOW_MS = 60_000;
+const RETENTION_MS = 180_000;
 
 @Injectable()
 export class BreakInEventTrackerService {
-  private recentEvents = new Map<string, Map<BreakInTrackedEvent, number[]>>();
+  private readonly histories = new Map<string, Map<BreakInTrackedEvent, TrackedEvent[]>>();
 
-  public track(vin: string, event: BreakInTrackedEvent, timestamp: number): void {
-    const { cleanupMs } = EVENT_TRACKING_CONFIG[event];
-    const events = this.getEvents(vin, event);
+  public track(vin: string, event: BreakInTrackedEvent, vehicleTime: number): BreakInTrackingResult {
+    const recentEvents = this.findRecentEvents(vin, event);
+    const isAlreadyTracked = recentEvents.some(trackedEvent => trackedEvent.vehicleTime === vehicleTime);
 
-    events.push(timestamp);
-    this.setEvents(vin, event, events.filter(t => timestamp - t < cleanupMs));
+    if (!isAlreadyTracked) {
+      this.saveEvents(vin, event, [...recentEvents, { receivedAt: Date.now(), vehicleTime }]);
+    }
+
+    return { isAlreadyTracked };
   }
 
-  public hasEventAround(vin: string, event: BreakInTrackedEvent, eventTimestamp: number): boolean {
-    const { windowMs, cleanupMs } = EVENT_TRACKING_CONFIG[event];
-    const events = this.getEvents(vin, event);
+  public hasEventAround(vin: string, event: BreakInTrackedEvent, timestamp: number): boolean {
+    return this.getVehicleTimes(vin, event).some(vehicleTime => {
+      const distanceMs = Math.abs(timestamp - vehicleTime);
 
-    const hasEvent = events.some(t => Math.abs(eventTimestamp - t) <= windowMs);
-
-    this.cleanup(vin, event, events, cleanupMs);
-
-    return hasEvent;
+      return distanceMs <= EVENT_PROXIMITY_WINDOW_MS;
+    });
   }
 
-  public hasEventAfter(vin: string, event: BreakInTrackedEvent, eventTimestamp: number): boolean {
-    const { windowMs, cleanupMs } = EVENT_TRACKING_CONFIG[event];
-    const events = this.getEvents(vin, event);
-
-    const hasEvent = events.some(t => t >= eventTimestamp && t - eventTimestamp <= windowMs);
-
-    this.cleanup(vin, event, events, cleanupMs);
-
-    return hasEvent;
+  public hasEventSince(vin: string, event: BreakInTrackedEvent, timestamp: number): boolean {
+    return this.getVehicleTimes(vin, event).some(vehicleTime => vehicleTime >= timestamp);
   }
 
-  private getEvents(vin: string, event: BreakInTrackedEvent): number[] {
-    return this.recentEvents.get(vin)?.get(event) || [];
+  public findRepeatedPullTrigger(vin: string, lockTime: number): BreakInTrigger | null {
+    const earlierPullTimes = this.findEarlierPullTimesInBurst(vin, lockTime);
+    const isSecondPull = earlierPullTimes.length === 1;
+
+    if (!isSecondPull) {
+      return null;
+    }
+
+    return { burstStartTime: earlierPullTimes[0], lockTime };
   }
 
-  private setEvents(vin: string, event: BreakInTrackedEvent, events: number[]): void {
-    const vinEvents = this.recentEvents.get(vin) || new Map<BreakInTrackedEvent, number[]>();
-    vinEvents.set(event, events);
-    this.recentEvents.set(vin, vinEvents);
+  private findEarlierPullTimesInBurst(vin: string, lockTime: number): number[] {
+    const burstWindowStart = lockTime - REPEATED_PULLS_WINDOW_MS;
+    const lastOwnerActivityTime = this.findLastOwnerActivityBefore(vin, lockTime);
+
+    return this.getVehicleTimes(vin, BreakInTrackedEvent.CenterDisplayLock).filter(pullTime => {
+      const isBeforeThisPull = pullTime < lockTime;
+      const isWithinBurstWindow = pullTime >= burstWindowStart;
+      const isAfterLastOwnerActivity = lastOwnerActivityTime === null || pullTime > lastOwnerActivityTime;
+
+      return isBeforeThisPull && isWithinBurstWindow && isAfterLastOwnerActivity;
+    });
   }
 
-  private cleanup(vin: string, event: BreakInTrackedEvent, events: number[], cleanupMs: number): void {
-    const now = Date.now();
-    this.setEvents(vin, event, events.filter(t => now - t < cleanupMs));
+  private findLastOwnerActivityBefore(vin: string, timestamp: number): number | null {
+    const earlierActivityTimes = this.getVehicleTimes(vin, BreakInTrackedEvent.CenterDisplayOwnerActivity)
+      .filter(activityTime => activityTime < timestamp);
+
+    if (earlierActivityTimes.length === 0) {
+      return null;
+    }
+
+    return Math.max(...earlierActivityTimes);
+  }
+
+  private getVehicleTimes(vin: string, event: BreakInTrackedEvent): number[] {
+    return this.findRecentEvents(vin, event).map(trackedEvent => trackedEvent.vehicleTime);
+  }
+
+  private findRecentEvents(vin: string, event: BreakInTrackedEvent): TrackedEvent[] {
+    const trackedEvents = this.histories.get(vin)?.get(event) ?? [];
+    const oldestKeptReceivedAt = Date.now() - RETENTION_MS;
+
+    return trackedEvents.filter(trackedEvent => trackedEvent.receivedAt >= oldestKeptReceivedAt);
+  }
+
+  private saveEvents(vin: string, event: BreakInTrackedEvent, events: TrackedEvent[]): void {
+    const history = this.histories.get(vin) ?? new Map<BreakInTrackedEvent, TrackedEvent[]>();
+
+    history.set(event, events);
+    this.histories.set(vin, history);
   }
 }

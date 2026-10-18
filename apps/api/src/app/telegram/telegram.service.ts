@@ -12,6 +12,12 @@ import { RetryManager } from '../shared/retry-manager.service';
 import { NOTIFICATION_REQUEST_TIMEOUT_MS } from '../../config/notification-timeout.config';
 import { withTimeout } from '../../common/utils/with-timeout.util';
 import { resolveVehicleLabel } from '../../common/utils/vehicle-label.util';
+import { CounterMeasure } from '../alerts/enums/counter-measure.enum';
+import { describeCounterMeasures } from '../alerts/common/counter-measure-description.util';
+
+export interface TelegramDeliveryResult {
+  isDelivered: boolean;
+}
 
 type TelegramKeyboard = {
   inline_keyboard?: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
@@ -185,6 +191,27 @@ export class TelegramService implements OnModuleDestroy {
     }
   }
 
+  public async sendCounterMeasureNotice(
+    userId: string,
+    alertInfo: { vin: string, display_name?: string },
+    userLanguage: 'en' | 'fr',
+    counterMeasures: CounterMeasure[],
+  ): Promise<TelegramDeliveryResult> {
+    if (await this.telegramMuteService.checkIsNotificationMuted(userId)) {
+      this.logger.log(`🔕 Counter-measure notice suppressed for muted user ${userId}`);
+      return { isDelivered: false };
+    }
+
+    const chatId = await this.telegramContextService.getChatIdFromUserId(userId);
+
+    if (!chatId) {
+      return { isDelivered: false };
+    }
+
+    const message = this.formatCounterMeasureMessage(alertInfo, userLanguage, counterMeasures);
+    return { isDelivered: await this.sendCounterMeasureMessage(userId, chatId, message) };
+  }
+
   onModuleDestroy() {
     this.retryManager.stop();
   }
@@ -231,6 +258,37 @@ export class TelegramService implements OnModuleDestroy {
     this.logger.error(`❌ Failed to send ${messageType} to user: ${userId}:`, error);
   }
 
+  private async sendCounterMeasureMessage(userId: string, chatId: string, message: string): Promise<boolean> {
+    try {
+      return await this.sendMessageWithTimeout(chatId, message);
+    } catch (error) {
+      return await this.handleCounterMeasureMessageFailure(userId, chatId, message, error);
+    }
+  }
+
+  private async sendMessageWithTimeout(chatId: string, message: string): Promise<boolean> {
+    return await withTimeout(
+      () => this.telegramBotService.sendMessage(chatId, message),
+      NOTIFICATION_REQUEST_TIMEOUT_MS,
+      `Telegram counter-measure notice timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
+    );
+  }
+
+  private async handleCounterMeasureMessageFailure(userId: string, chatId: string, message: string, error: unknown): Promise<boolean> {
+    if (this.isBlockedBotFailure(error)) {
+      await this.failureHandler.handleFailure(error, userId);
+      return false;
+    }
+
+    if (!this.isRetryableTelegramError(error)) {
+      throw error;
+    }
+
+    this.logger.warn(`[TELEGRAM_RETRY] Counter-measure notice to user ${userId} scheduled for retry`);
+    this.retryManager.addToRetry(async () => { await this.sendMessageWithTimeout(chatId, message); }, error as Error, `telegram-counter-measure-${userId}-${Date.now()}`);
+    return false;
+  }
+
   private formatSentryAlertMessage(
     { display_name, vin }: { vin: string, display_name?: string },
     lng: 'en' | 'fr'
@@ -254,6 +312,20 @@ export class TelegramService implements OnModuleDestroy {
 🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${resolveVehicleLabel(display_name, vin)}
 
 <i>${i18n.t('Break-in attempt detected. Check your vehicle immediately!', { lng })}</i>
+    `.trim();
+  }
+
+  private formatCounterMeasureMessage(
+    { display_name, vin }: { vin: string, display_name?: string },
+    lng: 'en' | 'fr',
+    counterMeasures: CounterMeasure[]
+  ): string {
+    return `
+🛡️ <b>${i18n.t('RESPONSE TRIGGERED', { lng })}</b>
+
+🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${resolveVehicleLabel(display_name, vin)}
+
+<i>${describeCounterMeasures(counterMeasures, lng)}</i>
     `.trim();
   }
 }

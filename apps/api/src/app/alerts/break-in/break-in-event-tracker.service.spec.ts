@@ -1,122 +1,186 @@
 import { BreakInEventTrackerService, BreakInTrackedEvent } from './break-in-event-tracker.service';
 
 describe('The BreakInEventTrackerService class', () => {
-  let service: BreakInEventTrackerService;
   const fakeVin = 'fake-vin';
-  const baseTimestamp = 1000000;
+  const baseTimestamp = new Date('2026-10-17T12:00:00Z').getTime();
+  let service: BreakInEventTrackerService;
+
+  const trackLocks = (...offsets: number[]): void => {
+    offsets.forEach(offset => service.track(fakeVin, BreakInTrackedEvent.CenterDisplayLock, baseTimestamp + offset));
+  };
 
   beforeEach(() => {
+    jest.useFakeTimers({ now: baseTimestamp });
     service = new BreakInEventTrackerService();
-    jest.useFakeTimers();
-    jest.setSystemTime(baseTimestamp);
   });
 
   afterEach(() => {
     jest.useRealTimers();
   });
 
-  describe('The track() and hasEventAround() methods for ChargePortLatchDisengaged', () => {
-    describe('When tracking a latch event', () => {
+  describe('The track() method', () => {
+    describe('When the event is new', () => {
+      it('should report it as not tracked yet', () => {
+        expect(service.track(fakeVin, BreakInTrackedEvent.CenterDisplayLock, baseTimestamp)).toStrictEqual({ isAlreadyTracked: false });
+      });
+    });
+
+    describe('When the same event is replayed', () => {
       beforeEach(() => {
-        service.track(fakeVin, BreakInTrackedEvent.ChargePortLatchDisengaged, baseTimestamp);
+        service.track(fakeVin, BreakInTrackedEvent.CenterDisplayLock, baseTimestamp);
       });
 
-      it('should store the event timestamp and make it available for checking', () => {
-        const hasEvent = service.hasEventAround(fakeVin, BreakInTrackedEvent.ChargePortLatchDisengaged, baseTimestamp);
-        expect(hasEvent).toStrictEqual(true);
+      it('should report it as already tracked', () => {
+        expect(service.track(fakeVin, BreakInTrackedEvent.CenterDisplayLock, baseTimestamp)).toStrictEqual({ isAlreadyTracked: true });
+      });
+    });
+
+    describe('When the event was received more than three minutes ago', () => {
+      beforeEach(() => {
+        service.track(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp);
+        jest.advanceTimersByTime(180_001);
       });
 
-      it('should return true when the event is within 5000ms of the checked timestamp', () => {
-        const hasEvent = service.hasEventAround(fakeVin, BreakInTrackedEvent.ChargePortLatchDisengaged, baseTimestamp + 4900);
-        expect(hasEvent).toStrictEqual(true);
+      it('should forget it', () => {
+        expect(service.hasEventSince(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp)).toStrictEqual(false);
+      });
+    });
+
+    describe('When the event was received less than three minutes ago', () => {
+      beforeEach(() => {
+        service.track(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp);
+        jest.advanceTimersByTime(179_000);
       });
 
-      it('should return false when the event is outside 5000ms of the checked timestamp', () => {
-        const hasEvent = service.hasEventAround(fakeVin, BreakInTrackedEvent.ChargePortLatchDisengaged, baseTimestamp + 5100);
-        expect(hasEvent).toStrictEqual(false);
+      it('should keep it', () => {
+        expect(service.hasEventSince(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp)).toStrictEqual(true);
+      });
+    });
+
+    describe('When the vehicle clock is far ahead of the server clock', () => {
+      const farFutureTimestamp = baseTimestamp + 365 * 24 * 3_600_000;
+
+      beforeEach(() => {
+        service.track(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, farFutureTimestamp);
+        jest.advanceTimersByTime(180_001);
+      });
+
+      it('should forget the event three minutes after receiving it', () => {
+        expect(service.hasEventSince(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp)).toStrictEqual(false);
       });
     });
   });
 
-  describe('The track() and CenterDisplayOwnerActivity query methods', () => {
-    describe('When tracking CenterDisplay owner activity', () => {
-      beforeEach(() => {
-        service.track(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp);
-      });
+  describe('The hasEventAround() method', () => {
+    beforeEach(() => {
+      service.track(fakeVin, BreakInTrackedEvent.ChargePortLatchDisengaged, baseTimestamp);
+    });
 
-      it('should store the event timestamp and make it available for checking', () => {
-        const hasEvent = service.hasEventAround(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp);
-        expect(hasEvent).toStrictEqual(true);
+    describe('When the event is within 5000ms of the checked timestamp', () => {
+      it('should report the event', () => {
+        expect(service.hasEventAround(fakeVin, BreakInTrackedEvent.ChargePortLatchDisengaged, baseTimestamp + 4_900)).toStrictEqual(true);
       });
+    });
 
-      it('should return true when the event is within 5000ms of the checked timestamp', () => {
-        const hasEvent = service.hasEventAround(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp + 4900);
-        expect(hasEvent).toStrictEqual(true);
+    describe('When the event is more than 5000ms away from the checked timestamp', () => {
+      it('should not report the event', () => {
+        expect(service.hasEventAround(fakeVin, BreakInTrackedEvent.ChargePortLatchDisengaged, baseTimestamp + 5_100)).toStrictEqual(false);
       });
+    });
 
-      it('should return false when the event is outside 5000ms of the checked timestamp', () => {
-        const hasEvent = service.hasEventAround(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp + 5100);
-        expect(hasEvent).toStrictEqual(false);
+    describe('When another event type is checked', () => {
+      it('should not report the event', () => {
+        expect(service.hasEventAround(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp)).toStrictEqual(false);
       });
+    });
 
-      it('should return true when the event occurs after the checked timestamp within 5000ms', () => {
-        const hasEvent = service.hasEventAfter(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp - 4900);
-        expect(hasEvent).toStrictEqual(true);
-      });
-
-      it('should return false when the event occurs before the checked timestamp', () => {
-        const hasEvent = service.hasEventAfter(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp + 1);
-        expect(hasEvent).toStrictEqual(false);
+    describe('When another VIN is checked', () => {
+      it('should not report the event', () => {
+        expect(service.hasEventAround('other-vin', BreakInTrackedEvent.ChargePortLatchDisengaged, baseTimestamp)).toStrictEqual(false);
       });
     });
   });
 
-  describe('The event type isolation', () => {
-    describe('When only CenterDisplay owner activity was tracked', () => {
-      beforeEach(() => {
-        service.track(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp);
-      });
+  describe('The hasEventSince() method', () => {
+    beforeEach(() => {
+      service.track(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp + 45_000);
+    });
 
-      it('should not report a latch event', () => {
-        const hasEvent = service.hasEventAround(fakeVin, BreakInTrackedEvent.ChargePortLatchDisengaged, baseTimestamp);
-        expect(hasEvent).toStrictEqual(false);
+    describe('When the event happened after the checked timestamp', () => {
+      it('should report the event however late it is', () => {
+        expect(service.hasEventSince(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp)).toStrictEqual(true);
       });
     });
 
-    describe('When only a latch event was tracked', () => {
-      beforeEach(() => {
-        service.track(fakeVin, BreakInTrackedEvent.ChargePortLatchDisengaged, baseTimestamp);
-      });
-
-      it('should not report CenterDisplay owner activity', () => {
-        const hasEvent = service.hasEventAround(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp);
-        expect(hasEvent).toStrictEqual(false);
-      });
-    });
-
-    describe('When events are tracked for different VINs', () => {
-      beforeEach(() => {
-        service.track(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp);
-      });
-
-      it('should not report the event for another VIN', () => {
-        const hasEvent = service.hasEventAround('other-vin', BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp);
-        expect(hasEvent).toStrictEqual(false);
+    describe('When the event happened before the checked timestamp', () => {
+      it('should not report the event', () => {
+        expect(service.hasEventSince(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp + 46_000)).toStrictEqual(false);
       });
     });
   });
 
-  describe('The cleanup mechanism', () => {
-    describe('When tracking an event older than its cleanupMs', () => {
+  describe('The findRepeatedPullTrigger() method', () => {
+    describe('When there is a single lock', () => {
       beforeEach(() => {
-        service.track(fakeVin, BreakInTrackedEvent.ChargePortLatchDisengaged, baseTimestamp - 20000);
+        trackLocks(0);
       });
 
-      it('should clean up the old event after a query triggers the lazy cleanup', () => {
-        service.hasEventAround(fakeVin, BreakInTrackedEvent.ChargePortLatchDisengaged, baseTimestamp);
+      it('should not trigger', () => {
+        expect(service.findRepeatedPullTrigger(fakeVin, baseTimestamp)).toBeNull();
+      });
+    });
 
-        const hasEvent = service.hasEventAround(fakeVin, BreakInTrackedEvent.ChargePortLatchDisengaged, baseTimestamp - 20000);
-        expect(hasEvent).toStrictEqual(false);
+    describe('When a second lock follows within a minute', () => {
+      beforeEach(() => {
+        trackLocks(0, 15_000);
+      });
+
+      it('should trigger on the second lock, starting the burst at the first one', () => {
+        expect(service.findRepeatedPullTrigger(fakeVin, baseTimestamp + 15_000)).toStrictEqual({
+          burstStartTime: baseTimestamp,
+          lockTime: baseTimestamp + 15_000,
+        });
+      });
+    });
+
+    describe('When a third lock follows within the same minute', () => {
+      beforeEach(() => {
+        trackLocks(0, 15_000, 30_000);
+      });
+
+      it('should not trigger again', () => {
+        expect(service.findRepeatedPullTrigger(fakeVin, baseTimestamp + 30_000)).toBeNull();
+      });
+    });
+
+    describe('When the two locks are more than a minute apart', () => {
+      beforeEach(() => {
+        trackLocks(0, 61_000);
+      });
+
+      it('should not trigger', () => {
+        expect(service.findRepeatedPullTrigger(fakeVin, baseTimestamp + 61_000)).toBeNull();
+      });
+    });
+
+    describe('When the owner was active between the two locks', () => {
+      beforeEach(() => {
+        trackLocks(0);
+        service.track(fakeVin, BreakInTrackedEvent.CenterDisplayOwnerActivity, baseTimestamp + 10_000);
+        trackLocks(50_000);
+      });
+
+      it('should not count the lock before the owner activity', () => {
+        expect(service.findRepeatedPullTrigger(fakeVin, baseTimestamp + 50_000)).toBeNull();
+      });
+
+      it('should start a new burst after the owner activity', () => {
+        trackLocks(55_000);
+
+        expect(service.findRepeatedPullTrigger(fakeVin, baseTimestamp + 55_000)).toStrictEqual({
+          burstStartTime: baseTimestamp + 50_000,
+          lockTime: baseTimestamp + 55_000,
+        });
       });
     });
   });

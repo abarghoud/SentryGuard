@@ -6,6 +6,9 @@ import { TeslaVehicleCommandService } from '../telemetry/services/tesla-vehicle-
 import { LatencyGuardService } from '../../common/services/latency-guard.service';
 import { Vehicle } from '../../entities/vehicle.entity';
 import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
+import { SentryModeStateTrackerService } from './sentry-mode-state-tracker.service';
+import { DEFAULT_ALERT_SOUND } from '../alerts/enums/alert-sound.enum';
+import { DEFAULT_BREAK_IN_REACTION_DELAY_SECONDS, DEFAULT_BREAK_IN_SENSITIVITY } from '@sentryguard/vehicles-domain';
 
 describe('The AlertsAutoSentryService class', () => {
   let service: AlertsAutoSentryService;
@@ -15,6 +18,7 @@ describe('The AlertsAutoSentryService class', () => {
   };
   let mockTeslaVehicleCommandService: MockProxy<TeslaVehicleCommandService>;
   let mockLatencyGuardService: MockProxy<LatencyGuardService>;
+  let mockSentryModeStateTracker: MockProxy<SentryModeStateTrackerService>;
 
   const fakeVehicle: Vehicle = {
     id: 'vehicle-1',
@@ -24,6 +28,10 @@ describe('The AlertsAutoSentryService class', () => {
     break_in_monitoring_enabled: true,
     break_in_offensive_response: OffensiveResponse.DISABLED,
     break_in_auto_sentry_mode_enabled: false,
+    sentry_alert_sound: DEFAULT_ALERT_SOUND,
+    break_in_alert_sound: DEFAULT_ALERT_SOUND,
+    break_in_sensitivity: DEFAULT_BREAK_IN_SENSITIVITY,
+    break_in_reaction_delay_seconds: DEFAULT_BREAK_IN_REACTION_DELAY_SECONDS,
     display_name: 'Model 3',
     created_at: new Date(),
     updated_at: new Date(),
@@ -34,6 +42,8 @@ describe('The AlertsAutoSentryService class', () => {
     mockTeslaVehicleCommandService = mock<TeslaVehicleCommandService>();
     mockLatencyGuardService = mock<LatencyGuardService>();
     mockLatencyGuardService.checkLatency.mockReturnValue(false);
+    mockSentryModeStateTracker = mock<SentryModeStateTrackerService>();
+    mockSentryModeStateTracker.isSentryModeActive.mockReturnValue(false);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -41,6 +51,7 @@ describe('The AlertsAutoSentryService class', () => {
         { provide: getRepositoryToken(Vehicle), useValue: mockVehicleRepository },
         { provide: TeslaVehicleCommandService, useValue: mockTeslaVehicleCommandService },
         { provide: LatencyGuardService, useValue: mockLatencyGuardService },
+        { provide: SentryModeStateTrackerService, useValue: mockSentryModeStateTracker },
       ],
     }).compile();
 
@@ -91,6 +102,10 @@ describe('The AlertsAutoSentryService class', () => {
         mockTeslaVehicleCommandService.setSentryMode.mockResolvedValue({ success: true });
       });
 
+      it('should report that Sentry Mode was activated', async () => {
+        expect(await service.handleBreakInAutoSentry('5YJ3E1EA123456789', ['user-1'], createdAt)).toStrictEqual({ isSentryModeActivated: true });
+      });
+
       it('should trigger set_sentry_mode', async () => {
         await service.handleBreakInAutoSentry('5YJ3E1EA123456789', ['user-1'], createdAt);
 
@@ -98,6 +113,40 @@ describe('The AlertsAutoSentryService class', () => {
           '5YJ3E1EA123456789',
           'user-1',
           true,
+        );
+      });
+    });
+
+    describe('When Sentry Mode is already active on the vehicle', () => {
+      beforeEach(async () => {
+        mockSentryModeStateTracker.isSentryModeActive.mockReturnValue(true);
+        mockVehicleRepository.findOne.mockResolvedValue({
+          ...fakeVehicle,
+          break_in_auto_sentry_mode_enabled: true,
+        });
+
+        await service.handleBreakInAutoSentry('5YJ3E1EA123456789', ['user-1'], createdAt);
+      });
+
+      it('should not send a redundant set_sentry_mode command', () => {
+        expect(mockTeslaVehicleCommandService.setSentryMode).not.toHaveBeenCalled();
+      });
+
+      it('should report that Sentry Mode was not activated by this alert', async () => {
+        expect(await service.handleBreakInAutoSentry('5YJ3E1EA123456789', ['user-1'], createdAt)).toStrictEqual({ isSentryModeActivated: false });
+      });
+    });
+
+    describe('When the alert was intentionally delayed by the reaction delay', () => {
+      beforeEach(async () => {
+        mockVehicleRepository.findOne.mockResolvedValue(null);
+
+        await service.handleBreakInAutoSentry('5YJ3E1EA123456789', ['user-1'], createdAt, 20_000);
+      });
+
+      it('should exclude the reaction delay from the latency check', () => {
+        expect(mockLatencyGuardService.checkLatency).toHaveBeenCalledWith(
+          expect.objectContaining({ intentionalDelayMs: 20_000 })
         );
       });
     });
@@ -197,6 +246,7 @@ describe('The AlertsAutoSentryService class', () => {
           defaultThresholdMs: 60000,
           alertPrefix: 'AUTO_SENTRY_LATENCY_ALERT',
           actionName: 'Auto sentry',
+          intentionalDelayMs: 0,
         });
       });
     });
