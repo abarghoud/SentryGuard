@@ -1,6 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 
 import { KafkaLogContextService } from '../../../common/services/kafka-log-context.service';
 import { AlertEventSeverity } from '../../../entities/alert-event.entity';
@@ -11,6 +9,8 @@ import { NotificationsService, PushDeliveryResult } from '../../notifications/no
 import { TelegramDeliveryResult, TelegramService } from '../../telegram/telegram.service';
 import { UserLanguageService } from '../../user/user-language.service';
 import { CounterMeasure } from '../enums/counter-measure.enum';
+
+export type CounterMeasureNoticeRecipient = Pick<Vehicle, 'display_name' | 'userId' | 'vin'>;
 
 type ChannelOutcome = PromiseSettledResult<PushDeliveryResult | TelegramDeliveryResult>;
 
@@ -33,24 +33,22 @@ export class CounterMeasureNotifierService {
     private readonly notificationsService: NotificationsService,
     private readonly telegramService: TelegramService,
     private readonly notificationQueueService: NotificationQueueService,
-    private readonly kafkaLogContextService: KafkaLogContextService,
-    @InjectRepository(Vehicle)
-    private readonly vehicleRepository: Repository<Vehicle>
+    private readonly kafkaLogContextService: KafkaLogContextService
   ) {}
 
-  public notify(vin: string, userIds: string[], counterMeasures: CounterMeasure[], correlationId?: string): void {
+  public notify(vin: string, recipients: CounterMeasureNoticeRecipient[], counterMeasures: CounterMeasure[], correlationId?: string): void {
     const logContext = { correlationId: correlationId ?? `counter-measure-notice-${vin}`, vin };
 
-    for (const userId of userIds) {
+    for (const recipient of recipients) {
       this.notificationQueueService.enqueue(
-        () => this.kafkaLogContextService.runWithContext(logContext, () => this.notifyUser(vin, userId, counterMeasures)),
-        { correlationId, label: `counter_measure_notice:${userId}`, vin }
+        () => this.kafkaLogContextService.runWithContext(logContext, () => this.notifyUser(recipient, counterMeasures)),
+        { correlationId, label: `counter_measure_notice:${recipient.userId}`, vin }
       );
     }
   }
 
-  private async notifyUser(vin: string, userId: string, counterMeasures: CounterMeasure[]): Promise<void> {
-    const notice = await this.buildNotice(vin, userId, counterMeasures);
+  private async notifyUser(recipient: CounterMeasureNoticeRecipient, counterMeasures: CounterMeasure[]): Promise<void> {
+    const notice = await this.buildNotice(recipient, counterMeasures);
     const [push, telegram] = await Promise.allSettled([this.sendPush(notice), this.sendTelegram(notice)]);
 
     this.logOutcome(notice, { push, telegram });
@@ -79,13 +77,10 @@ export class CounterMeasureNotifierService {
     return Object.keys(results).filter(channel => matches(results[channel]));
   }
 
-  private async buildNotice(vin: string, userId: string, counterMeasures: CounterMeasure[]): Promise<CounterMeasureNotice> {
-    const [userLanguage, vehicle] = await Promise.all([
-      this.userLanguageService.getUserLanguage(userId),
-      this.vehicleRepository.findOne({ select: { display_name: true }, where: { userId, vin } }),
-    ]);
+  private async buildNotice(recipient: CounterMeasureNoticeRecipient, counterMeasures: CounterMeasure[]): Promise<CounterMeasureNotice> {
+    const userLanguage = await this.userLanguageService.getUserLanguage(recipient.userId);
 
-    return { counterMeasures, displayName: vehicle?.display_name ?? undefined, userId, userLanguage, vin };
+    return { counterMeasures, displayName: recipient.display_name, userId: recipient.userId, userLanguage, vin: recipient.vin };
   }
 
   private async sendPush(notice: CounterMeasureNotice): Promise<PushDeliveryResult> {

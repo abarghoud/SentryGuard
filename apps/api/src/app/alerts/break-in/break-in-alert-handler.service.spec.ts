@@ -2,7 +2,11 @@ import { mock, MockProxy } from 'jest-mock-extended';
 
 import { BreakInAlertHandlerService } from './break-in-alert-handler.service';
 import { BreakInEventTrackerService } from './break-in-event-tracker.service';
-import { BreakInDetectionGroup, VehicleBreakInDetectionSettingsService } from './vehicle-break-in-detection-settings.service';
+import {
+  BreakInDetectionGroup,
+  BreakInDetectionVehicle,
+  VehicleBreakInDetectionSettingsService,
+} from './vehicle-break-in-detection-settings.service';
 import { CounterMeasureNotifierService } from './counter-measure-notifier.service';
 import { VehicleAlertNotifierService } from '../common/vehicle-alert-notifier.service';
 import { AlertsOffensiveResponseService } from '../../offensive-response/alerts-offensive-response.service';
@@ -17,17 +21,25 @@ import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-even
 describe('The BreakInAlertHandlerService class', () => {
   const fakeVin = 'XP7YGCER1TB919128';
   const fakeLockTime = new Date('2026-10-16T12:00:00Z').getTime();
+  const fakeVehicle: BreakInDetectionVehicle = {
+    break_in_auto_sentry_mode_enabled: true,
+    break_in_offensive_response: OffensiveResponse.HONK,
+    display_name: 'My Tesla',
+    userId: 'user-1',
+    vin: fakeVin,
+  };
+  const otherOwnerVehicle: BreakInDetectionVehicle = { ...fakeVehicle, display_name: 'Our Tesla', userId: 'user-2' };
   const defaultGroup: BreakInDetectionGroup = {
     hasCounterMeasures: true,
     reactionDelaySeconds: 5,
     sensitivity: BreakInSensitivity.SinglePull,
-    userIds: ['user-1'],
+    vehicles: [fakeVehicle],
   };
   const repeatedPullsGroup: BreakInDetectionGroup = {
     hasCounterMeasures: true,
     reactionDelaySeconds: 20,
     sensitivity: BreakInSensitivity.RepeatedPulls,
-    userIds: ['user-1'],
+    vehicles: [fakeVehicle],
   };
 
   let service: BreakInAlertHandlerService;
@@ -217,7 +229,7 @@ describe('The BreakInAlertHandlerService class', () => {
       it('should trigger the offensive response with the reaction delay', () => {
         expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).toHaveBeenCalledWith(
           fakeVin,
-          ['user-1'],
+          [fakeVehicle],
           new Date(fakeLockTime).toISOString(),
           5_000
         );
@@ -226,7 +238,7 @@ describe('The BreakInAlertHandlerService class', () => {
       it('should trigger the auto sentry with the reaction delay', () => {
         expect(mockAutoSentryService.handleBreakInAutoSentry).toHaveBeenCalledWith(
           fakeVin,
-          ['user-1'],
+          [fakeVehicle],
           new Date(fakeLockTime).toISOString(),
           5_000
         );
@@ -241,7 +253,7 @@ describe('The BreakInAlertHandlerService class', () => {
       it('should tell the owners which counter-measures went off', () => {
         expect(mockCounterMeasureNotifier.notify).toHaveBeenCalledWith(
           fakeVin,
-          ['user-1'],
+          [fakeVehicle],
           [CounterMeasure.Honk, CounterMeasure.AutoSentry],
           'correlation-CenterDisplay-0'
         );
@@ -256,7 +268,7 @@ describe('The BreakInAlertHandlerService class', () => {
       });
 
       it('should only mention the fart sound', () => {
-        expect(mockCounterMeasureNotifier.notify).toHaveBeenCalledWith(fakeVin, ['user-1'], [CounterMeasure.Fart], 'correlation-CenterDisplay-0');
+        expect(mockCounterMeasureNotifier.notify).toHaveBeenCalledWith(fakeVin, [fakeVehicle], [CounterMeasure.Fart], 'correlation-CenterDisplay-0');
       });
     });
 
@@ -279,7 +291,7 @@ describe('The BreakInAlertHandlerService class', () => {
       });
 
       it('should only mention the counter-measures that went off', () => {
-        expect(mockCounterMeasureNotifier.notify).toHaveBeenCalledWith(fakeVin, ['user-1'], [CounterMeasure.AutoSentry], 'correlation-CenterDisplay-0');
+        expect(mockCounterMeasureNotifier.notify).toHaveBeenCalledWith(fakeVin, [fakeVehicle], [CounterMeasure.AutoSentry], 'correlation-CenterDisplay-0');
       });
     });
 
@@ -325,7 +337,7 @@ describe('The BreakInAlertHandlerService class', () => {
       beforeEach(async () => {
         mockDetectionSettingsService.findGroupsByVin.mockResolvedValue([
           defaultGroup,
-          { hasCounterMeasures: false, reactionDelaySeconds: 3, sensitivity: BreakInSensitivity.SinglePull, userIds: ['user-2'] },
+          { hasCounterMeasures: false, reactionDelaySeconds: 3, sensitivity: BreakInSensitivity.SinglePull, vehicles: [otherOwnerVehicle] },
         ]);
         await handleSequence([{ message: buildDisplayMessage('DisplayStateLock'), waitMs: 5_000 }]);
       });
@@ -336,7 +348,7 @@ describe('The BreakInAlertHandlerService class', () => {
 
       it('should only trigger the counter-measures of the co-owners who enabled them', () => {
         expect(mockOffensiveResponseService.handleBreakInOffensiveResponse.mock.calls).toStrictEqual([
-          [fakeVin, ['user-1'], new Date(fakeLockTime).toISOString(), 5_000],
+          [fakeVin, [fakeVehicle], new Date(fakeLockTime).toISOString(), 5_000],
         ]);
       });
     });
@@ -476,7 +488,7 @@ describe('The BreakInAlertHandlerService class', () => {
         it('should trigger the offensive response once, after the reaction delay of the second pull', () => {
           expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).toHaveBeenCalledWith(
             fakeVin,
-            ['user-1'],
+            [fakeVehicle],
             new Date(fakeLockTime + 15_000).toISOString(),
             20_000
           );
@@ -530,6 +542,25 @@ describe('The BreakInAlertHandlerService class', () => {
         });
       });
 
+      describe('When the first lock came from the charge port', () => {
+        beforeEach(async () => {
+          await handleSequence([
+            { message: buildDisplayMessage('DisplayStateLock'), waitMs: 1_000 },
+            { message: buildLatchMessage(1_000), waitMs: 9_000 },
+            { message: buildDisplayMessage('DisplayStateOff', 10_000), waitMs: 5_000 },
+            { message: buildDisplayMessage('DisplayStateLock', 15_000), waitMs: 30_000 },
+          ]);
+        });
+
+        it('should not count the charge port lock as a pull', () => {
+          expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).not.toHaveBeenCalled();
+        });
+
+        it('should still notify the owners for the handle pull', () => {
+          expect(mockAlertNotifier.dispatch).toHaveBeenCalledTimes(1);
+        });
+      });
+
       describe('When the handle is pulled twice after the owner got in and left', () => {
         beforeEach(async () => {
           await handleSequence([
@@ -544,7 +575,7 @@ describe('The BreakInAlertHandlerService class', () => {
 
         it('should trigger the offensive response once, on the second pull after the owner left', () => {
           expect(mockOffensiveResponseService.handleBreakInOffensiveResponse.mock.calls).toStrictEqual([
-            [fakeVin, ['user-1'], new Date(fakeLockTime + 58_000).toISOString(), 20_000],
+            [fakeVin, [fakeVehicle], new Date(fakeLockTime + 58_000).toISOString(), 20_000],
           ]);
         });
       });
@@ -569,7 +600,7 @@ describe('The BreakInAlertHandlerService class', () => {
     });
 
     describe('When the VIN is shared by users with different settings', () => {
-      const otherUserGroup: BreakInDetectionGroup = { ...repeatedPullsGroup, userIds: ['user-2'] };
+      const otherUserGroup: BreakInDetectionGroup = { ...repeatedPullsGroup, vehicles: [otherOwnerVehicle] };
 
       beforeEach(async () => {
         mockDetectionSettingsService.findGroupsByVin.mockResolvedValue([defaultGroup, otherUserGroup]);
@@ -583,7 +614,7 @@ describe('The BreakInAlertHandlerService class', () => {
       it('should trigger the offensive response only for the users whose settings matched', () => {
         expect(mockOffensiveResponseService.handleBreakInOffensiveResponse).toHaveBeenCalledWith(
           fakeVin,
-          ['user-1'],
+          [fakeVehicle],
           new Date(fakeLockTime).toISOString(),
           5_000
         );

@@ -35,7 +35,6 @@ import { getTeslaScopeChangeUrlUseCase } from '../../features/auth/di';
 import { OffensiveResponse, Vehicle } from '../../features/vehicles/domain/entities';
 import {
   canConfigureCounterMeasures,
-  hasBreakInCounterMeasure,
   requestVehicleCommandsScope,
   resolveVehicleAlertSoundId,
   shouldShowBreakInDetection,
@@ -168,46 +167,6 @@ describe('The resolveVehicleAlertSoundId() function', () => {
   });
 });
 
-describe('The hasBreakInCounterMeasure() function', () => {
-  describe('When neither the offensive response nor auto Sentry Mode is enabled', () => {
-    it('should report no counter-measure', () => {
-      const vehicle = { break_in_auto_sentry_mode_enabled: false, break_in_offensive_response: OffensiveResponse.Disabled } as Vehicle;
-
-      expect(hasBreakInCounterMeasure(vehicle)).toBe(false);
-    });
-  });
-
-  describe('When the vehicle stores no counter-measure setting', () => {
-    it('should report no counter-measure', () => {
-      expect(hasBreakInCounterMeasure({} as Vehicle)).toBe(false);
-    });
-  });
-
-  describe('When the offensive response is enabled', () => {
-    it('should report a counter-measure', () => {
-      const vehicle = { break_in_auto_sentry_mode_enabled: false, break_in_offensive_response: OffensiveResponse.Fart } as Vehicle;
-
-      expect(hasBreakInCounterMeasure(vehicle)).toBe(true);
-    });
-  });
-
-  describe('When only auto Sentry Mode is enabled', () => {
-    it('should report a counter-measure', () => {
-      const vehicle = { break_in_auto_sentry_mode_enabled: true, break_in_offensive_response: OffensiveResponse.Disabled } as Vehicle;
-
-      expect(hasBreakInCounterMeasure(vehicle)).toBe(true);
-    });
-  });
-
-  describe('When the offensive response holds an unknown value', () => {
-    it('should report no counter-measure', () => {
-      const vehicle = { break_in_auto_sentry_mode_enabled: false, break_in_offensive_response: 'LASERS' } as Vehicle;
-
-      expect(hasBreakInCounterMeasure(vehicle)).toBe(false);
-    });
-  });
-});
-
 describe('The canConfigureCounterMeasures() function', () => {
   const monitoredVehicle = { break_in_monitoring_enabled: true } as Vehicle;
 
@@ -231,17 +190,42 @@ describe('The canConfigureCounterMeasures() function', () => {
 });
 
 describe('The shouldShowBreakInDetection() function', () => {
-  describe('When a counter-measure is enabled on a configurable vehicle', () => {
+  const buildMonitoredVehicle = (counterMeasures: Partial<Vehicle>): Vehicle =>
+    ({ break_in_monitoring_enabled: true, ...counterMeasures }) as Vehicle;
+
+  describe('When the offensive response is enabled on a configurable vehicle', () => {
     it('should show the settings', () => {
-      const vehicle = { break_in_monitoring_enabled: true, break_in_offensive_response: OffensiveResponse.Honk } as Vehicle;
+      const vehicle = buildMonitoredVehicle({ break_in_auto_sentry_mode_enabled: false, break_in_offensive_response: OffensiveResponse.Fart });
 
       expect(shouldShowBreakInDetection(vehicle, true)).toBe(true);
     });
   });
 
-  describe('When no counter-measure is enabled', () => {
+  describe('When only auto Sentry Mode is enabled', () => {
+    it('should show the settings', () => {
+      const vehicle = buildMonitoredVehicle({ break_in_auto_sentry_mode_enabled: true, break_in_offensive_response: OffensiveResponse.Disabled });
+
+      expect(shouldShowBreakInDetection(vehicle, true)).toBe(true);
+    });
+  });
+
+  describe('When neither the offensive response nor auto Sentry Mode is enabled', () => {
     it('should hide the settings', () => {
-      const vehicle = { break_in_monitoring_enabled: true, break_in_offensive_response: OffensiveResponse.Disabled } as Vehicle;
+      const vehicle = buildMonitoredVehicle({ break_in_auto_sentry_mode_enabled: false, break_in_offensive_response: OffensiveResponse.Disabled });
+
+      expect(shouldShowBreakInDetection(vehicle, true)).toBe(false);
+    });
+  });
+
+  describe('When the vehicle stores no counter-measure setting', () => {
+    it('should hide the settings', () => {
+      expect(shouldShowBreakInDetection(buildMonitoredVehicle({}), true)).toBe(false);
+    });
+  });
+
+  describe('When the offensive response holds an unknown value', () => {
+    it('should hide the settings', () => {
+      const vehicle = buildMonitoredVehicle({ break_in_auto_sentry_mode_enabled: false, break_in_offensive_response: 'LASERS' });
 
       expect(shouldShowBreakInDetection(vehicle, true)).toBe(false);
     });

@@ -12,7 +12,11 @@ import { CounterMeasure } from '../enums/counter-measure.enum';
 import { OffensiveResponse } from '../enums/offensive-response.enum';
 
 import { BreakInEventTrackerService, BreakInTrackedEvent, BreakInTrigger } from './break-in-event-tracker.service';
-import { BreakInDetectionGroup, VehicleBreakInDetectionSettingsService } from './vehicle-break-in-detection-settings.service';
+import {
+  BreakInDetectionGroup,
+  BreakInDetectionVehicle,
+  VehicleBreakInDetectionSettingsService,
+} from './vehicle-break-in-detection-settings.service';
 import { CounterMeasureNotifierService } from './counter-measure-notifier.service';
 
 const OFFENSIVE_COUNTER_MEASURES: Partial<Record<OffensiveResponse, CounterMeasure>> = {
@@ -196,7 +200,7 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
     const counterMeasures = await this.triggerCounterMeasures(vin, trigger, group);
 
     if (counterMeasures.length > 0) {
-      this.counterMeasureNotifier.notify(vin, group.userIds, counterMeasures, correlationId);
+      this.counterMeasureNotifier.notify(vin, group.vehicles, counterMeasures, correlationId);
     }
   }
 
@@ -205,8 +209,8 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
     const reactionDelayMs = group.reactionDelaySeconds * 1000;
 
     const [offensiveResponse, { isSentryModeActivated }] = await Promise.all([
-      this.runOffensiveResponse(vin, group.userIds, createdAt, reactionDelayMs),
-      this.runAutoSentry(vin, group.userIds, createdAt, reactionDelayMs),
+      this.runOffensiveResponse(vin, group.vehicles, createdAt, reactionDelayMs),
+      this.runAutoSentry(vin, group.vehicles, createdAt, reactionDelayMs),
     ]);
 
     return this.listExecutedCounterMeasures(offensiveResponse, isSentryModeActivated);
@@ -214,21 +218,21 @@ export class BreakInAlertHandlerService implements TelemetryEventHandler {
 
   private async runOffensiveResponse(
     vin: string,
-    userIds: string[],
+    vehicles: BreakInDetectionVehicle[],
     createdAt: string,
     reactionDelayMs: number
   ): Promise<OffensiveResponse | null> {
     try {
-      return await this.offensiveResponseService.handleBreakInOffensiveResponse(vin, userIds, createdAt, reactionDelayMs);
+      return await this.offensiveResponseService.handleBreakInOffensiveResponse(vin, vehicles, createdAt, reactionDelayMs);
     } catch (error) {
       this.logger.warn(`[OFFENSIVE] Failed to execute offensive response for VIN ${vin}`, error);
       return null;
     }
   }
 
-  private async runAutoSentry(vin: string, userIds: string[], createdAt: string, reactionDelayMs: number): Promise<AutoSentryResult> {
+  private async runAutoSentry(vin: string, vehicles: BreakInDetectionVehicle[], createdAt: string, reactionDelayMs: number): Promise<AutoSentryResult> {
     try {
-      return await this.autoSentryService.handleBreakInAutoSentry(vin, userIds, createdAt, reactionDelayMs);
+      return await this.autoSentryService.handleBreakInAutoSentry(vin, vehicles, createdAt, reactionDelayMs);
     } catch (error) {
       this.logger.warn(`[AUTO_SENTRY] Failed to execute auto sentry for VIN ${vin}`, error);
       return { isSentryModeActivated: false };

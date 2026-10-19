@@ -1,11 +1,7 @@
 import * as WebBrowser from 'expo-web-browser';
 import type { JSX } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import {
-  BREAK_IN_REACTION_DELAYS_SECONDS,
-  BreakInSensitivity,
-  readBreakInDetection,
-} from '@sentryguard/vehicles-domain';
+import { BreakInSensitivity } from '@sentryguard/vehicles-domain';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -14,11 +10,9 @@ import { TextVariant } from '../core/design/typography';
 import { useThemeColors } from '../core/theme';
 import { AppSwitch, AppText, GlassButton, GlassButtonVariant, Icon, ListRow, ListSection, SegmentedControl, Surface, VinMask } from '../core/ui';
 import {
-  canConfigureCounterMeasures,
   confirmTelemetryDeletion,
   openVirtualKey,
   resolveVehicleAlertSoundId,
-  shouldShowBreakInDetection,
 } from './vehicle-detail/vehicle-detail.helpers';
 import { OffensiveResponse } from '../features/vehicles/domain/entities';
 import { resolveAlertSound } from '../features/notifications/domain/alert-sounds';
@@ -32,9 +26,15 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
   const {
     actionMutation,
     alertSoundMutation,
-    breakInDetectionMutation,
+    breakInDetection,
+    breakInReactionDelayOptions,
+    breakInSensitivityOptions,
     feedback,
     isActionRunning,
+    isBreakInDetectionVisible,
+    isCounterMeasureConfigurable,
+    onBreakInReactionDelayChange,
+    onBreakInSensitivityChange,
     openSoundSelector,
     scopeMutation,
     setFeedback,
@@ -57,9 +57,6 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
   const isProtected = vehicle.sentry_mode_monitoring_enabled || vehicle.break_in_monitoring_enabled;
   const statusSurface = isProtected ? colors.successFill : colors.fill;
   const statusGlyph = isProtected ? colors.onSuccess : colors.secondaryLabel;
-  const breakInDetection = readBreakInDetection(vehicle);
-  const isCounterMeasureConfigurable = canConfigureCounterMeasures(vehicle, vehicleCommandsAuthorized);
-  const isBreakInDetectionVisible = shouldShowBreakInDetection(vehicle, vehicleCommandsAuthorized);
 
   return (
     <ScrollView
@@ -181,11 +178,8 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
             <AppText variant={TextVariant.Body}>{t('vehicle.breakInSensitivity')}</AppText>
             <SegmentedControl
               value={breakInDetection.sensitivity}
-              onChange={(sensitivity) => breakInDetectionMutation.mutate({ ...breakInDetection, sensitivity })}
-              options={[
-                { label: t('vehicle.breakInSinglePull'), value: BreakInSensitivity.SinglePull },
-                { label: t('vehicle.breakInRepeatedPulls'), value: BreakInSensitivity.RepeatedPulls },
-              ]}
+              onChange={onBreakInSensitivityChange}
+              options={breakInSensitivityOptions}
             />
             <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
               {breakInDetection.sensitivity === BreakInSensitivity.RepeatedPulls
@@ -197,13 +191,8 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
             <AppText variant={TextVariant.Body}>{t('vehicle.breakInReactionDelay')}</AppText>
             <SegmentedControl
               value={String(breakInDetection.reactionDelaySeconds)}
-              onChange={(value) =>
-                breakInDetectionMutation.mutate({ ...breakInDetection, reactionDelaySeconds: Number(value) })
-              }
-              options={BREAK_IN_REACTION_DELAYS_SECONDS.map((seconds) => ({
-                label: t('vehicle.breakInReactionDelaySeconds', { seconds }),
-                value: String(seconds),
-              }))}
+              onChange={onBreakInReactionDelayChange}
+              options={breakInReactionDelayOptions}
             />
             <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
               {t('vehicle.breakInReactionDelayDescription')}

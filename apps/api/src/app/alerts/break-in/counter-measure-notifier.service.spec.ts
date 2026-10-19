@@ -1,11 +1,9 @@
 import { Logger } from '@nestjs/common';
 import { mock, MockProxy } from 'jest-mock-extended';
-import { Repository } from 'typeorm';
 
-import { CounterMeasureNotifierService } from './counter-measure-notifier.service';
+import { CounterMeasureNotifierService, CounterMeasureNoticeRecipient } from './counter-measure-notifier.service';
 import { KafkaLogContextService } from '../../../common/services/kafka-log-context.service';
 import { AlertEventSeverity } from '../../../entities/alert-event.entity';
-import { Vehicle } from '../../../entities/vehicle.entity';
 import { NotificationQueueService } from '../../notifications/notification-queue.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { TelegramService } from '../../telegram/telegram.service';
@@ -15,10 +13,14 @@ import { CounterMeasure } from '../enums/counter-measure.enum';
 describe('The CounterMeasureNotifierService class', () => {
   const fakeVin = 'XP7YGCER1TB919128';
   const counterMeasures = [CounterMeasure.Honk, CounterMeasure.AutoSentry];
+  const buildRecipient = (userId: string, displayName?: string): CounterMeasureNoticeRecipient => ({
+    display_name: displayName,
+    userId,
+    vin: fakeVin,
+  });
   let mockUserLanguageService: MockProxy<UserLanguageService>;
   let mockNotificationsService: MockProxy<NotificationsService>;
   let mockTelegramService: MockProxy<TelegramService>;
-  let mockVehicleRepository: MockProxy<Repository<Vehicle>>;
   let mockNotificationQueueService: MockProxy<NotificationQueueService>;
   let mockKafkaLogContextService: MockProxy<KafkaLogContextService>;
   let queuedNotices: Array<() => Promise<void>>;
@@ -26,8 +28,8 @@ describe('The CounterMeasureNotifierService class', () => {
   let loggerWarnSpy: jest.SpyInstance;
   let service: CounterMeasureNotifierService;
 
-  const notifyAndDeliver = async (userIds: string[]): Promise<void> => {
-    service.notify(fakeVin, userIds, counterMeasures, 'correlation-1');
+  const notifyAndDeliver = async (recipients: CounterMeasureNoticeRecipient[]): Promise<void> => {
+    service.notify(fakeVin, recipients, counterMeasures, 'correlation-1');
     await Promise.all(queuedNotices.map(notice => notice()));
   };
 
@@ -51,16 +53,13 @@ describe('The CounterMeasureNotifierService class', () => {
     mockNotificationsService.shouldSendTelegram.mockResolvedValue(true);
     mockTelegramService = mock<TelegramService>();
     mockTelegramService.sendCounterMeasureNotice.mockResolvedValue({ isDelivered: true });
-    mockVehicleRepository = mock<Repository<Vehicle>>();
-    mockVehicleRepository.findOne.mockResolvedValue({ display_name: 'Ma Tesla' } as Vehicle);
 
     service = new CounterMeasureNotifierService(
       mockUserLanguageService,
       mockNotificationsService,
       mockTelegramService,
       mockNotificationQueueService,
-      mockKafkaLogContextService,
-      mockVehicleRepository
+      mockKafkaLogContextService
     );
   });
 
@@ -71,7 +70,7 @@ describe('The CounterMeasureNotifierService class', () => {
   describe('The notify() method', () => {
     describe('When the user accepts push and Telegram notifications', () => {
       beforeEach(async () => {
-        await notifyAndDeliver(['user-1']);
+        await notifyAndDeliver([buildRecipient('user-1', 'Ma Tesla')]);
       });
 
       it('should queue the notice behind the notification rate limit', () => {
@@ -123,7 +122,7 @@ describe('The CounterMeasureNotifierService class', () => {
       beforeEach(async () => {
         mockNotificationsService.shouldSendTelegram.mockResolvedValue(false);
 
-        await notifyAndDeliver(['user-1']);
+        await notifyAndDeliver([buildRecipient('user-1', 'Ma Tesla')]);
       });
 
       it('should not send a Telegram notice', () => {
@@ -137,9 +136,7 @@ describe('The CounterMeasureNotifierService class', () => {
 
     describe('When the vehicle has no display name', () => {
       beforeEach(async () => {
-        mockVehicleRepository.findOne.mockResolvedValue({ display_name: undefined } as Vehicle);
-
-        await notifyAndDeliver(['user-1']);
+        await notifyAndDeliver([buildRecipient('user-1')]);
       });
 
       it('should name the vehicle after its VIN in the push', () => {
@@ -154,7 +151,7 @@ describe('The CounterMeasureNotifierService class', () => {
         mockNotificationsService.sendCounterMeasurePush.mockResolvedValue({ isDelivered: false });
         mockNotificationsService.shouldSendTelegram.mockResolvedValue(false);
 
-        await notifyAndDeliver(['user-1']);
+        await notifyAndDeliver([buildRecipient('user-1', 'Ma Tesla')]);
       });
 
       it('should not claim the user was notified', () => {
@@ -169,7 +166,7 @@ describe('The CounterMeasureNotifierService class', () => {
 
       beforeEach(() => {
         mockNotificationsService.sendCounterMeasurePush.mockRejectedValueOnce(new Error('Expo push rejected'));
-        act = async () => await notifyAndDeliver(['user-1', 'user-2']);
+        act = async () => await notifyAndDeliver([buildRecipient('user-1', 'Ma Tesla'), buildRecipient('user-2', 'Ma Tesla')]);
       });
 
       it('should not fail the queued notice', async () => {

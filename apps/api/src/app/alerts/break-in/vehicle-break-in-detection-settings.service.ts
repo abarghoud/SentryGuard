@@ -11,11 +11,16 @@ import {
   DEFAULT_BREAK_IN_SENSITIVITY,
 } from '../enums/break-in-sensitivity.enum';
 
+export type BreakInDetectionVehicle = Pick<
+  Vehicle,
+  'break_in_auto_sentry_mode_enabled' | 'break_in_offensive_response' | 'display_name' | 'userId' | 'vin'
+>;
+
 export interface BreakInDetectionGroup {
   hasCounterMeasures: boolean;
   reactionDelaySeconds: number;
   sensitivity: BreakInSensitivity;
-  userIds: string[];
+  vehicles: BreakInDetectionVehicle[];
 }
 
 type BreakInDetectionProfile = Pick<BreakInDetectionGroup, 'reactionDelaySeconds' | 'sensitivity'>;
@@ -35,7 +40,9 @@ export class VehicleBreakInDetectionSettingsService {
         break_in_offensive_response: true,
         break_in_reaction_delay_seconds: true,
         break_in_sensitivity: true,
+        display_name: true,
         userId: true,
+        vin: true,
       },
     });
 
@@ -48,16 +55,26 @@ export class VehicleBreakInDetectionSettingsService {
     for (const vehicle of vehicles) {
       const profile = this.resolveProfile(vehicle);
       const key = `${profile.sensitivity}:${profile.reactionDelaySeconds}`;
-      const group = groups.get(key) ?? { ...profile, hasCounterMeasures: false, userIds: [] };
+      const group = groups.get(key) ?? { ...profile, hasCounterMeasures: false, vehicles: [] };
 
       groups.set(key, {
         ...group,
         hasCounterMeasures: group.hasCounterMeasures || this.hasCounterMeasures(vehicle),
-        userIds: [...new Set([...group.userIds, vehicle.userId])],
+        vehicles: [...group.vehicles, this.toDetectionVehicle(vehicle)],
       });
     }
 
     return [...groups.values()];
+  }
+
+  private toDetectionVehicle(vehicle: Vehicle): BreakInDetectionVehicle {
+    return {
+      break_in_auto_sentry_mode_enabled: vehicle.break_in_auto_sentry_mode_enabled,
+      break_in_offensive_response: vehicle.break_in_offensive_response,
+      display_name: vehicle.display_name,
+      userId: vehicle.userId,
+      vin: vehicle.vin,
+    };
   }
 
   private hasCounterMeasures(vehicle: Vehicle): boolean {

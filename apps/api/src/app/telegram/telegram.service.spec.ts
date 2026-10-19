@@ -368,13 +368,14 @@ describe('The TelegramService class', () => {
       });
 
       it('should send the notice to the user chat', () => {
-        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(fakeChatId, expect.stringContaining('RESPONSE TRIGGERED'));
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(fakeChatId, expect.stringContaining('RESPONSE TRIGGERED'), undefined);
       });
 
       it('should list the counter-measures that went off', () => {
         expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(
           fakeChatId,
-          expect.stringContaining('The horn sounded. Sentry Mode was turned on.')
+          expect.stringContaining('The horn sounded. Sentry Mode was turned on.'),
+          undefined
         );
       });
 

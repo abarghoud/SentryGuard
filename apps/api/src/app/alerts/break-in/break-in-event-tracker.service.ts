@@ -71,8 +71,12 @@ export class BreakInEventTrackerService {
       const isWithinBurstWindow = pullTime >= burstWindowStart;
       const isAfterLastOwnerActivity = lastOwnerActivityTime === null || pullTime > lastOwnerActivityTime;
 
-      return isBeforeThisPull && isWithinBurstWindow && isAfterLastOwnerActivity;
+      return isBeforeThisPull && isWithinBurstWindow && isAfterLastOwnerActivity && this.isHandlePull(vin, pullTime);
     });
+  }
+
+  private isHandlePull(vin: string, pullTime: number): boolean {
+    return !this.hasEventAround(vin, BreakInTrackedEvent.ChargePortLatchDisengaged, pullTime);
   }
 
   private findLastOwnerActivityBefore(vin: string, timestamp: number): number | null {

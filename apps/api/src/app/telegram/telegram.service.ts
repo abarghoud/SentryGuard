@@ -14,6 +14,7 @@ import { withTimeout } from '../../common/utils/with-timeout.util';
 import { resolveVehicleLabel } from '../../common/utils/vehicle-label.util';
 import { CounterMeasure } from '../alerts/enums/counter-measure.enum';
 import { describeCounterMeasures } from '../alerts/common/counter-measure-description.util';
+import { TelegramMessageOptions } from './telegram.types';
 
 export interface TelegramDeliveryResult {
   isDelivered: boolean;
@@ -25,6 +26,19 @@ type TelegramKeyboard = {
   one_time_keyboard?: boolean;
   resize_keyboard?: boolean;
 };
+
+enum TelegramSendAttempt {
+  Request = 'request',
+  Retry = 'retry',
+}
+
+interface TelegramSendFailureContext {
+  correlationPrefix: string;
+  messageType: string;
+  retrySend: () => Promise<unknown>;
+  shouldScheduleRetry: boolean;
+  userId: string;
+}
 
 @Injectable()
 export class TelegramService implements OnModuleDestroy {
@@ -75,43 +89,15 @@ export class TelegramService implements OnModuleDestroy {
         return await this.simulateMessage(userId, 'alert', alertInfo.vin);
       }
 
-      return await withTimeout(
-        () => this.telegramBotService.sendMessage(chatId, message, options),
-        NOTIFICATION_REQUEST_TIMEOUT_MS,
-        `Telegram notification request timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
-      );
+      return await this.sendMessageWithTimeout(chatId, message, options);
     } catch (error) {
-      if (this.isBlockedBotFailure(error)) {
-        await this.failureHandler.handleFailure(error, userId);
-        this.logger.log(`[TELEGRAM_FAILURE_HANDLED] Error handled for user ${userId}`);
-
-        return false;
-      }
-
-      if (this.isRetryableTelegramError(error)) {
-        if (!shouldScheduleRetry) {
-          throw error;
-        }
-
-        const correlationId = `telegram-alert-${userId}-${Date.now()}`;
-        this.retryManager.addToRetry(
-          async () => {
-            await withTimeout(
-              () => this.telegramBotService.sendMessage(chatId, message, options),
-              NOTIFICATION_REQUEST_TIMEOUT_MS,
-              `Telegram notification retry timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
-            );
-          },
-          error as Error,
-          correlationId
-        );
-
-        return false;
-      }
-
-      this.logError(userId, 'alert', error);
-
-      throw error;
+      return await this.handleSendFailure(error, {
+        correlationPrefix: 'telegram-alert',
+        messageType: 'sentry alert',
+        retrySend: () => this.sendMessageWithTimeout(chatId, message, options, TelegramSendAttempt.Retry),
+        shouldScheduleRetry,
+        userId,
+      });
     }
   }
 
@@ -151,43 +137,15 @@ export class TelegramService implements OnModuleDestroy {
         return await this.simulateMessage(userId, 'alert', alertInfo.vin);
       }
 
-      return await withTimeout(
-        () => this.telegramBotService.sendMessage(chatId, message, options),
-        NOTIFICATION_REQUEST_TIMEOUT_MS,
-        `Telegram notification request timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
-      );
+      return await this.sendMessageWithTimeout(chatId, message, options);
     } catch (error) {
-      if (this.isBlockedBotFailure(error)) {
-        await this.failureHandler.handleFailure(error, userId);
-        this.logger.log(`[TELEGRAM_FAILURE_HANDLED] Error handled for user ${userId}`);
-
-        return false;
-      }
-
-      if (this.isRetryableTelegramError(error)) {
-        if (!shouldScheduleRetry) {
-          throw error;
-        }
-
-        const correlationId = `telegram-alert-breakin-${userId}-${Date.now()}`;
-        this.retryManager.addToRetry(
-          async () => {
-            await withTimeout(
-              () => this.telegramBotService.sendMessage(chatId, message, options),
-              NOTIFICATION_REQUEST_TIMEOUT_MS,
-              `Telegram notification retry timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
-            );
-          },
-          error as Error,
-          correlationId
-        );
-
-        return false;
-      }
-
-      this.logError(userId, 'alert', error);
-
-      throw error;
+      return await this.handleSendFailure(error, {
+        correlationPrefix: 'telegram-alert-breakin',
+        messageType: 'break-in alert',
+        retrySend: () => this.sendMessageWithTimeout(chatId, message, options, TelegramSendAttempt.Retry),
+        shouldScheduleRetry,
+        userId,
+      });
     }
   }
 
@@ -252,41 +210,56 @@ export class TelegramService implements OnModuleDestroy {
   }
 
 
-  private logError(userId: string, type: 'alert' | 'message', error: unknown): void {
-    const messageType = type === 'alert' ? 'sentry alert' : 'telegram message';
-
-    this.logger.error(`❌ Failed to send ${messageType} to user: ${userId}:`, error);
-  }
-
   private async sendCounterMeasureMessage(userId: string, chatId: string, message: string): Promise<boolean> {
     try {
       return await this.sendMessageWithTimeout(chatId, message);
     } catch (error) {
-      return await this.handleCounterMeasureMessageFailure(userId, chatId, message, error);
+      return await this.handleSendFailure(error, {
+        correlationPrefix: 'telegram-counter-measure',
+        messageType: 'counter-measure notice',
+        retrySend: () => this.sendMessageWithTimeout(chatId, message, undefined, TelegramSendAttempt.Retry),
+        shouldScheduleRetry: true,
+        userId,
+      });
     }
   }
 
-  private async sendMessageWithTimeout(chatId: string, message: string): Promise<boolean> {
+  private async sendMessageWithTimeout(
+    chatId: string,
+    message: string,
+    options?: TelegramMessageOptions,
+    attempt = TelegramSendAttempt.Request
+  ): Promise<boolean> {
     return await withTimeout(
-      () => this.telegramBotService.sendMessage(chatId, message),
+      () => this.telegramBotService.sendMessage(chatId, message, options),
       NOTIFICATION_REQUEST_TIMEOUT_MS,
-      `Telegram counter-measure notice timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
+      `Telegram notification ${attempt} timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
     );
   }
 
-  private async handleCounterMeasureMessageFailure(userId: string, chatId: string, message: string, error: unknown): Promise<boolean> {
+  private async handleSendFailure(error: unknown, context: TelegramSendFailureContext): Promise<false> {
     if (this.isBlockedBotFailure(error)) {
-      await this.failureHandler.handleFailure(error, userId);
+      await this.failureHandler.handleFailure(error, context.userId);
+      this.logger.log(`[TELEGRAM_FAILURE_HANDLED] Error handled for user ${context.userId}`);
       return false;
     }
 
-    if (!this.isRetryableTelegramError(error)) {
-      throw error;
+    if (this.isRetryableTelegramError(error) && context.shouldScheduleRetry) {
+      this.scheduleRetry(error as Error, context);
+      return false;
     }
 
-    this.logger.warn(`[TELEGRAM_RETRY] Counter-measure notice to user ${userId} scheduled for retry`);
-    this.retryManager.addToRetry(async () => { await this.sendMessageWithTimeout(chatId, message); }, error as Error, `telegram-counter-measure-${userId}-${Date.now()}`);
-    return false;
+    this.logError(context.userId, context.messageType, error);
+    throw error;
+  }
+
+  private scheduleRetry(error: Error, { correlationPrefix, messageType, retrySend, userId }: TelegramSendFailureContext): void {
+    this.logger.warn(`[TELEGRAM_RETRY] ${messageType} to user ${userId} scheduled for retry`);
+    this.retryManager.addToRetry(async () => { await retrySend(); }, error, `${correlationPrefix}-${userId}-${Date.now()}`);
+  }
+
+  private logError(userId: string, messageType: string, error: unknown): void {
+    this.logger.error(`❌ Failed to send ${messageType} to user: ${userId}:`, error);
   }
 
   private formatSentryAlertMessage(

@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { Vehicle } from '../../entities/vehicle.entity';
 import { TeslaVehicleCommandService } from '../telemetry/services/tesla-vehicle-command.service';
 import { LatencyGuardService } from '../../common/services/latency-guard.service';
 import { SentryModeStateTrackerService } from './sentry-mode-state-tracker.service';
+
+export type AutoSentryVehicle = Pick<Vehicle, 'break_in_auto_sentry_mode_enabled' | 'userId' | 'vin'>;
 
 export interface AutoSentryResult {
   isSentryModeActivated: boolean;
@@ -15,8 +15,6 @@ export class AlertsAutoSentryService {
   private readonly logger = new Logger(AlertsAutoSentryService.name);
 
   constructor(
-    @InjectRepository(Vehicle)
-    private readonly vehicleRepository: Repository<Vehicle>,
     private readonly teslaVehicleCommandService: TeslaVehicleCommandService,
     private readonly latencyGuardService: LatencyGuardService,
     private readonly sentryModeStateTracker: SentryModeStateTrackerService,
@@ -24,7 +22,7 @@ export class AlertsAutoSentryService {
 
   public async handleBreakInAutoSentry(
     vin: string,
-    userIds: string[],
+    vehicles: AutoSentryVehicle[],
     createdAt: string,
     reactionDelayMs = 0,
   ): Promise<AutoSentryResult> {
@@ -48,14 +46,12 @@ export class AlertsAutoSentryService {
       return { isSentryModeActivated: false };
     }
 
-    return { isSentryModeActivated: await this.processAutoSentryForUsers(vin, userIds) };
+    return { isSentryModeActivated: await this.processAutoSentryForVehicles(vin, vehicles) };
   }
 
-  private async processAutoSentryForUsers(vin: string, userIds: string[]): Promise<boolean> {
-    for (const userId of userIds) {
-      const vehicle = await this.findVehicleByVin(vin, userId);
-
-      if (vehicle?.break_in_auto_sentry_mode_enabled && await this.executeAutoSentry(vehicle)) {
+  private async processAutoSentryForVehicles(vin: string, vehicles: AutoSentryVehicle[]): Promise<boolean> {
+    for (const vehicle of vehicles) {
+      if (vehicle.break_in_auto_sentry_mode_enabled && await this.executeAutoSentry(vehicle)) {
         return true;
       }
     }
@@ -65,11 +61,7 @@ export class AlertsAutoSentryService {
     return false;
   }
 
-  private async findVehicleByVin(vin: string, userId: string): Promise<Vehicle | null> {
-    return this.vehicleRepository.findOne({ where: { vin, userId } });
-  }
-
-  private async executeAutoSentry(vehicle: Vehicle): Promise<boolean> {
+  private async executeAutoSentry(vehicle: AutoSentryVehicle): Promise<boolean> {
     const { vin, userId } = vehicle;
 
     try {

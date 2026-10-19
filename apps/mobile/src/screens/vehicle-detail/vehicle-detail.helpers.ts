@@ -11,7 +11,7 @@ import { AlertSoundTarget, TranslationFunction } from './vehicle-detail.types';
 
 const ENABLED_OFFENSIVE_RESPONSES: readonly string[] = [OffensiveResponse.Honk, OffensiveResponse.Fart];
 
-export function hasBreakInCounterMeasure(vehicle: Vehicle): boolean {
+function hasBreakInCounterMeasure(vehicle: Vehicle): boolean {
   const hasOffensiveResponse = ENABLED_OFFENSIVE_RESPONSES.includes(vehicle.break_in_offensive_response ?? '');
 
   return hasOffensiveResponse || vehicle.break_in_auto_sentry_mode_enabled === true;

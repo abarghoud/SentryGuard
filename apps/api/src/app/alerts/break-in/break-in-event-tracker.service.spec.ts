@@ -163,6 +163,27 @@ describe('The BreakInEventTrackerService class', () => {
       });
     });
 
+    describe('When the first lock came with a charge port latch release', () => {
+      beforeEach(() => {
+        trackLocks(0);
+        service.track(fakeVin, BreakInTrackedEvent.ChargePortLatchDisengaged, baseTimestamp + 2_000);
+        trackLocks(15_000);
+      });
+
+      it('should not count the charge port lock as a pull', () => {
+        expect(service.findRepeatedPullTrigger(fakeVin, baseTimestamp + 15_000)).toBeNull();
+      });
+
+      it('should start the burst at the next lock', () => {
+        trackLocks(25_000);
+
+        expect(service.findRepeatedPullTrigger(fakeVin, baseTimestamp + 25_000)).toStrictEqual({
+          burstStartTime: baseTimestamp + 15_000,
+          lockTime: baseTimestamp + 25_000,
+        });
+      });
+    });
+
     describe('When the owner was active between the two locks', () => {
       beforeEach(() => {
         trackLocks(0);

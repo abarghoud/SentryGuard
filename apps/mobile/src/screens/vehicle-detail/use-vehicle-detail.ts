@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { toBreakInDetectionFields } from '@sentryguard/vehicles-domain';
+import {
+  BREAK_IN_REACTION_DELAYS_SECONDS,
+  BreakInSensitivity,
+  readBreakInDetection,
+  toBreakInDetectionFields,
+} from '@sentryguard/vehicles-domain';
 
 import { useHaptics } from '../../core/design/use-haptics';
 import { getVehicleCommandsAuthorizationUseCase } from '../../features/auth/di';
@@ -16,9 +21,11 @@ import {
   updateOffensiveResponseUseCase,
 } from '../../features/vehicles/di';
 import {
+  canConfigureCounterMeasures,
   requestVehicleCommandsScope,
   resolveSuccessfulResponse,
   resolveTelemetryConfigurationResponse,
+  shouldShowBreakInDetection,
 } from './vehicle-detail.helpers';
 import { AlertSoundTarget, TranslationFunction, VehicleAction, VehicleMutationAction } from './vehicle-detail.types';
 
@@ -150,19 +157,60 @@ export function useVehicleDetail(vehicleId: string) {
     },
   });
 
+  const vehicleCommandsAuthorized = vehicleCommandsQuery.data?.authorized === true;
+  const { mutate: updateBreakInDetection } = breakInDetectionMutation;
+  const breakInDetection = useMemo(() => readBreakInDetection(vehicle ?? {}), [vehicle]);
+  const isCounterMeasureConfigurable = useMemo(
+    () => vehicle !== undefined && canConfigureCounterMeasures(vehicle, vehicleCommandsAuthorized),
+    [vehicle, vehicleCommandsAuthorized]
+  );
+  const isBreakInDetectionVisible = useMemo(
+    () => vehicle !== undefined && shouldShowBreakInDetection(vehicle, vehicleCommandsAuthorized),
+    [vehicle, vehicleCommandsAuthorized]
+  );
+  const breakInSensitivityOptions = useMemo(
+    () => [
+      { label: t('vehicle.breakInSinglePull'), value: BreakInSensitivity.SinglePull },
+      { label: t('vehicle.breakInRepeatedPulls'), value: BreakInSensitivity.RepeatedPulls },
+    ],
+    [t]
+  );
+  const breakInReactionDelayOptions = useMemo(
+    () =>
+      BREAK_IN_REACTION_DELAYS_SECONDS.map((seconds) => ({
+        label: t('vehicle.breakInReactionDelaySeconds', { seconds }),
+        value: String(seconds),
+      })),
+    [t]
+  );
+  const onBreakInSensitivityChange = useCallback(
+    (sensitivity: BreakInSensitivity) => updateBreakInDetection({ ...breakInDetection, sensitivity }),
+    [breakInDetection, updateBreakInDetection]
+  );
+  const onBreakInReactionDelayChange = useCallback(
+    (reactionDelaySeconds: string) => updateBreakInDetection({ ...breakInDetection, reactionDelaySeconds: Number(reactionDelaySeconds) }),
+    [breakInDetection, updateBreakInDetection]
+  );
+
   return {
     actionMutation,
     alertSoundMutation,
-    breakInDetectionMutation,
+    breakInDetection,
+    breakInReactionDelayOptions,
+    breakInSensitivityOptions,
     feedback,
     isActionRunning: actionMutation.isPending,
+    isBreakInDetectionVisible,
+    isCounterMeasureConfigurable,
+    onBreakInReactionDelayChange,
+    onBreakInSensitivityChange,
     openSoundSelector,
     scopeMutation,
     setFeedback,
     setOpenSoundSelector,
     t,
     vehicle,
-    vehicleCommandsAuthorized: vehicleCommandsQuery.data?.authorized === true,
+    vehicleCommandsAuthorized,
   };
 }
 
