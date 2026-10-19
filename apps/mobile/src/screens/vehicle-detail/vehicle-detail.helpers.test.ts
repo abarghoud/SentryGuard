@@ -32,8 +32,13 @@ import { AppState, Platform } from 'react-native';
 
 import { tokenStore } from '../../core/api';
 import { getTeslaScopeChangeUrlUseCase } from '../../features/auth/di';
-import { Vehicle } from '../../features/vehicles/domain/entities';
-import { requestVehicleCommandsScope, resolveVehicleAlertSoundId } from './vehicle-detail.helpers';
+import { OffensiveResponse, Vehicle } from '../../features/vehicles/domain/entities';
+import {
+  canConfigureCounterMeasures,
+  requestVehicleCommandsScope,
+  resolveVehicleAlertSoundId,
+  shouldShowBreakInDetection,
+} from './vehicle-detail.helpers';
 import { AlertSoundTarget, TranslationFunction } from './vehicle-detail.types';
 
 describe('The requestVehicleCommandsScope() function', () => {
@@ -158,6 +163,79 @@ describe('The resolveVehicleAlertSoundId() function', () => {
   describe('When the vehicle has no stored sound', () => {
     it('should fall back to the phone default sound id', () => {
       expect(resolveVehicleAlertSoundId({} as Vehicle, AlertSoundTarget.Sentry)).toBe('default');
+    });
+  });
+});
+
+describe('The canConfigureCounterMeasures() function', () => {
+  const monitoredVehicle = { break_in_monitoring_enabled: true } as Vehicle;
+
+  describe('When break-in monitoring is on and the vehicle commands are authorized', () => {
+    it('should allow it', () => {
+      expect(canConfigureCounterMeasures(monitoredVehicle, true)).toBe(true);
+    });
+  });
+
+  describe('When the vehicle commands are not authorized', () => {
+    it('should refuse it', () => {
+      expect(canConfigureCounterMeasures(monitoredVehicle, false)).toBe(false);
+    });
+  });
+
+  describe('When break-in monitoring is off', () => {
+    it('should refuse it', () => {
+      expect(canConfigureCounterMeasures({ break_in_monitoring_enabled: false } as Vehicle, true)).toBe(false);
+    });
+  });
+});
+
+describe('The shouldShowBreakInDetection() function', () => {
+  const buildMonitoredVehicle = (counterMeasures: Partial<Vehicle>): Vehicle =>
+    ({ break_in_monitoring_enabled: true, ...counterMeasures }) as Vehicle;
+
+  describe('When the offensive response is enabled on a configurable vehicle', () => {
+    it('should show the settings', () => {
+      const vehicle = buildMonitoredVehicle({ break_in_auto_sentry_mode_enabled: false, break_in_offensive_response: OffensiveResponse.Fart });
+
+      expect(shouldShowBreakInDetection(vehicle, true)).toBe(true);
+    });
+  });
+
+  describe('When only auto Sentry Mode is enabled', () => {
+    it('should show the settings', () => {
+      const vehicle = buildMonitoredVehicle({ break_in_auto_sentry_mode_enabled: true, break_in_offensive_response: OffensiveResponse.Disabled });
+
+      expect(shouldShowBreakInDetection(vehicle, true)).toBe(true);
+    });
+  });
+
+  describe('When neither the offensive response nor auto Sentry Mode is enabled', () => {
+    it('should hide the settings', () => {
+      const vehicle = buildMonitoredVehicle({ break_in_auto_sentry_mode_enabled: false, break_in_offensive_response: OffensiveResponse.Disabled });
+
+      expect(shouldShowBreakInDetection(vehicle, true)).toBe(false);
+    });
+  });
+
+  describe('When the vehicle stores no counter-measure setting', () => {
+    it('should hide the settings', () => {
+      expect(shouldShowBreakInDetection(buildMonitoredVehicle({}), true)).toBe(false);
+    });
+  });
+
+  describe('When the offensive response holds an unknown value', () => {
+    it('should hide the settings', () => {
+      const vehicle = buildMonitoredVehicle({ break_in_auto_sentry_mode_enabled: false, break_in_offensive_response: 'LASERS' });
+
+      expect(shouldShowBreakInDetection(vehicle, true)).toBe(false);
+    });
+  });
+
+  describe('When the vehicle commands are not authorized', () => {
+    it('should hide the settings', () => {
+      const vehicle = { break_in_monitoring_enabled: true, break_in_offensive_response: OffensiveResponse.Honk } as Vehicle;
+
+      expect(shouldShowBreakInDetection(vehicle, false)).toBe(false);
     });
   });
 });

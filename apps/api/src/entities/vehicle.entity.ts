@@ -9,6 +9,11 @@ import {
   Index,
 } from 'typeorm';
 import { DEFAULT_ALERT_SOUND } from '../app/alerts/enums/alert-sound.enum';
+import {
+  BreakInSensitivity,
+  DEFAULT_BREAK_IN_REACTION_DELAY_SECONDS,
+  DEFAULT_BREAK_IN_SENSITIVITY,
+} from '../app/alerts/enums/break-in-sensitivity.enum';
 import { OffensiveResponse } from '../app/alerts/enums/offensive-response.enum';
 
 @Entity('vehicles')
@@ -48,6 +53,12 @@ export class Vehicle {
 
   @Column({ type: 'varchar', length: 64, default: DEFAULT_ALERT_SOUND })
   break_in_alert_sound!: string;
+
+  @Column({ type: 'enum', enum: BreakInSensitivity, default: DEFAULT_BREAK_IN_SENSITIVITY })
+  break_in_sensitivity!: BreakInSensitivity;
+
+  @Column({ type: 'smallint', default: DEFAULT_BREAK_IN_REACTION_DELAY_SECONDS })
+  break_in_reaction_delay_seconds!: number;
 
   @CreateDateColumn()
   created_at!: Date;

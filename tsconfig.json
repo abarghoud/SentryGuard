@@ -17,6 +17,9 @@
     },
     {
       "path": "./libs/telegram/domain"
+    },
+    {
+      "path": "./libs/vehicles/domain"
     }
   ]
 }

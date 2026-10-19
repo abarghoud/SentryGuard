@@ -10,6 +10,7 @@ import { AuthModule } from '../auth/auth.module';
 import { ConsentModule } from '../consent/consent.module';
 import { UserModule } from '../user/user.module';
 import { LatencyGuardService } from '../../common/services/latency-guard.service';
+import { SentryModeStateTrackerService } from './sentry-mode-state-tracker.service';
 
 @Module({
   imports: [
@@ -25,11 +26,13 @@ import { LatencyGuardService } from '../../common/services/latency-guard.service
     AlertsAutoSentryService,
     TeslaVehicleCommandService,
     LatencyGuardService,
+    SentryModeStateTrackerService,
   ],
   exports: [
     VehicleOffensiveResponseConfigService,
     AlertsOffensiveResponseService,
     AlertsAutoSentryService,
+    SentryModeStateTrackerService,
   ],
 })
 export class OffensiveResponseModule {}

@@ -12,10 +12,14 @@ import { TelemetryValidationService } from './telemetry/services/telemetry-valid
 import { SentryAlertHandlerService } from './alerts/sentry/sentry-alert-handler.service';
 import { BreakInAlertHandlerService } from './alerts/break-in/break-in-alert-handler.service';
 import { BreakInEventTrackerService } from './alerts/break-in/break-in-event-tracker.service';
+import { VehicleBreakInDetectionSettingsService } from './alerts/break-in/vehicle-break-in-detection-settings.service';
+import { CounterMeasureNotifierService } from './alerts/break-in/counter-measure-notifier.service';
+import { SentryModeStateTrackerService } from './offensive-response/sentry-mode-state-tracker.service';
 import { VehicleAlertNotifierService } from './alerts/common/vehicle-alert-notifier.service';
 import { VehicleAlertSoundResolverService } from './alerts/common/vehicle-alert-sound-resolver.service';
 import { OffensiveResponseModule } from './offensive-response/offensive-response.module';
 import { VehicleAlertSoundsModule } from './vehicle-alert-sounds/vehicle-alert-sounds.module';
+import { BreakInDetectionModule } from './break-in-detection/break-in-detection.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { TelemetryEventHandlerSymbol } from './telemetry/interfaces/telemetry-event-handler.interface';
@@ -72,6 +76,7 @@ import {
     OnboardingModule,
     OffensiveResponseModule,
     VehicleAlertSoundsModule,
+    BreakInDetectionModule,
     AlertsModule,
     NotificationsModule,
     SupportersModule,
@@ -111,6 +116,8 @@ import {
     SentryAlertHandlerService,
     BreakInAlertHandlerService,
     BreakInEventTrackerService,
+    VehicleBreakInDetectionSettingsService,
+    CounterMeasureNotifierService,
     {
       provide: kafkaMessageHandler,
       useClass: TelemetryMessageHandlerService,
@@ -120,8 +127,9 @@ import {
       useFactory: (
         sentryHandler: SentryAlertHandlerService,
         breakInHandler: BreakInAlertHandlerService,
-      ) => [sentryHandler, breakInHandler],
-      inject: [SentryAlertHandlerService, BreakInAlertHandlerService],
+        sentryModeStateTracker: SentryModeStateTrackerService,
+      ) => [sentryHandler, breakInHandler, sentryModeStateTracker],
+      inject: [SentryAlertHandlerService, BreakInAlertHandlerService, SentryModeStateTrackerService],
     },
     KafkaLogContextService,
     {

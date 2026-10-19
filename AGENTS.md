@@ -35,6 +35,7 @@ Nx monorepo — Tesla vehicle monitoring with Telegram + mobile-push alerts and 
 | `apps/mobile` | Expo SDK 54 / React Native (iOS, Android, Expo Web) | 8081 / 3002 | Jest (node env) |
 | `libs/beta/domain` | `@sentryguard/beta-domain` — Tesla scopes + error codes | — | Jest |
 | `libs/telegram/domain` | `@sentryguard/telegram-domain` — Telegram-linking use-cases (web + mobile) | — | Jest |
+| `libs/vehicles/domain` | `@sentryguard/vehicles-domain` — vehicle rules (break-in detection settings, mobile) | — | Jest |
 
 Infra images: `fleet-telemetry/` (Tesla telemetry TLS ingest → Kafka) and `vehicle-command-proxy/` (signs Tesla commands). Lib resolution uses Yarn workspaces + TS `customConditions` (no `paths` in `tsconfig.base.json`).
 
@@ -156,11 +157,12 @@ Not Expo Router — uses `@react-navigation` (bottom tabs: Dashboard / Alerts / 
 
 - **Telemetry flow**: fleet-telemetry server → Kafka (**JSON**, not protobuf at the API) → `TelemetryMessageHandlerService` (class-validator) → sentry/break-in handlers → `VehicleAlertNotifierService` fan-out.
 - **Dual-channel notifications**: Telegram (`TelegramService`, mute enforced) **and** Expo mobile push (`NotificationsService` → exp.host). Devices via `NotificationsController`.
+- **Break-in detection**: every `CenterDisplay = Lock` notifies the owners after 5 s unless owner activity (`Accessory`/`On`/`Driving`) shows up; a `Lock` received while Sentry Mode is on (`Idle`/`Armed`) is ignored. The offensive response and auto-Sentry follow per-vehicle settings: a reaction delay (3–60 s, default 5) and, with `repeated_pulls` sensitivity, only the second `Lock` within 60 s. Settings via `PATCH /vehicles/:vin/break-in-detection`, exposed in the mobile app only.
 - **Offensive response**: on a confirmed break-in, `AlertsOffensiveResponseService` → `TeslaVehicleCommandService` sends `honk_horn`/`remote_boombox` through the vehicle-command proxy (`TESLA_API_BASE_URL`), gated on the `vehicle_cmds` scope.
 - **Rate limiting**: All throttle values centralized in `apps/api/src/config/throttle.config.ts`. Use named `ThrottleOptions` methods — never hardcode numbers.
 - **Token storage**: Tesla OAuth tokens stored **encrypted** in `apps/api/src/common/utils/crypto.util.ts` (AES-256-GCM; legacy AES-256-CBC tokens transparently migrated on next refresh via fallback `decrypt`). *(There is no `token-encryption.service.ts`.)*
 - **Auth sessions**: server-side JWT sessions (`UserSessionService`, SHA-256 hash, max 5/user); token refresh on a cron with a Postgres advisory `DistributedLockService`.
-- **Clean architecture (frontends)**: web + mobile both use `features/<domain>/{domain,data,presentation,di.ts}` + TanStack Query + a hand-rolled `ApiClient`. `@sentryguard/telegram-domain` is shared between them.
+- **Clean architecture (frontends)**: web + mobile both use `features/<domain>/{domain,data,presentation,di.ts}` + TanStack Query + a hand-rolled `ApiClient`. `@sentryguard/telegram-domain` is shared between them; `@sentryguard/vehicles-domain` is used by mobile only.
 - **Cloudflare**: `CloudflareThrottlerGuard` extracts real IPs from `CF-Connecting-IP` in production (X-Forwarded-For and X-Real-IP are ignored in production to prevent spoofing). In development all standard proxy headers are considered.
 - **i18n**: web + API use i18next, mobile uses react-i18next. Extract with `npx nx extract-i18n api` / `npx nx extract-i18n webapp`.
 

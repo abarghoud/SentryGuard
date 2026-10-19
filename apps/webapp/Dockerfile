@@ -11,6 +11,7 @@ COPY apps/webapp/package.json ./apps/webapp/
 COPY apps/mobile/package.json ./apps/mobile/
 COPY libs/beta/domain/package.json ./libs/beta/domain/
 COPY libs/telegram/domain/package.json ./libs/telegram/domain/
+COPY libs/vehicles/domain/package.json ./libs/vehicles/domain/
 
 RUN yarn install --immutable
 

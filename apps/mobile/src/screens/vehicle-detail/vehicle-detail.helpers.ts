@@ -5,9 +5,25 @@ import * as WebBrowser from 'expo-web-browser';
 import { tokenStore, virtualKeyStore } from '../../core/api';
 import { getTeslaScopeChangeUrlUseCase } from '../../features/auth/di';
 import { PHONE_DEFAULT_ALERT_SOUND_ID } from '../../features/notifications/domain/alert-sounds';
-import { Vehicle, VehicleActionResponse } from '../../features/vehicles/domain/entities';
+import { OffensiveResponse, Vehicle, VehicleActionResponse } from '../../features/vehicles/domain/entities';
 import { AlertSoundTarget, TranslationFunction } from './vehicle-detail.types';
 
+
+const ENABLED_OFFENSIVE_RESPONSES: readonly string[] = [OffensiveResponse.Honk, OffensiveResponse.Fart];
+
+function hasBreakInCounterMeasure(vehicle: Vehicle): boolean {
+  const hasOffensiveResponse = ENABLED_OFFENSIVE_RESPONSES.includes(vehicle.break_in_offensive_response ?? '');
+
+  return hasOffensiveResponse || vehicle.break_in_auto_sentry_mode_enabled === true;
+}
+
+export function canConfigureCounterMeasures(vehicle: Vehicle, vehicleCommandsAuthorized: boolean): boolean {
+  return vehicle.break_in_monitoring_enabled === true && vehicleCommandsAuthorized;
+}
+
+export function shouldShowBreakInDetection(vehicle: Vehicle, vehicleCommandsAuthorized: boolean): boolean {
+  return canConfigureCounterMeasures(vehicle, vehicleCommandsAuthorized) && hasBreakInCounterMeasure(vehicle);
+}
 
 export function resolveSuccessfulResponse(response: VehicleActionResponse, t: TranslationFunction): VehicleActionResponse {
   if (response.success === false) {

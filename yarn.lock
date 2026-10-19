@@ -8729,6 +8729,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@sentryguard/vehicles-domain@workspace:libs/vehicles/domain":
+  version: 0.0.0-use.local
+  resolution: "@sentryguard/vehicles-domain@workspace:libs/vehicles/domain"
+  languageName: unknown
+  linkType: soft
+
 "@sinclair/typebox@npm:^0.27.8":
   version: 0.27.8
   resolution: "@sinclair/typebox@npm:0.27.8"

@@ -75,6 +75,12 @@
   "Intrusion alert": "Intrusion alert",
   "Intrusion alert_withVehicle": "Intrusion alert - {{vehicleName}}",
   "A break-in attempt was detected.": "A break-in attempt was detected.",
+  "Response triggered": "Response triggered",
+  "Response triggered_withVehicle": "Response triggered - {{vehicleName}}",
+  "RESPONSE TRIGGERED": "RESPONSE TRIGGERED",
+  "The horn sounded.": "The horn sounded.",
+  "The fart sound played.": "The fart sound played.",
+  "Sentry Mode was turned on.": "Sentry Mode was turned on.",
   "Sentry alert": "Sentry alert",
   "Sentry alert_withVehicle": "Sentry alert - {{vehicleName}}",
   "A Sentry event was detected.": "A Sentry event was detected."

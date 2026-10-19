@@ -2,13 +2,14 @@ import { apiClient, tokenStore } from '../../core/api';
 import { VehicleApiRepository } from './data/vehicle.api-repository';
 import { VehicleMockRepository } from './data/vehicle.mock-repository';
 import { VehicleRepositoryRequirements } from './domain/vehicle.repository.requirements';
-import { OffensiveResponse, Vehicle, VehicleActionResponse } from './domain/entities';
+import { BreakInDetection, OffensiveResponse, Vehicle, VehicleActionResponse } from './domain/entities';
 import {
   ConfigureTelemetryUseCase,
   DeleteTelemetryConfigUseCase,
   GetVehiclesUseCase,
   ToggleBreakInMonitoringUseCase,
   UpdateAlertSoundsUseCase,
+  UpdateBreakInDetectionUseCase,
   UpdateOffensiveResponseUseCase,
 } from './domain/use-cases/vehicles.use-cases';
 import { createUseVehiclesQuery } from './presentation/queries/use-vehicles-query';
@@ -46,6 +47,10 @@ class DynamicVehicleRepository implements VehicleRepositoryRequirements {
     return this.getRepo().updateAlertSounds(vin, payload);
   }
 
+  public async updateBreakInDetection(vin: string, breakInDetection: BreakInDetection): Promise<VehicleActionResponse> {
+    return this.getRepo().updateBreakInDetection(vin, breakInDetection);
+  }
+
   public async updateOffensiveResponse(
     vin: string,
     payload: { breakInOffensiveResponse?: OffensiveResponse; autoSentryEnabled?: boolean },
@@ -64,6 +69,7 @@ export const configureTelemetryUseCase = new ConfigureTelemetryUseCase(vehicleRe
 export const deleteTelemetryConfigUseCase = new DeleteTelemetryConfigUseCase(vehicleRepository);
 export const toggleBreakInMonitoringUseCase = new ToggleBreakInMonitoringUseCase(vehicleRepository);
 export const updateAlertSoundsUseCase = new UpdateAlertSoundsUseCase(vehicleRepository);
+export const updateBreakInDetectionUseCase = new UpdateBreakInDetectionUseCase(vehicleRepository);
 export const updateOffensiveResponseUseCase = new UpdateOffensiveResponseUseCase(vehicleRepository);
 
 export const useVehiclesQuery = createUseVehiclesQuery({ getVehiclesUseCase });

@@ -169,6 +169,7 @@
     "apps",
     "libs/*",
     "libs/beta/*",
-    "libs/telegram/*"
+    "libs/telegram/*",
+    "libs/vehicles/*"
   ]
 }

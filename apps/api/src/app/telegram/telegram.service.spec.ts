@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { TelegramError } from 'telegraf';
-import { TelegramService } from './telegram.service';
+import { TelegramDeliveryResult, TelegramService } from './telegram.service';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramMuteService } from './telegram-mute.service';
 import { TelegramContextService } from './telegram-context.service';
@@ -10,6 +10,7 @@ import { telegramFailureHandler } from './interfaces/telegram-failure-handler.in
 import type { ITelegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import { telegramRetryManager } from './telegram-retry-manager.token';
 import { RetryManager } from '../shared/retry-manager.service';
+import { CounterMeasure } from '../alerts/enums/counter-measure.enum';
 
 jest.mock('../../i18n', () => ({
   __esModule: true,
@@ -349,6 +350,129 @@ describe('The TelegramService class', () => {
 
         await rejection;
         jest.useRealTimers();
+      });
+    });
+  });
+
+  describe('The sendCounterMeasureNotice() method', () => {
+    const alertInfo = { display_name: 'My Tesla', vin: 'XP7YGCER1TB919128' };
+    const counterMeasures = [CounterMeasure.Honk, CounterMeasure.AutoSentry];
+
+    describe('When the user can be reached', () => {
+      let result: TelegramDeliveryResult;
+
+      beforeEach(async () => {
+        mockTelegramBotService.sendMessage.mockResolvedValue(true);
+
+        result = await service.sendCounterMeasureNotice(fakeUserId, alertInfo, 'en', counterMeasures);
+      });
+
+      it('should send the notice to the user chat', () => {
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(fakeChatId, expect.stringContaining('RESPONSE TRIGGERED'), undefined);
+      });
+
+      it('should list the counter-measures that went off', () => {
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(
+          fakeChatId,
+          expect.stringContaining('The horn sounded. Sentry Mode was turned on.'),
+          undefined
+        );
+      });
+
+      it('should report the notice as sent', () => {
+        expect(result).toStrictEqual({ isDelivered: true });
+      });
+    });
+
+    describe('When the user muted notifications', () => {
+      let result: TelegramDeliveryResult;
+
+      beforeEach(async () => {
+        mockTelegramMuteService.checkIsNotificationMuted.mockResolvedValue(true);
+
+        result = await service.sendCounterMeasureNotice(fakeUserId, alertInfo, 'en', counterMeasures);
+      });
+
+      it('should not send anything', () => {
+        expect(mockTelegramBotService.sendMessage).not.toHaveBeenCalled();
+      });
+
+      it('should report that nothing was sent', () => {
+        expect(result).toStrictEqual({ isDelivered: false });
+      });
+    });
+
+    describe('When the user has no linked chat', () => {
+      beforeEach(async () => {
+        mockTelegramContextService.getChatIdFromUserId.mockResolvedValue(null);
+
+        await service.sendCounterMeasureNotice(fakeUserId, alertInfo, 'en', counterMeasures);
+      });
+
+      it('should not send anything', () => {
+        expect(mockTelegramBotService.sendMessage).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When the user blocked the bot', () => {
+      const blockedBotError = new Error('403: Forbidden: bot was blocked by the user');
+      let result: TelegramDeliveryResult;
+
+      beforeEach(async () => {
+        mockTelegramBotService.sendMessage.mockRejectedValue(blockedBotError);
+        mockTelegramFailureHandler.canHandle.mockReturnValue(true);
+
+        result = await service.sendCounterMeasureNotice(fakeUserId, alertInfo, 'en', counterMeasures);
+      });
+
+      it('should route the error to the failure handler', () => {
+        expect(mockTelegramFailureHandler.handleFailure).toHaveBeenCalledWith(blockedBotError, fakeUserId);
+      });
+
+      it('should report that nothing was sent', () => {
+        expect(result).toStrictEqual({ isDelivered: false });
+      });
+    });
+
+    describe('When Telegram rate-limits the bot', () => {
+      let result: TelegramDeliveryResult;
+
+      beforeEach(async () => {
+        mockTelegramBotService.sendMessage.mockRejectedValue(new TelegramError({ error_code: 429, description: 'Too Many Requests' }));
+
+        result = await service.sendCounterMeasureNotice(fakeUserId, alertInfo, 'en', counterMeasures);
+      });
+
+      it('should schedule a retry', () => {
+        expect(mockRetryManager.addToRetry).toHaveBeenCalledWith(
+          expect.any(Function),
+          expect.any(TelegramError),
+          expect.stringContaining(`telegram-counter-measure-${fakeUserId}`)
+        );
+      });
+
+      it('should report that nothing was sent yet', () => {
+        expect(result).toStrictEqual({ isDelivered: false });
+      });
+    });
+
+    describe('When Telegram rejects the message for good', () => {
+      const badRequestError = new TelegramError({ error_code: 400, description: 'Bad Request' });
+      let act: () => Promise<boolean>;
+
+      beforeEach(() => {
+        mockTelegramBotService.sendMessage.mockRejectedValue(badRequestError);
+        act = async () => await service.sendCounterMeasureNotice(fakeUserId, alertInfo, 'en', counterMeasures);
+      });
+
+      it('should throw the error', async () => {
+        await expect(act()).rejects.toThrow(badRequestError);
+      });
+
+      it('should not schedule a retry', async () => {
+        await act().catch(() => undefined);
+
+        expect(mockRetryManager.addToRetry).not.toHaveBeenCalled();
       });
     });
   });
