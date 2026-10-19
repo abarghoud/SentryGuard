@@ -15,7 +15,7 @@ export class VehicleMockRepository implements VehicleRepositoryRequirements {
       display_name: 'Model 3 - Demo',
       sentry_mode_monitoring_enabled: true,
       break_in_monitoring_enabled: true,
-      break_in_offensive_response: OffensiveResponse.Disabled,
+      break_in_offensive_response: OffensiveResponse.Honk,
       break_in_auto_sentry_mode_enabled: false,
       break_in_reaction_delay_seconds: DEFAULT_BREAK_IN_REACTION_DELAY_SECONDS,
       break_in_sensitivity: DEFAULT_BREAK_IN_SENSITIVITY,

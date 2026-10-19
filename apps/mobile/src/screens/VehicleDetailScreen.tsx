@@ -14,10 +14,11 @@ import { TextVariant } from '../core/design/typography';
 import { useThemeColors } from '../core/theme';
 import { AppSwitch, AppText, GlassButton, GlassButtonVariant, Icon, ListRow, ListSection, SegmentedControl, Surface, VinMask } from '../core/ui';
 import {
+  canConfigureCounterMeasures,
   confirmTelemetryDeletion,
-  hasBreakInCounterMeasure,
   openVirtualKey,
   resolveVehicleAlertSoundId,
+  shouldShowBreakInDetection,
 } from './vehicle-detail/vehicle-detail.helpers';
 import { OffensiveResponse } from '../features/vehicles/domain/entities';
 import { resolveAlertSound } from '../features/notifications/domain/alert-sounds';
@@ -57,8 +58,8 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
   const statusSurface = isProtected ? colors.successFill : colors.fill;
   const statusGlyph = isProtected ? colors.onSuccess : colors.secondaryLabel;
   const breakInDetection = readBreakInDetection(vehicle);
-  const isBreakInDetectionVisible =
-    vehicle.break_in_monitoring_enabled === true && vehicleCommandsAuthorized && hasBreakInCounterMeasure(vehicle);
+  const isCounterMeasureConfigurable = canConfigureCounterMeasures(vehicle, vehicleCommandsAuthorized);
+  const isBreakInDetectionVisible = shouldShowBreakInDetection(vehicle, vehicleCommandsAuthorized);
 
   return (
     <ScrollView
@@ -129,7 +130,7 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
             />
           }
         />
-        {vehicle.break_in_monitoring_enabled && vehicleCommandsAuthorized ? (
+        {isCounterMeasureConfigurable ? (
           <>
             <View style={styles.offensiveRow}>
               <AppText variant={TextVariant.Body}>{t('vehicle.offensive')}</AppText>

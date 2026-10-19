@@ -9,11 +9,20 @@ import { OffensiveResponse, Vehicle, VehicleActionResponse } from '../../feature
 import { AlertSoundTarget, TranslationFunction } from './vehicle-detail.types';
 
 
+const ENABLED_OFFENSIVE_RESPONSES: readonly string[] = [OffensiveResponse.Honk, OffensiveResponse.Fart];
+
 export function hasBreakInCounterMeasure(vehicle: Vehicle): boolean {
-  const offensiveResponse = vehicle.break_in_offensive_response ?? OffensiveResponse.Disabled;
-  const hasOffensiveResponse = offensiveResponse !== OffensiveResponse.Disabled;
+  const hasOffensiveResponse = ENABLED_OFFENSIVE_RESPONSES.includes(vehicle.break_in_offensive_response ?? '');
 
   return hasOffensiveResponse || vehicle.break_in_auto_sentry_mode_enabled === true;
+}
+
+export function canConfigureCounterMeasures(vehicle: Vehicle, vehicleCommandsAuthorized: boolean): boolean {
+  return vehicle.break_in_monitoring_enabled === true && vehicleCommandsAuthorized;
+}
+
+export function shouldShowBreakInDetection(vehicle: Vehicle, vehicleCommandsAuthorized: boolean): boolean {
+  return canConfigureCounterMeasures(vehicle, vehicleCommandsAuthorized) && hasBreakInCounterMeasure(vehicle);
 }
 
 export function resolveSuccessfulResponse(response: VehicleActionResponse, t: TranslationFunction): VehicleActionResponse {

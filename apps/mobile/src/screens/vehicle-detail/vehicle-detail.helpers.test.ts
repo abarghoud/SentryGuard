@@ -33,7 +33,13 @@ import { AppState, Platform } from 'react-native';
 import { tokenStore } from '../../core/api';
 import { getTeslaScopeChangeUrlUseCase } from '../../features/auth/di';
 import { OffensiveResponse, Vehicle } from '../../features/vehicles/domain/entities';
-import { hasBreakInCounterMeasure, requestVehicleCommandsScope, resolveVehicleAlertSoundId } from './vehicle-detail.helpers';
+import {
+  canConfigureCounterMeasures,
+  hasBreakInCounterMeasure,
+  requestVehicleCommandsScope,
+  resolveVehicleAlertSoundId,
+  shouldShowBreakInDetection,
+} from './vehicle-detail.helpers';
 import { AlertSoundTarget, TranslationFunction } from './vehicle-detail.types';
 
 describe('The requestVehicleCommandsScope() function', () => {
@@ -190,6 +196,62 @@ describe('The hasBreakInCounterMeasure() function', () => {
       const vehicle = { break_in_auto_sentry_mode_enabled: true, break_in_offensive_response: OffensiveResponse.Disabled } as Vehicle;
 
       expect(hasBreakInCounterMeasure(vehicle)).toBe(true);
+    });
+  });
+
+  describe('When the offensive response holds an unknown value', () => {
+    it('should report no counter-measure', () => {
+      const vehicle = { break_in_auto_sentry_mode_enabled: false, break_in_offensive_response: 'LASERS' } as Vehicle;
+
+      expect(hasBreakInCounterMeasure(vehicle)).toBe(false);
+    });
+  });
+});
+
+describe('The canConfigureCounterMeasures() function', () => {
+  const monitoredVehicle = { break_in_monitoring_enabled: true } as Vehicle;
+
+  describe('When break-in monitoring is on and the vehicle commands are authorized', () => {
+    it('should allow it', () => {
+      expect(canConfigureCounterMeasures(monitoredVehicle, true)).toBe(true);
+    });
+  });
+
+  describe('When the vehicle commands are not authorized', () => {
+    it('should refuse it', () => {
+      expect(canConfigureCounterMeasures(monitoredVehicle, false)).toBe(false);
+    });
+  });
+
+  describe('When break-in monitoring is off', () => {
+    it('should refuse it', () => {
+      expect(canConfigureCounterMeasures({ break_in_monitoring_enabled: false } as Vehicle, true)).toBe(false);
+    });
+  });
+});
+
+describe('The shouldShowBreakInDetection() function', () => {
+  describe('When a counter-measure is enabled on a configurable vehicle', () => {
+    it('should show the settings', () => {
+      const vehicle = { break_in_monitoring_enabled: true, break_in_offensive_response: OffensiveResponse.Honk } as Vehicle;
+
+      expect(shouldShowBreakInDetection(vehicle, true)).toBe(true);
+    });
+  });
+
+  describe('When no counter-measure is enabled', () => {
+    it('should hide the settings', () => {
+      const vehicle = { break_in_monitoring_enabled: true, break_in_offensive_response: OffensiveResponse.Disabled } as Vehicle;
+
+      expect(shouldShowBreakInDetection(vehicle, true)).toBe(false);
+    });
+  });
+
+  describe('When the vehicle commands are not authorized', () => {
+    it('should hide the settings', () => {
+      const vehicle = { break_in_monitoring_enabled: true, break_in_offensive_response: OffensiveResponse.Honk } as Vehicle;
+
+      expect(shouldShowBreakInDetection(vehicle, false)).toBe(false);
     });
   });
 });
