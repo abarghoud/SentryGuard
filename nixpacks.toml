@@ -1,0 +1,6 @@
+# Pins a patched Node 22.23.4 (October 2026 Node.js security release).
+# The default Nixpacks v1.41.0 pin (nixpkgs 23f9169c) ships unpatched Node 24.10.0.
+# Switch back to nodejs_24 (with a newer nixpkgsArchive) once 24.22.1+ reaches nixpkgs master.
+[phases.setup]
+nixPkgs = ["nodejs_22", "yarn-1_x"]
+nixpkgsArchive = "5f239bb3ce14be4f7c8e91962348df827900a7fe"
