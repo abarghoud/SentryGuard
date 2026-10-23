@@ -2,7 +2,7 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform, ScrollView } from 'react-native';
+import { Platform, type ScrollViewInstance } from 'react-native';
 
 import { apiUrlStore, virtualKeyStore } from '../../core/api';
 import { normalizeDomain } from '../../core/config/app-domain';
@@ -25,7 +25,7 @@ export interface UseAuthScreenResult {
   demoEmail: string;
   demoPassword: string;
   isDemoLoggingIn: boolean;
-  scrollViewRef: React.RefObject<ScrollView | null>;
+  scrollViewRef: React.RefObject<ScrollViewInstance | null>;
   openTeslaLogin(): Promise<void>;
   fixPermissions(): Promise<void>;
   cancelPermissionsFix(): void;
@@ -54,12 +54,15 @@ export function useAuthScreen({ onAuthenticated }: UseAuthScreenParams): UseAuth
   const [demoEmail, setDemoEmail] = useState('');
   const [demoPassword, setDemoPassword] = useState('');
   const [isDemoLoggingIn, setIsDemoLoggingIn] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
 
   useEffect(() => {
     const authenticateFromUrl = (url: string | null): void => {
-      const callbackUrl = url ?? '';
-      const token = extractTokenFromCallbackUrl(callbackUrl);
+      if (!url) {
+        return;
+      }
+
+      const token = extractTokenFromCallbackUrl(url);
       if (token) {
         appLogger.info('auth', 'Login callback received with a session token');
         if (Platform.OS === 'ios') {
@@ -70,7 +73,7 @@ export function useAuthScreen({ onAuthenticated }: UseAuthScreenParams): UseAuth
         return;
       }
 
-      const missing = extractMissingScopesFromCallbackUrl(callbackUrl);
+      const missing = extractMissingScopesFromCallbackUrl(url);
       if (missing) {
         appLogger.warn('auth', 'Login callback reports missing Tesla scopes', missing);
         if (Platform.OS === 'ios') {

@@ -1,5 +1,4 @@
 const { getDefaultConfig } = require('expo/metro-config');
-const { withNxMetro } = require('@nx/expo');
 const { mergeConfig } = require('metro-config');
 
 const defaultConfig = getDefaultConfig(__dirname);
@@ -17,8 +16,4 @@ const customConfig = {
   },
 };
 
-module.exports = withNxMetro(mergeConfig(defaultConfig, customConfig), {
-  debug: false,
-  extensions: [],
-  watchFolders: [],
-});
+module.exports = mergeConfig(defaultConfig, customConfig);

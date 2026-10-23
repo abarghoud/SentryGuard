@@ -80,7 +80,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'yarn'
 
       - name: Install dependencies
@@ -111,17 +111,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select latest Xcode version
+      - name: Select Xcode 26
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: 'latest-stable'
+          xcode-version: '26'
 
       - name: Enable Corepack
         run: corepack enable
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'yarn'
 
       - name: Install dependencies
@@ -191,7 +191,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Bump mobile version
         id: bump
@@ -232,7 +232,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'yarn'
 
       - name: Install dependencies
@@ -271,17 +271,17 @@ jobs:
         with:
           ref: ${{ needs.bump-version.outputs.commit_sha }}
 
-      - name: Select latest Xcode version
+      - name: Select Xcode 26
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: 'latest-stable'
+          xcode-version: '26'
 
       - name: Enable Corepack
         run: corepack enable
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'yarn'
 
       - name: Install dependencies

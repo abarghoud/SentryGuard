@@ -30,7 +30,7 @@ jobs:
       # Configure Node.js and Yarn cache
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'yarn'
 
       # Install dependencies with Yarn
