@@ -19,6 +19,14 @@ export class AlertMockRepository implements AlertRepositoryRequirements {
       vehicle_display_name: 'Model 3 - Demo',
       vin: '5YJ3E1EA8KF123456',
     },
+    {
+      id: 'alert-second-vehicle-sentry-id',
+      created_at: new Date(Date.now() - 300000).toISOString(),
+      severity: AlertEventSeverity.Warning,
+      type: AlertEventType.Sentry,
+      vehicle_display_name: 'Model Y - Demo',
+      vin: '7SAYGDEE1PF654321',
+    },
   ];
 
   public async getAlerts(): Promise<AlertEvent[]> {
