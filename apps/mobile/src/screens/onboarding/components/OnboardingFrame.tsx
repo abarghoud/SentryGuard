@@ -1,11 +1,11 @@
 import type { JSX } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { radius, screenPadding, spacing } from '../../../core/design/metrics';
+import { radius, readableContent, screenPadding, spacing } from '../../../core/design/metrics';
 import { TextVariant } from '../../../core/design/typography';
 import { useThemeColors } from '../../../core/theme';
-import { AppText, Surface } from '../../../core/ui';
+import { AppText, FoldAwareScrollView, Surface } from '../../../core/ui';
 import { TranslationFunction } from '../onboarding.helpers';
 
 export function OnboardingFrame({
@@ -30,8 +30,8 @@ export function OnboardingFrame({
   const colors = useThemeColors();
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.systemBackground }]} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.systemBackground }]} edges={['top', 'left', 'right']}>
+      <FoldAwareScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <AppText variant={TextVariant.Footnote} color={colors.accent} style={styles.kicker}>
             {(kicker ?? t('onboarding.kicker')).toUpperCase()}
@@ -57,7 +57,7 @@ export function OnboardingFrame({
             </AppText>
           </Pressable>
         ) : null}
-      </ScrollView>
+      </FoldAwareScrollView>
     </SafeAreaView>
   );
 }
@@ -70,6 +70,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    ...readableContent,
     flexGrow: 1,
     gap: spacing.xl,
     justifyContent: 'center',

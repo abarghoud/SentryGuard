@@ -1,0 +1,77 @@
+import ExpoModulesCore
+import UIKit
+
+public class FoldDivisionModule: Module {
+  public func definition() -> ModuleDefinition {
+    Name("SentryGuardFoldDivision")
+
+    AsyncFunction("getFoldDivisions") { () -> [FoldDivision] in
+      guard let window = Self.keyWindow() else {
+        return []
+      }
+
+      return FoldDivisionReader.readDivisions(in: window)
+    }.runOnQueue(.main)
+  }
+
+  private static func keyWindow() -> UIWindow? {
+    return UIApplication.shared.connectedScenes
+      .compactMap { ($0 as? UIWindowScene)?.keyWindow }
+      .first
+  }
+}
+
+struct FoldDivision: Record {
+  @Field var height: Double = 0
+  @Field var width: Double = 0
+  @Field var x: Double = 0
+  @Field var y: Double = 0
+
+  init() {}
+
+  init(frame: CGRect) {
+    self.height = frame.height
+    self.width = frame.width
+    self.x = frame.origin.x
+    self.y = frame.origin.y
+  }
+}
+
+enum FoldDivisionReader {
+  private typealias DivisionKindFactory = @convention(c) (AnyClass, Selector) -> Unmanaged<AnyObject>
+  private typealias ReservedRegionsQuery = @convention(c) (AnyObject, Selector, AnyObject, UInt) -> Unmanaged<NSArray>
+
+  private static let divisionKindSelector = NSSelectorFromString("divisionRegionKind")
+  private static let includeInactiveOption: UInt = 1
+  private static let reservedRegionsSelector = NSSelectorFromString("reservedRegionsOfKind:options:")
+
+  static func readDivisions(in view: UIView) -> [FoldDivision] {
+    guard let divisionKind = makeDivisionKind(), view.responds(to: reservedRegionsSelector) else {
+      return []
+    }
+
+    let query = unsafeBitCast(view.method(for: reservedRegionsSelector), to: ReservedRegionsQuery.self)
+    let regions = query(view, reservedRegionsSelector, divisionKind, includeInactiveOption).takeUnretainedValue()
+
+    return regions.compactMap { makeFoldDivision(from: $0) }
+  }
+
+  private static func makeDivisionKind() -> AnyObject? {
+    guard let kindClass = NSClassFromString("UIViewReservedRegionKind"),
+          let method = class_getClassMethod(kindClass, divisionKindSelector) else {
+      return nil
+    }
+
+    let factory = unsafeBitCast(method_getImplementation(method), to: DivisionKindFactory.self)
+
+    return factory(kindClass, divisionKindSelector).takeUnretainedValue()
+  }
+
+  private static func makeFoldDivision(from region: Any) -> FoldDivision? {
+    guard let region = region as? NSObject, let frame = (region.value(forKey: "frame") as? NSValue)?.cgRectValue else {
+      return nil
+    }
+
+    return FoldDivision(frame: frame)
+  }
+}

@@ -1,12 +1,12 @@
 import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { radius, screenPadding, spacing } from '../core/design/metrics';
+import { radius, readableContent, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant, textStyle } from '../core/design/typography';
 import { useThemeColors } from '../core/theme';
-import { AppText, GlassButton, GlassButtonVariant, Surface } from '../core/ui';
+import { AppText, FoldAwareScrollView, GlassButton, GlassButtonVariant, Surface } from '../core/ui';
 import { FixPermissionsScreen } from './FixPermissionsScreen';
 import { useAuthScreen } from './auth/use-auth-screen';
 import { openCrispSupport, openFaq, resolveCrispWebsiteId, resolveFaqUrl } from './settings/settings.helpers';
@@ -63,7 +63,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
-        <ScrollView ref={scrollViewRef} keyboardShouldPersistTaps="handled" style={styles.flex} contentContainerStyle={styles.content}>
+        <FoldAwareScrollView scrollViewRef={scrollViewRef} keyboardShouldPersistTaps="handled" style={styles.flex} contentContainerStyle={styles.content}>
           <View style={styles.hero}>
             <Pressable accessibilityRole="button" onPress={revealAdvancedSettings}>
               <Image source={appLogo} style={styles.logo} resizeMode="contain" />
@@ -179,7 +179,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
               </AppText>
             ) : null}
           </View>
-        </ScrollView>
+        </FoldAwareScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -213,6 +213,7 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
       flex: 1,
     },
     content: {
+      ...readableContent,
       flexGrow: 1,
       gap: spacing.xxl,
       justifyContent: 'center',

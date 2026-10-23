@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, ViewStyle } from 'react-native';
 
 export const spacing = {
   xs: 4,
@@ -15,6 +15,14 @@ export const radius = {
   modal: 20,
   capsule: 999,
 } as const;
+
+const readableContentMaxWidth = 672;
+
+export const readableContent: ViewStyle = {
+  alignSelf: 'center',
+  maxWidth: readableContentMaxWidth,
+  width: '100%',
+};
 
 export const hairline = StyleSheet.hairlineWidth;
 

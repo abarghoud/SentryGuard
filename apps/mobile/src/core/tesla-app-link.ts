@@ -16,6 +16,14 @@ export async function openTeslaApp(fallbackUrl: string, vin?: string): Promise<v
   await tryOpenUrl(buildFallbackUrl(fallbackUrl));
 }
 
+export async function openTeslaCamera(vin: string): Promise<void> {
+  if (await tryOpenCameraView(vin)) {
+    return;
+  }
+
+  await tryOpenUrl(TESLA_APP_URL);
+}
+
 async function tryOpenCameraView(vin?: string): Promise<boolean> {
   const cameraUrl = resolveTeslaCameraUrl(vin);
 

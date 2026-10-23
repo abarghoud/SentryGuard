@@ -5,14 +5,16 @@ import { BreakInSensitivity } from '@sentryguard/vehicles-domain';
 
 WebBrowser.maybeCompleteAuthSession();
 
-import { screenPadding, spacing } from '../core/design/metrics';
+import { readableContent, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
+import { useTabPaneInsets } from '../core/design/use-screen-inset';
 import { useThemeColors } from '../core/theme';
 import { AppSwitch, AppText, GlassButton, GlassButtonVariant, Icon, ListRow, ListSection, SegmentedControl, Surface, VinMask } from '../core/ui';
 import {
   confirmTelemetryDeletion,
   openVirtualKey,
   resolveVehicleAlertSoundId,
+  resolveVehicleName,
 } from './vehicle-detail/vehicle-detail.helpers';
 import { OffensiveResponse } from '../features/vehicles/domain/entities';
 import { resolveAlertSound } from '../features/notifications/domain/alert-sounds';
@@ -21,8 +23,19 @@ import { AlertSoundTarget, VehicleAction } from './vehicle-detail/vehicle-detail
 import { useVehicleDetail } from './vehicle-detail/use-vehicle-detail';
 import type { VehicleDetailScreenProps } from '../core/navigation';
 
+const contentBottomPadding = spacing.xxl * 2;
+
+interface VehicleDetailViewProps {
+  vehicleId: string;
+}
+
 export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.Element {
+  return <VehicleDetailView vehicleId={route.params.vehicleId} />;
+}
+
+export function VehicleDetailView({ vehicleId }: VehicleDetailViewProps): JSX.Element {
   const colors = useThemeColors();
+  const paneInsets = useTabPaneInsets();
   const {
     actionMutation,
     alertSoundMutation,
@@ -42,7 +55,7 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
     t,
     vehicle,
     vehicleCommandsAuthorized,
-  } = useVehicleDetail(route.params.vehicleId);
+  } = useVehicleDetail(vehicleId);
 
   if (!vehicle) {
     return (
@@ -61,9 +74,20 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
   return (
     <ScrollView
       style={{ backgroundColor: colors.systemGroupedBackground }}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[
+        styles.content,
+        {
+          paddingBottom: contentBottomPadding + paneInsets.paddingBottom,
+          paddingTop: spacing.md + paneInsets.paddingTop,
+        },
+      ]}
       contentInsetAdjustmentBehavior="automatic"
     >
+      {paneInsets.isInsideTabs ? (
+        <AppText variant={TextVariant.LargeTitle} style={styles.title}>
+          {resolveVehicleName(vehicle, t)}
+        </AppText>
+      ) : null}
       <Surface style={styles.statusCard}>
         <View style={[styles.statusIcon, { backgroundColor: statusSurface }]}>
           <Icon name={isProtected ? 'checkmark.shield.fill' : 'exclamationmark.shield.fill'} size={22} color={statusGlyph} />
@@ -249,10 +273,9 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
 
 const styles = StyleSheet.create({
   content: {
+    ...readableContent,
     gap: spacing.xl,
-    paddingBottom: spacing.xxl * 2,
     paddingHorizontal: screenPadding,
-    paddingTop: spacing.md,
   },
   detectionRow: {
     gap: spacing.sm,
@@ -290,5 +313,8 @@ const styles = StyleSheet.create({
   statusText: {
     flex: 1,
     gap: 2,
+  },
+  title: {
+    paddingTop: spacing.xs,
   },
 });
