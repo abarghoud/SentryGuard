@@ -8,11 +8,11 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { radius, readableContent, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
+import { useListDetail } from '../core/design/use-list-detail';
 import { useScreenTopInset } from '../core/design/use-screen-inset';
-import { useTwoPaneLayout } from '../core/design/use-two-pane-layout';
 import { MainStackParamList } from '../core/navigation';
 import { ThemeMode, useTheme } from '../core/theme';
-import { AppSwitch, AppText, GlassButton, GlassButtonVariant, ListRow, ListSection, SegmentedControl, Surface, TwoPanes } from '../core/ui';
+import { AppSwitch, AppText, GlassButton, GlassButtonVariant, ListRow, ListSection, SegmentedControl, SplitPanes, Surface } from '../core/ui';
 import { UserLanguage } from '../features/user/domain/entities';
 import { resolveTelegramStatusKey } from './telegram-settings/telegram-settings.helpers';
 import {
@@ -47,9 +47,8 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
   const { t, i18n } = useTranslation();
   const { colors, mode, setMode } = useTheme();
   const topInset = useScreenTopInset();
-  const twoPaneLayout = useTwoPaneLayout();
-  const [selectedPage, setSelectedPage] = useState<SettingsPage | null>(null);
-  useFocusEffect(useCallback(() => () => setSelectedPage(null), []));
+  const { open: openSettingsPage, select: selectSettingsPage, selectedId: selectedPage } = useListDetail<SettingsPage>();
+  useFocusEffect(useCallback(() => () => selectSettingsPage(null), [selectSettingsPage]));
   const {
     criticalAlertsBlocker,
     isTelegramLinked,
@@ -103,15 +102,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
       ? resolveSettingsError(preferencesQuery.error ?? preferencesMutation.error ?? languageQuery.error ?? languageMutation.error, t)
       : null);
 
-  const openPage = (page: SettingsPage): void => {
-    if (twoPaneLayout) {
-      setSelectedPage(page);
-      return;
-    }
-
-    navigation.navigate(resolveSettingsPageRoute(page));
-  };
-  const isPageSelected = (page: SettingsPage): boolean => twoPaneLayout !== null && selectedPage === page;
+  const openPage = (page: SettingsPage): void => openSettingsPage(page, () => navigation.navigate(resolveSettingsPageRoute(page)));
 
   const settingsList = (
     <ScrollView
@@ -203,7 +194,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
           title={t('settings.telegramAccount')}
           value={t(resolveTelegramStatusKey(isTelegramLinked))}
           showChevron
-          isSelected={isPageSelected(SettingsPage.Telegram)}
+          isSelected={selectedPage === SettingsPage.Telegram}
           onPress={() => openPage(SettingsPage.Telegram)}
         />
         {isTelegramLinked ? (
@@ -227,7 +218,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         <ListRow
           title={t('settings.deleteAccount')}
           showChevron
-          isSelected={isPageSelected(SettingsPage.DeleteAccount)}
+          isSelected={selectedPage === SettingsPage.DeleteAccount}
           onPress={() => openPage(SettingsPage.DeleteAccount)}
         />
       </ListSection>
@@ -300,11 +291,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
 
   return (
     <>
-    {twoPaneLayout ? (
-      <TwoPanes first={settingsList} layout={twoPaneLayout} second={<SettingsPageView onClose={() => setSelectedPage(null)} onLogout={onLogout} page={selectedPage} />} />
-    ) : (
-      settingsList
-    )}
+    <SplitPanes first={settingsList} second={<SettingsPageView onClose={() => selectSettingsPage(null)} onLogout={onLogout} page={selectedPage} />} />
     <CriticalAlertsAccessModal blocker={criticalAlertsBlocker} onClose={() => setCriticalAlertsBlocker(null)} />
     <MuteDurationModal
       isVisible={isMuteModalOpen}

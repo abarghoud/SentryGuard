@@ -2,13 +2,13 @@ import { useNavigation } from '@react-navigation/native';
 import type { JSX } from 'react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { readableContent, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
 import { useTabPaneInsets } from '../core/design/use-screen-inset';
 import { useThemeColors } from '../core/theme';
-import { AppText, FoldAwareScrollView, PaneHeader } from '../core/ui';
+import { AppText, PaneHeader } from '../core/ui';
 import { TelegramConfigBlock } from '../features/telegram/presentation/components/TelegramConfigBlock';
 import { shouldShowLinkReturnHint } from './telegram-settings/telegram-settings.helpers';
 import { useTelegramSettings } from './telegram-settings/use-telegram-settings';
@@ -44,7 +44,7 @@ export function TelegramSettingsView({ onClose }: TelegramSettingsViewProps): JS
   } = useTelegramSettings();
 
   return (
-    <FoldAwareScrollView
+    <ScrollView
       style={{ backgroundColor: colors.systemGroupedBackground }}
       contentContainerStyle={[
         styles.content,
@@ -70,7 +70,7 @@ export function TelegramSettingsView({ onClose }: TelegramSettingsViewProps): JS
         onSendTest={sendTelegramTest}
         onRefresh={refreshTelegramStatus}
       />
-    </FoldAwareScrollView>
+    </ScrollView>
   );
 }
 

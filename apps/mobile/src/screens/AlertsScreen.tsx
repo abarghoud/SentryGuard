@@ -8,11 +8,11 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-n
 import { readableContent, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
 import { useHaptics } from '../core/design/use-haptics';
+import { useListDetail } from '../core/design/use-list-detail';
 import { useScreenTopInset } from '../core/design/use-screen-inset';
-import { useTwoPaneLayout } from '../core/design/use-two-pane-layout';
 import { useUserInitiatedRefresh } from '../core/hooks/use-user-initiated-refresh';
 import { useThemeColors } from '../core/theme';
-import { AppText, CenteredPane, Icon, SegmentedControl, Surface, TwoPanes } from '../core/ui';
+import { AppText, CenteredPane, Icon, SegmentedControl, SplitPanes, Surface } from '../core/ui';
 import { clearAlertsUseCase, deleteAlertUseCase, useAlertsQuery } from '../features/alerts/di';
 import { AlertEvent } from '../features/alerts/domain/entities';
 import { AlertCard } from './alerts/components/AlertCard';
@@ -36,14 +36,13 @@ export function AlertsScreen(): JSX.Element {
   const [isClearingAlerts, setIsClearingAlerts] = useState(false);
   const colors = useThemeColors();
   const topInset = useScreenTopInset();
-  const twoPaneLayout = useTwoPaneLayout();
+  const alertSelection = useListDetail<string>();
   const { lastSeenAt, markAlertsSeen } = useAlertsSeen();
   const alertsQuery = useAlertsQuery();
   const alerts = alertsQuery.data ?? [];
   const hasClearableAlerts = alerts.length > 0;
   const filteredAlerts = useMemo(() => filterAlerts(alerts, activeFilter), [activeFilter, alerts]);
-  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
-  const displayedAlert = twoPaneLayout ? resolveSelectedAlert(filteredAlerts, selectedAlertId) : null;
+  const displayedAlert = alertSelection.isSplit ? resolveSelectedAlert(filteredAlerts, alertSelection.selectedId) : null;
 
   const refetchAlerts = alertsQuery.refetch;
   const { isRefreshing, onRefresh } = useUserInitiatedRefresh([refetchAlerts]);
@@ -133,7 +132,7 @@ export function AlertsScreen(): JSX.Element {
             isUnread={isAlertUnread(item, lastSeenAt)}
             language={i18n.language}
             onDelete={() => deleteAlertMutation.mutate(item.id)}
-            onSelect={twoPaneLayout ? () => setSelectedAlertId(item.id) : undefined}
+            onSelect={alertSelection.isSplit ? () => alertSelection.open(item.id) : undefined}
             t={t}
           />
         ))}
@@ -155,10 +154,9 @@ export function AlertsScreen(): JSX.Element {
     </ScrollView>
   );
 
-  return twoPaneLayout ? (
-    <TwoPanes
+  return (
+    <SplitPanes
       first={alertsColumn}
-      layout={twoPaneLayout}
       second={
         displayedAlert ? (
           <ScrollView {...scrollViewProps}>
@@ -169,8 +167,6 @@ export function AlertsScreen(): JSX.Element {
         )
       }
     />
-  ) : (
-    alertsColumn
   );
 }
 

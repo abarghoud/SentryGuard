@@ -1,12 +1,12 @@
 import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { radius, readableContent, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant, textStyle } from '../core/design/typography';
 import { useThemeColors } from '../core/theme';
-import { AppText, FoldAwareScrollView, GlassButton, GlassButtonVariant, Surface } from '../core/ui';
+import { AppText, GlassButton, GlassButtonVariant, Surface } from '../core/ui';
 import { FixPermissionsScreen } from './FixPermissionsScreen';
 import { useAuthScreen } from './auth/use-auth-screen';
 import { openCrispSupport, openFaq, resolveCrispWebsiteId, resolveFaqUrl } from './settings/settings.helpers';
@@ -63,7 +63,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
-        <FoldAwareScrollView scrollViewRef={scrollViewRef} keyboardShouldPersistTaps="handled" style={styles.flex} contentContainerStyle={styles.content}>
+        <ScrollView ref={scrollViewRef} keyboardShouldPersistTaps="handled" style={styles.flex} contentContainerStyle={styles.content}>
           <View style={styles.hero}>
             <Pressable accessibilityRole="button" onPress={revealAdvancedSettings}>
               <Image source={appLogo} style={styles.logo} resizeMode="contain" />
@@ -179,7 +179,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps): JSX.Element {
               </AppText>
             ) : null}
           </View>
-        </FoldAwareScrollView>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

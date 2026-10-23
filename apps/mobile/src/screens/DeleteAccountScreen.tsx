@@ -2,13 +2,13 @@ import { useNavigation } from '@react-navigation/native';
 import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 
 import { readableContent, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
 import { useTabPaneInsets } from '../core/design/use-screen-inset';
 import { useThemeColors } from '../core/theme';
-import { AppText, FoldAwareScrollView, GlassButton, PaneHeader, Surface } from '../core/ui';
+import { AppText, GlassButton, PaneHeader, Surface } from '../core/ui';
 import { revokeConsentUseCase } from '../features/consent/di';
 import { confirmAccountDeletion } from './settings/settings.helpers';
 import { deleteAccountCooldownSeconds, hasCooldownElapsed, resolveDeleteAccountCtaLabel } from './delete-account/delete-account.helpers';
@@ -60,7 +60,7 @@ export function DeleteAccountView({ onClose, onLogout }: DeleteAccountViewProps)
   };
 
   return (
-    <FoldAwareScrollView
+    <ScrollView
       style={{ backgroundColor: colors.systemGroupedBackground }}
       contentContainerStyle={[
         styles.content,
@@ -86,7 +86,7 @@ export function DeleteAccountView({ onClose, onLogout }: DeleteAccountViewProps)
         label={isDeleting ? t('common.loading') : resolveDeleteAccountCtaLabel(remainingSeconds, t)}
         onPress={handleDeleteAccount}
       />
-    </FoldAwareScrollView>
+    </ScrollView>
   );
 }
 

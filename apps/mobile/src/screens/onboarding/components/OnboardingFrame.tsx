@@ -1,11 +1,11 @@
 import type { JSX } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { radius, readableContent, screenPadding, spacing } from '../../../core/design/metrics';
 import { TextVariant } from '../../../core/design/typography';
 import { useThemeColors } from '../../../core/theme';
-import { AppText, FoldAwareScrollView, Surface } from '../../../core/ui';
+import { AppText, Surface } from '../../../core/ui';
 import { TranslationFunction } from '../onboarding.helpers';
 
 export function OnboardingFrame({
@@ -31,7 +31,7 @@ export function OnboardingFrame({
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.systemBackground }]} edges={['top', 'left', 'right']}>
-      <FoldAwareScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <AppText variant={TextVariant.Footnote} color={colors.accent} style={styles.kicker}>
             {(kicker ?? t('onboarding.kicker')).toUpperCase()}
@@ -57,7 +57,7 @@ export function OnboardingFrame({
             </AppText>
           </Pressable>
         ) : null}
-      </FoldAwareScrollView>
+      </ScrollView>
     </SafeAreaView>
   );
 }

@@ -1,8 +1,6 @@
 export { AppSwitch } from './AppSwitch';
 export { AppText } from './AppText';
 export { CenteredPane } from './CenteredPane';
-export { FoldAwareScrollView } from './FoldAwareScrollView';
-export { TwoPanes } from './TwoPanes';
 export { GlassBackground } from './GlassBackground';
 export { GlassButton, GlassButtonVariant } from './GlassButton';
 export { Icon } from './Icon';
@@ -10,5 +8,6 @@ export { ListRow } from './ListRow';
 export { ListSection } from './ListSection';
 export { PaneHeader } from './PaneHeader';
 export { SegmentedControl, type SegmentOption } from './SegmentedControl';
+export { SplitPanes } from './SplitPanes';
 export { Surface } from './Surface';
 export { VinMask } from './VinMask';

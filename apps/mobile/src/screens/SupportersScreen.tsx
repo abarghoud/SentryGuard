@@ -6,9 +6,8 @@ import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { readableContent, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
 import { useScreenTopInset } from '../core/design/use-screen-inset';
-import { useTwoPaneLayout } from '../core/design/use-two-pane-layout';
 import { useThemeColors } from '../core/theme';
-import { AppText, CenteredPane, Icon, Surface, TwoPanes } from '../core/ui';
+import { AppText, CenteredPane, Icon, SplitPanes, Surface } from '../core/ui';
 import { getSupportersUseCase } from '../features/supporters/di';
 import { SupporterCard } from './supporters/components/SupporterCard';
 
@@ -16,7 +15,6 @@ export function SupportersScreen(): JSX.Element {
   const { i18n, t } = useTranslation();
   const colors = useThemeColors();
   const topInset = useScreenTopInset();
-  const twoPaneLayout = useTwoPaneLayout();
 
   const supportersQuery = useQuery({
     queryFn: () => getSupportersUseCase.execute(),
@@ -74,21 +72,7 @@ export function SupportersScreen(): JSX.Element {
     </>
   );
 
-  return twoPaneLayout ? (
-    <TwoPanes
-      first={<SupportersIntroduction supporterCount={supporters.length} />}
-      layout={twoPaneLayout}
-      second={
-        <ScrollView
-          {...scrollViewProps}
-          contentContainerStyle={[scrollViewProps.contentContainerStyle, { paddingTop: topInset + spacing.xl }]}
-          refreshControl={refreshControl}
-        >
-          {donors}
-        </ScrollView>
-      }
-    />
-  ) : (
+  const singleColumn = (
     <ScrollView {...scrollViewProps} refreshControl={refreshControl}>
       <View style={styles.header}>
         <AppText variant={TextVariant.LargeTitle} style={styles.title}>
@@ -116,6 +100,22 @@ export function SupportersScreen(): JSX.Element {
       </Surface>
       {donors}
     </ScrollView>
+  );
+
+  return (
+    <SplitPanes
+      first={<SupportersIntroduction supporterCount={supporters.length} />}
+      single={singleColumn}
+      second={
+        <ScrollView
+          {...scrollViewProps}
+          contentContainerStyle={[scrollViewProps.contentContainerStyle, { paddingTop: topInset + spacing.xl }]}
+          refreshControl={refreshControl}
+        >
+          {donors}
+        </ScrollView>
+      }
+    />
   );
 }
 

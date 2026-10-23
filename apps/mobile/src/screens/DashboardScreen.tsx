@@ -8,10 +8,10 @@ import { FlatList, Platform, Pressable, RefreshControl, StyleSheet, View } from 
 
 import { readableContent, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
+import { useListDetail } from '../core/design/use-list-detail';
 import { useScreenTopInset } from '../core/design/use-screen-inset';
-import { useTwoPaneLayout } from '../core/design/use-two-pane-layout';
 import { useThemeColors } from '../core/theme';
-import { AppText, Icon, TwoPanes } from '../core/ui';
+import { AppText, Icon, SplitPanes } from '../core/ui';
 import { AppTabParamList, MainStackParamList } from '../core/navigation';
 import { useCurrentTime } from '../core/hooks/use-current-time';
 import { usePushToken } from '../core/hooks/usePushToken';
@@ -53,13 +53,11 @@ export function DashboardScreen(): JSX.Element {
   const tabNavigation = useNavigation<NavigationProp<AppTabParamList>>();
   const [virtualKeyMessage, setVirtualKeyMessage] = useState<string | null>(null);
   const [isMuteModalOpen, setIsMuteModalOpen] = useState(false);
-  const [selectedVehicleVin, setSelectedVehicleVin] = useState<string | null>(null);
   const colors = useThemeColors();
   const topInset = useScreenTopInset();
-  const twoPaneLayout = useTwoPaneLayout();
-  const isSplitLayout = twoPaneLayout !== null;
+  const vehicleSelection = useListDetail<string>();
   const vehiclesQuery = useVehiclesQuery();
-  const displayedVehicle = isSplitLayout ? resolveSelectedVehicle(vehiclesQuery.data, selectedVehicleVin) : null;
+  const displayedVehicle = vehicleSelection.isSplit ? resolveSelectedVehicle(vehiclesQuery.data, vehicleSelection.selectedId) : null;
   const displayedVehicleVin = displayedVehicle ? displayedVehicle.vin : null;
   const queryClient = useQueryClient();
   const { isTokenResolved, pushToken } = usePushToken();
@@ -153,14 +151,8 @@ export function DashboardScreen(): JSX.Element {
     }
   };
 
-  const openVehicle = (vehicle: Vehicle): void => {
-    if (isSplitLayout) {
-      setSelectedVehicleVin(vehicle.vin);
-      return;
-    }
-
-    navigation.navigate('VehicleDetail', { vehicleId: vehicle.vin, title: vehicle.display_name ?? vehicle.model });
-  };
+  const openVehicle = (vehicle: Vehicle): void =>
+    vehicleSelection.open(vehicle.vin, () => navigation.navigate('VehicleDetail', { vehicleId: vehicle.vin, title: vehicle.display_name ?? vehicle.model }));
 
   const vehicleList = (
     <FlatList
@@ -266,15 +258,10 @@ export function DashboardScreen(): JSX.Element {
 
   return (
     <>
-    {twoPaneLayout ? (
-      <TwoPanes
-        first={vehicleList}
-        layout={twoPaneLayout}
-        second={displayedVehicle ? <VehicleDetailView key={displayedVehicle.vin} vehicleId={displayedVehicle.vin} /> : null}
-      />
-    ) : (
-      vehicleList
-    )}
+    <SplitPanes
+      first={vehicleList}
+      second={displayedVehicle ? <VehicleDetailView key={displayedVehicle.vin} vehicleId={displayedVehicle.vin} /> : null}
+    />
     <MuteDurationModal
       isVisible={isMuteModalOpen}
       mutedUntil={preferencesQuery.data?.muted_until}

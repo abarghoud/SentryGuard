@@ -3,15 +3,28 @@ import { StyleSheet, View } from 'react-native';
 
 import { hairline } from '../design/metrics';
 import { TwoPaneKind, TwoPaneLayout } from '../design/two-pane-layout';
+import { useTwoPaneLayout } from '../design/use-two-pane-layout';
 import { useThemeColors } from '../theme';
 
-interface TwoPanesProps {
+interface SplitPanesProps {
+  first: JSX.Element;
+  second: JSX.Element | null;
+  single?: JSX.Element;
+}
+
+interface PanesProps {
   first: JSX.Element;
   layout: TwoPaneLayout;
   second: JSX.Element | null;
 }
 
-export function TwoPanes({ first, layout, second }: TwoPanesProps): JSX.Element {
+export function SplitPanes({ first, second, single = first }: SplitPanesProps): JSX.Element {
+  const layout = useTwoPaneLayout();
+
+  return layout ? <Panes first={first} layout={layout} second={second} /> : single;
+}
+
+function Panes({ first, layout, second }: PanesProps): JSX.Element {
   const colors = useThemeColors();
   const divider = layout.kind === TwoPaneKind.SideBySide ? { borderRightColor: colors.separator, borderRightWidth: hairline } : null;
 
