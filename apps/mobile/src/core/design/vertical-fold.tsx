@@ -34,7 +34,7 @@ function useVerticalFoldReading(): FoldDivision | null {
     return () => {
       isCurrent = false;
     };
-  }, [height, width]);
+  }, [height, hingeStatus, width]);
 
   return selectFoldToLayOut(divisions, hingeStatus === 'partiallyOpen');
 }
