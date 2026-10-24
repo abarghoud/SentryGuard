@@ -81,7 +81,7 @@ export function VehicleDetailView({ vehicleId }: VehicleDetailViewProps): JSX.El
           paddingTop: spacing.md + paneInsets.paddingTop,
         },
       ]}
-      contentInsetAdjustmentBehavior="automatic"
+      contentInsetAdjustmentBehavior={paneInsets.contentInsetAdjustmentBehavior}
     >
       {paneInsets.isInsideTabs ? (
         <AppText variant={TextVariant.LargeTitle} style={styles.title}>

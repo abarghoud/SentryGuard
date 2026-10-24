@@ -2,10 +2,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform } from 'react-native';
 
 import { TextVariant, textStyle } from '../design/typography';
-import { useHorizontalScreenInsets } from '../design/use-screen-inset';
+import { isTabBarFloating, useHorizontalScreenInsets } from '../design/use-screen-inset';
 import { AppTabParamList, MainStackParamList } from '../navigation';
 import { useTheme } from '../theme';
 import { GlassBackground } from '../ui';
@@ -75,8 +74,8 @@ function AppTabs({ onLogout }: { onLogout(): Promise<void> }): JSX.Element {
         sceneStyle: [{ backgroundColor: colors.systemGroupedBackground }, horizontalScreenInsets],
         tabBarActiveTintColor: colors.label,
         tabBarInactiveTintColor: isDark ? colors.secondaryLabel : colors.tertiaryLabel,
-        tabBarStyle: Platform.OS === 'ios' ? { position: 'absolute', borderTopWidth: 0 } : { borderTopColor: colors.separator },
-        tabBarBackground: Platform.OS === 'ios' ? () => <GlassBackground /> : undefined,
+        tabBarStyle: isTabBarFloating ? { position: 'absolute', borderTopWidth: 0 } : { borderTopColor: colors.separator },
+        tabBarBackground: isTabBarFloating ? () => <GlassBackground /> : undefined,
       }}
     >
       <Tabs.Screen

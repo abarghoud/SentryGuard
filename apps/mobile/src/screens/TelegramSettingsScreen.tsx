@@ -50,7 +50,7 @@ export function TelegramSettingsView({ onClose }: TelegramSettingsViewProps): JS
         styles.content,
         { paddingBottom: screenPadding + paneInsets.paddingBottom, paddingTop: screenPadding + paneInsets.paddingTop },
       ]}
-      contentInsetAdjustmentBehavior="automatic"
+      contentInsetAdjustmentBehavior={paneInsets.contentInsetAdjustmentBehavior}
     >
       {paneInsets.isInsideTabs ? <PaneHeader closeLabel={t('common.done')} onClose={onClose} title={t('settings.telegramSection')} /> : null}
 
