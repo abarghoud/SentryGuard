@@ -42,15 +42,20 @@ enum FoldDivisionReader {
   private typealias ReservedRegionsQuery = @convention(c) (AnyObject, Selector, AnyObject, UInt) -> Unmanaged<NSArray>
 
   private static let divisionKindSelector = NSSelectorFromString("divisionRegionKind")
+  private static let divisionKindSignature = MethodSignature(argumentTypes: ["@", ":"], returnType: "@")
+  private static let frameSelector = NSSelectorFromString("frame")
   private static let includeInactiveOption: UInt = 1
   private static let reservedRegionsSelector = NSSelectorFromString("reservedRegionsOfKind:options:")
+  private static let reservedRegionsSignature = MethodSignature(argumentTypes: ["@", ":", "@", "Q"], returnType: "@")
 
   static func readDivisions(in view: UIView) -> [FoldDivision] {
-    guard let divisionKind = makeDivisionKind(), view.responds(to: reservedRegionsSelector) else {
+    guard let divisionKind = makeDivisionKind(),
+          let method = class_getInstanceMethod(type(of: view), reservedRegionsSelector),
+          reservedRegionsSignature.matches(method) else {
       return []
     }
 
-    let query = unsafeBitCast(view.method(for: reservedRegionsSelector), to: ReservedRegionsQuery.self)
+    let query = unsafeBitCast(method_getImplementation(method), to: ReservedRegionsQuery.self)
     let regions = query(view, reservedRegionsSelector, divisionKind, includeInactiveOption).takeUnretainedValue()
 
     return regions.compactMap { makeFoldDivision(from: $0) }
@@ -58,7 +63,8 @@ enum FoldDivisionReader {
 
   private static func makeDivisionKind() -> AnyObject? {
     guard let kindClass = NSClassFromString("UIViewReservedRegionKind"),
-          let method = class_getClassMethod(kindClass, divisionKindSelector) else {
+          let method = class_getClassMethod(kindClass, divisionKindSelector),
+          divisionKindSignature.matches(method) else {
       return nil
     }
 
@@ -68,10 +74,37 @@ enum FoldDivisionReader {
   }
 
   private static func makeFoldDivision(from region: Any) -> FoldDivision? {
-    guard let region = region as? NSObject, let frame = (region.value(forKey: "frame") as? NSValue)?.cgRectValue else {
+    guard let region = region as? NSObject,
+          region.responds(to: frameSelector),
+          let frame = (region.value(forKey: "frame") as? NSValue)?.cgRectValue else {
       return nil
     }
 
     return FoldDivision(frame: frame)
+  }
+}
+
+private struct MethodSignature {
+  let argumentTypes: [String]
+  let returnType: String
+
+  func matches(_ method: Method) -> Bool {
+    guard method_getNumberOfArguments(method) == argumentTypes.count,
+          Self.takeType(method_copyReturnType(method)) == returnType else {
+      return false
+    }
+
+    return argumentTypes.indices.allSatisfy { index in
+      Self.takeType(method_copyArgumentType(method, UInt32(index))) == argumentTypes[index]
+    }
+  }
+
+  private static func takeType(_ encoding: UnsafeMutablePointer<CChar>?) -> String? {
+    guard let encoding else {
+      return nil
+    }
+    defer { free(encoding) }
+
+    return String(cString: encoding)
   }
 }
