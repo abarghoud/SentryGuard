@@ -1,17 +1,18 @@
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
 import type { JSX } from 'react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { radius, screenPadding, spacing } from '../core/design/metrics';
+import { radius, readableContent, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
+import { useListDetail } from '../core/design/use-list-detail';
 import { useScreenTopInset } from '../core/design/use-screen-inset';
 import { MainStackParamList } from '../core/navigation';
 import { ThemeMode, useTheme } from '../core/theme';
-import { AppSwitch, AppText, GlassButton, GlassButtonVariant, ListRow, ListSection, SegmentedControl, Surface } from '../core/ui';
+import { AppSwitch, AppText, GlassButton, GlassButtonVariant, ListRow, ListSection, SegmentedControl, SplitPanes, Surface } from '../core/ui';
 import { UserLanguage } from '../features/user/domain/entities';
 import { resolveTelegramStatusKey } from './telegram-settings/telegram-settings.helpers';
 import {
@@ -31,6 +32,8 @@ import {
   shareDebugLogs,
 } from './settings/settings.helpers';
 import { CriticalAlertsAccessModal } from './settings/CriticalAlertsAccessModal';
+import { SettingsPageView } from './settings/SettingsPageView';
+import { SettingsPage, resolveSettingsPageRoute } from './settings/settings-page.helpers';
 import { useSettings } from './settings/use-settings';
 import { muteNotificationsUseCase, unmuteNotificationsUseCase } from '../features/notifications/di';
 import { MuteDurationModal } from './dashboard/components/MuteDurationModal';
@@ -44,6 +47,8 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
   const { t, i18n } = useTranslation();
   const { colors, mode, setMode } = useTheme();
   const topInset = useScreenTopInset();
+  const { open: openSettingsPage, select: selectSettingsPage, selectedId: selectedPage } = useListDetail<SettingsPage>();
+  useFocusEffect(useCallback(() => () => selectSettingsPage(null), [selectSettingsPage]));
   const {
     criticalAlertsBlocker,
     isTelegramLinked,
@@ -97,7 +102,9 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
       ? resolveSettingsError(preferencesQuery.error ?? preferencesMutation.error ?? languageQuery.error ?? languageMutation.error, t)
       : null);
 
-  return (
+  const openPage = (page: SettingsPage): void => openSettingsPage(page, () => navigation.navigate(resolveSettingsPageRoute(page)));
+
+  const settingsList = (
     <ScrollView
       style={{ backgroundColor: colors.systemGroupedBackground }}
       contentContainerStyle={[styles.content, { paddingTop: topInset + spacing.sm }]}
@@ -187,7 +194,8 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
           title={t('settings.telegramAccount')}
           value={t(resolveTelegramStatusKey(isTelegramLinked))}
           showChevron
-          onPress={() => navigation.navigate('TelegramSettings')}
+          isSelected={selectedPage === SettingsPage.Telegram}
+          onPress={() => openPage(SettingsPage.Telegram)}
         />
         {isTelegramLinked ? (
           <ListRow
@@ -207,7 +215,12 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
       <ListSection header={t('settings.legalSection')}>
         <ListRow title={t('settings.privacyPolicy')} showChevron onPress={() => void openPrivacyPolicy(i18n.language)} />
         <ListRow title={t('settings.terms')} showChevron onPress={() => void openTermsOfService(i18n.language)} />
-        <ListRow title={t('settings.deleteAccount')} showChevron onPress={() => navigation.navigate('DeleteAccount')} />
+        <ListRow
+          title={t('settings.deleteAccount')}
+          showChevron
+          isSelected={selectedPage === SettingsPage.DeleteAccount}
+          onPress={() => openPage(SettingsPage.DeleteAccount)}
+        />
       </ListSection>
 
       <ListSection header={t('settings.communitySection')}>
@@ -273,23 +286,28 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps): JSX.Element {
         onPress={() => void onLogout()}
         style={styles.logout}
       />
-
-      <CriticalAlertsAccessModal blocker={criticalAlertsBlocker} onClose={() => setCriticalAlertsBlocker(null)} />
-
-      <MuteDurationModal
-        isVisible={isMuteModalOpen}
-        mutedUntil={preferences.muted_until}
-        onClose={() => setIsMuteModalOpen(false)}
-        onMute={(minutes) => void handleMute(minutes)}
-        onResume={() => void handleResumeNotifications()}
-        t={t}
-      />
     </ScrollView>
+  );
+
+  return (
+    <>
+    <SplitPanes first={settingsList} second={<SettingsPageView onClose={() => selectSettingsPage(null)} onLogout={onLogout} page={selectedPage} />} />
+    <CriticalAlertsAccessModal blocker={criticalAlertsBlocker} onClose={() => setCriticalAlertsBlocker(null)} />
+    <MuteDurationModal
+      isVisible={isMuteModalOpen}
+      mutedUntil={preferences.muted_until}
+      onClose={() => setIsMuteModalOpen(false)}
+      onMute={(minutes) => void handleMute(minutes)}
+      onResume={() => void handleResumeNotifications()}
+      t={t}
+    />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   content: {
+    ...readableContent,
     gap: spacing.xl,
     paddingBottom: spacing.xxl * 2,
     paddingHorizontal: screenPadding,

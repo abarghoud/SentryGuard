@@ -23,6 +23,20 @@ export class VehicleMockRepository implements VehicleRepositoryRequirements {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
+    {
+      id: 'demo-second-vehicle-id',
+      vin: '7SAYGDEE1PF654321',
+      display_name: 'Model Y - Demo',
+      sentry_mode_monitoring_enabled: true,
+      break_in_monitoring_enabled: false,
+      break_in_offensive_response: OffensiveResponse.Disabled,
+      break_in_auto_sentry_mode_enabled: false,
+      break_in_reaction_delay_seconds: DEFAULT_BREAK_IN_REACTION_DELAY_SECONDS,
+      break_in_sensitivity: DEFAULT_BREAK_IN_SENSITIVITY,
+      key_paired: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
   ];
 
   public async getVehicles(): Promise<Vehicle[]> {

@@ -82,4 +82,33 @@ describe('The getSupportersData() function', () => {
       });
     });
   });
+
+  describe('When the backend does not answer', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      global.fetch = jest.fn(
+        (_url: RequestInfo | URL, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
+          })
+      );
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('should give up after 5 seconds and return empty supporters data', async () => {
+      const pendingResult = getSupportersData();
+
+      jest.advanceTimersByTime(5000);
+
+      expect(await pendingResult).toStrictEqual({
+        subscribers: [],
+        supporters: [],
+        totalCoffeesCount: 0,
+        hasActiveSupporters: false,
+      });
+    });
+  });
 });

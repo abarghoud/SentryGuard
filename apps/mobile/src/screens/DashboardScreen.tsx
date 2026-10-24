@@ -6,11 +6,12 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Platform, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
-import { screenPadding, spacing } from '../core/design/metrics';
+import { readableContent, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
+import { useListDetail } from '../core/design/use-list-detail';
 import { useScreenTopInset } from '../core/design/use-screen-inset';
 import { useThemeColors } from '../core/theme';
-import { AppText, Icon } from '../core/ui';
+import { AppText, Icon, SplitPanes } from '../core/ui';
 import { AppTabParamList, MainStackParamList } from '../core/navigation';
 import { useCurrentTime } from '../core/hooks/use-current-time';
 import { usePushToken } from '../core/hooks/usePushToken';
@@ -25,6 +26,7 @@ import {
 import { useAlertsQuery } from '../features/alerts/di';
 import { getOnboardingStatusUseCase } from '../features/onboarding/di';
 import { useVehiclesQuery } from '../features/vehicles/di';
+import { Vehicle } from '../features/vehicles/domain/entities';
 import { EmptyState } from './dashboard/components/EmptyState';
 import { LatestAlertCard } from './dashboard/components/LatestAlertCard';
 import { MuteDurationModal } from './dashboard/components/MuteDurationModal';
@@ -33,8 +35,15 @@ import { OnboardingBanner } from './dashboard/components/OnboardingBanner';
 import { PushNotificationBanner } from './dashboard/components/PushNotificationBanner';
 import { VehicleCard } from './dashboard/components/VehicleCard';
 import { VirtualKeyBanner } from './dashboard/components/VirtualKeyBanner';
-import { isMuteActive, openVirtualKey, resolveLatestAlert, resolveSubtitle } from './dashboard/dashboard.helpers';
+import {
+  isMuteActive,
+  openVirtualKey,
+  resolveLatestAlert,
+  resolveSelectedVehicle,
+  resolveSubtitle,
+} from './dashboard/dashboard.helpers';
 import { registerDeviceForPush } from './settings/settings.helpers';
+import { VehicleDetailView } from './VehicleDetailScreen';
 
 const RELATIVE_TIME_REFRESH_INTERVAL_MILLISECONDS = 30000;
 
@@ -46,7 +55,10 @@ export function DashboardScreen(): JSX.Element {
   const [isMuteModalOpen, setIsMuteModalOpen] = useState(false);
   const colors = useThemeColors();
   const topInset = useScreenTopInset();
+  const vehicleSelection = useListDetail<string>();
   const vehiclesQuery = useVehiclesQuery();
+  const displayedVehicle = vehicleSelection.isSplit ? resolveSelectedVehicle(vehiclesQuery.data, vehicleSelection.selectedId) : null;
+  const displayedVehicleVin = displayedVehicle ? displayedVehicle.vin : null;
   const queryClient = useQueryClient();
   const { isTokenResolved, pushToken } = usePushToken();
 
@@ -139,8 +151,10 @@ export function DashboardScreen(): JSX.Element {
     }
   };
 
-  return (
-    <>
+  const openVehicle = (vehicle: Vehicle): void =>
+    vehicleSelection.open(vehicle.vin, () => navigation.navigate('VehicleDetail', { vehicleId: vehicle.vin, title: vehicle.display_name ?? vehicle.model }));
+
+  const vehicleList = (
     <FlatList
       style={{ backgroundColor: colors.systemGroupedBackground }}
       contentContainerStyle={[styles.content, { paddingTop: topInset + spacing.sm }]}
@@ -227,17 +241,26 @@ export function DashboardScreen(): JSX.Element {
             onPress={() => tabNavigation.navigate('Alerts')}
             t={t}
           />
-        ) : null
+        ) : undefined
       }
       ListEmptyComponent={<EmptyState isLoading={vehiclesQuery.isLoading} error={vehiclesQuery.error} t={t} />}
       renderItem={({ item }) => (
         <VehicleCard
+          isSelected={item.vin === displayedVehicleVin}
           vehicle={item}
           onOpenKey={() => void openVirtualKey(setVirtualKeyMessage, t)}
-          onSelect={() => navigation.navigate('VehicleDetail', { vehicleId: item.vin, title: item.display_name ?? item.model })}
+          onSelect={() => openVehicle(item)}
           t={t}
         />
       )}
+    />
+  );
+
+  return (
+    <>
+    <SplitPanes
+      first={vehicleList}
+      second={displayedVehicle ? <VehicleDetailView key={displayedVehicle.vin} vehicleId={displayedVehicle.vin} /> : null}
     />
     <MuteDurationModal
       isVisible={isMuteModalOpen}
@@ -253,6 +276,7 @@ export function DashboardScreen(): JSX.Element {
 
 const styles = StyleSheet.create({
   content: {
+    ...readableContent,
     gap: spacing.md,
     paddingBottom: spacing.xxl * 3,
     paddingHorizontal: screenPadding,

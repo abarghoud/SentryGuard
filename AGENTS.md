@@ -32,7 +32,7 @@ Nx monorepo — Tesla vehicle monitoring with Telegram + mobile-push alerts and 
 |---------|-----------|------|-------------|
 | `apps/api` | NestJS + TypeORM + PostgreSQL | 3001 | Jest (node env) |
 | `apps/webapp` | Next.js 16 (App Router, SSR) | 3000 | Jest (jsdom env) |
-| `apps/mobile` | Expo SDK 54 / React Native (iOS, Android, Expo Web) | 8081 / 3002 | Jest (node env) |
+| `apps/mobile` | Expo SDK 58 / React Native 0.88 (iOS, Android, Expo Web) | 8081 / 3002 | Jest (node env) |
 | `libs/beta/domain` | `@sentryguard/beta-domain` — Tesla scopes + error codes | — | Jest |
 | `libs/telegram/domain` | `@sentryguard/telegram-domain` — Telegram-linking use-cases (web + mobile) | — | Jest |
 | `libs/vehicles/domain` | `@sentryguard/vehicles-domain` — vehicle rules (break-in detection settings, mobile) | — | Jest |
@@ -151,7 +151,7 @@ apps/mobile/src/
 ├── features/      # Same clean-architecture layout as webapp (domain/data/presentation/di.ts)
 └── screens/       # Presentational screens; logic in use-*.ts hooks
 ```
-Not Expo Router — uses `@react-navigation` (bottom tabs: Dashboard / Alerts / Settings). Tesla OAuth via `expo-web-browser` + deep link `sentryguard://callback`; JWT in `expo-secure-store`. Push via `expo-notifications`; tapping an alert push opens the Tesla sentry camera view of the alerting vehicle, from the `EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE` template (kept out of the repo, empty = disabled). API URL = build-time `EXPO_PUBLIC_API_URL`.
+Not Expo Router — uses `@react-navigation` (bottom tabs: Dashboard / Alerts / Settings). Tesla OAuth via `expo-web-browser` + deep link `sentryguard://callback`; JWT in `expo-secure-store`. Push via `expo-notifications`; tapping an alert push opens the Tesla sentry camera view of the alerting vehicle, from the `EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE` template (kept out of the repo, empty = disabled). API URL = build-time `EXPO_PUBLIC_API_URL`. On large screens (iPad, tablets, foldables) every screen's scroll content spreads `readableContent` (`core/design/metrics.ts`), a centred column capped at 672 pt; new screens must do the same. Screens never test the device: `SplitPanes` (two panes or one column) and `useListDetail()` (the selected item: select in two panes, otherwise push or nothing) follow one rule, `useTwoPaneLayout()`: on both sides of the fold of a half-open iPhone Duo (`useVerticalFold()`, local module `modules/fold-division/` + `expo-hinge`), otherwise from 768 pt wide (iPad, flat Duo held sideways) as two equal halves. Used by Dashboard list | detail, Alerts list | selected alert, Supporters introduction | donors, Settings list | About, or Telegram / account deletion once tapped. A horizontal fold is ignored on purpose, and other screens run across a half-open fold.
 
 ## Key Architecture Patterns
 
@@ -182,7 +182,7 @@ Not Expo Router — uses `@react-navigation` (bottom tabs: Dashboard / Alerts / 
 
 ## Code Style
 
-- **No comments** in code — names should be self-explanatory
+- **No comments, ever** — not in source, tests, native modules, config or scripts, no JSDoc, no exception; context goes in names, tests, commits or the PR. Only machine directives a tool needs (`eslint-disable-next-line`, `@ts-expect-error`) are allowed, without explanation
 - **File naming**: kebab-case with suffix (`.service.ts`, `.controller.ts`, `.entity.ts`, `.enum.ts`, `.requirements.ts`, `.test.ts`); PascalCase for React components
 - **Named exports preferred** (except Next.js pages)
 - **Explicit access modifiers** on all class members
@@ -206,4 +206,6 @@ Conventional Commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`
 - Mobile typecheck targets `tsconfig.app.json`; only mobile is typecheck-gated in CI.
 - `TESLA_API_BASE_URL` is required (no compiled-in default) and the vehicle-command hop is TLS-pinned via `TESLA_PROXY_CA_CERT_BASE64` (required everywhere, no permissive fallback), with optional `TESLA_PROXY_TLS_SERVERNAME`. All three axios clients build their agent through `createTeslaProxyHttpsAgent()`.
 - Vitest is installed but unused — everything runs Jest.
+- iOS CI builds use the latest stable Xcode of `macos-latest` (`xcode-version: 'latest-stable'`, Xcode 26.6 in October 2026; Expo SDK 58 needs 26.4+). Only an Xcode 27.1 build fills the iPhone Duo's inner display, so CI builds keep an iPhone-sized window there until GitHub ships Xcode 27.1 on `macos-latest`.
+- Mobile Nx targets (`start`, `serve`, `run-ios`, `run-android`, `export`, `prebuild`) are `nx:run-commands` calling `npx expo`: the `@nx/expo` 22.x executors do not work with Expo SDK 58. `metro.config.js` does not use `withNxMetro` (it breaks Expo 58's Babel config lookup). Node 22.13+ is required.
 - Self-host via `docker-compose.selfhost.yml` (see SELF_HOSTING.md); `docker-compose.yml` is local Kafka only.

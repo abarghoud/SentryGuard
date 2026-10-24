@@ -37,6 +37,7 @@ import {
   canConfigureCounterMeasures,
   requestVehicleCommandsScope,
   resolveVehicleAlertSoundId,
+  resolveVehicleName,
   shouldShowBreakInDetection,
 } from './vehicle-detail.helpers';
 import { AlertSoundTarget, TranslationFunction } from './vehicle-detail.types';
@@ -163,6 +164,28 @@ describe('The resolveVehicleAlertSoundId() function', () => {
   describe('When the vehicle has no stored sound', () => {
     it('should fall back to the phone default sound id', () => {
       expect(resolveVehicleAlertSoundId({} as Vehicle, AlertSoundTarget.Sentry)).toBe('default');
+    });
+  });
+});
+
+describe('The resolveVehicleName() function', () => {
+  const fakeTranslation: TranslationFunction = (key) => `translated:${key}`;
+
+  describe('When the vehicle has a display name', () => {
+    it('should return the display name', () => {
+      expect(resolveVehicleName({ display_name: 'Red Arrow', model: 'Model 3' } as Vehicle, fakeTranslation)).toBe('Red Arrow');
+    });
+  });
+
+  describe('When the vehicle only has a model', () => {
+    it('should return the model', () => {
+      expect(resolveVehicleName({ model: 'Model 3' } as Vehicle, fakeTranslation)).toBe('Model 3');
+    });
+  });
+
+  describe('When the vehicle has neither', () => {
+    it('should return the translated fallback', () => {
+      expect(resolveVehicleName({} as Vehicle, fakeTranslation)).toBe('translated:common.vehicleFallback');
     });
   });
 });

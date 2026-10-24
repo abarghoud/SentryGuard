@@ -55,6 +55,22 @@ export function formatAlertDate(value: string, language: string): string {
   }).format(new Date(value));
 }
 
+export function formatAlertDateTime(value: string, language: string): string {
+  return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'fr-FR', {
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    month: 'long',
+    second: '2-digit',
+    weekday: 'long',
+    year: 'numeric',
+  }).format(new Date(value));
+}
+
+export function resolveSelectedAlert(alerts: AlertEvent[], selectedAlertId: string | null): AlertEvent | null {
+  return alerts.find((alert) => alert.id === selectedAlertId) ?? alerts[0] ?? null;
+}
+
 export function resolveAlertError(error: unknown, t: (key: string) => string): string {
   return error instanceof Error ? error.message : t('alerts.error');
 }

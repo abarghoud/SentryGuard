@@ -17,6 +17,10 @@ function hasBreakInCounterMeasure(vehicle: Vehicle): boolean {
   return hasOffensiveResponse || vehicle.break_in_auto_sentry_mode_enabled === true;
 }
 
+export function resolveVehicleName(vehicle: Vehicle, t: TranslationFunction): string {
+  return vehicle.display_name ?? vehicle.model ?? t('common.vehicleFallback');
+}
+
 export function canConfigureCounterMeasures(vehicle: Vehicle, vehicleCommandsAuthorized: boolean): boolean {
   return vehicle.break_in_monitoring_enabled === true && vehicleCommandsAuthorized;
 }
