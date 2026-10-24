@@ -9,5 +9,9 @@ interface FoldDivisionNativeModule {
 const nativeModule = requireOptionalNativeModule<FoldDivisionNativeModule>('SentryGuardFoldDivision');
 
 export async function readFoldDivisions(): Promise<FoldDivision[]> {
-  return (await nativeModule?.getFoldDivisions()) ?? [];
+  try {
+    return (await nativeModule?.getFoldDivisions()) ?? [];
+  } catch {
+    return [];
+  }
 }
