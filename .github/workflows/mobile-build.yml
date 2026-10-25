@@ -253,6 +253,7 @@ jobs:
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          TMPDIR: ${{ runner.temp }}
         run: npx eas-cli build --platform android --profile ${{ inputs.profile }} --local --non-interactive --output build.aab
 
       - name: Submit to Google Play (Internal Sharing)

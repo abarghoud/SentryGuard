@@ -206,6 +206,7 @@ Conventional Commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`
 - Mobile typecheck targets `tsconfig.app.json`; only mobile is typecheck-gated in CI.
 - `TESLA_API_BASE_URL` is required (no compiled-in default) and the vehicle-command hop is TLS-pinned via `TESLA_PROXY_CA_CERT_BASE64` (required everywhere, no permissive fallback), with optional `TESLA_PROXY_TLS_SERVERNAME`. All three axios clients build their agent through `createTeslaProxyHttpsAgent()`.
 - Vitest is installed but unused — everything runs Jest.
+- The signed Android build sets `TMPDIR` to `runner.temp`: on `ubuntu-26.04` `/tmp` is a ~7.8 GB RAM disk and `eas build --local` fills it ("Disk quota exceeded", actions/runner-images#14777).
 - iOS CI builds use the latest stable Xcode of `macos-latest` (`xcode-version: 'latest-stable'`, Xcode 26.6 in October 2026; Expo SDK 58 needs 26.4+). Only an Xcode 27.1 build fills the iPhone Duo's inner display, so CI builds keep an iPhone-sized window there until GitHub ships Xcode 27.1 on `macos-latest`.
 - Mobile Nx targets (`start`, `serve`, `run-ios`, `run-android`, `export`, `prebuild`) are `nx:run-commands` calling `npx expo`: the `@nx/expo` 22.x executors do not work with Expo SDK 58. `metro.config.js` does not use `withNxMetro` (it breaks Expo 58's Babel config lookup). Node 22.13+ is required.
 - Self-host via `docker-compose.selfhost.yml` (see SELF_HOSTING.md); `docker-compose.yml` is local Kafka only.
