@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Image, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { screenPadding, spacing } from '../core/design/metrics';
+import { readableContent, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
 import { useThemeColors } from '../core/theme';
 import { AppText, GlassButton, GlassButtonVariant } from '../core/ui';
@@ -72,6 +72,7 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
       flex: 1,
     },
     content: {
+      ...readableContent,
       flex: 1,
       gap: spacing.xxl,
       justifyContent: 'center',

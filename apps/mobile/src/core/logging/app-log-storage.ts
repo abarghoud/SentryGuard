@@ -18,7 +18,7 @@ export class FileAppLogStorage implements AppLogStorageRequirements {
 
   public async save(entries: AppLogEntry[]): Promise<void> {
     try {
-      new File(Paths.document, logFileName).write(JSON.stringify(entries));
+      await new File(Paths.document, logFileName).write(JSON.stringify(entries));
     } catch {
       return;
     }

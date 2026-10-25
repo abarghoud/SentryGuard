@@ -6,6 +6,6 @@ export function buildLogsExportFileName(): string {
 
 export function writeLogsExportFile(logs: string): string {
   const exportFile = new File(Paths.cache, buildLogsExportFileName());
-  exportFile.write(logs);
+  exportFile.writeSync(logs);
   return exportFile.uri;
 }

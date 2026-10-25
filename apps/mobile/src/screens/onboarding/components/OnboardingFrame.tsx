@@ -2,7 +2,7 @@ import type { JSX } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { radius, screenPadding, spacing } from '../../../core/design/metrics';
+import { radius, readableContent, screenPadding, spacing } from '../../../core/design/metrics';
 import { TextVariant } from '../../../core/design/typography';
 import { useThemeColors } from '../../../core/theme';
 import { AppText, Surface } from '../../../core/ui';
@@ -30,7 +30,7 @@ export function OnboardingFrame({
   const colors = useThemeColors();
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.systemBackground }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.systemBackground }]} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <AppText variant={TextVariant.Footnote} color={colors.accent} style={styles.kicker}>
@@ -70,6 +70,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    ...readableContent,
     flexGrow: 1,
     gap: spacing.xl,
     justifyContent: 'center',

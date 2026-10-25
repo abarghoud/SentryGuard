@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { SymbolView, type SymbolViewProps, type SymbolWeight } from 'expo-symbols';
+import { SymbolView, type SFSymbol, type SymbolWeight } from 'expo-symbols';
 import type { JSX } from 'react';
 import { Platform, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useThemeColors } from '../theme';
 
-type SfSymbol = SymbolViewProps['name'];
+type SfSymbol = SFSymbol;
 
 interface IconProps {
   color?: string;
@@ -48,6 +48,7 @@ const ioniconsFallback: Record<string, keyof typeof Ionicons.glyphMap> = {
   'star.fill': 'star',
   'paperplane.fill': 'paper-plane',
   'trash.fill': 'trash',
+  'video.fill': 'videocam',
   'link': 'link',
   'eye': 'eye-outline',
   'eye.slash': 'eye-off-outline',

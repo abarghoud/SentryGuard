@@ -9,7 +9,7 @@ export enum ThemeMode {
   System = 'system',
 }
 
-export function resolveIsDark(mode: ThemeMode, systemScheme: ColorSchemeName): boolean {
+export function resolveIsDark(mode: ThemeMode, systemScheme: ColorSchemeName | null): boolean {
   if (mode === ThemeMode.System) {
     return systemScheme === 'dark';
   }
@@ -143,7 +143,7 @@ export function ThemeProvider({ children }: { children: ReactNode }): JSX.Elemen
       return;
     }
 
-    Appearance.setColorScheme(mode === ThemeMode.System ? null : mode);
+    Appearance.setColorScheme(mode === ThemeMode.System ? 'auto' : mode);
   }, [mode]);
 
   const isDark = resolveIsDark(mode, systemScheme);

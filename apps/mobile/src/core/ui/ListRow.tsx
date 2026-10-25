@@ -1,4 +1,4 @@
-import type { SymbolViewProps } from 'expo-symbols';
+import type { SFSymbol } from 'expo-symbols';
 import type { JSX, ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -12,8 +12,9 @@ import { Icon } from './Icon';
 
 interface ListRowProps {
   accessory?: ReactNode;
-  icon?: SymbolViewProps['name'];
+  icon?: SFSymbol;
   iconColor?: string;
+  isSelected?: boolean;
   onPress?(): void;
   showChevron?: boolean;
   stacked?: boolean;
@@ -27,6 +28,7 @@ export function ListRow({
   accessory,
   icon,
   iconColor,
+  isSelected = false,
   onPress,
   showChevron = false,
   stacked = false,
@@ -85,8 +87,9 @@ export function ListRow({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ selected: isSelected }}
       onPress={handlePress}
-      style={({ pressed }) => [pressed ? { backgroundColor: colors.fill } : null]}
+      style={({ pressed }) => [pressed || isSelected ? { backgroundColor: colors.fill } : null]}
     >
       {body}
     </Pressable>

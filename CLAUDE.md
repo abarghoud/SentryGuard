@@ -24,7 +24,7 @@ SentryGuard is a real-time Tesla vehicle monitoring and security alert system bu
 |------|-----------|-------|----------|
 | `apps/api` | Backend API + Kafka consumer | NestJS 11 + TypeORM + PostgreSQL | Jest (node) |
 | `apps/webapp` | Marketing site + dashboard | Next.js 16 App Router (SSR) | Jest (jsdom) |
-| `apps/mobile` | iOS / Android / Expo Web client | Expo SDK 54 + React Native 0.81 + React Navigation | Jest (node) |
+| `apps/mobile` | iOS / Android / Expo Web client | Expo SDK 58 + React Native 0.88 + React Navigation | Jest (node) |
 | `libs/beta/domain` | `@sentryguard/beta-domain` — Tesla scopes + error-code enums | Pure TS | Jest |
 | `libs/telegram/domain` | `@sentryguard/telegram-domain` — Telegram-linking use-cases shared by web + mobile | Pure TS | Jest |
 | `libs/vehicles/domain` | `@sentryguard/vehicles-domain` — vehicle rules used by the mobile app (break-in detection settings) | Pure TS | Jest |
@@ -267,6 +267,8 @@ features/<domain>/
 - **Push**: `expo-notifications`; token registered to `POST /notifications/push-token`, cleared on logout. Android critical alerts use a custom native module (`apps/mobile/modules/dnd-access/`, Kotlin) for Do-Not-Disturb bypass
 - **Tapping an alert push** opens the Tesla app on the alerting vehicle's sentry camera view (`core/tesla-camera-link.ts`), falling back to `tesla://` then the web redirect. The deep link is **never hardcoded** — it is undocumented by Tesla and this repo is public, so it lives only in `EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE`; leaving it empty disables the feature
 - **UI**: Apple-style design system in `core/design/` + "liquid glass" components (`expo-glass-effect` with `expo-blur` fallback); theming via `core/theme.tsx`. Config split: static `app.json` + dynamic `app.config.js`
+- **Large screens** (iPad, Android tablets and foldables, iPhone Duo inner display): every screen's scroll content spreads `readableContent` (`core/design/metrics.ts`), a centred column capped at 672 pt that leaves phones untouched. New screens must do the same. **Two panes**: screens never test the device. `SplitPanes` (`core/ui/`) shows `first` and `second` side by side, or `single` (default `first`) in one column, and `useListDetail()` (`core/design/use-list-detail.ts`) holds the selected item: `open(id, openAlone)` selects it in two panes and otherwise runs `openAlone` (push a screen, or nothing). Both follow one rule, `useTwoPaneLayout()` (`two-pane-layout.ts`): on both sides of the fold of a half-open iPhone Duo, otherwise from 768 pt wide (`useIsWideLayout()`: iPad in both orientations, a flat Duo held sideways) two equal halves with a divider, and one column below. The Dashboard (vehicle list | `VehicleDetailView`), Alerts (alert list | the selected alert in `AlertDetailView`), Supporters (a still introduction in `CenteredPane` | the donor list) and Settings (settings list | `AboutSentryGuardView` by default, replaced by Telegram or account deletion when their row is tapped, reset to About when leaving the tab) use them; a new list/detail screen should too. A view shown in a pane detects it is inside the tabs (`BottomTabBarHeightContext`, `useTabPaneInsets()`) and then shows its own title (`PaneHeader`, with a Done button back to About in Settings) and clears the tab bar. The iPhone Duo only resizes the app to its inner display when it is built with Xcode 27.1 (iOS 27.1 SDK); CI builds with Xcode 26.6 for now (see Known Gotchas), and those builds keep an iPhone-sized window there
+- **iPhone Duo fold**: a local Expo module (`apps/mobile/modules/fold-division/`, Swift, iOS only) reads the fold through iOS 27.1's `UIView.reservedRegions(kind: .division)`, called through the Objective-C runtime so it still compiles under Xcode 26; where that API is missing it reports no fold. `useVerticalFold()` (`core/design/vertical-fold.tsx`, read once for the whole app by `VerticalFoldProvider` in `App.tsx`) returns the **vertical** fold only while the hinge is half open like a book (`expo-hinge` status `partiallyOpen`; the fold region's own active flag lags behind posture changes): lying flat, the Duo is laid out like a tablet and content flows across the fold, and a horizontal fold (held upright) is always ignored. Only `two-pane-layout.ts` uses that fold: the other screens (pushed Telegram and account deletion, auth, onboarding) are plain scroll views whose content runs across a half-open fold
 
 ## Environment Configuration
 
@@ -414,8 +416,8 @@ await expect(act()).rejects.toThrow(expectedError);
 - **Explicit access modifiers** on all class members (`public`, `private`, `protected`)
 
 ### Code Organization
-- **No comments in code** - code should be self-explanatory through good naming
-  - Exception: complex decisions requiring context (use trigram prefix if needed)
+- **No comments, ever** - not in source, tests, native modules (Swift, Kotlin), config files or scripts: no line comments, no block comments, no JSDoc, and no exception for complex decisions. Code must explain itself through names; context that names cannot carry goes in a test, the commit message or the PR description
+  - The only marks allowed are machine directives a tool needs to work (`eslint-disable-next-line`, `@ts-expect-error`, generated-file markers), and they never carry an explanation
 - **Import order**:
   1. External packages (node_modules)
   2. Internal libraries
@@ -487,6 +489,9 @@ This is an Nx monorepo. Key points:
 - **Kafka topic name is inconsistent**: API code default + local scripts use `TeslaLogger_V`, while fleet-telemetry + self-host default to `FleetTelemetry_V`. Always configurable via `KAFKA_TOPIC` — match it to the producer
 - **`TESLA_API_BASE_URL` has no compiled-in default** — it is required and the API refuses to boot without it. The self-host compose service is named `vehicle-command` and sets it explicitly
 - Only **mobile** is currently typecheck-gated in CI; api/webapp typecheck is not yet enforced
+- **iOS CI builds use the latest stable Xcode of `macos-latest`** (`mobile-build.yml`, `xcode-version: 'latest-stable'`): Xcode 26.6 in October 2026, and Expo SDK 58 needs 26.4+. Only an Xcode 27.1 build fills the iPhone Duo's inner display, so CI builds keep an iPhone-sized window there until GitHub ships Xcode 27.1 on `macos-latest` (it only offers Xcode 27 on the `xcode-27` preview runner image). Building locally with Xcode 27 works: `npx expo prebuild` generates the UIScene life cycle (`SceneDelegate.swift`) that iOS 27 SDK builds need to launch on iOS 27
+- **Mobile Nx targets call the Expo CLI directly** (`nx:run-commands` with `npx expo …` in `apps/mobile/project.json`): the `@nx/expo` 22.x executors fork `@expo/cli/build/bin/cli`, which no longer exists in Expo SDK 58. For the same reason `metro.config.js` does not use `withNxMetro`: it forces Metro's `projectRoot` to the monorepo root, and Expo 58 then resolves the app's Babel config against the wrong folder. Expo's own monorepo support resolves the `@sentryguard/*` workspace libs
+- **Node 22.13+** is required (Expo SDK 58 / React Native 0.87+); CI uses Node 22
 
 ## Additional Documentation
 

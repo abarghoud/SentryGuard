@@ -6,31 +6,35 @@
   "tags": ["scope:mobile", "type:app"],
   "targets": {
     "start": {
-      "executor": "@nx/expo:start",
+      "executor": "nx:run-commands",
       "dependsOn": ["sync-deps"],
       "options": {
-        "port": 8081
+        "cwd": "apps/mobile",
+        "command": "npx expo start --port 8081"
       }
     },
     "serve": {
-      "executor": "@nx/expo:serve",
+      "executor": "nx:run-commands",
       "dependsOn": ["sync-deps"],
       "options": {
-        "port": 3002
+        "cwd": "apps/mobile",
+        "command": "npx expo start --web --port 3002"
       }
     },
     "run-ios": {
-      "executor": "@nx/expo:run",
+      "executor": "nx:run-commands",
       "dependsOn": ["sync-deps"],
       "options": {
-        "platform": "ios"
+        "cwd": "apps/mobile",
+        "command": "npx expo run:ios"
       }
     },
     "run-android": {
-      "executor": "@nx/expo:run",
+      "executor": "nx:run-commands",
       "dependsOn": ["sync-deps"],
       "options": {
-        "platform": "android"
+        "cwd": "apps/mobile",
+        "command": "npx expo run:android"
       }
     },
     "build": {
@@ -39,18 +43,21 @@
       "options": {}
     },
     "export": {
-      "executor": "@nx/expo:export",
+      "executor": "nx:run-commands",
       "dependsOn": ["sync-deps"],
-      "outputs": ["{options.outputDir}"],
+      "outputs": ["{projectRoot}/dist"],
       "options": {
-        "platform": "all",
-        "outputDir": "apps/mobile/dist"
+        "cwd": "apps/mobile",
+        "command": "npx expo export --platform all --output-dir dist"
       }
     },
     "prebuild": {
-      "executor": "@nx/expo:prebuild",
+      "executor": "nx:run-commands",
       "dependsOn": ["sync-deps"],
-      "options": {}
+      "options": {
+        "cwd": "apps/mobile",
+        "command": "npx expo prebuild"
+      }
     },
     "install": {
       "executor": "@nx/expo:install",

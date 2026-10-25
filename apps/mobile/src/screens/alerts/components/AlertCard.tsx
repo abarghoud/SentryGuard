@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 
 import { radius, spacing } from '../../../core/design/metrics';
 import { TextVariant } from '../../../core/design/typography';
@@ -17,18 +18,20 @@ import {
 
 interface AlertCardProps {
   alert: AlertEvent;
+  isSelected?: boolean;
   isUnread: boolean;
   language: string;
   onDelete(): void;
+  onSelect?(): void;
   t(key: string): string;
 }
 
-export function AlertCard({ alert, isUnread, language, onDelete, t }: AlertCardProps): JSX.Element {
+export function AlertCard({ alert, isSelected = false, isUnread, language, onDelete, onSelect, t }: AlertCardProps): JSX.Element {
   const colors = useThemeColors();
   const tone = resolveAlertTone(alert, colors);
 
-  const card = (
-    <Surface style={styles.card}>
+  const surface = (
+    <Surface style={[styles.card, isSelected ? [styles.selectedCard, { borderColor: colors.accent }] : null]}>
       <View style={[styles.iconWrap, { backgroundColor: tone.background }]}>
         <Icon name={resolveAlertIcon(alert)} size={18} color={tone.icon} />
       </View>
@@ -71,6 +74,13 @@ export function AlertCard({ alert, isUnread, language, onDelete, t }: AlertCardP
       </View>
     </Surface>
   );
+  const card = onSelect ? (
+    <Pressable accessibilityRole="button" accessibilityState={{ selected: isSelected }} onPress={onSelect}>
+      {surface}
+    </Pressable>
+  ) : (
+    surface
+  );
 
   if (Platform.OS === 'web') {
     return card;
@@ -81,15 +91,14 @@ export function AlertCard({ alert, isUnread, language, onDelete, t }: AlertCardP
       friction={2}
       overshootRight={false}
       rightThreshold={48}
-      renderRightActions={() => (
-        <Pressable
-          accessibilityRole="button"
+      renderRightActions={(progress) => (
+        <DeleteAction
           accessibilityLabel={t('alerts.delete')}
+          backgroundColor={colors.criticalFill}
+          iconColor={colors.onCritical}
           onPress={onDelete}
-          style={[styles.deleteAction, { backgroundColor: colors.criticalFill }]}
-        >
-          <Icon name="trash.fill" size={20} color={colors.onCritical} />
-        </Pressable>
+          progress={progress}
+        />
       )}
       onSwipeableOpen={(direction) => {
         if (direction === 'right') {
@@ -99,6 +108,26 @@ export function AlertCard({ alert, isUnread, language, onDelete, t }: AlertCardP
     >
       {card}
     </ReanimatedSwipeable>
+  );
+}
+
+interface DeleteActionProps {
+  accessibilityLabel: string;
+  backgroundColor: string;
+  iconColor: string;
+  onPress(): void;
+  progress: SharedValue<number>;
+}
+
+function DeleteAction({ accessibilityLabel, backgroundColor, iconColor, onPress, progress }: DeleteActionProps): JSX.Element {
+  const visibilityStyle = useAnimatedStyle(() => ({ opacity: progress.value > 0 ? 1 : 0 }));
+
+  return (
+    <Animated.View style={[styles.deleteAction, { backgroundColor }, visibilityStyle]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={styles.deleteActionButton}>
+        <Icon name="trash.fill" size={20} color={iconColor} />
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -121,11 +150,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   deleteAction: {
-    alignItems: 'center',
     borderRadius: radius.card,
-    justifyContent: 'center',
     marginLeft: spacing.sm,
     width: 72,
+  },
+  deleteActionButton: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
   },
   iconWrap: {
     alignItems: 'center',
@@ -141,6 +173,9 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     paddingHorizontal: spacing.xs + 2,
     paddingVertical: 2,
+  },
+  selectedCard: {
+    borderWidth: 2,
   },
   titleWrap: {
     alignItems: 'center',

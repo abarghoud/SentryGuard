@@ -1,6 +1,6 @@
 import * as Linking from 'expo-linking';
 
-import { buildFallbackUrl, openTeslaApp } from './tesla-app-link';
+import { buildFallbackUrl, openTeslaApp, openTeslaCamera } from './tesla-app-link';
 
 jest.mock('expo-linking', () => ({
   openURL: jest.fn(),
@@ -133,6 +133,57 @@ describe('The buildFallbackUrl() function', () => {
   describe('When the URL is malformed', () => {
     it('should return it unchanged instead of throwing', () => {
       expect(buildFallbackUrl('not a url')).toBe('not a url');
+    });
+  });
+});
+
+describe('The openTeslaCamera() function', () => {
+  const fakeVin = '5YJ3E1EA7KF000316';
+  const originalTemplate = process.env.EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE = 'tesla://camera-view/{vin}';
+  });
+
+  afterEach(() => {
+    process.env.EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE = originalTemplate;
+  });
+
+  describe('When the camera view of the vehicle opens', () => {
+    beforeEach(async () => {
+      (Linking.openURL as jest.Mock).mockResolvedValue(true);
+
+      await openTeslaCamera(fakeVin);
+    });
+
+    it('should open only the camera view', () => {
+      expect((Linking.openURL as jest.Mock).mock.calls).toStrictEqual([['tesla://camera-view/5YJ3E1EA7KF000316']]);
+    });
+  });
+
+  describe('When the camera view cannot be opened', () => {
+    beforeEach(async () => {
+      (Linking.openURL as jest.Mock).mockRejectedValueOnce(new Error('camera view unavailable')).mockResolvedValueOnce(true);
+
+      await openTeslaCamera(fakeVin);
+    });
+
+    it('should fall back to the Tesla app', () => {
+      expect((Linking.openURL as jest.Mock).mock.calls).toStrictEqual([['tesla://camera-view/5YJ3E1EA7KF000316'], ['tesla://']]);
+    });
+  });
+
+  describe('When neither the camera view nor the Tesla app can be opened', () => {
+    let act: () => Promise<void>;
+
+    beforeEach(() => {
+      (Linking.openURL as jest.Mock).mockRejectedValue(new Error('nothing handles the url'));
+      act = () => openTeslaCamera(fakeVin);
+    });
+
+    it('should resolve without throwing', async () => {
+      await expect(act()).resolves.toBeUndefined();
     });
   });
 });

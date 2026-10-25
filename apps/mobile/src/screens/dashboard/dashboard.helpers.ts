@@ -10,6 +10,12 @@ export function isVehicleProtected(vehicle: Vehicle): boolean {
   return vehicle.sentry_mode_monitoring_enabled || vehicle.break_in_monitoring_enabled === true;
 }
 
+export function resolveSelectedVehicle(vehicles: Vehicle[] | undefined, selectedVin: string | null): Vehicle | null {
+  const availableVehicles = vehicles ?? [];
+
+  return availableVehicles.find((vehicle) => vehicle.vin === selectedVin) ?? availableVehicles[0] ?? null;
+}
+
 export function resolveSubtitle(vehicles: Vehicle[] | undefined, t: TranslationFunction): string {
   if (!vehicles) {
     return t('dashboard.subtitleLoading');
