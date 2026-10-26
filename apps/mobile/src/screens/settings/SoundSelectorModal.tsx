@@ -1,9 +1,9 @@
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { radius, spacing } from '../../core/design/metrics';
 import { TextVariant } from '../../core/design/typography';
 import { useTheme } from '../../core/theme';
-import { AppText, GlassButton, GlassButtonVariant, Icon, Surface } from '../../core/ui';
+import { AppText, CenteredDialog, GlassButton, GlassButtonVariant, Icon } from '../../core/ui';
 import { AlertSoundItem, PHONE_DEFAULT_ALERT_SOUND_ID, SELECTABLE_ALERT_SOUNDS } from '../../features/notifications/domain/alert-sounds';
 import { useSoundPlayer } from '../../core/hooks/useSoundPlayer';
 
@@ -106,50 +106,35 @@ export function SoundSelectorModal({
   };
 
   return (
-    <Modal animationType="fade" onRequestClose={handleClose} transparent visible={isOpen}>
-      <View style={[styles.modalBackdrop, { backgroundColor: colors.overlay }]}>
-        <Surface style={styles.modalCard}>
-          <View style={styles.header}>
-            <AppText variant={TextVariant.Title3}>{t(titleKey)}</AppText>
-            <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
-              {t(descriptionKey)}
-            </AppText>
-          </View>
-
-          <View style={styles.soundList}>
-            {SELECTABLE_ALERT_SOUNDS.map((sound) => (
-              <SoundItemRow
-                key={sound.id}
-                sound={sound}
-                isSelected={selectedSoundId === sound.id}
-                isPlaying={isPlaying(sound.id)}
-                onSelect={() => handleSelect(sound.id)}
-                onPlay={() => handleTogglePlayback(sound)}
-              />
-            ))}
-          </View>
-
-          <GlassButton label={t('common.done')} variant={GlassButtonVariant.Primary} onPress={handleClose} />
-        </Surface>
+    <CenteredDialog contentGap={spacing.lg} isVisible={isOpen} onRequestClose={handleClose}>
+      <View style={styles.header}>
+        <AppText variant={TextVariant.Title3}>{t(titleKey)}</AppText>
+        <AppText variant={TextVariant.Subhead} color={colors.secondaryLabel}>
+          {t(descriptionKey)}
+        </AppText>
       </View>
-    </Modal>
+
+      <View style={styles.soundList}>
+        {SELECTABLE_ALERT_SOUNDS.map((sound) => (
+          <SoundItemRow
+            key={sound.id}
+            sound={sound}
+            isSelected={selectedSoundId === sound.id}
+            isPlaying={isPlaying(sound.id)}
+            onSelect={() => handleSelect(sound.id)}
+            onPlay={() => handleTogglePlayback(sound)}
+          />
+        ))}
+      </View>
+
+      <GlassButton label={t('common.done')} variant={GlassButtonVariant.Primary} onPress={handleClose} />
+    </CenteredDialog>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
     gap: spacing.xs,
-  },
-  modalBackdrop: {
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  modalCard: {
-    gap: spacing.lg,
-    maxWidth: 380,
-    width: '100%',
   },
   playButton: {
     alignItems: 'center',
