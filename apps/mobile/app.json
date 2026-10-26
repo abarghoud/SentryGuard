@@ -82,6 +82,7 @@
           "image": "./assets/notification-large-icon.png"
         }
       ],
+      "./plugins/withPhonePortraitLock",
       "expo-secure-store",
       [
         "expo-splash-screen",
