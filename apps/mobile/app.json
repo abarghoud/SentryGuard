@@ -2,12 +2,11 @@
   "expo": {
     "name": "SentryGuard",
     "slug": "sentryguard",
-    "version": "1.1.0",
+    "version": "1.1.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "sentryguard",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "icon": "./assets/icon.png",
       "supportsTablet": true,
@@ -53,7 +52,6 @@
         "foregroundImage": "./assets/adaptive-icon.png"
       },
       "package": "com.sentryguard.mobile",
-      "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.ACCESS_NOTIFICATION_POLICY",
         "POST_NOTIFICATIONS"

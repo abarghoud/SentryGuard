@@ -1,4 +1,4 @@
-import { OffensiveResponse, Vehicle, VehicleActionResponse } from '../entities';
+import { BreakInDetection, OffensiveResponse, Vehicle, VehicleActionResponse } from '../entities';
 
 export interface GetVehiclesRequirements {
   execute(): Promise<Vehicle[]>;
@@ -21,6 +21,10 @@ export interface UpdateAlertSoundsRequirements {
     vin: string,
     payload: { breakInAlertSound?: string; sentryAlertSound?: string },
   ): Promise<VehicleActionResponse>;
+}
+
+export interface UpdateBreakInDetectionRequirements {
+  execute(vin: string, breakInDetection: BreakInDetection): Promise<VehicleActionResponse>;
 }
 
 export interface UpdateOffensiveResponseRequirements {

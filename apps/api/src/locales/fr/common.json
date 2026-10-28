@@ -75,6 +75,12 @@
   "Intrusion alert": "Alerte intrusion",
   "Intrusion alert_withVehicle": "Alerte intrusion - {{vehicleName}}",
   "A break-in attempt was detected.": "Une tentative d’intrusion a été détectée.",
+  "Response triggered": "Riposte déclenchée",
+  "Response triggered_withVehicle": "Riposte déclenchée - {{vehicleName}}",
+  "RESPONSE TRIGGERED": "RIPOSTE DÉCLENCHÉE",
+  "The horn sounded.": "Le klaxon a retenti.",
+  "The fart sound played.": "Le pet a retenti.",
+  "Sentry Mode was turned on.": "Le mode Sentinelle a été activé.",
   "Sentry alert": "Alerte Sentinelle",
   "Sentry alert_withVehicle": "Alerte Sentinelle - {{vehicleName}}",
   "A Sentry event was detected.": "Un événement Sentinelle a été détecté."

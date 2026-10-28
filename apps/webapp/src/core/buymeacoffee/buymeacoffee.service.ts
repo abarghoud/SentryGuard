@@ -1,5 +1,7 @@
 import { SupportersData } from './buymeacoffee.types';
 
+const supportersRequestTimeoutMs = 5000;
+
 function resolveApiUrl(): string {
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 }
@@ -18,6 +20,7 @@ export async function getSupportersData(): Promise<SupportersData> {
     const apiUrl = resolveApiUrl();
     const res = await fetch(`${apiUrl}/supporters`, {
       next: { revalidate: 60 },
+      signal: AbortSignal.timeout(supportersRequestTimeoutMs),
     });
     if (!res.ok) {
       return fallbackEmptySupporters();

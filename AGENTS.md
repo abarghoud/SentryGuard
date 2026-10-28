@@ -32,9 +32,10 @@ Nx monorepo — Tesla vehicle monitoring with Telegram + mobile-push alerts and 
 |---------|-----------|------|-------------|
 | `apps/api` | NestJS + TypeORM + PostgreSQL | 3001 | Jest (node env) |
 | `apps/webapp` | Next.js 16 (App Router, SSR) | 3000 | Jest (jsdom env) |
-| `apps/mobile` | Expo SDK 54 / React Native (iOS, Android, Expo Web) | 8081 / 3002 | Jest (node env) |
+| `apps/mobile` | Expo SDK 58 / React Native 0.88 (iOS, Android, Expo Web) | 8081 / 3002 | Jest (node env) |
 | `libs/beta/domain` | `@sentryguard/beta-domain` — Tesla scopes + error codes | — | Jest |
 | `libs/telegram/domain` | `@sentryguard/telegram-domain` — Telegram-linking use-cases (web + mobile) | — | Jest |
+| `libs/vehicles/domain` | `@sentryguard/vehicles-domain` — vehicle rules (break-in detection settings, mobile) | — | Jest |
 
 Infra images: `fleet-telemetry/` (Tesla telemetry TLS ingest → Kafka) and `vehicle-command-proxy/` (signs Tesla commands). Lib resolution uses Yarn workspaces + TS `customConditions` (no `paths` in `tsconfig.base.json`).
 
@@ -150,17 +151,18 @@ apps/mobile/src/
 ├── features/      # Same clean-architecture layout as webapp (domain/data/presentation/di.ts)
 └── screens/       # Presentational screens; logic in use-*.ts hooks
 ```
-Not Expo Router — uses `@react-navigation` (bottom tabs: Dashboard / Alerts / Settings). Tesla OAuth via `expo-web-browser` + deep link `sentryguard://callback`; JWT in `expo-secure-store`. Push via `expo-notifications`; tapping an alert push opens the Tesla sentry camera view of the alerting vehicle, from the `EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE` template (kept out of the repo, empty = disabled). API URL = build-time `EXPO_PUBLIC_API_URL`.
+Not Expo Router — uses `@react-navigation` (bottom tabs: Dashboard / Alerts / Settings). Tesla OAuth via `expo-web-browser` + deep link `sentryguard://callback`; JWT in `expo-secure-store`. Push via `expo-notifications`; tapping an alert push opens the Tesla sentry camera view of the alerting vehicle, from the `EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE` template (kept out of the repo, empty = disabled). API URL = build-time `EXPO_PUBLIC_API_URL`. On large screens (iPad, tablets, foldables) every screen's scroll content spreads `readableContent` (`core/design/metrics.ts`), a centred column capped at 672 pt; new screens must do the same. Screens never test the device: `SplitPanes` (two panes or one column) and `useListDetail()` (the selected item: select in two panes, otherwise push or nothing) follow one rule, `useTwoPaneLayout()`: on both sides of the fold of a half-open iPhone Duo (`useVerticalFold()`, local module `modules/fold-division/` + `expo-hinge`), otherwise from 768 pt wide (iPad, flat Duo held sideways) as two equal halves. Used by Dashboard list | detail, Alerts list | selected alert, Supporters introduction | donors, Settings list | About, or Telegram / account deletion once tapped. A horizontal fold is ignored on purpose, and other screens run across a half-open fold.
 
 ## Key Architecture Patterns
 
 - **Telemetry flow**: fleet-telemetry server → Kafka (**JSON**, not protobuf at the API) → `TelemetryMessageHandlerService` (class-validator) → sentry/break-in handlers → `VehicleAlertNotifierService` fan-out.
 - **Dual-channel notifications**: Telegram (`TelegramService`, mute enforced) **and** Expo mobile push (`NotificationsService` → exp.host). Devices via `NotificationsController`.
+- **Break-in detection**: every `CenterDisplay = Lock` notifies the owners after 5 s unless owner activity (`Accessory`/`On`/`Driving`) shows up; a `Lock` received while Sentry Mode is on (`Idle`/`Armed`) is ignored. The offensive response and auto-Sentry follow per-vehicle settings: a reaction delay (3–60 s, default 5) and, with `repeated_pulls` sensitivity, only the second `Lock` within 60 s. Settings via `PATCH /vehicles/:vin/break-in-detection`, exposed in the mobile app only.
 - **Offensive response**: on a confirmed break-in, `AlertsOffensiveResponseService` → `TeslaVehicleCommandService` sends `honk_horn`/`remote_boombox` through the vehicle-command proxy (`TESLA_API_BASE_URL`), gated on the `vehicle_cmds` scope.
 - **Rate limiting**: All throttle values centralized in `apps/api/src/config/throttle.config.ts`. Use named `ThrottleOptions` methods — never hardcode numbers.
 - **Token storage**: Tesla OAuth tokens stored **encrypted** in `apps/api/src/common/utils/crypto.util.ts` (AES-256-GCM; legacy AES-256-CBC tokens transparently migrated on next refresh via fallback `decrypt`). *(There is no `token-encryption.service.ts`.)*
 - **Auth sessions**: server-side JWT sessions (`UserSessionService`, SHA-256 hash, max 5/user); token refresh on a cron with a Postgres advisory `DistributedLockService`.
-- **Clean architecture (frontends)**: web + mobile both use `features/<domain>/{domain,data,presentation,di.ts}` + TanStack Query + a hand-rolled `ApiClient`. `@sentryguard/telegram-domain` is shared between them.
+- **Clean architecture (frontends)**: web + mobile both use `features/<domain>/{domain,data,presentation,di.ts}` + TanStack Query + a hand-rolled `ApiClient`. `@sentryguard/telegram-domain` is shared between them; `@sentryguard/vehicles-domain` is used by mobile only.
 - **Cloudflare**: `CloudflareThrottlerGuard` extracts real IPs from `CF-Connecting-IP` in production (X-Forwarded-For and X-Real-IP are ignored in production to prevent spoofing). In development all standard proxy headers are considered.
 - **i18n**: web + API use i18next, mobile uses react-i18next. Extract with `npx nx extract-i18n api` / `npx nx extract-i18n webapp`.
 
@@ -180,7 +182,7 @@ Not Expo Router — uses `@react-navigation` (bottom tabs: Dashboard / Alerts / 
 
 ## Code Style
 
-- **No comments** in code — names should be self-explanatory
+- **No comments, ever** — not in source, tests, native modules, config or scripts, no JSDoc, no exception; context goes in names, tests, commits or the PR. Only machine directives a tool needs (`eslint-disable-next-line`, `@ts-expect-error`) are allowed, without explanation
 - **File naming**: kebab-case with suffix (`.service.ts`, `.controller.ts`, `.entity.ts`, `.enum.ts`, `.requirements.ts`, `.test.ts`); PascalCase for React components
 - **Named exports preferred** (except Next.js pages)
 - **Explicit access modifiers** on all class members
@@ -204,4 +206,7 @@ Conventional Commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`
 - Mobile typecheck targets `tsconfig.app.json`; only mobile is typecheck-gated in CI.
 - `TESLA_API_BASE_URL` is required (no compiled-in default) and the vehicle-command hop is TLS-pinned via `TESLA_PROXY_CA_CERT_BASE64` (required everywhere, no permissive fallback), with optional `TESLA_PROXY_TLS_SERVERNAME`. All three axios clients build their agent through `createTeslaProxyHttpsAgent()`.
 - Vitest is installed but unused — everything runs Jest.
+- The signed Android build sets `TMPDIR` to `runner.temp`: on `ubuntu-26.04` `/tmp` is a ~7.8 GB RAM disk and `eas build --local` fills it ("Disk quota exceeded", actions/runner-images#14777).
+- iOS CI builds run Xcode 27.1 on GitHub's `xcode-27` preview runner image (`runs-on: xcode-27`, `xcode-version: '27.1'`): only an Xcode 27.1 build fills the iPhone Duo's inner display, and `macos-latest` stops at Xcode 26.6 (October 2026). Move back to `macos-latest` once it ships Xcode 27.1 or later; Expo SDK 58 needs 26.4+.
+- Mobile Nx targets (`start`, `serve`, `run-ios`, `run-android`, `export`, `prebuild`) are `nx:run-commands` calling `npx expo`: the `@nx/expo` 22.x executors do not work with Expo SDK 58. `metro.config.js` does not use `withNxMetro` (it breaks Expo 58's Babel config lookup). Node 22.13+ is required.
 - Self-host via `docker-compose.selfhost.yml` (see SELF_HOSTING.md); `docker-compose.yml` is local Kafka only.

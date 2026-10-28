@@ -1,17 +1,20 @@
 import * as WebBrowser from 'expo-web-browser';
 import type { JSX } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { BreakInSensitivity } from '@sentryguard/vehicles-domain';
 
 WebBrowser.maybeCompleteAuthSession();
 
-import { screenPadding, spacing } from '../core/design/metrics';
+import { readableContent, screenPadding, spacing } from '../core/design/metrics';
 import { TextVariant } from '../core/design/typography';
+import { useTabPaneInsets } from '../core/design/use-screen-inset';
 import { useThemeColors } from '../core/theme';
 import { AppSwitch, AppText, GlassButton, GlassButtonVariant, Icon, ListRow, ListSection, SegmentedControl, Surface, VinMask } from '../core/ui';
 import {
   confirmTelemetryDeletion,
   openVirtualKey,
   resolveVehicleAlertSoundId,
+  resolveVehicleName,
 } from './vehicle-detail/vehicle-detail.helpers';
 import { OffensiveResponse } from '../features/vehicles/domain/entities';
 import { resolveAlertSound } from '../features/notifications/domain/alert-sounds';
@@ -20,13 +23,31 @@ import { AlertSoundTarget, VehicleAction } from './vehicle-detail/vehicle-detail
 import { useVehicleDetail } from './vehicle-detail/use-vehicle-detail';
 import type { VehicleDetailScreenProps } from '../core/navigation';
 
+const contentBottomPadding = spacing.xxl * 2;
+
+interface VehicleDetailViewProps {
+  vehicleId: string;
+}
+
 export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.Element {
+  return <VehicleDetailView vehicleId={route.params.vehicleId} />;
+}
+
+export function VehicleDetailView({ vehicleId }: VehicleDetailViewProps): JSX.Element {
   const colors = useThemeColors();
+  const paneInsets = useTabPaneInsets();
   const {
     actionMutation,
     alertSoundMutation,
+    breakInDetection,
+    breakInReactionDelayOptions,
+    breakInSensitivityOptions,
     feedback,
     isActionRunning,
+    isBreakInDetectionVisible,
+    isCounterMeasureConfigurable,
+    onBreakInReactionDelayChange,
+    onBreakInSensitivityChange,
     openSoundSelector,
     scopeMutation,
     setFeedback,
@@ -34,7 +55,7 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
     t,
     vehicle,
     vehicleCommandsAuthorized,
-  } = useVehicleDetail(route.params.vehicleId);
+  } = useVehicleDetail(vehicleId);
 
   if (!vehicle) {
     return (
@@ -53,9 +74,20 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
   return (
     <ScrollView
       style={{ backgroundColor: colors.systemGroupedBackground }}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={[
+        styles.content,
+        {
+          paddingBottom: contentBottomPadding + paneInsets.paddingBottom,
+          paddingTop: spacing.md + paneInsets.paddingTop,
+        },
+      ]}
+      contentInsetAdjustmentBehavior={paneInsets.contentInsetAdjustmentBehavior}
     >
+      {paneInsets.isInsideTabs ? (
+        <AppText variant={TextVariant.LargeTitle} style={styles.title}>
+          {resolveVehicleName(vehicle, t)}
+        </AppText>
+      ) : null}
       <Surface style={styles.statusCard}>
         <View style={[styles.statusIcon, { backgroundColor: statusSurface }]}>
           <Icon name={isProtected ? 'checkmark.shield.fill' : 'exclamationmark.shield.fill'} size={22} color={statusGlyph} />
@@ -119,7 +151,7 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
             />
           }
         />
-        {vehicle.break_in_monitoring_enabled && vehicleCommandsAuthorized ? (
+        {isCounterMeasureConfigurable ? (
           <>
             <View style={styles.offensiveRow}>
               <AppText variant={TextVariant.Body}>{t('vehicle.offensive')}</AppText>
@@ -163,6 +195,35 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
           />
         ) : null}
       </ListSection>
+
+      {isBreakInDetectionVisible ? (
+        <ListSection header={t('vehicle.breakInDetectionSection')} footer={t('vehicle.breakInDetectionFooter')}>
+          <View style={styles.detectionRow}>
+            <AppText variant={TextVariant.Body}>{t('vehicle.breakInSensitivity')}</AppText>
+            <SegmentedControl
+              value={breakInDetection.sensitivity}
+              onChange={onBreakInSensitivityChange}
+              options={breakInSensitivityOptions}
+            />
+            <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
+              {breakInDetection.sensitivity === BreakInSensitivity.RepeatedPulls
+                ? t('vehicle.breakInRepeatedPullsDescription')
+                : t('vehicle.breakInSinglePullDescription')}
+            </AppText>
+          </View>
+          <View style={styles.detectionRow}>
+            <AppText variant={TextVariant.Body}>{t('vehicle.breakInReactionDelay')}</AppText>
+            <SegmentedControl
+              value={String(breakInDetection.reactionDelaySeconds)}
+              onChange={onBreakInReactionDelayChange}
+              options={breakInReactionDelayOptions}
+            />
+            <AppText variant={TextVariant.Footnote} color={colors.secondaryLabel}>
+              {t('vehicle.breakInReactionDelayDescription')}
+            </AppText>
+          </View>
+        </ListSection>
+      ) : null}
 
       {vehicle.break_in_monitoring_enabled && !vehicleCommandsAuthorized ? (
         <Surface style={styles.lockedCard}>
@@ -212,10 +273,14 @@ export function VehicleDetailScreen({ route }: VehicleDetailScreenProps): JSX.El
 
 const styles = StyleSheet.create({
   content: {
+    ...readableContent,
     gap: spacing.xl,
-    paddingBottom: spacing.xxl * 2,
     paddingHorizontal: screenPadding,
-    paddingTop: spacing.md,
+  },
+  detectionRow: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
   feedback: {
     paddingHorizontal: spacing.xs,
@@ -248,5 +313,8 @@ const styles = StyleSheet.create({
   statusText: {
     flex: 1,
     gap: 2,
+  },
+  title: {
+    paddingTop: spacing.xs,
   },
 });

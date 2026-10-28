@@ -90,7 +90,6 @@ export class PushNotificationService implements PushNotificationServiceRequireme
         priority: Notifications.AndroidNotificationPriority.HIGH,
         shouldPlaySound: true,
         shouldSetBadge: true,
-        shouldShowAlert: true,
         shouldShowBanner: true,
         shouldShowList: true,
       }),

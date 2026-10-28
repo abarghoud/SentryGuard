@@ -2,9 +2,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { JSX } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform } from 'react-native';
 
 import { TextVariant, textStyle } from '../design/typography';
+import { isTabBarFloating, useHorizontalScreenInsets } from '../design/use-screen-inset';
 import { AppTabParamList, MainStackParamList } from '../navigation';
 import { useTheme } from '../theme';
 import { GlassBackground } from '../ui';
@@ -27,11 +27,12 @@ const MainStack = createNativeStackNavigator<MainStackParamList>();
 export function MainScreen({ onLogout }: { onLogout(): Promise<void> }): JSX.Element {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const horizontalScreenInsets = useHorizontalScreenInsets();
 
   return (
     <MainStack.Navigator
       screenOptions={{
-        contentStyle: { backgroundColor: colors.systemGroupedBackground },
+        contentStyle: [{ backgroundColor: colors.systemGroupedBackground }, horizontalScreenInsets],
         headerTintColor: colors.accent,
         headerTitleStyle: { color: colors.label, fontSize: textStyle(TextVariant.Headline).fontSize, fontWeight: '600' },
         headerStyle: { backgroundColor: colors.systemGroupedBackground },
@@ -39,7 +40,7 @@ export function MainScreen({ onLogout }: { onLogout(): Promise<void> }): JSX.Ele
         headerBackButtonDisplayMode: 'minimal',
       }}
     >
-      <MainStack.Screen name="Tabs" options={{ headerShown: false }}>
+      <MainStack.Screen name="Tabs" options={{ contentStyle: { backgroundColor: colors.systemGroupedBackground }, headerShown: false }}>
         {() => <AppTabs onLogout={onLogout} />}
       </MainStack.Screen>
       <MainStack.Screen name="Onboarding" options={{ headerShown: true, presentation: 'card', title: t('onboarding.resumeTitle') }}>
@@ -64,15 +65,17 @@ function AppTabs({ onLogout }: { onLogout(): Promise<void> }): JSX.Element {
   const { lastSeenAt } = useAlertsSeen();
   const alertsQuery = useAlertsQuery();
   const unreadAlertCount = countUnreadAlerts(alertsQuery.data ?? [], lastSeenAt);
+  const horizontalScreenInsets = useHorizontalScreenInsets();
 
   return (
     <Tabs.Navigator
       screenOptions={{
         headerShown: false,
+        sceneStyle: [{ backgroundColor: colors.systemGroupedBackground }, horizontalScreenInsets],
         tabBarActiveTintColor: colors.label,
         tabBarInactiveTintColor: isDark ? colors.secondaryLabel : colors.tertiaryLabel,
-        tabBarStyle: Platform.OS === 'ios' ? { position: 'absolute', borderTopWidth: 0 } : { borderTopColor: colors.separator },
-        tabBarBackground: Platform.OS === 'ios' ? () => <GlassBackground /> : undefined,
+        tabBarStyle: isTabBarFloating ? { position: 'absolute', borderTopWidth: 0 } : { borderTopColor: colors.separator },
+        tabBarBackground: isTabBarFloating ? () => <GlassBackground /> : undefined,
       }}
     >
       <Tabs.Screen

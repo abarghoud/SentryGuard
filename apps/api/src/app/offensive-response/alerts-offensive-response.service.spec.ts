@@ -1,50 +1,27 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { mock, MockProxy } from 'jest-mock-extended';
-import { AlertsOffensiveResponseService } from './alerts-offensive-response.service';
+import { AlertsOffensiveResponseService, OffensiveResponseVehicle } from './alerts-offensive-response.service';
 import { TeslaVehicleCommandService } from '../telemetry/services/tesla-vehicle-command.service';
 import { LatencyGuardService } from '../../common/services/latency-guard.service';
-import { Vehicle } from '../../entities/vehicle.entity';
 import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
 
 describe('The AlertsOffensiveResponseService class', () => {
+  const fakeVin = '5YJ3E1EA123456789';
   let service: AlertsOffensiveResponseService;
-
-  const mockVehicleRepository = {
-    findOne: jest.fn(),
-  };
   let mockTeslaVehicleCommandService: MockProxy<TeslaVehicleCommandService>;
   let mockLatencyGuardService: MockProxy<LatencyGuardService>;
 
-  const fakeVehicle: Vehicle = {
-    id: 'vehicle-1',
-    userId: 'user-1',
-    vin: '5YJ3E1EA123456789',
-    sentry_mode_monitoring_enabled: true,
-    break_in_monitoring_enabled: true,
-    break_in_offensive_response: OffensiveResponse.DISABLED,
-    display_name: 'Model 3',
-    created_at: new Date(),
-    updated_at: new Date(),
-    user: null,
-  };
+  const buildVehicle = (userId: string, offensiveResponse: OffensiveResponse): OffensiveResponseVehicle => ({
+    break_in_offensive_response: offensiveResponse,
+    userId,
+    vin: fakeVin,
+  });
 
-  beforeEach(async () => {
+  beforeEach(() => {
     mockTeslaVehicleCommandService = mock<TeslaVehicleCommandService>();
     mockLatencyGuardService = mock<LatencyGuardService>();
     mockLatencyGuardService.checkLatency.mockReturnValue(false);
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AlertsOffensiveResponseService,
-        { provide: getRepositoryToken(Vehicle), useValue: mockVehicleRepository },
-        { provide: TeslaVehicleCommandService, useValue: mockTeslaVehicleCommandService },
-        { provide: LatencyGuardService, useValue: mockLatencyGuardService },
-      ],
-    }).compile();
-
-    service = module.get<AlertsOffensiveResponseService>(AlertsOffensiveResponseService);
-    jest.clearAllMocks();
+    service = new AlertsOffensiveResponseService(mockTeslaVehicleCommandService, mockLatencyGuardService);
   });
 
   describe('The handleBreakInOffensiveResponse() method', () => {
@@ -54,242 +31,192 @@ describe('The AlertsOffensiveResponseService class', () => {
       createdAt = new Date().toISOString();
     });
 
-    describe('When no vehicle is found for any userId', () => {
-      beforeEach(() => {
-        mockVehicleRepository.findOne.mockResolvedValue(null);
-      });
-
+    describe('When no vehicle is provided', () => {
       it('should not trigger any command', async () => {
-        await service.handleBreakInOffensiveResponse('UNKNOWN_VIN', ['user-1'], createdAt);
+        await service.handleBreakInOffensiveResponse(fakeVin, [], createdAt);
 
         expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
       });
     });
 
     describe('When break-in offensive response is DISABLED', () => {
-      beforeEach(() => {
-        mockVehicleRepository.findOne.mockResolvedValue({
-          ...fakeVehicle,
-          break_in_offensive_response: OffensiveResponse.DISABLED,
-        });
-      });
-
       it('should not trigger any command', async () => {
-        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1'], createdAt);
+        await service.handleBreakInOffensiveResponse(fakeVin, [buildVehicle('user-1', OffensiveResponse.DISABLED)], createdAt);
 
         expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
       });
     });
 
-
-
     describe('When break-in offensive response is HONK', () => {
       beforeEach(() => {
-        mockVehicleRepository.findOne.mockResolvedValue({
-          ...fakeVehicle,
-          break_in_offensive_response: OffensiveResponse.HONK,
-        });
         mockTeslaVehicleCommandService.honkHorn.mockResolvedValue({ success: true });
       });
 
       it('should trigger honk horn only', async () => {
-        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1'], createdAt);
+        await service.handleBreakInOffensiveResponse(fakeVin, [buildVehicle('user-1', OffensiveResponse.HONK)], createdAt);
 
-        expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1');
+        expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledWith(fakeVin, 'user-1');
       });
     });
 
     describe('When break-in offensive response is FART', () => {
       beforeEach(() => {
-        mockVehicleRepository.findOne.mockResolvedValue({
-          ...fakeVehicle,
-          break_in_offensive_response: OffensiveResponse.FART,
-        });
         mockTeslaVehicleCommandService.remoteBoombox.mockResolvedValue({ success: true });
       });
 
       it('should trigger remote boombox only', async () => {
-        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1'], createdAt);
+        await service.handleBreakInOffensiveResponse(fakeVin, [buildVehicle('user-1', OffensiveResponse.FART)], createdAt);
 
-        expect(mockTeslaVehicleCommandService.remoteBoombox).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1', 1);
+        expect(mockTeslaVehicleCommandService.remoteBoombox).toHaveBeenCalledWith(fakeVin, 'user-1', 1);
       });
     });
 
-    describe('When first userId is disabled and second userId is HONK', () => {
+    describe('When the first vehicle is disabled and the second one is HONK', () => {
       beforeEach(() => {
-        mockVehicleRepository.findOne
-          .mockResolvedValueOnce({
-            ...fakeVehicle,
-            userId: 'user-1',
-            break_in_offensive_response: OffensiveResponse.DISABLED,
-          })
-          .mockResolvedValueOnce({
-            ...fakeVehicle,
-            userId: 'user-2',
-            break_in_offensive_response: OffensiveResponse.HONK,
-          });
         mockTeslaVehicleCommandService.honkHorn.mockResolvedValue({ success: true });
       });
 
-      it('should trigger honk horn for the second userId', async () => {
-        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1', 'user-2'], createdAt);
+      it('should trigger honk horn for the second user', async () => {
+        await service.handleBreakInOffensiveResponse(
+          fakeVin,
+          [buildVehicle('user-1', OffensiveResponse.DISABLED), buildVehicle('user-2', OffensiveResponse.HONK)],
+          createdAt
+        );
 
-        expect(mockVehicleRepository.findOne).toHaveBeenCalledWith({ where: { vin: '5YJ3E1EA123456789', userId: 'user-1' } });
-        expect(mockVehicleRepository.findOne).toHaveBeenCalledWith({ where: { vin: '5YJ3E1EA123456789', userId: 'user-2' } });
-        expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-2');
+        expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledWith(fakeVin, 'user-2');
       });
     });
 
-    describe('When all userIds have response disabled', () => {
-      beforeEach(() => {
-        mockVehicleRepository.findOne
-          .mockResolvedValueOnce({
-            ...fakeVehicle,
-            userId: 'user-1',
-            break_in_offensive_response: OffensiveResponse.DISABLED,
-          })
-          .mockResolvedValueOnce({
-            ...fakeVehicle,
-            userId: 'user-2',
-            break_in_offensive_response: OffensiveResponse.DISABLED,
-          });
-      });
-
+    describe('When every vehicle has the response disabled', () => {
       it('should not trigger any command', async () => {
-        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1', 'user-2'], createdAt);
+        await service.handleBreakInOffensiveResponse(
+          fakeVin,
+          [buildVehicle('user-1', OffensiveResponse.DISABLED), buildVehicle('user-2', OffensiveResponse.DISABLED)],
+          createdAt
+        );
 
         expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
       });
     });
 
-    describe('When first userId is eligible but honk fails and second userId is eligible', () => {
-      beforeEach(() => {
-        mockVehicleRepository.findOne
-          .mockResolvedValueOnce({
-            ...fakeVehicle,
-            userId: 'user-1',
-            break_in_offensive_response: OffensiveResponse.HONK,
-          })
-          .mockResolvedValueOnce({
-            ...fakeVehicle,
-            userId: 'user-2',
-            break_in_offensive_response: OffensiveResponse.HONK,
-          });
+    describe('When the first eligible honk fails and the second user is eligible', () => {
+      beforeEach(async () => {
         mockTeslaVehicleCommandService.honkHorn
           .mockResolvedValueOnce({ success: false, message: 'vehicle_cmds scope missing' })
           .mockResolvedValueOnce({ success: true });
+
+        await service.handleBreakInOffensiveResponse(
+          fakeVin,
+          [buildVehicle('user-1', OffensiveResponse.HONK), buildVehicle('user-2', OffensiveResponse.HONK)],
+          createdAt
+        );
       });
 
-      it('should try second userId when first fails', async () => {
-        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1', 'user-2'], createdAt);
-
-        expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledTimes(2);
-        expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1');
-        expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-2');
+      it('should try the second user when the first fails', () => {
+        expect(mockTeslaVehicleCommandService.honkHorn.mock.calls).toStrictEqual([
+          [fakeVin, 'user-1'],
+          [fakeVin, 'user-2'],
+        ]);
       });
     });
 
-    describe('When first userId is eligible but honk throws and second userId is eligible', () => {
-      beforeEach(() => {
-        mockVehicleRepository.findOne
-          .mockResolvedValueOnce({
-            ...fakeVehicle,
-            userId: 'user-1',
-            break_in_offensive_response: OffensiveResponse.HONK,
-          })
-          .mockResolvedValueOnce({
-            ...fakeVehicle,
-            userId: 'user-2',
-            break_in_offensive_response: OffensiveResponse.HONK,
-          });
+    describe('When the first eligible honk throws and the second user is eligible', () => {
+      beforeEach(async () => {
         mockTeslaVehicleCommandService.honkHorn
           .mockRejectedValueOnce(new Error('Network error'))
           .mockResolvedValueOnce({ success: true });
+
+        await service.handleBreakInOffensiveResponse(
+          fakeVin,
+          [buildVehicle('user-1', OffensiveResponse.HONK), buildVehicle('user-2', OffensiveResponse.HONK)],
+          createdAt
+        );
       });
 
-      it('should try second userId when first throws', async () => {
-        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1', 'user-2'], createdAt);
-
-        expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledTimes(2);
-        expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1');
-        expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-2');
+      it('should try the second user when the first throws', () => {
+        expect(mockTeslaVehicleCommandService.honkHorn.mock.calls).toStrictEqual([
+          [fakeVin, 'user-1'],
+          [fakeVin, 'user-2'],
+        ]);
       });
     });
 
-    describe('When all eligible userIds fail honk', () => {
+    describe('When every eligible honk fails', () => {
       beforeEach(() => {
-        mockVehicleRepository.findOne
-          .mockResolvedValueOnce({
-            ...fakeVehicle,
-            userId: 'user-1',
-            break_in_offensive_response: OffensiveResponse.HONK,
-          })
-          .mockResolvedValueOnce({
-            ...fakeVehicle,
-            userId: 'user-2',
-            break_in_offensive_response: OffensiveResponse.HONK,
-          });
         mockTeslaVehicleCommandService.honkHorn.mockResolvedValue({ success: false, message: 'error' });
       });
 
-      it('should not trigger any successful command', async () => {
-        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1', 'user-2'], createdAt);
+      it('should try every eligible user', async () => {
+        await service.handleBreakInOffensiveResponse(
+          fakeVin,
+          [buildVehicle('user-1', OffensiveResponse.HONK), buildVehicle('user-2', OffensiveResponse.HONK)],
+          createdAt
+        );
 
         expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledTimes(2);
-      });
-    });
-
-    describe('When empty userIds array', () => {
-      it('should not trigger any command', async () => {
-        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', [], createdAt);
-
-        expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
       });
     });
 
     describe('When latency is within the threshold', () => {
+      let result: OffensiveResponse | null;
+
       beforeEach(async () => {
-        mockVehicleRepository.findOne.mockResolvedValue({
-          ...fakeVehicle,
-          break_in_offensive_response: OffensiveResponse.HONK,
-        });
         mockTeslaVehicleCommandService.honkHorn.mockResolvedValue({ success: true });
-        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1'], createdAt);
+
+        result = await service.handleBreakInOffensiveResponse(fakeVin, [buildVehicle('user-1', OffensiveResponse.HONK)], createdAt);
       });
 
       it('should trigger honk horn', () => {
-        expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledWith('5YJ3E1EA123456789', 'user-1');
+        expect(mockTeslaVehicleCommandService.honkHorn).toHaveBeenCalledWith(fakeVin, 'user-1');
+      });
+
+      it('should report the offensive response that went off', () => {
+        expect(result).toBe(OffensiveResponse.HONK);
+      });
+    });
+
+    describe('When the alert was intentionally delayed by the reaction delay', () => {
+      beforeEach(async () => {
+        await service.handleBreakInOffensiveResponse(fakeVin, [], createdAt, 20_000);
+      });
+
+      it('should exclude the reaction delay from the latency check', () => {
+        expect(mockLatencyGuardService.checkLatency).toHaveBeenCalledWith(
+          expect.objectContaining({ intentionalDelayMs: 20_000 })
+        );
       });
     });
 
     describe('When latency guard blocks the request', () => {
+      let result: OffensiveResponse | null;
+
       beforeEach(async () => {
         mockLatencyGuardService.checkLatency.mockReturnValue(true);
-        mockVehicleRepository.findOne.mockResolvedValue({
-          ...fakeVehicle,
-          break_in_offensive_response: OffensiveResponse.HONK,
-        });
         mockTeslaVehicleCommandService.honkHorn.mockResolvedValue({ success: true });
-        
-        await service.handleBreakInOffensiveResponse('5YJ3E1EA123456789', ['user-1'], createdAt);
+
+        result = await service.handleBreakInOffensiveResponse(fakeVin, [buildVehicle('user-1', OffensiveResponse.HONK)], createdAt);
       });
 
       it('should not trigger honk horn', () => {
         expect(mockTeslaVehicleCommandService.honkHorn).not.toHaveBeenCalled();
       });
 
+      it('should report that no offensive response went off', () => {
+        expect(result).toBeNull();
+      });
+
       it('should have called checkLatency with correct options', () => {
         expect(mockLatencyGuardService.checkLatency).toHaveBeenCalledWith({
-          vin: '5YJ3E1EA123456789',
+          vin: fakeVin,
           createdAt,
           logContext: 'OFFENSIVE',
           envVarThresholdName: 'OFFENSIVE_RESPONSE_LATENCY_THRESHOLD_MS',
           defaultThresholdMs: 60000,
           alertPrefix: 'OFFENSIVE_LATENCY_ALERT',
           actionName: 'Offensive response',
+          intentionalDelayMs: 0,
         });
       });
     });
-
   });
 });

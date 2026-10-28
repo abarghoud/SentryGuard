@@ -1,4 +1,5 @@
 import { mock, MockProxy } from 'jest-mock-extended';
+import { BreakInSensitivity } from '@sentryguard/vehicles-domain';
 
 import { OffensiveResponse, Vehicle, VehicleActionResponse } from '../entities';
 import { VehicleRepositoryRequirements } from '../vehicle.repository.requirements';
@@ -8,6 +9,7 @@ import {
   GetVehiclesUseCase,
   ToggleBreakInMonitoringUseCase,
   UpdateAlertSoundsUseCase,
+  UpdateBreakInDetectionUseCase,
   UpdateOffensiveResponseUseCase,
 } from './vehicles.use-cases';
 
@@ -108,6 +110,27 @@ describe('The vehicles use cases', () => {
         expect(mockRepository.updateOffensiveResponse).toHaveBeenCalledWith(fakeVin, {
           breakInOffensiveResponse: OffensiveResponse.Honk,
         });
+      });
+    });
+  });
+
+  describe('The UpdateBreakInDetectionUseCase class', () => {
+    describe('When saving the break-in detection settings', () => {
+      const fakeBreakInDetection = { reactionDelaySeconds: 20, sensitivity: BreakInSensitivity.RepeatedPulls };
+      const expectedResponse = { message: 'ok', success: true } as VehicleActionResponse;
+      let result: VehicleActionResponse;
+
+      beforeEach(async () => {
+        mockRepository.updateBreakInDetection.mockResolvedValue(expectedResponse);
+        result = await new UpdateBreakInDetectionUseCase(mockRepository).execute(fakeVin, fakeBreakInDetection);
+      });
+
+      it('should save the settings for the vehicle', () => {
+        expect(mockRepository.updateBreakInDetection).toHaveBeenCalledWith(fakeVin, fakeBreakInDetection);
+      });
+
+      it('should return the repository response', () => {
+        expect(result).toBe(expectedResponse);
       });
     });
   });

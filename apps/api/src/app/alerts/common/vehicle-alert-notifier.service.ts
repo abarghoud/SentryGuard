@@ -21,6 +21,7 @@ export interface AlertDispatchConfig {
   telemetryMessage: TelemetryMessage;
   alertName: string;
   latencyLabel: string;
+  reactionDelayMs?: number;
   severity: AlertEventSeverity;
   type: AlertEventType;
 }
@@ -70,7 +71,7 @@ export class VehicleAlertNotifierService {
       const recordedAlerts = await this.recordAlerts(userIds, alertInfo, config);
       this.enqueueUserNotifications(recordedAlerts, alertInfo, message.correlationId, alertName, config);
 
-      this.logAlertLatency(message, handlerStartTime, latencyLabel);
+      this.logAlertLatency(message, handlerStartTime, latencyLabel, config.reactionDelayMs ?? 0);
 
       return { userIds };
     } catch (error) {
@@ -122,7 +123,7 @@ export class VehicleAlertNotifierService {
   }
 
   private extractUniqueUserIds(vehicles: Vehicle[]): string[] {
-    return [...new Set(vehicles.map(v => v.userId))];
+    return [...new Set(vehicles.map(vehicle => vehicle.userId))];
   }
 
   private buildAlertInfo(vin: string, displayName?: string): { vin: string; display_name?: string } {
@@ -285,12 +286,18 @@ export class VehicleAlertNotifierService {
     }
   }
 
-  private logAlertLatency(telemetryMessage: TelemetryMessage, handlerStartTime: number, latencyLabel: string): void {
+  private logAlertLatency(
+    telemetryMessage: TelemetryMessage,
+    handlerStartTime: number,
+    latencyLabel: string,
+    reactionDelayMs: number
+  ): void {
     if (!telemetryMessage.correlationId) {
       return;
     }
 
-    const endToEndLatency = telemetryMessage.calculateEndToEndLatency();
+    const measuredLatency = telemetryMessage.calculateEndToEndLatency();
+    const endToEndLatency = measuredLatency === null ? null : measuredLatency - reactionDelayMs;
     const handlerProcessingTime = Date.now() - handlerStartTime;
 
     if (endToEndLatency !== null) {

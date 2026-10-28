@@ -1,4 +1,5 @@
 import { mock, MockProxy } from 'jest-mock-extended';
+import { BreakInSensitivity } from '@sentryguard/vehicles-domain';
 
 import { ApiClientRequirements } from '../../../core/api/api-client';
 import { OffensiveResponse, Vehicle, VehicleActionResponse } from '../domain/entities';
@@ -99,6 +100,25 @@ describe('The VehicleApiRepository class', () => {
       it('should PATCH the vehicle alert sounds endpoint with the break-in sound only', () => {
         expect(mockClient.request).toHaveBeenCalledWith(`/vehicle-alert-sounds/${fakeVin}`, {
           body: JSON.stringify({ break_in_alert_sound: 'default' }),
+          method: 'PATCH',
+        });
+      });
+    });
+  });
+
+  describe('The updateBreakInDetection() method', () => {
+    describe('When saving the break-in detection settings', () => {
+      beforeEach(async () => {
+        mockClient.request.mockResolvedValue({ message: 'ok', success: true });
+        await repository.updateBreakInDetection(fakeVin, {
+          reactionDelaySeconds: 20,
+          sensitivity: BreakInSensitivity.RepeatedPulls,
+        });
+      });
+
+      it('should patch the break-in detection endpoint of the vehicle', () => {
+        expect(mockClient.request).toHaveBeenCalledWith(`/vehicles/${fakeVin}/break-in-detection`, {
+          body: JSON.stringify({ reactionDelaySeconds: 20, sensitivity: 'repeated_pulls' }),
           method: 'PATCH',
         });
       });

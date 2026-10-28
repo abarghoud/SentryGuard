@@ -1,5 +1,5 @@
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
-import type { SymbolViewProps } from 'expo-symbols';
+import type { SFSymbol } from 'expo-symbols';
 import type { JSX } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
@@ -20,7 +20,7 @@ export enum GlassButtonVariant {
 interface GlassButtonProps {
   disabled?: boolean;
   destructive?: boolean;
-  icon?: SymbolViewProps['name'];
+  icon?: SFSymbol;
   label: string;
   onPress(): void;
   style?: StyleProp<ViewStyle>;

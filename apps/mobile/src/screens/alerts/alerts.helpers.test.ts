@@ -18,11 +18,13 @@ import {
   confirmClearAlerts,
   countUnreadAlerts,
   filterAlerts,
+  formatAlertDateTime,
   isAlertUnread,
   resolveAlertIcon,
   resolveAlertMessageKey,
   resolveAlertTitleKey,
   resolveAlertTone,
+  resolveSelectedAlert,
 } from './alerts.helpers';
 
 const createAlert = (type: AlertEventType, severity: AlertEventSeverity): AlertEvent => ({
@@ -203,6 +205,45 @@ describe('The confirmClearAlerts() function', () => {
       buttons.find((button) => button.style === 'destructive')?.onPress?.();
 
       expect(onConfirm).toHaveBeenCalled();
+    });
+  });
+});
+
+describe('The formatAlertDateTime() function', () => {
+  const createdAt = '2026-06-10T12:00:00.000Z';
+
+  describe('When the app is in English', () => {
+    it('should spell out the month and the year', () => {
+      expect(formatAlertDateTime(createdAt, 'en')).toMatch(/June 10, 2026/);
+    });
+  });
+
+  describe('When the app is in French', () => {
+    it('should spell out the month and the year', () => {
+      expect(formatAlertDateTime(createdAt, 'fr')).toMatch(/10 juin 2026/);
+    });
+  });
+});
+
+describe('The resolveSelectedAlert() function', () => {
+  const sentryAlert = createAlert(AlertEventType.Sentry, AlertEventSeverity.Warning);
+  const breakInAlert = createAlert(AlertEventType.BreakIn, AlertEventSeverity.Critical);
+
+  describe('When the selected alert is in the list', () => {
+    it('should return it', () => {
+      expect(resolveSelectedAlert([sentryAlert, breakInAlert], breakInAlert.id)).toBe(breakInAlert);
+    });
+  });
+
+  describe('When the selected alert is no longer in the list', () => {
+    it('should fall back to the first alert', () => {
+      expect(resolveSelectedAlert([sentryAlert, breakInAlert], 'alert-deleted')).toBe(sentryAlert);
+    });
+  });
+
+  describe('When the list is empty', () => {
+    it('should return null', () => {
+      expect(resolveSelectedAlert([], null)).toBeNull();
     });
   });
 });

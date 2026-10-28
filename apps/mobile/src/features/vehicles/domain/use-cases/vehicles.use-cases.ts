@@ -1,4 +1,4 @@
-import { OffensiveResponse, Vehicle, VehicleActionResponse } from '../entities';
+import { BreakInDetection, OffensiveResponse, Vehicle, VehicleActionResponse } from '../entities';
 import { VehicleRepositoryRequirements } from '../vehicle.repository.requirements';
 import {
   ConfigureTelemetryRequirements,
@@ -6,6 +6,7 @@ import {
   GetVehiclesRequirements,
   ToggleBreakInMonitoringRequirements,
   UpdateAlertSoundsRequirements,
+  UpdateBreakInDetectionRequirements,
   UpdateOffensiveResponseRequirements,
 } from './vehicles.use-cases.requirements';
 
@@ -49,6 +50,14 @@ export class UpdateAlertSoundsUseCase implements UpdateAlertSoundsRequirements {
     payload: { breakInAlertSound?: string; sentryAlertSound?: string },
   ): Promise<VehicleActionResponse> {
     return this.repository.updateAlertSounds(vin, payload);
+  }
+}
+
+export class UpdateBreakInDetectionUseCase implements UpdateBreakInDetectionRequirements {
+  public constructor(private readonly repository: VehicleRepositoryRequirements) {}
+
+  public async execute(vin: string, breakInDetection: BreakInDetection): Promise<VehicleActionResponse> {
+    return this.repository.updateBreakInDetection(vin, breakInDetection);
   }
 }
 

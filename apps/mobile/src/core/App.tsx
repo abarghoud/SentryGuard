@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { MobileShell } from './MobileShell';
+import { VerticalFoldProvider } from './design/vertical-fold';
 import { ThemeProvider, useTheme } from './theme';
 import { initializeRuntimeConfig, tokenStore } from './api';
 import { appLogger, installGlobalErrorLogging } from './logging';
@@ -21,9 +22,11 @@ export function App(): JSX.Element {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
-          <ThemeProvider>
-            <ThemedAppContent />
-          </ThemeProvider>
+          <VerticalFoldProvider>
+            <ThemeProvider>
+              <ThemedAppContent />
+            </ThemeProvider>
+          </VerticalFoldProvider>
         </SafeAreaProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

@@ -106,4 +106,18 @@ describe('The LatencyGuardService class', () => {
       expect(result).toBe(true);
     });
   });
+
+  describe('When the alert was intentionally delayed', () => {
+    it('should not count the intentional delay as latency', () => {
+      const delayedDate = new Date(Date.now() - 70000).toISOString();
+
+      const result = latencyGuardService.checkLatency({
+        ...defaultOptions,
+        createdAt: delayedDate,
+        intentionalDelayMs: 60000,
+      });
+
+      expect(result).toBe(false);
+    });
+  });
 });

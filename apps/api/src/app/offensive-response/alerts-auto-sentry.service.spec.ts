@@ -1,51 +1,30 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { mock, MockProxy } from 'jest-mock-extended';
-import { AlertsAutoSentryService } from './alerts-auto-sentry.service';
+import { AlertsAutoSentryService, AutoSentryResult, AutoSentryVehicle } from './alerts-auto-sentry.service';
 import { TeslaVehicleCommandService } from '../telemetry/services/tesla-vehicle-command.service';
 import { LatencyGuardService } from '../../common/services/latency-guard.service';
-import { Vehicle } from '../../entities/vehicle.entity';
-import { OffensiveResponse } from '../alerts/enums/offensive-response.enum';
+import { SentryModeStateTrackerService } from './sentry-mode-state-tracker.service';
 
 describe('The AlertsAutoSentryService class', () => {
+  const fakeVin = '5YJ3E1EA123456789';
   let service: AlertsAutoSentryService;
-
-  const mockVehicleRepository = {
-    findOne: jest.fn(),
-  };
   let mockTeslaVehicleCommandService: MockProxy<TeslaVehicleCommandService>;
   let mockLatencyGuardService: MockProxy<LatencyGuardService>;
+  let mockSentryModeStateTracker: MockProxy<SentryModeStateTrackerService>;
 
-  const fakeVehicle: Vehicle = {
-    id: 'vehicle-1',
-    userId: 'user-1',
-    vin: '5YJ3E1EA123456789',
-    sentry_mode_monitoring_enabled: true,
-    break_in_monitoring_enabled: true,
-    break_in_offensive_response: OffensiveResponse.DISABLED,
-    break_in_auto_sentry_mode_enabled: false,
-    display_name: 'Model 3',
-    created_at: new Date(),
-    updated_at: new Date(),
-    user: null,
-  };
+  const buildVehicle = (userId: string, isAutoSentryEnabled: boolean): AutoSentryVehicle => ({
+    break_in_auto_sentry_mode_enabled: isAutoSentryEnabled,
+    userId,
+    vin: fakeVin,
+  });
 
-  beforeEach(async () => {
+  beforeEach(() => {
     mockTeslaVehicleCommandService = mock<TeslaVehicleCommandService>();
     mockLatencyGuardService = mock<LatencyGuardService>();
     mockLatencyGuardService.checkLatency.mockReturnValue(false);
+    mockSentryModeStateTracker = mock<SentryModeStateTrackerService>();
+    mockSentryModeStateTracker.isSentryModeActive.mockReturnValue(false);
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AlertsAutoSentryService,
-        { provide: getRepositoryToken(Vehicle), useValue: mockVehicleRepository },
-        { provide: TeslaVehicleCommandService, useValue: mockTeslaVehicleCommandService },
-        { provide: LatencyGuardService, useValue: mockLatencyGuardService },
-      ],
-    }).compile();
-
-    service = module.get<AlertsAutoSentryService>(AlertsAutoSentryService);
-    jest.clearAllMocks();
+    service = new AlertsAutoSentryService(mockTeslaVehicleCommandService, mockLatencyGuardService, mockSentryModeStateTracker);
   });
 
   describe('The handleBreakInAutoSentry() method', () => {
@@ -55,133 +34,105 @@ describe('The AlertsAutoSentryService class', () => {
       createdAt = new Date().toISOString();
     });
 
-    describe('When no vehicle is found for any userId', () => {
-      beforeEach(() => {
-        mockVehicleRepository.findOne.mockResolvedValue(null);
-      });
-
+    describe('When no vehicle is provided', () => {
       it('should not trigger set_sentry_mode', async () => {
-        await service.handleBreakInAutoSentry('UNKNOWN_VIN', ['user-1'], createdAt);
+        await service.handleBreakInAutoSentry(fakeVin, [], createdAt);
 
         expect(mockTeslaVehicleCommandService.setSentryMode).not.toHaveBeenCalled();
       });
     });
 
     describe('When auto sentry is disabled', () => {
-      beforeEach(() => {
-        mockVehicleRepository.findOne.mockResolvedValue({
-          ...fakeVehicle,
-          break_in_auto_sentry_mode_enabled: false,
-        });
-      });
-
       it('should not trigger set_sentry_mode', async () => {
-        await service.handleBreakInAutoSentry('5YJ3E1EA123456789', ['user-1'], createdAt);
+        await service.handleBreakInAutoSentry(fakeVin, [buildVehicle('user-1', false)], createdAt);
 
         expect(mockTeslaVehicleCommandService.setSentryMode).not.toHaveBeenCalled();
       });
     });
 
     describe('When auto sentry is enabled', () => {
-      beforeEach(() => {
-        mockVehicleRepository.findOne.mockResolvedValue({
-          ...fakeVehicle,
-          break_in_auto_sentry_mode_enabled: true,
-        });
+      let result: AutoSentryResult;
+
+      beforeEach(async () => {
         mockTeslaVehicleCommandService.setSentryMode.mockResolvedValue({ success: true });
+
+        result = await service.handleBreakInAutoSentry(fakeVin, [buildVehicle('user-1', true)], createdAt);
       });
 
-      it('should trigger set_sentry_mode', async () => {
-        await service.handleBreakInAutoSentry('5YJ3E1EA123456789', ['user-1'], createdAt);
+      it('should report that Sentry Mode was activated', () => {
+        expect(result).toStrictEqual({ isSentryModeActivated: true });
+      });
 
-        expect(mockTeslaVehicleCommandService.setSentryMode).toHaveBeenCalledWith(
-          '5YJ3E1EA123456789',
-          'user-1',
-          true,
+      it('should trigger set_sentry_mode', () => {
+        expect(mockTeslaVehicleCommandService.setSentryMode).toHaveBeenCalledWith(fakeVin, 'user-1', true);
+      });
+    });
+
+    describe('When Sentry Mode is already active on the vehicle', () => {
+      let result: AutoSentryResult;
+
+      beforeEach(async () => {
+        mockSentryModeStateTracker.isSentryModeActive.mockReturnValue(true);
+
+        result = await service.handleBreakInAutoSentry(fakeVin, [buildVehicle('user-1', true)], createdAt);
+      });
+
+      it('should not send a redundant set_sentry_mode command', () => {
+        expect(mockTeslaVehicleCommandService.setSentryMode).not.toHaveBeenCalled();
+      });
+
+      it('should report that Sentry Mode was not activated by this alert', () => {
+        expect(result).toStrictEqual({ isSentryModeActivated: false });
+      });
+    });
+
+    describe('When the alert was intentionally delayed by the reaction delay', () => {
+      beforeEach(async () => {
+        await service.handleBreakInAutoSentry(fakeVin, [], createdAt, 20_000);
+      });
+
+      it('should exclude the reaction delay from the latency check', () => {
+        expect(mockLatencyGuardService.checkLatency).toHaveBeenCalledWith(
+          expect.objectContaining({ intentionalDelayMs: 20_000 })
         );
       });
     });
 
-    describe('When first userId is disabled and second userId is enabled', () => {
+    describe('When the first vehicle is disabled and the second one is enabled', () => {
       beforeEach(() => {
-        mockVehicleRepository.findOne
-          .mockResolvedValueOnce({
-            ...fakeVehicle,
-            userId: 'user-1',
-            break_in_auto_sentry_mode_enabled: false,
-          })
-          .mockResolvedValueOnce({
-            ...fakeVehicle,
-            userId: 'user-2',
-            break_in_auto_sentry_mode_enabled: true,
-          });
         mockTeslaVehicleCommandService.setSentryMode.mockResolvedValue({ success: true });
       });
 
-      it('should trigger set_sentry_mode for the second userId', async () => {
-        await service.handleBreakInAutoSentry('5YJ3E1EA123456789', ['user-1', 'user-2'], createdAt);
+      it('should trigger set_sentry_mode for the second user', async () => {
+        await service.handleBreakInAutoSentry(fakeVin, [buildVehicle('user-1', false), buildVehicle('user-2', true)], createdAt);
 
-        expect(mockTeslaVehicleCommandService.setSentryMode).toHaveBeenCalledWith(
-          '5YJ3E1EA123456789',
-          'user-2',
-          true,
-        );
+        expect(mockTeslaVehicleCommandService.setSentryMode).toHaveBeenCalledWith(fakeVin, 'user-2', true);
       });
     });
 
-    describe('When first userId fails and second userId succeeds', () => {
-      beforeEach(() => {
-        mockVehicleRepository.findOne
-          .mockResolvedValueOnce({
-            ...fakeVehicle,
-            userId: 'user-1',
-            break_in_auto_sentry_mode_enabled: true,
-          })
-          .mockResolvedValueOnce({
-            ...fakeVehicle,
-            userId: 'user-2',
-            break_in_auto_sentry_mode_enabled: true,
-          });
+    describe('When the first user fails and the second user succeeds', () => {
+      beforeEach(async () => {
         mockTeslaVehicleCommandService.setSentryMode
           .mockResolvedValueOnce({ success: false, message: 'vehicle_cmds scope missing' })
           .mockResolvedValueOnce({ success: true });
+
+        await service.handleBreakInAutoSentry(fakeVin, [buildVehicle('user-1', true), buildVehicle('user-2', true)], createdAt);
       });
 
-      it('should try second userId when first fails', async () => {
-        await service.handleBreakInAutoSentry('5YJ3E1EA123456789', ['user-1', 'user-2'], createdAt);
-
-        expect(mockTeslaVehicleCommandService.setSentryMode).toHaveBeenCalledTimes(2);
-        expect(mockTeslaVehicleCommandService.setSentryMode).toHaveBeenCalledWith(
-          '5YJ3E1EA123456789',
-          'user-1',
-          true,
-        );
-        expect(mockTeslaVehicleCommandService.setSentryMode).toHaveBeenCalledWith(
-          '5YJ3E1EA123456789',
-          'user-2',
-          true,
-        );
-      });
-    });
-
-    describe('When empty userIds array', () => {
-      it('should not trigger set_sentry_mode', async () => {
-        await service.handleBreakInAutoSentry('5YJ3E1EA123456789', [], createdAt);
-
-        expect(mockTeslaVehicleCommandService.setSentryMode).not.toHaveBeenCalled();
+      it('should try the second user when the first fails', () => {
+        expect(mockTeslaVehicleCommandService.setSentryMode.mock.calls).toStrictEqual([
+          [fakeVin, 'user-1', true],
+          [fakeVin, 'user-2', true],
+        ]);
       });
     });
 
     describe('When latency guard blocks the request', () => {
       beforeEach(async () => {
         mockLatencyGuardService.checkLatency.mockReturnValue(true);
-        mockVehicleRepository.findOne.mockResolvedValue({
-          ...fakeVehicle,
-          break_in_auto_sentry_mode_enabled: true,
-        });
         mockTeslaVehicleCommandService.setSentryMode.mockResolvedValue({ success: true });
-        
-        await service.handleBreakInAutoSentry('5YJ3E1EA123456789', ['user-1'], createdAt);
+
+        await service.handleBreakInAutoSentry(fakeVin, [buildVehicle('user-1', true)], createdAt);
       });
 
       it('should not trigger set_sentry_mode', () => {
@@ -190,13 +141,14 @@ describe('The AlertsAutoSentryService class', () => {
 
       it('should have called checkLatency with correct options', () => {
         expect(mockLatencyGuardService.checkLatency).toHaveBeenCalledWith({
-          vin: '5YJ3E1EA123456789',
+          vin: fakeVin,
           createdAt,
           logContext: 'AUTO_SENTRY',
           envVarThresholdName: 'AUTO_SENTRY_LATENCY_THRESHOLD_MS',
           defaultThresholdMs: 60000,
           alertPrefix: 'AUTO_SENTRY_LATENCY_ALERT',
           actionName: 'Auto sentry',
+          intentionalDelayMs: 0,
         });
       });
     });

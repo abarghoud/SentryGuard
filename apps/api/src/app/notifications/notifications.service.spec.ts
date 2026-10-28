@@ -1,12 +1,13 @@
 import { mock, MockProxy } from 'jest-mock-extended';
 import { Repository } from 'typeorm';
 
-import { NotificationsService } from './notifications.service';
+import { NotificationsService, PushDeliveryResult } from './notifications.service';
 import { NotificationPreferences } from '../../entities/notification-preferences.entity';
 import { PushDeviceToken } from '../../entities/push-device-token.entity';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
 import { AlertEventSeverity, AlertEventType } from '../../entities/alert-event.entity';
 import { AlertSound } from '../alerts/enums/alert-sound.enum';
+import { CounterMeasure } from '../alerts/enums/counter-measure.enum';
 
 describe('The NotificationsService class', () => {
   const fakeUserId = 'user-123';
@@ -57,6 +58,62 @@ describe('The NotificationsService class', () => {
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  describe('The sendCounterMeasurePush() method', () => {
+    const counterMeasureContext = {
+      counterMeasures: [CounterMeasure.Honk, CounterMeasure.AutoSentry],
+      userId: fakeUserId,
+      userLanguage: 'fr' as const,
+      vehicleName: 'Ma Tesla',
+      vin: 'XP7YGCER1TB919128',
+    };
+
+    describe('When the user has a device accepting regular notifications', () => {
+      let result: PushDeliveryResult;
+
+      beforeEach(async () => {
+        result = await service.sendCounterMeasurePush(counterMeasureContext);
+      });
+
+      it('should report the push as sent', () => {
+        expect(result).toStrictEqual({ isDelivered: true });
+      });
+
+      it('should name the vehicle in the title', () => {
+        expect(lastPushPayload().title).toBe('Riposte déclenchée - Ma Tesla');
+      });
+
+      it('should list the counter-measures that went off', () => {
+        expect(lastPushPayload().body).toBe('Le klaxon a retenti. Le mode Sentinelle a été activé.');
+      });
+
+      it('should use the regular alerts channel', () => {
+        expect(lastPushPayload().channelId).toBe('sentryguard-alerts');
+      });
+
+      it('should keep the VIN so tapping opens the vehicle camera', () => {
+        expect(lastPushPayload().data.vin).toBe('XP7YGCER1TB919128');
+      });
+    });
+
+    describe('When the device only accepts critical alerts', () => {
+      let result: PushDeliveryResult;
+
+      beforeEach(async () => {
+        mockPushDeviceTokenRepository.find.mockResolvedValue([{ ...createDevice(), critical_only: true } as PushDeviceToken]);
+
+        result = await service.sendCounterMeasurePush(counterMeasureContext);
+      });
+
+      it('should not send any push', () => {
+        expect(fetchMock).not.toHaveBeenCalled();
+      });
+
+      it('should report that nothing was sent', () => {
+        expect(result).toStrictEqual({ isDelivered: false });
+      });
+    });
   });
 
   describe('The sendPushAlert() method', () => {

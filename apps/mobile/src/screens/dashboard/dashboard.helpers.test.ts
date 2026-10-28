@@ -13,6 +13,7 @@ import {
   isMuteActive,
   isVehicleProtected,
   resolveLatestAlert,
+  resolveSelectedVehicle,
   resolveSubtitle,
 } from './dashboard.helpers';
 import { AlertEvent, AlertEventSeverity, AlertEventType } from '../../features/alerts/domain/entities';
@@ -144,6 +145,42 @@ describe('The resolveSubtitle() function', () => {
         { break_in_monitoring_enabled: false, sentry_mode_monitoring_enabled: false } as Vehicle,
       ];
       expect(resolveSubtitle(vehicles, fakeTranslation)).toBe('1/2');
+    });
+  });
+});
+
+describe('The resolveSelectedVehicle() function', () => {
+  const firstVehicle = { vin: 'VIN-FIRST' } as Vehicle;
+  const secondVehicle = { vin: 'VIN-SECOND' } as Vehicle;
+  const vehicles = [firstVehicle, secondVehicle];
+
+  describe('When the vehicles are still loading', () => {
+    it('should return null', () => {
+      expect(resolveSelectedVehicle(undefined, 'VIN-SECOND')).toBeNull();
+    });
+  });
+
+  describe('When there is no vehicle', () => {
+    it('should return null', () => {
+      expect(resolveSelectedVehicle([], null)).toBeNull();
+    });
+  });
+
+  describe('When the selected vehicle is in the list', () => {
+    it('should return it', () => {
+      expect(resolveSelectedVehicle(vehicles, 'VIN-SECOND')).toBe(secondVehicle);
+    });
+  });
+
+  describe('When no vehicle has been selected yet', () => {
+    it('should return the first vehicle', () => {
+      expect(resolveSelectedVehicle(vehicles, null)).toBe(firstVehicle);
+    });
+  });
+
+  describe('When the selected vehicle is no longer in the list', () => {
+    it('should return the first vehicle', () => {
+      expect(resolveSelectedVehicle(vehicles, 'VIN-REMOVED')).toBe(firstVehicle);
     });
   });
 });

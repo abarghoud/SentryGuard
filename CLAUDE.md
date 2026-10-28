@@ -14,7 +14,7 @@ SentryGuard is a real-time Tesla vehicle monitoring and security alert system bu
 - Telegram Bot API **and mobile push (Expo)** for instant notifications
 - Active **offensive response** (honk / boombox) on confirmed break-ins
 - Apache Kafka for real-time message processing
-- Two shared domain libs + two custom Docker infra images (fleet-telemetry, vehicle-command proxy)
+- Three shared domain libs + two custom Docker infra images (fleet-telemetry, vehicle-command proxy)
 
 > A condensed version of this file lives in [AGENTS.md](AGENTS.md) (loaded by some tools). Keep the two in sync when commands or architecture change.
 
@@ -24,9 +24,10 @@ SentryGuard is a real-time Tesla vehicle monitoring and security alert system bu
 |------|-----------|-------|----------|
 | `apps/api` | Backend API + Kafka consumer | NestJS 11 + TypeORM + PostgreSQL | Jest (node) |
 | `apps/webapp` | Marketing site + dashboard | Next.js 16 App Router (SSR) | Jest (jsdom) |
-| `apps/mobile` | iOS / Android / Expo Web client | Expo SDK 54 + React Native 0.81 + React Navigation | Jest (node) |
+| `apps/mobile` | iOS / Android / Expo Web client | Expo SDK 58 + React Native 0.88 + React Navigation | Jest (node) |
 | `libs/beta/domain` | `@sentryguard/beta-domain` — Tesla scopes + error-code enums | Pure TS | Jest |
 | `libs/telegram/domain` | `@sentryguard/telegram-domain` — Telegram-linking use-cases shared by web + mobile | Pure TS | Jest |
+| `libs/vehicles/domain` | `@sentryguard/vehicles-domain` — vehicle rules used by the mobile app (break-in detection settings) | Pure TS | Jest |
 | `fleet-telemetry/` | Dockerized Tesla Fleet Telemetry server (TLS ingest → Kafka) | Go + Docker | — |
 | `vehicle-command-proxy/` | Dockerized Tesla vehicle-command HTTP proxy (signs commands) | Go + Docker | — |
 
@@ -158,7 +159,7 @@ The system uses `CloudflareThrottlerGuard` (`apps/api/src/common/guards/`), regi
 2. **Kafka** → topic from `KAFKA_TOPIC` (code/local-dev default `TeslaLogger_V`; self-host/fleet-telemetry use `FleetTelemetry_V` — see Known Gotchas)
 3. **KafkaService** (`apps/api/src/app/messaging/kafka/kafka.service.ts`) → consumes batches (concurrency-limited); providers are wired in `app.module.ts`, not a dedicated module
 4. **TelemetryMessageHandlerService** (`apps/api/src/app/telemetry/handlers/`) → `JSON.parse`s the payload and validates with **class-validator** via `TelemetryValidationService`, then fans out with `Promise.allSettled`
-5. **SentryAlertHandlerService** / **BreakInAlertHandlerService** (`apps/api/src/app/alerts/`) → interpret events (break-in defers ~3s and suppresses charge-port false positives via `ChargePortLatchTrackerService`)
+5. **SentryAlertHandlerService** / **BreakInAlertHandlerService** (`apps/api/src/app/alerts/`) → interpret events (break-in waits a per-vehicle reaction delay and suppresses false positives via `BreakInEventTrackerService` — see Break-in Detection below)
 6. **VehicleAlertNotifierService** (`apps/api/src/app/alerts/common/`) → central fan-out: persists `AlertEvent`s, notifies each user over **Telegram + mobile push**, and triggers the offensive response
 
 > ⚠️ The payload is **JSON at the API layer, not Protobuf** — protobuf decoding happens upstream in the fleet-telemetry server. (`@types/google-protobuf` is a leftover dependency.)
@@ -174,6 +175,21 @@ Notifications are **dual-channel**, fanned out in `VehicleAlertNotifierService.n
 - **Mobile push** — `NotificationsService.sendPushAlert()` → Expo push API (`https://exp.host/--/api/v2/push/send`). Stale tokens (`DeviceNotRegistered`) are deleted automatically; Android routes critical vs normal via channels `sentryguard-critical-alerts-v5` / `sentryguard-alerts`.
 
 Devices register through `NotificationsController` (`POST/DELETE /notifications/push-token`, `GET/POST /notifications/preferences`). Entities: `PushDeviceToken` (per-device flags), `NotificationPreferences` (global `telegram_enabled`).
+
+### Break-in Detection (notification, then per-vehicle counter-measure trigger)
+- A break-in is a `CenterDisplay = Lock` event: a door handle pulled while no key is detected. Most of them are the owner whose phone key is detected late (10–60 s).
+- A `Lock` received while Sentry Mode is on (`Idle` or `Armed`, reported in the same message or, from `SentryModeStateTrackerService`'s 1 h history, the state at the `Lock`'s vehicle time) is ignored entirely, and checked again when the alert is due in case the messages were processed out of order: no notification, no counter-measure, not counted as a pull. Sentry `Idle` means Sentry is enabled but stood down because a key is near; on 2026-10-16, 59 of the 63 such `Lock`s were the owner (typically checking the door right after parking, before the car arms). Once `Armed`, the screen shows `Sentry` rather than `Lock`, and the Sentry alerts take over.
+- **Notification** (every owner of the VIN, every other `Lock`): sent after 5 s (`DEFAULT_BREAK_IN_REACTION_DELAY_SECONDS`, or the shortest reaction delay of a co-owner who enabled a counter-measure, if lower, so it never arrives after the horn), and cancelled if `Accessory`/`On`/`Driving` arrives with a vehicle timestamp at or after the `Lock`. `BREAK_IN_ALERT_CHECK_DELAY_MS` no longer exists.
+- **Counter-measures** (offensive response and auto-Sentry) follow two per-`Vehicle` settings, exposed in the mobile app only (the webapp is being phased out) through `@sentryguard/vehicles-domain`, and shown only when a counter-measure is enabled and the vehicle-commands scope is granted:
+  - `break_in_sensitivity` (`BreakInSensitivity { SinglePull, RepeatedPulls }`, default `single_pull`): `repeated_pulls` only fires on the **second** `Lock` within 60 s (vehicle time); owner activity starts a new burst. `CenterDisplay` is emitted on change only, so two pulls are seen only when the screen went back to `Off` in between (about 7 s after a `Lock`, median measured on prod in Oct 2026, p90 14 s): faster pulls count as one.
+  - `break_in_reaction_delay_seconds` (3 / 5 / 10 / 20 / 30 / 60, default 5): the counter-measures wait this long and are cancelled by owner activity since the first `Lock` of the burst.
+- When a counter-measure actually goes off (horn, fart or `set_sentry_mode`), `CounterMeasureNotifierService` queues a regular-priority notice for the group's users on `NotificationQueueService` (rate limit, shutdown drain, Kafka log context of the break-in), sent over push (`NotificationsService.sendCounterMeasurePush`, default sound) and Telegram (`TelegramService.sendCounterMeasureNotice`, retried on 429/5xx). It is not recorded as an `AlertEvent`.
+- Set via `PATCH /vehicles/:vin/break-in-detection` (no `vehicle_cmds` scope needed). `VehicleBreakInDetectionSettingsService` groups the co-owners of a VIN by settings; each group with a counter-measure enabled (`hasCounterMeasures`) gets its own counter-measure verification.
+- `BreakInEventTrackerService` keeps per-VIN events in memory for 3 min after they are **received** (so a wrong vehicle clock cannot keep them alive) and compares them in **vehicle** time. `track()` returns `{ isAlreadyTracked: true }` for a `Lock` already seen (same `createdAt`, e.g. a Kafka replay), and the handler then stops. Each `Lock` is evaluated once, when it arrives: a `Lock` processed out of order (only possible when two land in the same Kafka batch during a catch-up) can make a `repeated_pulls` riposte be missed or doubled, which is accepted to keep the tracker simple.
+- A failure to read the detection settings is logged and the `Lock` is dropped instead of failing the Kafka message: a retry would re-run every other handler (e.g. a duplicate Sentry alert).
+- The intentional delay is excluded from `LatencyGuardService` (`intentionalDelayMs`) and from the `[BREAK_IN_LATENCY]` log. `GRACEFUL_SHUTDOWN_ALERT_FLUSH_TIMEOUT_MS` defaults to 75 s so pending verifications survive the longest delay; Kafka is paused during that flush, so a verification pending at shutdown can no longer be cancelled by owner activity. The container stop timeout must cover the three drains (~2 min): `stop_grace_period: 130s` in `docker-compose.selfhost.yml`; the prod host needs the same.
+- Auto-Sentry skips `set_sentry_mode` when `SentryModeStateTrackerService` knows Sentry Mode is already on (last `SentryMode` state other than `Off`, seen within 1 h). States dated more than 5 min ahead of the server clock are ignored.
+- The API keeps its own copy of the rules (`alerts/enums/break-in-sensitivity.enum.ts`) because the TypeORM CLI loads entities through ts-node in CommonJS and cannot require the ESM lib (`ERR_REQUIRE_ESM`); `break-in-sensitivity.enum.spec.ts` fails if the two drift.
 
 ### Offensive Response (break-in counter-measures)
 - Enum `OffensiveResponse { DISABLED, HONK, FART }` (`apps/api/src/app/alerts/enums/offensive-response.enum.ts`), stored per-vehicle in `Vehicle.break_in_offensive_response`.
@@ -201,7 +217,7 @@ Waitlist (standalone)
 
 Key entities:
 - `user.entity.ts` - User profile + encrypted Tesla tokens
-- `vehicle.entity.ts` - Vehicle details + telemetry config + `break_in_offensive_response`
+- `vehicle.entity.ts` - Vehicle details + telemetry config + `break_in_offensive_response` + break-in detection settings
 - `telegram-config.entity.ts` - Telegram chat IDs + link tokens + mute status
 - `user-consent.entity.ts` - User consent tracking
 - `user-session.entity.ts` - Hashed JWT sessions (max 5/user)
@@ -241,6 +257,7 @@ features/<domain>/
 - **State**: TanStack React Query v5 is the only server-state layer; query keys are per-feature; mutations invalidate their own key
 - **Demo mode**: a `'demo-token'` swaps real repositories for mock ones (`Dynamic*Repository` in each `di.ts`)
 - `libs/telegram/domain` (`@sentryguard/telegram-domain`) is the **shared** Telegram-linking contract consumed by both frontends
+- `libs/vehicles/domain` (`@sentryguard/vehicles-domain`) holds vehicle rules the mobile app applies (break-in sensitivity, reaction delays, defaults)
 
 ### Mobile App Architecture (Expo / React Native)
 - **Not Expo Router.** Entry `index.js` → `src/core/App.tsx`. Nav tree: `MobileShell.tsx` (gates on session/consent/onboarding) → `MainScreen.tsx` (bottom tabs: Dashboard / Alerts / Settings)
@@ -250,6 +267,8 @@ features/<domain>/
 - **Push**: `expo-notifications`; token registered to `POST /notifications/push-token`, cleared on logout. Android critical alerts use a custom native module (`apps/mobile/modules/dnd-access/`, Kotlin) for Do-Not-Disturb bypass
 - **Tapping an alert push** opens the Tesla app on the alerting vehicle's sentry camera view (`core/tesla-camera-link.ts`), falling back to `tesla://` then the web redirect. The deep link is **never hardcoded** — it is undocumented by Tesla and this repo is public, so it lives only in `EXPO_PUBLIC_TESLA_CAMERA_DEEP_LINK_TEMPLATE`; leaving it empty disables the feature
 - **UI**: Apple-style design system in `core/design/` + "liquid glass" components (`expo-glass-effect` with `expo-blur` fallback); theming via `core/theme.tsx`. Config split: static `app.json` + dynamic `app.config.js`
+- **Large screens** (iPad, Android tablets and foldables, iPhone Duo inner display): every screen's scroll content spreads `readableContent` (`core/design/metrics.ts`), a centred column capped at 672 pt that leaves phones untouched. New screens must do the same. **Two panes**: screens never test the device. `SplitPanes` (`core/ui/`) shows `first` and `second` side by side, or `single` (default `first`) in one column, and `useListDetail()` (`core/design/use-list-detail.ts`) holds the selected item: `open(id, openAlone)` selects it in two panes and otherwise runs `openAlone` (push a screen, or nothing). Both follow one rule, `useTwoPaneLayout()` (`two-pane-layout.ts`): on both sides of the fold of a half-open iPhone Duo, otherwise from 768 pt wide (`useIsWideLayout()`: iPad in both orientations, a flat Duo held sideways) two equal halves with a divider, and one column below. The Dashboard (vehicle list | `VehicleDetailView`), Alerts (alert list | the selected alert in `AlertDetailView`), Supporters (a still introduction in `CenteredPane` | the donor list) and Settings (settings list | `AboutSentryGuardView` by default, replaced by Telegram or account deletion when their row is tapped, reset to About when leaving the tab) use them; a new list/detail screen should too. A view shown in a pane detects it is inside the tabs (`BottomTabBarHeightContext`, `useTabPaneInsets()`) and then shows its own title (`PaneHeader`, with a Done button back to About in Settings) and clears the tab bar. The iPhone Duo only resizes the app to its inner display when it is built with Xcode 27.1 (iOS 27.1 SDK); an older build keeps an iPhone-sized window there, which is why the iOS CI jobs run Xcode 27.1 (see Known Gotchas)
+- **iPhone Duo fold**: a local Expo module (`apps/mobile/modules/fold-division/`, Swift, iOS only) reads the fold through iOS 27.1's `UIView.reservedRegions(kind: .division)`, called through the Objective-C runtime so it still compiles under Xcode 26; where that API is missing it reports no fold. `useVerticalFold()` (`core/design/vertical-fold.tsx`, read once for the whole app by `VerticalFoldProvider` in `App.tsx`) returns the **vertical** fold only while the hinge is half open like a book (`expo-hinge` status `partiallyOpen`; the fold region's own active flag lags behind posture changes): lying flat, the Duo is laid out like a tablet and content flows across the fold, and a horizontal fold (held upright) is always ignored. Only `two-pane-layout.ts` uses that fold: the other screens (pushed Telegram and account deletion, auth, onboarding) are plain scroll views whose content runs across a half-open fold
 
 ## Environment Configuration
 
@@ -397,8 +416,8 @@ await expect(act()).rejects.toThrow(expectedError);
 - **Explicit access modifiers** on all class members (`public`, `private`, `protected`)
 
 ### Code Organization
-- **No comments in code** - code should be self-explanatory through good naming
-  - Exception: complex decisions requiring context (use trigram prefix if needed)
+- **No comments, ever** - not in source, tests, native modules (Swift, Kotlin), config files or scripts: no line comments, no block comments, no JSDoc, and no exception for complex decisions. Code must explain itself through names; context that names cannot carry goes in a test, the commit message or the PR description
+  - The only marks allowed are machine directives a tool needs to work (`eslint-disable-next-line`, `@ts-expect-error`, generated-file markers), and they never carry an explanation
 - **Import order**:
   1. External packages (node_modules)
   2. Internal libraries
@@ -470,6 +489,10 @@ This is an Nx monorepo. Key points:
 - **Kafka topic name is inconsistent**: API code default + local scripts use `TeslaLogger_V`, while fleet-telemetry + self-host default to `FleetTelemetry_V`. Always configurable via `KAFKA_TOPIC` — match it to the producer
 - **`TESLA_API_BASE_URL` has no compiled-in default** — it is required and the API refuses to boot without it. The self-host compose service is named `vehicle-command` and sets it explicitly
 - Only **mobile** is currently typecheck-gated in CI; api/webapp typecheck is not yet enforced
+- **The signed Android build sets `TMPDIR` to `runner.temp`** (`mobile-build.yml`): on `ubuntu-26.04`, which `ubuntu-latest` is moving to, `/tmp` is a RAM-backed tmpfs with a ~7.8 GB quota ([actions/runner-images#14777](https://github.com/actions/runner-images/issues/14777)), and `eas build --local` keeps its whole working copy there (repo, a second `node_modules`, Gradle outputs for 4 ABIs), so it failed with "Disk quota exceeded". `runner.temp` is on the root disk, as `/tmp` was on 24.04
+- **iOS CI builds run Xcode 27.1 on GitHub's `xcode-27` runner image** (`mobile-build.yml`, `runs-on: xcode-27`, `xcode-version: '27.1'`): only an Xcode 27.1 build fills the iPhone Duo's inner display, and `macos-latest` stops at Xcode 26.6 (October 2026). That image is a GitHub preview on macOS 27 and may queue; move back to `macos-latest` once it ships Xcode 27.1 or later. Expo SDK 58 needs Xcode 26.4+. Building locally with Xcode 27 works: `npx expo prebuild` generates the UIScene life cycle (`SceneDelegate.swift`) that iOS 27 SDK builds need to launch on iOS 27
+- **Mobile Nx targets call the Expo CLI directly** (`nx:run-commands` with `npx expo …` in `apps/mobile/project.json`): the `@nx/expo` 22.x executors fork `@expo/cli/build/bin/cli`, which no longer exists in Expo SDK 58. For the same reason `metro.config.js` does not use `withNxMetro`: it forces Metro's `projectRoot` to the monorepo root, and Expo 58 then resolves the app's Babel config against the wrong folder. Expo's own monorepo support resolves the `@sentryguard/*` workspace libs
+- **Node 22.13+** is required (Expo SDK 58 / React Native 0.87+); CI uses Node 22
 
 ## Additional Documentation
 
