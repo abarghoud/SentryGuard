@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Consumer, EachBatchHandler, Batch, Kafka } from 'kafkajs';
 import { KafkaService } from './kafka.service';
@@ -17,6 +18,8 @@ jest.mock('kafkajs', () => ({
         CRASH: 'consumer.crash',
         DISCONNECT: 'consumer.disconnect',
         GROUP_JOIN: 'consumer.group_join',
+        HEARTBEAT: 'consumer.heartbeat',
+        FETCH_START: 'consumer.fetch_start',
       },
       on: jest.fn(),
     }),
@@ -42,6 +45,13 @@ const getRegisteredListener = (eventName: string): ((event?: unknown) => unknown
   }
   return call[1] as (event?: unknown) => unknown;
 };
+
+const setPrivate = (target: object, key: string, value: unknown): void => {
+  Object.defineProperty(target, key, { value, writable: true });
+};
+
+const getLogger = (target: KafkaService): Logger =>
+  (target as unknown as { logger: Logger }).logger;
 
 describe('The KafkaService class', () => {
   let service: KafkaService;
@@ -121,90 +131,202 @@ describe('The KafkaService class', () => {
   });
 
   describe('The healthCheck method', () => {
-    it('should describe group when connected', async () => {
-      const consumerMock = mock<Consumer>();
-      consumerMock.describeGroup.mockResolvedValue({} as any);
+    let consumerMock: ReturnType<typeof mock<Consumer>>;
+    let exitSpy: jest.SpyInstance;
 
-      Object.defineProperty(service, 'consumer', {
-        value: consumerMock,
-        writable: true,
-      });
-      Object.defineProperty(service, 'isConnected', {
-        value: true,
-        writable: true,
-      });
+    const runHealthChecks = async (target: KafkaService, count: number): Promise<void> => {
+      for (let i = 0; i < count; i++) {
+        await target.healthCheck();
+      }
+    };
 
-      await service.healthCheck();
+    const prepare = (target: KafkaService): void => {
+      setPrivate(target, 'consumer', consumerMock);
+      setPrivate(target, 'isConnected', true);
+      setPrivate(target, 'lastActivityAt', Date.now());
+    };
 
-      expect(consumerMock.describeGroup).toHaveBeenCalled();
+    beforeEach(() => {
+      jest.useFakeTimers();
+      consumerMock = mock<Consumer>();
+      consumerMock.describeGroup.mockResolvedValue(
+        {} as Awaited<ReturnType<Consumer['describeGroup']>>
+      );
+      exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+      prepare(service);
     });
 
-    it('should attempt reconnection when isConnected is false', async () => {
-      const consumerMock = mock<Consumer>();
-      consumerMock.connect.mockResolvedValue(undefined);
-      consumerMock.subscribe.mockResolvedValue(undefined);
-      consumerMock.run.mockResolvedValue(undefined);
-      consumerMock.disconnect.mockResolvedValue(undefined);
-
-      Object.defineProperty(service, 'consumer', {
-        value: consumerMock,
-        writable: true,
-      });
-      Object.defineProperty(service, 'isConnected', {
-        value: false,
-        writable: true,
-      });
-
-      await service.healthCheck();
-
-      expect(consumerMock.disconnect).toHaveBeenCalled();
-      expect(consumerMock.connect).toHaveBeenCalled();
+    afterEach(() => {
+      jest.useRealTimers();
+      exitSpy.mockRestore();
+      delete process.env.KAFKA_HEALTH_CHECK_MAX_FAILURES;
+      delete process.env.KAFKA_HEALTH_CHECK_TIMEOUT_MS;
+      delete process.env.KAFKA_LIVENESS_MAX_IDLE_MS;
     });
 
-    it('should attempt reconnection when describeGroup fails', async () => {
-      const consumerMock = mock<Consumer>();
-      consumerMock.describeGroup.mockRejectedValue(new Error('Connection timeout'));
-      consumerMock.connect.mockResolvedValue(undefined);
-      consumerMock.subscribe.mockResolvedValue(undefined);
-      consumerMock.run.mockResolvedValue(undefined);
-      consumerMock.disconnect.mockResolvedValue(undefined);
-
-      Object.defineProperty(service, 'consumer', {
-        value: consumerMock,
-        writable: true,
-      });
-      Object.defineProperty(service, 'isConnected', {
-        value: true,
-        writable: true,
-      });
-
+    it('should describe the group when the consumer is connected and active', async () => {
       await service.healthCheck();
 
-      expect(consumerMock.disconnect).toHaveBeenCalled();
-      expect(consumerMock.connect).toHaveBeenCalled();
+      expect(consumerMock.describeGroup).toHaveBeenCalledTimes(1);
+      expect(exitSpy).not.toHaveBeenCalled();
+      expect(jest.getTimerCount()).toBe(0);
     });
 
-    it('should skip healthCheck if already reconnecting', async () => {
-      const consumerMock = mock<Consumer>();
+    it('should never disconnect, reconnect or restart the consumer when checks fail', async () => {
+      consumerMock.describeGroup.mockRejectedValue(new Error('Closed connection'));
 
-      Object.defineProperty(service, 'consumer', {
-        value: consumerMock,
-        writable: true,
-      });
-      Object.defineProperty(service, 'isReconnecting', {
-        value: true,
-        writable: true,
-      });
+      await runHealthChecks(service, 4);
+
+      expect(consumerMock.disconnect).not.toHaveBeenCalled();
+      expect(consumerMock.connect).not.toHaveBeenCalled();
+      expect(consumerMock.subscribe).not.toHaveBeenCalled();
+      expect(consumerMock.run).not.toHaveBeenCalled();
+    });
+
+    it('should not exit before the maximum number of consecutive failures', async () => {
+      consumerMock.describeGroup.mockRejectedValue(new Error('Closed connection'));
+      const warnSpy = jest.spyOn(getLogger(service), 'warn');
+
+      await runHealthChecks(service, 3);
+
+      expect(exitSpy).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenLastCalledWith(
+        '[KAFKA_HEALTH] failure 3/4: describeGroup failed: Closed connection'
+      );
+    });
+
+    it('should exit with code 1 after the maximum number of consecutive failures', async () => {
+      consumerMock.describeGroup.mockRejectedValue(new Error('Closed connection'));
+      const fatalSpy = jest.spyOn(getLogger(service), 'fatal');
+
+      await runHealthChecks(service, 4);
+
+      expect(exitSpy).toHaveBeenCalledTimes(1);
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      expect(fatalSpy).toHaveBeenCalledWith(
+        '[KAFKA_HEALTH_FATAL] describeGroup failed: Closed connection, exiting for container restart'
+      );
+    });
+
+    it('should reset the failure count after a successful check', async () => {
+      const logSpy = jest.spyOn(getLogger(service), 'log');
+      consumerMock.describeGroup
+        .mockRejectedValueOnce(new Error('Closed connection'))
+        .mockRejectedValueOnce(new Error('Closed connection'));
+
+      await runHealthChecks(service, 3);
+
+      expect(logSpy).toHaveBeenCalledWith('[KAFKA_HEALTH] recovered after 2 failure(s)');
+
+      consumerMock.describeGroup.mockRejectedValue(new Error('Closed connection'));
+      await runHealthChecks(service, 3);
+
+      expect(exitSpy).not.toHaveBeenCalled();
+    });
+
+    it('should count a describeGroup call that never settles as a failure', async () => {
+      consumerMock.describeGroup.mockReturnValue(new Promise(() => undefined));
+      const warnSpy = jest.spyOn(getLogger(service), 'warn');
+
+      for (let i = 0; i < 4; i++) {
+        const check = service.healthCheck();
+        await jest.advanceTimersByTimeAsync(10000);
+        await check;
+      }
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[KAFKA_HEALTH] failure 1/4: describeGroup failed: timed out after 10000ms'
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it('should count a disconnected consumer as a failure without trying to reconnect', async () => {
+      setPrivate(service, 'isConnected', false);
+
+      await runHealthChecks(service, 4);
+
+      expect(consumerMock.describeGroup).not.toHaveBeenCalled();
+      expect(consumerMock.connect).not.toHaveBeenCalled();
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it('should count a consumer without recent heartbeat or fetch as a failure', async () => {
+      setPrivate(service, 'lastActivityAt', Date.now() - 120001);
+      const warnSpy = jest.spyOn(getLogger(service), 'warn');
 
       await service.healthCheck();
 
       expect(consumerMock.describeGroup).not.toHaveBeenCalled();
-      expect(consumerMock.disconnect).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[KAFKA_HEALTH] failure 1/4: no heartbeat or fetch for 120001ms'
+      );
+    });
+
+    it('should run only one check at a time', async () => {
+      consumerMock.describeGroup.mockReturnValue(new Promise(() => undefined));
+
+      const firstCheck = service.healthCheck();
+      await service.healthCheck();
+
+      expect(consumerMock.describeGroup).toHaveBeenCalledTimes(1);
+
+      await jest.advanceTimersByTimeAsync(10000);
+      await firstCheck;
+    });
+
+    it('should skip the check during graceful shutdown', async () => {
+      setPrivate(service, 'isShuttingDown', true);
+      setPrivate(service, 'isConnected', false);
+
+      await runHealthChecks(service, 4);
+
+      expect(consumerMock.describeGroup).not.toHaveBeenCalled();
+      expect(exitSpy).not.toHaveBeenCalled();
+    });
+
+    it('should read the thresholds from the environment', async () => {
+      process.env.KAFKA_HEALTH_CHECK_MAX_FAILURES = '2';
+      process.env.KAFKA_HEALTH_CHECK_TIMEOUT_MS = '500';
+      const configuredService = new KafkaService(mockMessageHandler, mockRetryManager);
+      prepare(configuredService);
+      consumerMock.describeGroup.mockReturnValue(new Promise(() => undefined));
+
+      for (let i = 0; i < 2; i++) {
+        const check = configuredService.healthCheck();
+        await jest.advanceTimersByTimeAsync(500);
+        await check;
+      }
+
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it('should fall back to the default thresholds when the environment is invalid', async () => {
+      process.env.KAFKA_HEALTH_CHECK_MAX_FAILURES = 'abc';
+      process.env.KAFKA_LIVENESS_MAX_IDLE_MS = '-5';
+      const configuredService = new KafkaService(mockMessageHandler, mockRetryManager);
+      prepare(configuredService);
+      setPrivate(configuredService, 'lastActivityAt', Date.now() - 60000);
+      consumerMock.describeGroup.mockRejectedValue(new Error('Closed connection'));
+
+      await runHealthChecks(configuredService, 3);
+
+      expect(consumerMock.describeGroup).toHaveBeenCalledTimes(3);
+      expect(exitSpy).not.toHaveBeenCalled();
     });
   });
 
   describe('The KafkaJS event listeners', () => {
-    it('should not disconnect the consumer when KafkaJS restarts itself after a crash', async () => {
+    let exitSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+    });
+
+    afterEach(() => {
+      exitSpy.mockRestore();
+    });
+
+    it('should let KafkaJS restart itself after a retriable crash', async () => {
       new KafkaService(mockMessageHandler, mockRetryManager);
       const consumerMock = getLastConsumerMock();
       const crashListener = getRegisteredListener('consumer.crash');
@@ -212,6 +334,23 @@ describe('The KafkaService class', () => {
       await crashListener({ payload: { error: new Error('Connection timeout'), restart: true } });
 
       expect(consumerMock.disconnect).not.toHaveBeenCalled();
+      expect(exitSpy).not.toHaveBeenCalled();
+    });
+
+    it('should exit with code 1 when KafkaJS gives up after a non-retriable crash', async () => {
+      const freshService = new KafkaService(mockMessageHandler, mockRetryManager);
+      const consumerMock = getLastConsumerMock();
+      const crashListener = getRegisteredListener('consumer.crash');
+      const fatalSpy = jest.spyOn(getLogger(freshService), 'fatal');
+
+      await crashListener({ payload: { error: new Error('Invalid credentials'), restart: false } });
+
+      expect(consumerMock.disconnect).not.toHaveBeenCalled();
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      expect(fatalSpy).toHaveBeenCalledWith(
+        '[KAFKA_CRASH_FATAL] non-retriable crash, exiting',
+        'Invalid credentials'
+      );
     });
 
     it('should restore the connected state when the consumer rejoins the group', async () => {
@@ -223,14 +362,8 @@ describe('The KafkaService class', () => {
         {} as Awaited<ReturnType<Consumer['describeGroup']>>
       );
 
-      Object.defineProperty(freshService, 'consumer', {
-        value: consumerMock,
-        writable: true,
-      });
-      Object.defineProperty(freshService, 'isConnected', {
-        value: false,
-        writable: true,
-      });
+      setPrivate(freshService, 'consumer', consumerMock);
+      setPrivate(freshService, 'isConnected', false);
 
       groupJoinListener();
 
@@ -239,6 +372,29 @@ describe('The KafkaService class', () => {
       expect(consumerMock.describeGroup).toHaveBeenCalled();
       expect(consumerMock.disconnect).not.toHaveBeenCalled();
     });
+
+    it.each(['consumer.heartbeat', 'consumer.fetch_start'])(
+      'should consider the consumer active again on %s',
+      async (eventName) => {
+        const freshService = new KafkaService(mockMessageHandler, mockRetryManager);
+        const activityListener = getRegisteredListener(eventName);
+
+        const consumerMock = mock<Consumer>();
+        consumerMock.describeGroup.mockResolvedValue(
+          {} as Awaited<ReturnType<Consumer['describeGroup']>>
+        );
+
+        setPrivate(freshService, 'consumer', consumerMock);
+        setPrivate(freshService, 'isConnected', true);
+        setPrivate(freshService, 'lastActivityAt', Date.now() - 600000);
+
+        activityListener();
+
+        await freshService.healthCheck();
+
+        expect(consumerMock.describeGroup).toHaveBeenCalled();
+      }
+    );
   });
 
   describe('The message handling', () => {

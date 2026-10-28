@@ -27,9 +27,14 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   private readonly maxRetries = parseInt(process.env.KAFKA_MAX_RETRIES || '10');
   private readonly baseDelay = parseInt(process.env.KAFKA_RETRY_DELAY || '1000');
   private readonly maxDelay = parseInt(process.env.KAFKA_MAX_RETRY_DELAY || '30000');
+  private readonly healthCheckMaxFailures = KafkaService.readPositiveInt('KAFKA_HEALTH_CHECK_MAX_FAILURES', 4);
+  private readonly healthCheckTimeoutMs = KafkaService.readPositiveInt('KAFKA_HEALTH_CHECK_TIMEOUT_MS', 10000);
+  private readonly livenessMaxIdleMs = KafkaService.readPositiveInt('KAFKA_LIVENESS_MAX_IDLE_MS', 120000);
   private isConnected = false;
-  private isReconnecting = false;
   private isShuttingDown = false;
+  private consecutiveHealthFailures = 0;
+  private healthCheckInFlight = false;
+  private lastActivityAt = Date.now();
   private inFlightCount = 0;
   private readonly drainWaiters: Array<() => void> = [];
 
@@ -47,13 +52,13 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     });
 
     if (this.consumer.events) {
-      this.consumer.on(this.consumer.events.CRASH, async (event) => {
+      this.consumer.on(this.consumer.events.CRASH, (event) => {
         this.logger.error('💥 Kafka consumer crashed:', event.payload.error);
         this.isConnected = false;
         if (!event.payload.restart) {
-          await this.safeExecute(
-            () => this.reconnect(),
-            '💀 Reconnection on consumer crash failed'
+          this.exitForRestart(
+            '[KAFKA_CRASH_FATAL] non-retriable crash, exiting',
+            this.ensureError(event.payload.error).message
           );
         }
       });
@@ -66,7 +71,11 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       this.consumer.on(this.consumer.events.GROUP_JOIN, () => {
         this.logger.log('👥 Kafka consumer joined group');
         this.isConnected = true;
+        this.markActivity();
       });
+
+      this.consumer.on(this.consumer.events.HEARTBEAT, () => this.markActivity());
+      this.consumer.on(this.consumer.events.FETCH_START, () => this.markActivity());
     }
   }
 
@@ -99,70 +108,95 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   }
 
   @Interval(process.env.KAFKA_HEALTH_CHECK_INTERVAL ? parseInt(process.env.KAFKA_HEALTH_CHECK_INTERVAL, 10) : 30000)
-  async healthCheck() {
-    if (this.isShuttingDown) return;
-    if (this.isReconnecting) return;
+  async healthCheck(): Promise<void> {
+    if (this.isShuttingDown || this.healthCheckInFlight) return;
 
-    if (!this.isConnected) {
-      this.logger.warn('🔴 Kafka is disconnected during health check, attempting reconnection...');
-      await this.safeExecute(
-        () => this.reconnect(),
-        '💀 Health check reconnection failed'
-      );
-      return;
-    }
+    this.healthCheckInFlight = true;
 
     try {
-      await this.consumer.describeGroup();
-    } catch (error) {
-      this.logger.error(
-        '🔴 Kafka health check failed, attempting reconnection:',
-        (error instanceof Error ? error.message : String(error))
-      );
-      this.isConnected = false;
+      const failureReason = await this.findHealthFailure();
 
-      await this.safeExecute(
-        () => this.reconnect(),
-        '💀 Reconnection failed'
-      );
+      if (failureReason) {
+        this.recordHealthFailure(failureReason);
+      } else {
+        this.recordHealthSuccess();
+      }
+    } finally {
+      this.healthCheckInFlight = false;
     }
   }
 
-  private async reconnect(): Promise<void> {
-    if (this.isShuttingDown) {
-      this.logger.warn('Skipping reconnection - graceful shutdown in progress');
-      return;
+  private async findHealthFailure(): Promise<string | null> {
+    if (!this.isConnected) {
+      return 'consumer is not connected to the group';
     }
 
-    if (this.isReconnecting) {
-      this.logger.warn('Reconnection already in progress. Skipping duplicate request.');
-      return;
+    const idleMs = Date.now() - this.lastActivityAt;
+    if (idleMs > this.livenessMaxIdleMs) {
+      return `no heartbeat or fetch for ${idleMs}ms`;
     }
-
-    this.isReconnecting = true;
-    this.isConnected = false;
 
     try {
-      await this.safeExecute(
-        () => Promise.race([
-          this.consumer.disconnect(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Disconnect timeout')), 5000))
-        ]),
-        'Error during consumer disconnect before reconnect'
-      );
-      await this.connectWithRetry();
-      await this.subscribe();
-      await this.startConsumer();
+      await this.describeGroupWithTimeout();
+      return null;
     } catch (error) {
-      this.logger.fatal(
-        '💀 Reconnection process failed, exiting process for container restart:',
-        error instanceof Error ? error.message : String(error)
-      );
-      this.isConnected = false;
-      process.exit(1);
-    } finally {
-      this.isReconnecting = false;
+      return `describeGroup failed: ${this.ensureError(error).message}`;
     }
+  }
+
+  private async describeGroupWithTimeout(): Promise<void> {
+    let timeoutId: NodeJS.Timeout | undefined;
+
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(
+        () => reject(new Error(`timed out after ${this.healthCheckTimeoutMs}ms`)),
+        this.healthCheckTimeoutMs
+      );
+    });
+
+    try {
+      await Promise.race([this.consumer.describeGroup(), timeout]);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  private recordHealthFailure(reason: string): void {
+    this.consecutiveHealthFailures++;
+    this.logger.warn(
+      `[KAFKA_HEALTH] failure ${this.consecutiveHealthFailures}/${this.healthCheckMaxFailures}: ${reason}`
+    );
+
+    if (this.consecutiveHealthFailures >= this.healthCheckMaxFailures) {
+      this.exitForRestart(`[KAFKA_HEALTH_FATAL] ${reason}, exiting for container restart`);
+    }
+  }
+
+  private recordHealthSuccess(): void {
+    if (this.consecutiveHealthFailures > 0) {
+      this.logger.log(`[KAFKA_HEALTH] recovered after ${this.consecutiveHealthFailures} failure(s)`);
+    }
+
+    this.consecutiveHealthFailures = 0;
+  }
+
+  private markActivity(): void {
+    this.lastActivityAt = Date.now();
+  }
+
+  private exitForRestart(message: string, detail?: string): void {
+    if (detail) {
+      this.logger.fatal(message, detail);
+    } else {
+      this.logger.fatal(message);
+    }
+
+    process.exit(1);
+  }
+
+  private static readPositiveInt(name: string, defaultValue: number): number {
+    const value = parseInt(process.env[name] || '', 10);
+    return Number.isFinite(value) && value > 0 ? value : defaultValue;
   }
 
   private async startConsumer(): Promise<void> {

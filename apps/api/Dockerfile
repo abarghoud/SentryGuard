@@ -49,5 +49,11 @@ RUN addgroup -g 1001 -S appgroup && adduser -u 1001 -S appuser -G appgroup
 USER appuser
 
 EXPOSE 3001
+
+# Liveness probe: /health stops answering when the event loop is blocked. Docker only marks the
+# container unhealthy; restarting it needs an external watcher (e.g. autoheal) on the host.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=120s --retries=6 \
+  CMD wget -q -T 4 -O /dev/null "http://127.0.0.1:${PORT:-3001}/health" || exit 1
+
 ENTRYPOINT ["tini", "--", "docker-entrypoint.sh"]
 CMD ["node", "dist/main.js"]
