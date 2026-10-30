@@ -8,6 +8,8 @@ interface BufferedLogEntry {
   time: Date;
 }
 
+const pendingWritesMarker = Symbol('pendingWritesMarker');
+
 interface OciTransportStreamOptions {
   ociConfig: OciLoggingConfig;
   maxBatchSize: number;
@@ -22,6 +24,7 @@ export class OciTransportStream extends Writable {
   private buffer: BufferedLogEntry[] = [];
   private isInitialized = false;
   private flushTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly pendingSends = new Set<Promise<void>>();
 
   public constructor(options: OciTransportStreamOptions) {
     super({ objectMode: true });
@@ -38,7 +41,7 @@ export class OciTransportStream extends Writable {
     _encoding: string,
     callback: (error?: Error | null) => void,
   ): void {
-    if (!this.isInitialized) {
+    if (chunk === pendingWritesMarker || !this.isInitialized) {
       callback();
       return;
     }
@@ -79,6 +82,22 @@ export class OciTransportStream extends Writable {
       );
   }
 
+  public async flushPending(): Promise<void> {
+    await this.waitForQueuedWrites();
+    await this.flush();
+    await Promise.all(this.pendingSends);
+  }
+
+  private waitForQueuedWrites(): Promise<void> {
+    if (this.writableEnded || this.destroyed) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+      this.write(pendingWritesMarker, () => resolve());
+    });
+  }
+
   private initialize(): void {
     this.ociService
       .onModuleInit()
@@ -101,6 +120,16 @@ export class OciTransportStream extends Writable {
     const entries = [...this.buffer];
     this.buffer = [];
 
-    await this.ociService.sendLogBatch(entries);
+    await this.trackSend(this.ociService.sendLogBatch(entries));
+  }
+
+  private async trackSend(send: Promise<void>): Promise<void> {
+    this.pendingSends.add(send);
+
+    try {
+      await send;
+    } finally {
+      this.pendingSends.delete(send);
+    }
   }
 }
