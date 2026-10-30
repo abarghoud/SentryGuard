@@ -11,10 +11,23 @@ interface RequestWithFrameworkProperties {
   remoteAddress?: string;
 }
 
-export function getPinoConfig(): Params {
+export function createOciTransportStream(): OciTransportStream | null {
+  const ociConfig = getOciLoggingConfig();
+
+  if (!ociConfig.enabled) {
+    return null;
+  }
+
+  return new OciTransportStream({
+    ociConfig,
+    maxBatchSize: parseInt(process.env.OCI_LOGGING_MAX_BATCH_SIZE || '50', 10),
+    flushIntervalMs: parseInt(process.env.OCI_LOGGING_FLUSH_INTERVAL_MS || '5000', 10),
+  });
+}
+
+export function getPinoConfig(ociTransportStream: OciTransportStream | null): Params {
   const isProduction = process.env.NODE_ENV === 'production';
   const isDevelopment = process.env.NODE_ENV === 'development';
-  const ociConfig = getOciLoggingConfig();
 
   const baseOptions: Options = {
     level: process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug'),
@@ -85,19 +98,13 @@ export function getPinoConfig(): Params {
     },
   };
 
-  if (ociConfig.enabled) {
-    const ociStream = new OciTransportStream({
-      ociConfig,
-      maxBatchSize: parseInt(process.env.OCI_LOGGING_MAX_BATCH_SIZE || '50', 10),
-      flushIntervalMs: parseInt(process.env.OCI_LOGGING_FLUSH_INTERVAL_MS || '5000', 10),
-    });
-
+  if (ociTransportStream) {
     return {
       pinoHttp: [
         baseOptions,
         pino.multistream([
           { level: 'trace', stream: process.stdout },
-          { level: 'trace', stream: ociStream },
+          { level: 'trace', stream: ociTransportStream },
         ]),
       ],
     };

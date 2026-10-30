@@ -12,6 +12,9 @@ import pLimit from 'p-limit';
 import { kafkaMessageHandler } from './interfaces/message-handler.interface';
 import { RetryManager } from '../../shared/retry-manager.service';
 import { KafkaConfigFactory } from './kafka-config.factory';
+import { LogFlushService } from '../../../common/services/log-flush.service';
+
+const exitLogFlushTimeoutMs = 2000;
 
 @Injectable()
 export class KafkaService implements OnModuleInit, OnModuleDestroy {
@@ -32,6 +35,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   private readonly livenessMaxIdleMs = KafkaService.readPositiveInt('KAFKA_LIVENESS_MAX_IDLE_MS', 120000);
   private isConnected = false;
   private isShuttingDown = false;
+  private isExiting = false;
   private consecutiveHealthFailures = 0;
   private healthCheckInFlight = false;
   private lastActivityAt = Date.now();
@@ -40,7 +44,8 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     @Inject(kafkaMessageHandler) private readonly messageHandler: MessageHandler,
-    private readonly retryManager: RetryManager
+    private readonly retryManager: RetryManager,
+    private readonly logFlushService: LogFlushService
   ) {
     this.kafka = new Kafka(KafkaConfigFactory.createKafkaConfig());
 
@@ -52,11 +57,11 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     });
 
     if (this.consumer.events) {
-      this.consumer.on(this.consumer.events.CRASH, (event) => {
+      this.consumer.on(this.consumer.events.CRASH, async (event) => {
         this.logger.error('💥 Kafka consumer crashed:', event.payload.error);
         this.isConnected = false;
         if (!event.payload.restart) {
-          this.exitForRestart(
+          await this.exitForRestart(
             '[KAFKA_CRASH_FATAL] non-retriable crash, exiting',
             this.ensureError(event.payload.error).message
           );
@@ -117,7 +122,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       const failureReason = await this.findHealthFailure();
 
       if (failureReason) {
-        this.recordHealthFailure(failureReason);
+        await this.recordHealthFailure(failureReason);
       } else {
         this.recordHealthSuccess();
       }
@@ -161,14 +166,14 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private recordHealthFailure(reason: string): void {
+  private async recordHealthFailure(reason: string): Promise<void> {
     this.consecutiveHealthFailures++;
     this.logger.warn(
       `[KAFKA_HEALTH] failure ${this.consecutiveHealthFailures}/${this.healthCheckMaxFailures}: ${reason}`
     );
 
     if (this.consecutiveHealthFailures >= this.healthCheckMaxFailures) {
-      this.exitForRestart(`[KAFKA_HEALTH_FATAL] ${reason}, exiting for container restart`);
+      await this.exitForRestart(`[KAFKA_HEALTH_FATAL] ${reason}, exiting for container restart`);
     }
   }
 
@@ -184,14 +189,50 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     this.lastActivityAt = Date.now();
   }
 
-  private exitForRestart(message: string, detail?: string): void {
+  private async exitForRestart(message: string, detail?: string): Promise<void> {
+    if (this.isExiting) return;
+
+    this.isExiting = true;
+    this.logFatal(message, detail);
+
+    try {
+      await this.flushLogsBeforeExit();
+    } finally {
+      process.exit(1);
+    }
+  }
+
+  private logFatal(message: string, detail?: string): void {
     if (detail) {
       this.logger.fatal(message, detail);
     } else {
       this.logger.fatal(message);
     }
+  }
 
-    process.exit(1);
+  private async flushLogsBeforeExit(): Promise<void> {
+    try {
+      await this.flushLogsWithTimeout();
+    } catch (error) {
+      this.logger.error(
+        '[KAFKA_EXIT_LOG_FLUSH_FAILED] Failed to flush logs before exit:',
+        this.ensureError(error).message
+      );
+    }
+  }
+
+  private async flushLogsWithTimeout(): Promise<void> {
+    let timeoutId: NodeJS.Timeout | undefined;
+
+    const timeout = new Promise<void>((resolve) => {
+      timeoutId = setTimeout(resolve, exitLogFlushTimeoutMs);
+    });
+
+    try {
+      await Promise.race([this.logFlushService.flush(), timeout]);
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   private static readPositiveInt(name: string, defaultValue: number): number {

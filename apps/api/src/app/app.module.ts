@@ -39,7 +39,7 @@ import { TokenRevokedExceptionFilter } from '../common/filters/token-revoked-exc
 import { KafkaLogContextService } from '../common/services/kafka-log-context.service';
 import { getDatabaseConfig } from '../config/database.config';
 import { getThrottleConfig } from '../config/throttle.config';
-import { getPinoConfig } from '../config/pino.config';
+import { createOciTransportStream, getPinoConfig } from '../config/pino.config';
 import { HealthController } from './health/health.controller';
 import { HealthService } from './health/health.service';
 import { Vehicle } from '../entities/vehicle.entity';
@@ -54,15 +54,18 @@ import { TokenBucketRateLimiterService } from '../common/services/token-bucket-r
 import { NotificationSweeperService } from './notifications/notification-sweeper.service';
 import { AlertNotifierRegistry } from './alerts/common/alert-notifier.registry';
 import { DistributedLockService } from '../common/services/distributed-lock.service';
+import { LogFlushService } from '../common/services/log-flush.service';
 import {
   NOTIFICATION_QUEUE_SIZE,
   NOTIFICATION_WORKER_COUNT,
   TELEGRAM_NOTIFICATION_RATE_LIMIT_PER_SECOND,
 } from '../config/notification-queue.config';
 
+const ociTransportStream = createOciTransportStream();
+
 @Module({
   imports: [
-    LoggerModule.forRoot(getPinoConfig()),
+    LoggerModule.forRoot(getPinoConfig(ociTransportStream)),
     TypeOrmModule.forRoot(getDatabaseConfig()),
     TypeOrmModule.forFeature([Vehicle, User, NotificationPreferences, PushDeviceToken, AlertEvent]),
     ScheduleModule.forRoot(),
@@ -87,6 +90,10 @@ import {
     AppService,
     HealthService,
     KafkaService,
+    {
+      provide: LogFlushService,
+      useFactory: () => new LogFlushService(ociTransportStream),
+    },
     GracefulShutdownService,
     TelemetryMessageHandlerService,
     {

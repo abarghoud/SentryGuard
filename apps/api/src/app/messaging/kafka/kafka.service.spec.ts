@@ -4,6 +4,7 @@ import { mock, MockProxy } from 'jest-mock-extended';
 import { KafkaService } from './kafka.service';
 import { MessageHandler } from './interfaces/message-handler.interface';
 import { RetryManager } from '../../shared/retry-manager.service';
+import { LogFlushService } from '../../../common/services/log-flush.service';
 
 const EVENTS = {
   CRASH: 'consumer.crash',
@@ -26,6 +27,7 @@ jest.mock('kafkajs', () => ({
 
 const mockMessageHandler = mock<MessageHandler>();
 const mockRetryManager = mock<RetryManager>();
+const mockLogFlushService = mock<LogFlushService>();
 
 const listeners = new Map<string, ConsumerListener>();
 
@@ -55,7 +57,7 @@ const emit = async (eventName: ConsumerEventName, payload?: unknown): Promise<vo
   await listener(payload);
 };
 
-const createService = (): KafkaService => new KafkaService(mockMessageHandler, mockRetryManager);
+const createService = (): KafkaService => new KafkaService(mockMessageHandler, mockRetryManager, mockLogFlushService);
 
 const startService = async (service: KafkaService): Promise<void> => {
   await service.onModuleInit();
@@ -137,6 +139,7 @@ describe('The KafkaService class', () => {
     jest.clearAllMocks();
     listeners.clear();
     mockMessageHandler.handleMessage.mockResolvedValue(undefined);
+    mockLogFlushService.flush.mockResolvedValue(undefined);
 
     process.env.KAFKA_BROKERS = '10.0.2.15:9092';
     process.env.KAFKA_CLIENT_ID = 'tesla-guard-api';
@@ -395,6 +398,68 @@ describe('The KafkaService class', () => {
         expect(warnSpy).not.toHaveBeenCalled();
       }
     );
+  });
+
+  describe('The exit for container restart', () => {
+    const exitAfterNonRetriableCrash = (): Promise<void> =>
+      crash(new Error('Invalid credentials'), false);
+
+    it('should flush pending logs before exiting', async () => {
+      await exitAfterNonRetriableCrash();
+
+      expect(mockLogFlushService.flush.mock.invocationCallOrder[0]).toBeLessThan(
+        exitSpy.mock.invocationCallOrder[0]
+      );
+    });
+
+    it('should log the fatal line before flushing the logs', async () => {
+      await exitAfterNonRetriableCrash();
+
+      expect(fatalSpy.mock.invocationCallOrder[0]).toBeLessThan(
+        mockLogFlushService.flush.mock.invocationCallOrder[0]
+      );
+    });
+
+    it('should not exit while the log flush is still within its timeout', async () => {
+      jest.useFakeTimers();
+      mockLogFlushService.flush.mockReturnValue(new Promise(() => undefined));
+
+      void exitAfterNonRetriableCrash();
+      await jest.advanceTimersByTimeAsync(1999);
+
+      expect(exitSpy).not.toHaveBeenCalled();
+    });
+
+    it('should exit after 2 seconds when the log flush never settles', async () => {
+      jest.useFakeTimers();
+      mockLogFlushService.flush.mockReturnValue(new Promise(() => undefined));
+
+      const exit = exitAfterNonRetriableCrash();
+      await jest.advanceTimersByTimeAsync(2000);
+      await exit;
+
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it('should exit when the log flush fails', async () => {
+      mockLogFlushService.flush.mockRejectedValue(new Error('OCI unavailable'));
+
+      await exitAfterNonRetriableCrash();
+
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it('should exit only once when a crash happens while the logs are flushing', async () => {
+      jest.useFakeTimers();
+      mockLogFlushService.flush.mockReturnValue(new Promise(() => undefined));
+
+      const firstExit = exitAfterNonRetriableCrash();
+      const secondExit = exitAfterNonRetriableCrash();
+      await jest.advanceTimersByTimeAsync(2000);
+      await Promise.all([firstExit, secondExit]);
+
+      expect(exitSpy).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('The message handling', () => {
