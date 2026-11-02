@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { MobileShell } from './MobileShell';
+import { useLargeScreenRotation } from './design/use-large-screen-rotation';
 import { VerticalFoldProvider } from './design/vertical-fold';
 import { ThemeProvider, useTheme } from './theme';
 import { initializeRuntimeConfig, tokenStore } from './api';
@@ -17,6 +18,8 @@ import './i18n';
 
 export function App(): JSX.Element {
   const queryClient = useMemo(() => new QueryClient(), []);
+
+  useLargeScreenRotation();
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
