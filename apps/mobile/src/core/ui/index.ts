@@ -1,5 +1,6 @@
 export { AppSwitch } from './AppSwitch';
 export { AppText } from './AppText';
+export { CenteredDialog } from './CenteredDialog';
 export { CenteredPane } from './CenteredPane';
 export { GlassBackground } from './GlassBackground';
 export { GlassButton, GlassButtonVariant } from './GlassButton';
