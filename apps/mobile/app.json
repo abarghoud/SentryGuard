@@ -3,7 +3,7 @@
     "name": "SentryGuard",
     "slug": "sentryguard",
     "version": "1.1.2",
-    "orientation": "default",
+    "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "sentryguard",
     "userInterfaceStyle": "automatic",
@@ -15,11 +15,7 @@
         "com.apple.developer.usernotifications.critical-alerts": true
       },
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false,
-        "UISupportedInterfaceOrientations": [
-          "UIInterfaceOrientationPortrait",
-          "UIInterfaceOrientationPortraitUpsideDown"
-        ]
+        "ITSAppUsesNonExemptEncryption": false
       },
       "privacyManifests": {
         "NSPrivacyCollectedDataTypes": [
