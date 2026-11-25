@@ -4,6 +4,7 @@ import { FindOptionsSelect, IsNull, LessThan, LessThanOrEqual, Or, Repository } 
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
 import { AlertEvent, AlertEventNotificationStatus } from '../../entities/alert-event.entity';
+import { NotificationChannel } from './enums/notification-channel.enum';
 import {
   AlertNotificationRepositoryRequirements,
   AlertNotificationState,
@@ -23,6 +24,16 @@ export class AlertNotificationRepository implements AlertNotificationRepositoryR
     @InjectRepository(AlertEvent)
     private readonly alertEventRepository: Repository<AlertEvent>
   ) {}
+
+  public async addDeliveredChannel(alertEventId: string, channel: NotificationChannel): Promise<void> {
+    await this.alertEventRepository
+      .createQueryBuilder()
+      .update(AlertEvent)
+      .set({ notification_delivered_channels: () => 'array_append(array_remove("notification_delivered_channels", :channel), :channel)' })
+      .where('id = :alertEventId AND notification_status = :status', { alertEventId, status: AlertEventNotificationStatus.Pending })
+      .setParameter('channel', channel)
+      .execute();
+  }
 
   public async findDueForSweep(neverAttemptedCreatedBefore: Date, retryDueAt: Date, limit: number): Promise<AlertEvent[]> {
     return this.alertEventRepository.find({

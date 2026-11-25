@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { NotificationChannel } from '../enums/notification-channel.enum';
+import { CaughtError } from '../../../common/utils/caught-error';
 import { resolveVehicleLabel } from '../../../common/utils/vehicle-label.util';
 import { NotificationsService } from '../../notifications/notifications.service';
+import { AlertNotificationStateService } from '../alert-notification-state.service';
 import { AlertSound, DEFAULT_ALERT_SOUND } from '../enums/alert-sound.enum';
 import { AlertNotifierPayload, AlertNotifierRegistry } from './alert-notifier.registry';
 import { ChannelOutcome, DeliveryOutcomes } from './alert-delivery.types';
@@ -18,7 +20,8 @@ export class AlertChannelDeliveryService {
   constructor(
     private readonly notificationsService: NotificationsService,
     private readonly alertNotifierRegistry: AlertNotifierRegistry,
-    private readonly vehicleAlertSoundResolverService: VehicleAlertSoundResolverService
+    private readonly vehicleAlertSoundResolverService: VehicleAlertSoundResolverService,
+    private readonly alertNotificationStateService: AlertNotificationStateService
   ) {}
 
   public async deliver(
@@ -27,14 +30,15 @@ export class AlertChannelDeliveryService {
     alreadyDelivered: ReadonlySet<NotificationChannel>
   ): Promise<DeliveryOutcomes> {
     const [expo, telegram] = await Promise.all([
-      this.deliverChannel(NotificationChannel.Expo, alreadyDelivered, () => this.sendPushNotification(payload, userLanguage)),
-      this.deliverChannel(NotificationChannel.Telegram, alreadyDelivered, () => this.sendTelegramNotification(payload, userLanguage)),
+      this.deliverChannel(payload, NotificationChannel.Expo, alreadyDelivered, () => this.sendPushNotification(payload, userLanguage)),
+      this.deliverChannel(payload, NotificationChannel.Telegram, alreadyDelivered, () => this.sendTelegramNotification(payload, userLanguage)),
     ]);
 
     return { expo, telegram };
   }
 
   private async deliverChannel(
+    payload: AlertNotifierPayload,
     channel: NotificationChannel,
     alreadyDelivered: ReadonlySet<NotificationChannel>,
     send: () => Promise<boolean>
@@ -44,7 +48,21 @@ export class AlertChannelDeliveryService {
     }
 
     const [result] = await Promise.allSettled([send()]);
-    return this.toChannelOutcome(result);
+    const outcome = this.toChannelOutcome(result);
+    await this.recordDeliveryAtOnce(payload, channel, outcome);
+    return outcome;
+  }
+
+  private async recordDeliveryAtOnce(payload: AlertNotifierPayload, channel: NotificationChannel, outcome: ChannelOutcome): Promise<void> {
+    if (outcome.status !== ChannelOutcomeStatus.Delivered) {
+      return;
+    }
+
+    try {
+      await this.alertNotificationStateService.recordChannelDelivered(payload.alertEventId, channel);
+    } catch (error) {
+      this.logger.warn(`[NOTIFICATION_STATE_ERROR][${payload.correlationId}] alert=${payload.alertEventId} ${channel} delivery could not be recorded at once: ${new CaughtError(error).describe()}`);
+    }
   }
 
   private toChannelOutcome(result: PromiseSettledResult<boolean>): ChannelOutcome {

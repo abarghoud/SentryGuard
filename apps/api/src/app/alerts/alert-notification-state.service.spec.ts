@@ -83,6 +83,14 @@ describe('The AlertNotificationStateService class', () => {
     });
   });
 
+  describe('The recordChannelDelivered() method', () => {
+    it('should add the channel to the alert without waiting for the other channel', async () => {
+      await service.recordChannelDelivered(fakeAlertId, NotificationChannel.Expo);
+
+      expect(mockAlertNotificationRepository.addDeliveredChannel).toHaveBeenCalledWith(fakeAlertId, NotificationChannel.Expo);
+    });
+  });
+
   describe('The markNotificationUndeliverable() method', () => {
     describe('When no channel can reach the user', () => {
       beforeEach(async () => {
