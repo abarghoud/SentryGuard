@@ -3,11 +3,17 @@ import { Interval } from '@nestjs/schedule';
 import pLimit from 'p-limit';
 import { TokenBucketRateLimiterService } from '../../common/services/token-bucket-rate-limiter.service';
 
+export enum NotificationLane {
+  Immediate = 'immediate',
+  Retry = 'retry',
+}
+
 export interface NotificationJobContext {
   label: string;
   vin: string;
   correlationId?: string;
   alertEventId?: string;
+  lane?: NotificationLane;
 }
 
 const DRAIN_POLL_INTERVAL_MS = 50;
@@ -17,6 +23,7 @@ const STATS_LOG_INTERVAL_MS = 60_000;
 export class NotificationQueueService implements OnModuleDestroy {
   private readonly logger = new Logger(NotificationQueueService.name);
   private readonly limit: ReturnType<typeof pLimit>;
+  private readonly retryLimit: ReturnType<typeof pLimit>;
   private readonly queuedAlertEventIds = new Map<string, number>();
   private isStopping = false;
   private processedCount = 0;
@@ -30,6 +37,7 @@ export class NotificationQueueService implements OnModuleDestroy {
     workerCount: number
   ) {
     this.limit = pLimit(workerCount);
+    this.retryLimit = pLimit(workerCount);
   }
 
   public enqueue(task: () => Promise<void>, context: NotificationJobContext): boolean {
@@ -51,7 +59,7 @@ export class NotificationQueueService implements OnModuleDestroy {
 
     this.trackAlertEventId(context);
 
-    void this.limit(() => this.executeTask(task, context))
+    void this.limiterFor(context)(() => this.executeTask(task, context))
       .catch((error: unknown) => {
         this.logger.error(
           `[NOTIFICATION_QUEUE] Unhandled error for ${context.label}:`,
@@ -69,6 +77,10 @@ export class NotificationQueueService implements OnModuleDestroy {
     return this.queuedAlertEventIds.has(alertEventId);
   }
 
+  public countRetryJobs(): number {
+    return this.retryLimit.pendingCount + this.retryLimit.activeCount;
+  }
+
   public async drain(timeoutMs: number): Promise<void> {
     this.isStopping = true;
 
@@ -80,7 +92,7 @@ export class NotificationQueueService implements OnModuleDestroy {
 
     if (this.getQueuedJobCount() > 0) {
       this.logger.warn(
-        `[NOTIFICATION_QUEUE] Drain timed out after ${timeoutMs}ms with ${this.limit.pendingCount} pending and ${this.limit.activeCount} active job(s)`
+        `[NOTIFICATION_QUEUE] Drain timed out after ${timeoutMs}ms with ${this.limit.pendingCount + this.retryLimit.pendingCount} pending and ${this.limit.activeCount + this.retryLimit.activeCount} active job(s)`
       );
       return;
     }
@@ -147,8 +159,12 @@ export class NotificationQueueService implements OnModuleDestroy {
     this.queuedAlertEventIds.set(context.alertEventId, currentCount - 1);
   }
 
+  private limiterFor(context: NotificationJobContext): ReturnType<typeof pLimit> {
+    return context.lane === NotificationLane.Retry ? this.retryLimit : this.limit;
+  }
+
   private getQueuedJobCount(): number {
-    return this.limit.pendingCount + this.limit.activeCount;
+    return this.limit.pendingCount + this.limit.activeCount + this.countRetryJobs();
   }
 
   private sleep(milliseconds: number): Promise<void> {

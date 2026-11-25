@@ -18,7 +18,7 @@ export class TelegramBotUpdateService {
     private readonly keyboardBuilderService: TelegramKeyboardBuilderService,
   ) {}
 
-  async ensureUserIsUpToDate(userId: string, chatId: string, lng: 'en' | 'fr'): Promise<void> {
+  public async ensureUserIsUpToDate(userId: string, chatId: string, lng: 'en' | 'fr', signal?: AbortSignal): Promise<void> {
     const config = await this.telegramConfigRepository.findOne({
       where: { userId, status: TelegramLinkStatus.LINKED },
     });
@@ -30,7 +30,8 @@ export class TelegramBotUpdateService {
     await this.botService.sendMessage(
       chatId,
       i18n.t('botUpdateV1', { lng }),
-      this.keyboardBuilderService.buildMainMenuKeyboard(lng, config.muted_until)
+      this.keyboardBuilderService.buildMainMenuKeyboard(lng, config.muted_until),
+      signal
     );
 
     await this.telegramConfigRepository.update({ userId }, { bot_ui_version: CURRENT_BOT_UI_VERSION });

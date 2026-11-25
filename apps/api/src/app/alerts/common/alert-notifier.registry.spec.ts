@@ -11,8 +11,11 @@ describe('The AlertNotifierRegistry class', () => {
   let mockTelegramService: MockProxy<TelegramService>;
   let mockKeyboardBuilder: MockProxy<TelegramKeyboardBuilderService>;
 
+  const fakeDetectedAt = new Date('2026-11-19T21:20:00.000Z');
+
   const buildPayload = (type: AlertEventType): AlertNotifierPayload => ({
     alertEventId: 'alert-1',
+    detectedAt: fakeDetectedAt,
     userId: 'user-1',
     vin: 'VIN-1',
     vehicleDisplayName: 'My Tesla',
@@ -53,7 +56,7 @@ describe('The AlertNotifierRegistry class', () => {
       it('should send a sentry alert through the telegram service', () => {
         expect(mockTelegramService.sendSentryAlert).toHaveBeenCalledWith(
           'user-1',
-          { vin: 'VIN-1', display_name: 'My Tesla' },
+          { detectedAt: fakeDetectedAt, vin: 'VIN-1', display_name: 'My Tesla' },
           'en',
           { inline_keyboard: [] },
           false
@@ -74,11 +77,29 @@ describe('The AlertNotifierRegistry class', () => {
       it('should send a break-in alert through the telegram service', () => {
         expect(mockTelegramService.sendBreakInAlert).toHaveBeenCalledWith(
           'user-1',
-          { vin: 'VIN-1', display_name: 'My Tesla' },
+          { detectedAt: fakeDetectedAt, vin: 'VIN-1', display_name: 'My Tesla' },
           'fr',
           { inline_keyboard: [] },
           false
         );
+      });
+    });
+
+    describe('When the telegram service reports that the alert was not delivered', () => {
+      it('should propagate false for a Sentry alert', async () => {
+        mockTelegramService.sendSentryAlert.mockResolvedValue(false);
+
+        const result = await registry.notify(buildPayload(AlertEventType.Sentry), 'en');
+
+        expect(result).toBe(false);
+      });
+
+      it('should propagate false for a BreakIn alert', async () => {
+        mockTelegramService.sendBreakInAlert.mockResolvedValue(false);
+
+        const result = await registry.notify(buildPayload(AlertEventType.BreakIn), 'fr');
+
+        expect(result).toBe(false);
       });
     });
 

@@ -9,12 +9,13 @@ import type { ITelegramFailureHandler } from './interfaces/telegram-failure-hand
 import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import { telegramRetryManager } from './telegram-retry-manager.token';
 import { RetryManager } from '../shared/retry-manager.service';
-import { NOTIFICATION_REQUEST_TIMEOUT_MS } from '../../config/notification-timeout.config';
-import { withTimeout } from '../../common/utils/with-timeout.util';
+import { OperationTimeoutError, withTimeout } from '../../common/utils/with-timeout.util';
+import { CaughtError } from '../../common/utils/caught-error';
 import { resolveVehicleLabel } from '../../common/utils/vehicle-label.util';
 import { CounterMeasure } from '../alerts/enums/counter-measure.enum';
 import { describeCounterMeasures } from '../alerts/common/counter-measure-description.util';
-import { TelegramMessageOptions } from './telegram.types';
+import { describeLateDelivery } from '../alerts/common/late-delivery-notice.util';
+import { TelegramAlertInfo, TelegramMessageOptions } from './telegram.types';
 
 export interface TelegramDeliveryResult {
   isDelivered: boolean;
@@ -40,6 +41,32 @@ interface TelegramSendFailureContext {
   userId: string;
 }
 
+interface TelegramSendRequest {
+  attempt: TelegramSendAttempt;
+  chatId: string;
+  message: string;
+  options?: TelegramMessageOptions;
+}
+
+interface TelegramSendState {
+  deadline: number;
+  hasRetriedStalledConnection: boolean;
+  retryIndex: number;
+}
+
+interface ImmediateRetryDecision {
+  delayMs: number;
+  isStalledConnection: boolean;
+}
+
+const ATTEMPT_TIMEOUT_MS = 5_000;
+const SEND_BUDGET_MS = 11_000;
+const IMMEDIATE_RETRY_DELAYS_MS = [300, 1_000];
+const MIN_ATTEMPT_BUDGET_MS = 1_000;
+const STALLED_CONNECTION_ERROR_CODES = new Set(['ECONNRESET', 'EPIPE', 'ETIMEDOUT']);
+const RATE_LIMIT_STATUS_CODE = 429;
+const SERVER_ERROR_STATUS_CODE = 500;
+
 @Injectable()
 export class TelegramService implements OnModuleDestroy {
   private readonly logger = new Logger(TelegramService.name);
@@ -53,9 +80,9 @@ export class TelegramService implements OnModuleDestroy {
     @Inject(telegramRetryManager) private readonly retryManager: RetryManager,
   ) { }
 
-  async sendSentryAlert(
+  public async sendSentryAlert(
     userId: string,
-    alertInfo: { vin: string, display_name?: string },
+    alertInfo: TelegramAlertInfo,
     userLanguage: 'en' | 'fr',
     keyboard?: TelegramKeyboard,
     shouldScheduleRetry = true,
@@ -80,9 +107,9 @@ export class TelegramService implements OnModuleDestroy {
 
     try {
       await withTimeout(
-        () => this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage),
-        NOTIFICATION_REQUEST_TIMEOUT_MS,
-        `Telegram bot update request timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
+        (signal) => this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage, signal),
+        ATTEMPT_TIMEOUT_MS,
+        `Telegram bot update request timed out after ${ATTEMPT_TIMEOUT_MS}ms`
       );
 
       if (this.shouldSimulateMessage(alertInfo.vin)) {
@@ -101,9 +128,9 @@ export class TelegramService implements OnModuleDestroy {
     }
   }
 
-  async sendBreakInAlert(
+  public async sendBreakInAlert(
     userId: string,
-    alertInfo: { vin: string, display_name?: string },
+    alertInfo: TelegramAlertInfo,
     userLanguage: 'en' | 'fr',
     keyboard?: TelegramKeyboard,
     shouldScheduleRetry = true,
@@ -128,9 +155,9 @@ export class TelegramService implements OnModuleDestroy {
 
     try {
       await withTimeout(
-        () => this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage),
-        NOTIFICATION_REQUEST_TIMEOUT_MS,
-        `Telegram bot update request timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
+        (signal) => this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage, signal),
+        ATTEMPT_TIMEOUT_MS,
+        `Telegram bot update request timed out after ${ATTEMPT_TIMEOUT_MS}ms`
       );
 
       if (this.shouldSimulateMessage(alertInfo.vin)) {
@@ -230,11 +257,102 @@ export class TelegramService implements OnModuleDestroy {
     options?: TelegramMessageOptions,
     attempt = TelegramSendAttempt.Request
   ): Promise<boolean> {
-    return await withTimeout(
-      () => this.telegramBotService.sendMessage(chatId, message, options),
-      NOTIFICATION_REQUEST_TIMEOUT_MS,
-      `Telegram notification ${attempt} timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
+    return this.sendWithImmediateRetries(
+      { attempt, chatId, message, options },
+      { deadline: Date.now() + SEND_BUDGET_MS, hasRetriedStalledConnection: false, retryIndex: 0 }
     );
+  }
+
+  private async sendWithImmediateRetries(request: TelegramSendRequest, state: TelegramSendState): Promise<boolean> {
+    try {
+      return await this.attemptTelegramSend(request, state);
+    } catch (error) {
+      const decision = this.resolveImmediateRetry(error, state);
+      if (decision === null) {
+        throw error;
+      }
+      await this.waitForImmediateRetry(request.chatId, state.retryIndex, decision, error);
+      return this.sendWithImmediateRetries(request, this.toNextSendState(state, decision));
+    }
+  }
+
+  private attemptTelegramSend(request: TelegramSendRequest, state: TelegramSendState): Promise<boolean> {
+    const attemptTimeoutMs = Math.max(Math.min(ATTEMPT_TIMEOUT_MS, state.deadline - Date.now()), 1);
+    const useFreshConnection = state.retryIndex > 0;
+
+    return withTimeout(
+      (signal) => this.telegramBotService.sendMessage(request.chatId, request.message, request.options, signal, useFreshConnection),
+      attemptTimeoutMs,
+      `Telegram notification ${request.attempt} timed out after ${attemptTimeoutMs}ms`
+    );
+  }
+
+  private toNextSendState(state: TelegramSendState, decision: ImmediateRetryDecision): TelegramSendState {
+    return {
+      deadline: state.deadline,
+      hasRetriedStalledConnection: state.hasRetriedStalledConnection || decision.isStalledConnection,
+      retryIndex: state.retryIndex + 1,
+    };
+  }
+
+  private async waitForImmediateRetry(chatId: string, retryIndex: number, decision: ImmediateRetryDecision, error: unknown): Promise<void> {
+    this.logger.warn(
+      `[TELEGRAM_IMMEDIATE_RETRY] Retrying send to chat_id ${chatId} on a fresh connection in ${decision.delayMs}ms ` +
+      `(retry ${retryIndex + 1}/${IMMEDIATE_RETRY_DELAYS_MS.length}): ${new CaughtError(error).describe()}` +
+      (decision.isStalledConnection ? ' (possible duplicate)' : '')
+    );
+
+    if (decision.delayMs > 0) {
+      await this.delay(decision.delayMs);
+    }
+  }
+
+  private resolveImmediateRetry(error: unknown, state: TelegramSendState): ImmediateRetryDecision | null {
+    const isStalledConnection = this.isStalledConnectionError(error);
+    const delayMs = this.resolveImmediateRetryDelay(error, isStalledConnection, state);
+
+    if (delayMs === null || Date.now() + delayMs + MIN_ATTEMPT_BUDGET_MS > state.deadline) {
+      return null;
+    }
+
+    return { delayMs, isStalledConnection };
+  }
+
+  private resolveImmediateRetryDelay(error: unknown, isStalledConnection: boolean, state: TelegramSendState): number | null {
+    if (state.retryIndex >= IMMEDIATE_RETRY_DELAYS_MS.length) {
+      return null;
+    }
+
+    if (isStalledConnection) {
+      return state.hasRetriedStalledConnection ? null : 0;
+    }
+
+    return this.resolveRetryDelayForError(error, IMMEDIATE_RETRY_DELAYS_MS[state.retryIndex]);
+  }
+
+  private isStalledConnectionError(error: unknown): boolean {
+    if (error instanceof OperationTimeoutError) {
+      return true;
+    }
+
+    return new CaughtError(error).codes().some((code) => STALLED_CONNECTION_ERROR_CODES.has(code));
+  }
+
+  private resolveRetryDelayForError(error: unknown, backoffMs: number): number | null {
+    if (error instanceof TelegramError) {
+      if (error.code === RATE_LIMIT_STATUS_CODE) {
+        const retryAfterSeconds = error.parameters?.retry_after;
+        return typeof retryAfterSeconds === 'number' ? retryAfterSeconds * 1000 : null;
+      }
+
+      return error.code >= SERVER_ERROR_STATUS_CODE ? backoffMs : null;
+    }
+
+    return new CaughtError(error).isTransientNetwork() ? backoffMs : null;
+  }
+
+  private delay(milliseconds: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, milliseconds));
   }
 
   private async handleSendFailure(error: unknown, context: TelegramSendFailureContext): Promise<false> {
@@ -259,33 +377,42 @@ export class TelegramService implements OnModuleDestroy {
   }
 
   private logError(userId: string, messageType: string, error: unknown): void {
-    this.logger.error(`❌ Failed to send ${messageType} to user: ${userId}:`, error);
+    this.logger.error(`❌ Failed to send ${messageType} to user: ${userId}: ${new CaughtError(error).describe()}`);
   }
 
   private formatSentryAlertMessage(
-    { display_name, vin }: { vin: string, display_name?: string },
+    { detectedAt, display_name, vin }: TelegramAlertInfo,
     lng: 'en' | 'fr'
   ): string {
-    return `
+    const message = `
 🚨 <b>${i18n.t('TESLA SENTRY ALERT', { lng })}</b> 🚨
 
 🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${resolveVehicleLabel(display_name, vin)}
 
 <i>${i18n.t('Sentry Mode activated - Check your vehicle!', { lng })}</i>
     `.trim();
+
+    return this.appendLateDeliveryNotice(message, detectedAt, lng);
   }
 
   private formatBreakInAlertMessage(
-    { display_name, vin }: { vin: string, display_name?: string },
+    { detectedAt, display_name, vin }: TelegramAlertInfo,
     lng: 'en' | 'fr'
   ): string {
-    return `
+    const message = `
 🚨 <b>${i18n.t('TESLA BREAK-IN ALERT', { lng })}</b> 🚨
 
 🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${resolveVehicleLabel(display_name, vin)}
 
 <i>${i18n.t('Break-in attempt detected. Check your vehicle immediately!', { lng })}</i>
     `.trim();
+
+    return this.appendLateDeliveryNotice(message, detectedAt, lng);
+  }
+
+  private appendLateDeliveryNotice(message: string, detectedAt: Date | undefined, lng: 'en' | 'fr'): string {
+    const lateDeliveryNotice = describeLateDelivery(detectedAt, lng);
+    return lateDeliveryNotice ? `${message}\n\n⏱️ <b>${lateDeliveryNotice}</b>` : message;
   }
 
   private formatCounterMeasureMessage(

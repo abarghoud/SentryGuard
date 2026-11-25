@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { TelegramError } from 'telegraf';
@@ -119,7 +120,9 @@ describe('The TelegramService class', () => {
         expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(
           fakeChatId,
           expect.stringContaining('TESLA SENTRY ALERT'),
-          undefined
+          undefined,
+          expect.any(AbortSignal),
+          false
         );
       });
 
@@ -129,7 +132,9 @@ describe('The TelegramService class', () => {
         expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(
           fakeChatId,
           expect.stringContaining('TEST123456'),
-          undefined
+          undefined,
+          expect.any(AbortSignal),
+          false
         );
       });
 
@@ -139,7 +144,8 @@ describe('The TelegramService class', () => {
         expect(mockTelegramBotUpdateService.ensureUserIsUpToDate).toHaveBeenCalledWith(
           fakeUserId,
           fakeChatId,
-          'en'
+          'en',
+          expect.any(AbortSignal)
         );
       });
     });
@@ -157,7 +163,9 @@ describe('The TelegramService class', () => {
         expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(
           fakeChatId,
           expect.stringContaining('ALERTE SENTRY TESLA'),
-          undefined
+          undefined,
+          expect.any(AbortSignal),
+          false
         );
       });
 
@@ -167,7 +175,9 @@ describe('The TelegramService class', () => {
         expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(
           fakeChatId,
           expect.stringContaining('Mon Tesla'),
-          undefined
+          undefined,
+          expect.any(AbortSignal),
+          false
         );
       });
 
@@ -177,7 +187,41 @@ describe('The TelegramService class', () => {
         expect(mockTelegramBotService.sendMessage).not.toHaveBeenCalledWith(
           fakeChatId,
           expect.stringContaining('TEST123456'),
-          undefined
+          undefined,
+          expect.any(AbortSignal),
+          false
+        );
+      });
+    });
+
+    describe('When the alert is delivered hours after it was detected', () => {
+      it('should tell the user that the alert is late', async () => {
+        mockTelegramBotService.sendMessage.mockResolvedValue(true);
+
+        await service.sendSentryAlert(fakeUserId, { ...alertInfo, detectedAt: new Date(Date.now() - 3 * 3_600_000) }, 'en');
+
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(
+          fakeChatId,
+          expect.stringContaining('Delayed alert'),
+          undefined,
+          expect.any(AbortSignal),
+          false
+        );
+      });
+    });
+
+    describe('When the alert is delivered right after it was detected', () => {
+      it('should not mention any delay', async () => {
+        mockTelegramBotService.sendMessage.mockResolvedValue(true);
+
+        await service.sendSentryAlert(fakeUserId, { ...alertInfo, detectedAt: new Date(Date.now() - 30_000) }, 'en');
+
+        expect(mockTelegramBotService.sendMessage).not.toHaveBeenCalledWith(
+          fakeChatId,
+          expect.stringContaining('Delayed alert'),
+          undefined,
+          expect.any(AbortSignal),
+          false
         );
       });
     });
@@ -340,16 +384,286 @@ describe('The TelegramService class', () => {
     });
 
     describe('When the Telegram request times out', () => {
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
       it('should rethrow the timeout when retry scheduling is disabled', async () => {
         jest.useFakeTimers();
         mockTelegramBotService.sendMessage.mockImplementation(() => new Promise<boolean>(() => undefined));
 
         const result = service.sendSentryAlert(fakeUserId, alertInfo, 'en', undefined, false);
-        const rejection = expect(result).rejects.toThrow('ETIMEDOUT: Telegram notification request timed out after 10000ms');
+        const rejection = expect(result).rejects.toThrow('ETIMEDOUT: Telegram notification request timed out after 5000ms');
         await jest.advanceTimersByTimeAsync(10000);
 
         await rejection;
-        jest.useRealTimers();
+      });
+
+      it('should abort every in-flight request when its timeout is reached', async () => {
+        jest.useFakeTimers();
+        const receivedSignals: Array<AbortSignal | undefined> = [];
+        mockTelegramBotService.sendMessage.mockImplementation((
+          _chatId: string,
+          _message: string,
+          _options: unknown,
+          signal?: AbortSignal
+        ) => {
+          receivedSignals.push(signal);
+          return new Promise<boolean>(() => undefined);
+        });
+
+        const result = service.sendSentryAlert(fakeUserId, alertInfo, 'en', undefined, false);
+        const rejection = expect(result).rejects.toThrow('ETIMEDOUT: Telegram notification request timed out after 5000ms');
+        await jest.advanceTimersByTimeAsync(10000);
+
+        await rejection;
+        expect(receivedSignals).toHaveLength(2);
+        expect(receivedSignals.every((signal) => signal?.aborted)).toBe(true);
+      });
+    });
+  });
+
+  describe('The immediate retry of an alert send', () => {
+    const retryAlertInfo = { vin: 'VIN_RETRY_TEST' };
+    const buildNetworkError = (code: string): Error =>
+      Object.assign(new Error('request to https://api.telegram.org/bot000000:FAKE/sendMessage failed, reason: '), {
+        code,
+        errno: code,
+        name: 'FetchError',
+        type: 'system',
+      });
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    describe('When the first attempt fails with a fast ETIMEDOUT and the second succeeds', () => {
+      let result: boolean;
+
+      beforeEach(async () => {
+        mockTelegramBotService.sendMessage.mockRejectedValueOnce(buildNetworkError('ETIMEDOUT')).mockResolvedValueOnce(true);
+
+        const pending = service.sendSentryAlert(fakeUserId, retryAlertInfo, 'en', undefined, false);
+        await jest.advanceTimersByTimeAsync(0);
+        result = await pending;
+      });
+
+      it('should retry once, immediately', () => {
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledTimes(2);
+      });
+
+      it('should send the first attempt over the shared client and the retry over a fresh connection', () => {
+        expect(mockTelegramBotService.sendMessage.mock.calls[0][4]).toBe(false);
+        expect(mockTelegramBotService.sendMessage.mock.calls[1][4]).toBe(true);
+      });
+
+      it('should report the alert as delivered', () => {
+        expect(result).toBe(true);
+      });
+
+      it('should not schedule a background retry', () => {
+        expect(mockRetryManager.addToRetry).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When the first attempt hangs on a stale connection until the 5s timeout', () => {
+      let result: boolean;
+      let warnSpy: jest.SpyInstance;
+      let firstSignal: AbortSignal | undefined;
+
+      beforeEach(async () => {
+        warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+        mockTelegramBotService.sendMessage
+          .mockImplementationOnce((_chatId: string, _message: string, _options: unknown, signal?: AbortSignal) => {
+            firstSignal = signal;
+            return new Promise<boolean>(() => undefined);
+          })
+          .mockResolvedValueOnce(true);
+
+        const pending = service.sendSentryAlert(fakeUserId, retryAlertInfo, 'en', undefined, false);
+        await jest.advanceTimersByTimeAsync(5000);
+        result = await pending;
+      });
+
+      afterEach(() => {
+        warnSpy.mockRestore();
+      });
+
+      it('should abort the hung request', () => {
+        expect(firstSignal?.aborted).toBe(true);
+      });
+
+      it('should retry once at once over a fresh connection and deliver the alert', () => {
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledTimes(2);
+        expect(mockTelegramBotService.sendMessage.mock.calls[1][4]).toBe(true);
+        expect(result).toBe(true);
+      });
+
+      it('should warn that the retry may deliver a duplicate', () => {
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('(possible duplicate)'));
+      });
+    });
+
+    describe('When the first attempt fails with an AggregateError from happy eyeballs', () => {
+      it('should retry and deliver the alert', async () => {
+        mockTelegramBotService.sendMessage
+          .mockRejectedValueOnce(new AggregateError([Object.assign(new Error('connect ENETUNREACH'), { code: 'ENETUNREACH' })], ''))
+          .mockResolvedValueOnce(true);
+
+        const pending = service.sendSentryAlert(fakeUserId, retryAlertInfo, 'en', undefined, false);
+        await jest.advanceTimersByTimeAsync(300);
+
+        await expect(pending).resolves.toBe(true);
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    describe('When Telegram answers with a 5xx and then succeeds', () => {
+      it('should retry and deliver the alert', async () => {
+        mockTelegramBotService.sendMessage
+          .mockRejectedValueOnce(new TelegramError({ error_code: 502, description: 'Bad Gateway' }))
+          .mockResolvedValueOnce(true);
+
+        const pending = service.sendSentryAlert(fakeUserId, retryAlertInfo, 'en', undefined, false);
+        await jest.advanceTimersByTimeAsync(300);
+
+        await expect(pending).resolves.toBe(true);
+      });
+    });
+
+    describe('When every attempt fails with ECONNRESET', () => {
+      it('should retry only once on a fresh connection, to bound duplicates', async () => {
+        mockTelegramBotService.sendMessage.mockRejectedValue(buildNetworkError('ECONNRESET'));
+
+        const rejection = expect(service.sendSentryAlert(fakeUserId, retryAlertInfo, 'en', undefined, false)).rejects.toThrow('reason:');
+        await jest.advanceTimersByTimeAsync(0);
+        await rejection;
+        await jest.advanceTimersByTimeAsync(5000);
+
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    describe('When EPIPE is followed by a 5xx and then a success', () => {
+      it('should use both retries and deliver the alert', async () => {
+        mockTelegramBotService.sendMessage
+          .mockRejectedValueOnce(buildNetworkError('EPIPE'))
+          .mockRejectedValueOnce(new TelegramError({ error_code: 502, description: 'Bad Gateway' }))
+          .mockResolvedValueOnce(true);
+
+        const pending = service.sendSentryAlert(fakeUserId, retryAlertInfo, 'en', undefined, false);
+        await jest.advanceTimersByTimeAsync(1000);
+
+        await expect(pending).resolves.toBe(true);
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledTimes(3);
+      });
+    });
+
+    describe('When every attempt fails with ECONNREFUSED', () => {
+      it('should make the first attempt and two backed-off retries only', async () => {
+        mockTelegramBotService.sendMessage.mockRejectedValue(buildNetworkError('ECONNREFUSED'));
+
+        const rejection = expect(service.sendSentryAlert(fakeUserId, retryAlertInfo, 'en', undefined, false)).rejects.toThrow('reason:');
+        await jest.advanceTimersByTimeAsync(300);
+        await jest.advanceTimersByTimeAsync(1000);
+        await rejection;
+        await jest.advanceTimersByTimeAsync(5000);
+
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledTimes(3);
+      });
+    });
+
+    describe('When Telegram rate-limits the request with a short retry_after', () => {
+      it('should wait for retry_after before retrying', async () => {
+        mockTelegramBotService.sendMessage
+          .mockRejectedValueOnce(new TelegramError({ error_code: 429, description: 'Too Many Requests: retry after 2', parameters: { retry_after: 2 } }))
+          .mockResolvedValueOnce(true);
+
+        const pending = service.sendSentryAlert(fakeUserId, retryAlertInfo, 'en', undefined, false);
+        await jest.advanceTimersByTimeAsync(1999);
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledTimes(1);
+
+        await jest.advanceTimersByTimeAsync(1);
+        await expect(pending).resolves.toBe(true);
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    describe('When Telegram rate-limits the request beyond the time budget', () => {
+      it('should not retry immediately', async () => {
+        const rateLimitError = new TelegramError({ error_code: 429, description: 'Too Many Requests: retry after 30', parameters: { retry_after: 30 } });
+        mockTelegramBotService.sendMessage.mockRejectedValue(rateLimitError);
+
+        await expect(service.sendSentryAlert(fakeUserId, retryAlertInfo, 'en', undefined, false)).rejects.toThrow(rateLimitError);
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledTimes(1);
+      });
+
+      it('should leave the retry to the notification sweep instead of the in-memory retry manager', async () => {
+        const rateLimitError = new TelegramError({ error_code: 429, description: 'Too Many Requests: retry after 30', parameters: { retry_after: 30 } });
+        mockTelegramBotService.sendMessage.mockRejectedValue(rateLimitError);
+
+        await Promise.allSettled([service.sendSentryAlert(fakeUserId, retryAlertInfo, 'en', undefined, false)]);
+
+        expect(mockRetryManager.addToRetry).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When Telegram rejects the request with a client error', () => {
+      it.each([
+        [400, 'Bad Request: message text is empty'],
+        [403, 'Forbidden: bot was blocked by the user'],
+      ])('should never retry a %i', async (errorCode, description) => {
+        const clientError = new TelegramError({ error_code: errorCode, description });
+        mockTelegramBotService.sendMessage.mockRejectedValue(clientError);
+
+        await expect(service.sendSentryAlert(fakeUserId, retryAlertInfo, 'en', undefined, false)).rejects.toThrow(clientError);
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe('When both attempts hang until their timeout', () => {
+      it('should give up after one retry, within the send budget', async () => {
+        mockTelegramBotService.sendMessage.mockImplementation(() => new Promise<boolean>(() => undefined));
+
+        const rejection = expect(service.sendSentryAlert(fakeUserId, retryAlertInfo, 'en', undefined, false)).rejects.toThrow('ETIMEDOUT');
+        await jest.advanceTimersByTimeAsync(10000);
+        await rejection;
+        await jest.advanceTimersByTimeAsync(5000);
+
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    describe('When an error arrives too close to the send budget', () => {
+      it('should not retry past the budget', async () => {
+        mockTelegramBotService.sendMessage
+          .mockImplementationOnce(() => new Promise<boolean>((_, reject) => setTimeout(() => reject(buildNetworkError('ECONNRESET')), 4_900)))
+          .mockImplementationOnce(() => new Promise<boolean>((_, reject) => setTimeout(() => reject(buildNetworkError('ECONNREFUSED')), 4_900)));
+
+        const rejection = expect(service.sendSentryAlert(fakeUserId, retryAlertInfo, 'en', undefined, false)).rejects.toThrow('reason:');
+        await jest.advanceTimersByTimeAsync(9_800);
+        await rejection;
+
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    describe('When the final failure is logged', () => {
+      it('should log the error code instead of an empty object', async () => {
+        const errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+        mockTelegramBotService.sendMessage.mockRejectedValue(buildNetworkError('ETIMEDOUT'));
+
+        const rejection = expect(service.sendSentryAlert(fakeUserId, retryAlertInfo, 'en', undefined, false)).rejects.toThrow('reason:');
+        await jest.advanceTimersByTimeAsync(0);
+        await rejection;
+
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('code=ETIMEDOUT'));
+        expect(errorSpy.mock.calls.flat().join(' ')).not.toContain('FAKE');
+        errorSpy.mockRestore();
       });
     });
   });
@@ -368,14 +682,16 @@ describe('The TelegramService class', () => {
       });
 
       it('should send the notice to the user chat', () => {
-        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(fakeChatId, expect.stringContaining('RESPONSE TRIGGERED'), undefined);
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(fakeChatId, expect.stringContaining('RESPONSE TRIGGERED'), undefined, expect.any(AbortSignal), false);
       });
 
       it('should list the counter-measures that went off', () => {
         expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(
           fakeChatId,
           expect.stringContaining('The horn sounded. Sentry Mode was turned on.'),
-          undefined
+          undefined,
+          expect.any(AbortSignal),
+          false
         );
       });
 
@@ -518,6 +834,22 @@ describe('The TelegramService class', () => {
         const result = await service.sendBreakInAlert(fakeUserId, alertInfo, 'en');
 
         expect(result).toBe(true);
+      });
+    });
+
+    describe('When the alert is delivered hours after it was detected', () => {
+      it('should tell the user that the alert is late', async () => {
+        mockTelegramBotService.sendMessage.mockResolvedValue(true);
+
+        await service.sendBreakInAlert(fakeUserId, { ...alertInfo, detectedAt: new Date(Date.now() - 3 * 3_600_000) }, 'en');
+
+        expect(mockTelegramBotService.sendMessage).toHaveBeenCalledWith(
+          fakeChatId,
+          expect.stringContaining('Delayed alert'),
+          undefined,
+          expect.any(AbortSignal),
+          false
+        );
       });
     });
   });

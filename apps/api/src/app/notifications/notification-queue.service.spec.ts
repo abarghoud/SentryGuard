@@ -1,5 +1,5 @@
 import { mock, MockProxy } from 'jest-mock-extended';
-import { NotificationQueueService } from './notification-queue.service';
+import { NotificationLane, NotificationQueueService } from './notification-queue.service';
 import { TokenBucketRateLimiterService } from '../../common/services/token-bucket-rate-limiter.service';
 
 describe('The NotificationQueueService class', () => {
@@ -75,6 +75,31 @@ describe('The NotificationQueueService class', () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
 
       expect(droppedTask).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('When retries fill their lane', () => {
+    let service: NotificationQueueService;
+    let freshAlertTask: jest.Mock;
+
+    beforeEach(async () => {
+      service = new NotificationQueueService(mockRateLimiter, 100, 1);
+      freshAlertTask = jest.fn().mockResolvedValue(undefined);
+      const hangingRetry = jest.fn().mockReturnValue(new Promise<void>(() => undefined));
+
+      service.enqueue(hangingRetry, { label: 'RETRY-1', lane: NotificationLane.Retry, vin: 'VIN-1' });
+      service.enqueue(hangingRetry, { label: 'RETRY-2', lane: NotificationLane.Retry, vin: 'VIN-2' });
+      service.enqueue(freshAlertTask, { label: 'FRESH', vin: 'VIN-3' });
+
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+
+    it('should still run a fresh alert right away', () => {
+      expect(freshAlertTask).toHaveBeenCalledTimes(1);
+    });
+
+    it('should count the retries that are running or waiting', () => {
+      expect(service.countRetryJobs()).toBe(2);
     });
   });
 

@@ -10,6 +10,7 @@ import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.serv
 import { TelegramContextService } from './telegram-context.service';
 import { TelegramMessageOptions } from './telegram.types';
 import { TelegramMessageHelper, MILLISECONDS_PER_MINUTE } from './telegram-message.helper';
+import { CaughtError } from '../../common/utils/caught-error';
 
 @Injectable()
 export class TelegramMuteService implements OnModuleInit {
@@ -103,7 +104,7 @@ export class TelegramMuteService implements OnModuleInit {
       this.logger.log(`[MUTE] chat_id=${chatId} muted for ${minutes}min until ${mutedUntil.toISOString()}`);
       await this.confirmMute(ctx, mutedUntil, lng);
     } catch (error) {
-      this.logger.warn(`⚠️ Error handling mute duration: ${error}`, error);
+      this.logger.warn(`⚠️ Error handling mute duration: ${new CaughtError(error).describe()}`);
       await ctx.answerCbQuery();
     }
   }
@@ -116,7 +117,7 @@ export class TelegramMuteService implements OnModuleInit {
       await Promise.all([ctx.answerCbQuery(), ctx.deleteMessage()]);
       await this.safeReply(ctx, i18n.t('muteReactivated', { lng }), this.keyboardBuilderService.buildMainMenuKeyboard(lng));
     } catch (error) {
-      this.logger.warn(`⚠️ Error handling mute reactivate: ${error}`, error);
+      this.logger.warn(`⚠️ Error handling mute reactivate: ${new CaughtError(error).describe()}`);
       await ctx.answerCbQuery();
     }
   }
@@ -129,7 +130,7 @@ export class TelegramMuteService implements OnModuleInit {
       await ctx.deleteMessage();
       await this.safeReply(ctx, i18n.t('muteDurationTitle', { lng }), this.keyboardBuilderService.buildMuteDurationKeyboard());
     } catch (error) {
-      this.logger.warn(`⚠️ Error handling mute change: ${error}`, error);
+      this.logger.warn(`⚠️ Error handling mute change: ${new CaughtError(error).describe()}`);
       await ctx.answerCbQuery();
     }
   }
@@ -139,7 +140,7 @@ export class TelegramMuteService implements OnModuleInit {
       await ctx.answerCbQuery();
       await ctx.deleteMessage();
     } catch (error) {
-      this.logger.warn(`⚠️ Error handling mute cancel: ${error}`, error);
+      this.logger.warn(`⚠️ Error handling mute cancel: ${new CaughtError(error).describe()}`);
     }
   }
 

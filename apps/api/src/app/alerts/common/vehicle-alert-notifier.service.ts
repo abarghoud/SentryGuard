@@ -7,15 +7,21 @@ import { UserLanguageService } from '../../user/user-language.service';
 import { KafkaLogContextService } from '../../../common/services/kafka-log-context.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
 import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
-import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
-import { AlertsService } from '../alerts.service';
+import { AlertEventSeverity, AlertEventType, NotificationChannel } from '../../../entities/alert-event.entity';
+import { AlertsService, NotificationAttemptOutcome, NotificationAttemptResult } from '../alerts.service';
+import { NotificationRetryPolicy } from './notification-attempt.util';
 import { NotificationsService } from '../../notifications/notifications.service';
-import { NotificationQueueService } from '../../notifications/notification-queue.service';
+import { NotificationLane, NotificationQueueService } from '../../notifications/notification-queue.service';
 import { AlertNotifierPayload, AlertNotifierRegistry } from './alert-notifier.registry';
 import { VehicleAlertSoundResolverService } from './vehicle-alert-sound-resolver.service';
 import { AlertSound, DEFAULT_ALERT_SOUND } from '../enums/alert-sound.enum';
-import { NOTIFICATION_SWEEP_MAX_ATTEMPTS } from '../../../config/notification-sweep-cron.config';
+import {
+  NOTIFICATION_RETRY_BASE_DELAY_MS,
+  NOTIFICATION_RETRY_MAX_DELAY_MS,
+  NOTIFICATION_SWEEP_MAX_ATTEMPTS,
+} from '../../../config/notification-sweep-cron.config';
 import { resolveVehicleLabel } from '../../../common/utils/vehicle-label.util';
+import { CaughtError } from '../../../common/utils/caught-error';
 
 export interface AlertDispatchConfig {
   telemetryMessage: TelemetryMessage;
@@ -26,8 +32,49 @@ export interface AlertDispatchConfig {
   type: AlertEventType;
 }
 
+enum ChannelOutcomeStatus {
+  AlreadyDelivered = 'already_delivered',
+  Delivered = 'delivered',
+  Failed = 'failed',
+  Skipped = 'skipped',
+}
+
+interface ChannelOutcome {
+  error?: unknown;
+  status: ChannelOutcomeStatus;
+}
+
+interface DeliveryOutcomes {
+  expo: ChannelOutcome;
+  telegram: ChannelOutcome;
+}
+
+interface DeliveryReport {
+  failedChannels: NotificationChannel[];
+  hasDelivered: boolean;
+  newlyDelivered: NotificationChannel[];
+  outcomes: DeliveryOutcomes;
+}
+
+export class AlertChannelDeliveryError extends Error {
+  constructor(
+    message: string,
+    public readonly deliveredChannels: NotificationChannel[]
+  ) {
+    super(message);
+    this.name = 'AlertChannelDeliveryError';
+  }
+}
+
+const notificationRetryPolicy: NotificationRetryPolicy = {
+  baseDelayMs: NOTIFICATION_RETRY_BASE_DELAY_MS,
+  maxAttempts: NOTIFICATION_SWEEP_MAX_ATTEMPTS,
+  maxDelayMs: NOTIFICATION_RETRY_MAX_DELAY_MS,
+};
+
 interface RecordedAlert {
   alertEventId: string;
+  detectedAt: Date;
   isMuted: boolean;
   userId: string;
 }
@@ -75,12 +122,12 @@ export class VehicleAlertNotifierService {
 
       return { userIds };
     } catch (error) {
-      this.logger.error(`Error in ${alertName}:`, error);
+      this.logger.error(`Error in ${alertName}: ${new CaughtError(error).describe()}`);
       throw error;
     }
   }
 
-  public enqueueNotification(payload: AlertNotifierPayload): boolean {
+  public enqueueNotification(payload: AlertNotifierPayload, lane = NotificationLane.Immediate): boolean {
     return this.notificationQueueService.enqueue(
       () => this.kafkaLogContextService.runWithContext(
         {
@@ -94,6 +141,7 @@ export class VehicleAlertNotifierService {
         vin: payload.vin,
         correlationId: payload.correlationId,
         alertEventId: payload.alertEventId,
+        lane,
       }
     );
   }
@@ -141,6 +189,8 @@ export class VehicleAlertNotifierService {
     alertInfo: { vin: string; display_name?: string },
     config: AlertDispatchConfig
   ): Promise<RecordedAlert[]> {
+    const detectedAt = new Date();
+
     return Promise.all(
       userIds.map(async (userId) => {
         const isMuted = await this.resolveIsMuted(userId, config.type);
@@ -152,7 +202,7 @@ export class VehicleAlertNotifierService {
           alertInfo.display_name,
           isMuted
         );
-        return { alertEventId, isMuted, userId };
+        return { alertEventId, detectedAt, isMuted, userId };
       })
     );
   }
@@ -168,10 +218,11 @@ export class VehicleAlertNotifierService {
     alertName: string,
     config: AlertDispatchConfig
   ): void {
-    for (const { userId, alertEventId, isMuted } of recordedAlerts) {
+    for (const { userId, alertEventId, detectedAt, isMuted } of recordedAlerts) {
       this.enqueueNotification({
         alertEventId,
         correlationId,
+        detectedAt,
         muted: isMuted,
         severity: config.severity,
         type: config.type,
@@ -188,10 +239,17 @@ export class VehicleAlertNotifierService {
     try {
       await this.executeUserNotification(payload);
     } catch (error) {
-      this.logger.error(`[NOTIFICATION_ERROR] Failed to send ${payload.type} to user ${payload.userId} for VIN ${payload.vin}:`, error);
-      await this.handleNotificationFailure(payload.alertEventId);
+      const isChannelFailure = error instanceof AlertChannelDeliveryError;
+      if (!isChannelFailure) {
+        this.logUnexpectedNotificationError(payload, error);
+      }
+      await this.handleNotificationFailure(payload, isChannelFailure ? error.deliveredChannels : []);
       throw error;
     }
+  }
+
+  private logUnexpectedNotificationError(payload: AlertNotifierPayload, error: unknown): void {
+    this.logger.error(`[NOTIFICATION_ERROR] Failed to send ${payload.type} to user ${payload.userId} for VIN ${payload.vin}: ${new CaughtError(error).describe()}`);
   }
 
   private async executeUserNotification(payload: AlertNotifierPayload): Promise<void> {
@@ -209,9 +267,103 @@ export class VehicleAlertNotifierService {
 
   private async handleActiveNotification(payload: AlertNotifierPayload): Promise<void> {
     const userLanguage = await this.userLanguageService.getUserLanguage(payload.userId);
-    await this.deliverNotifications(payload, userLanguage);
-    await this.alertsService.markNotificationSent(payload.alertEventId);
-    this.logger.log(`[${payload.type}] Notified user ${payload.userId} for VIN ${payload.vin} (correlation: ${payload.correlationId})`);
+    const alreadyDelivered = new Set(payload.deliveredChannels ?? []);
+    const outcomes = await this.deliverNotifications(payload, userLanguage, alreadyDelivered);
+    const report = this.toDeliveryReport(outcomes, alreadyDelivered);
+
+    if (report.failedChannels.length > 0) {
+      this.throwDeliveryFailure(payload, report);
+    }
+
+    await this.completeDelivery(payload, report);
+  }
+
+  private toDeliveryReport(outcomes: DeliveryOutcomes, alreadyDelivered: ReadonlySet<NotificationChannel>): DeliveryReport {
+    const newlyDelivered = this.findChannelsWithStatus(outcomes, ChannelOutcomeStatus.Delivered);
+
+    return {
+      failedChannels: this.findChannelsWithStatus(outcomes, ChannelOutcomeStatus.Failed),
+      hasDelivered: alreadyDelivered.size > 0 || newlyDelivered.length > 0,
+      newlyDelivered,
+      outcomes,
+    };
+  }
+
+  private findChannelsWithStatus(outcomes: DeliveryOutcomes, status: ChannelOutcomeStatus): NotificationChannel[] {
+    return this.toChannelEntries(outcomes)
+      .filter(([, outcome]) => outcome.status === status)
+      .map(([channel]) => channel);
+  }
+
+  private throwDeliveryFailure(payload: AlertNotifierPayload, report: DeliveryReport): never {
+    const failedChannels = report.failedChannels.join(',');
+    const failureTag = report.hasDelivered ? 'ALERT_CHANNEL_FAILED' : 'ALERT_DELIVERY_FAILED';
+
+    this.logger.error(
+      `[${failureTag}][${payload.correlationId}] user=${payload.userId} alert=${payload.alertEventId} ` +
+      `failed=${failedChannels} channels=${this.formatChannelOutcomes(report.outcomes)}`
+    );
+    throw new AlertChannelDeliveryError(`Alert delivery failed on ${failedChannels}`, report.newlyDelivered);
+  }
+
+  private async completeDelivery(payload: AlertNotifierPayload, report: DeliveryReport): Promise<void> {
+    if (!report.hasDelivered) {
+      await this.handleUndeliverableNotification(payload, report.outcomes);
+      return;
+    }
+
+    await this.recordDelivery(payload, report.newlyDelivered);
+    this.logger.log(
+      `[${payload.type}] Notified user ${payload.userId} for VIN ${payload.vin} channels=${this.formatChannelOutcomes(report.outcomes)} (correlation: ${payload.correlationId})`
+    );
+  }
+
+  private async recordDelivery(payload: AlertNotifierPayload, newlyDelivered: NotificationChannel[]): Promise<void> {
+    try {
+      await this.alertsService.markNotificationSent(payload.alertEventId, newlyDelivered);
+    } catch (error) {
+      this.logger.error(
+        `[NOTIFICATION_STATE_ERROR][${payload.correlationId}] alert=${payload.alertEventId} delivered=${newlyDelivered.join(',')} but could not be marked sent: ${new CaughtError(error).describe()}`
+      );
+      throw new AlertChannelDeliveryError('Alert delivered but not recorded as sent', newlyDelivered);
+    }
+  }
+
+  private toChannelEntries({ expo, telegram }: DeliveryOutcomes): Array<[NotificationChannel, ChannelOutcome]> {
+    return [
+      [NotificationChannel.Expo, expo],
+      [NotificationChannel.Telegram, telegram],
+    ];
+  }
+
+  private async handleUndeliverableNotification(payload: AlertNotifierPayload, outcomes: DeliveryOutcomes): Promise<void> {
+    if (await this.notificationsService.isMuted(payload.userId)) {
+      await this.handleMutedNotification(payload);
+      return;
+    }
+
+    this.logger.warn(
+      `[ALERT_NO_CHANNEL][${payload.correlationId}] user=${payload.userId} type=${payload.type} VIN ${payload.vin} ` +
+      `channels=${this.formatChannelOutcomes(outcomes)}: no notification channel reached the user`
+    );
+    await this.alertsService.markNotificationUndeliverable(payload.alertEventId);
+  }
+
+  private formatChannelOutcomes({ expo, telegram }: DeliveryOutcomes): string {
+    return `{expo:${this.describeChannelOutcome(expo)}, telegram:${this.describeChannelOutcome(telegram)}}`;
+  }
+
+  private describeChannelOutcome(outcome: ChannelOutcome): string {
+    switch (outcome.status) {
+      case ChannelOutcomeStatus.AlreadyDelivered:
+        return 'ok(earlier)';
+      case ChannelOutcomeStatus.Delivered:
+        return 'ok';
+      case ChannelOutcomeStatus.Skipped:
+        return 'none';
+      case ChannelOutcomeStatus.Failed:
+        return new CaughtError(outcome.error).summarizeReason();
+    }
   }
 
   private async resolveAlertSound(payload: AlertNotifierPayload): Promise<AlertSound> {
@@ -230,6 +382,7 @@ export class VehicleAlertNotifierService {
     return await this.notificationsService.sendPushAlert({
       alertSound: await this.resolveAlertSound(payload),
       correlationId: payload.correlationId,
+      detectedAt: payload.detectedAt,
       severity: payload.severity,
       type: payload.type,
       userId: payload.userId,
@@ -239,18 +392,38 @@ export class VehicleAlertNotifierService {
     });
   }
 
-  private async deliverNotifications(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<void> {
-    const [pushResult, telegramResult] = await Promise.allSettled([
-      this.sendPushNotification(payload, userLanguage),
-      this.sendTelegramNotification(payload, userLanguage),
+  private async deliverNotifications(
+    payload: AlertNotifierPayload,
+    userLanguage: 'en' | 'fr',
+    alreadyDelivered: ReadonlySet<NotificationChannel>
+  ): Promise<DeliveryOutcomes> {
+    const [expo, telegram] = await Promise.all([
+      this.deliverChannel(NotificationChannel.Expo, alreadyDelivered, () => this.sendPushNotification(payload, userLanguage)),
+      this.deliverChannel(NotificationChannel.Telegram, alreadyDelivered, () => this.sendTelegramNotification(payload, userLanguage)),
     ]);
 
-    const pushSent = pushResult.status === 'fulfilled' && pushResult.value;
-    const telegramSent = telegramResult.status === 'fulfilled' && telegramResult.value;
+    return { expo, telegram };
+  }
 
-    if (!pushSent && !telegramSent && (pushResult.status === 'rejected' || telegramResult.status === 'rejected')) {
-      throw pushResult.status === 'rejected' ? pushResult.reason : (telegramResult as PromiseRejectedResult).reason;
+  private async deliverChannel(
+    channel: NotificationChannel,
+    alreadyDelivered: ReadonlySet<NotificationChannel>,
+    send: () => Promise<boolean>
+  ): Promise<ChannelOutcome> {
+    if (alreadyDelivered.has(channel)) {
+      return { status: ChannelOutcomeStatus.AlreadyDelivered };
     }
+
+    const [result] = await Promise.allSettled([send()]);
+    return this.toChannelOutcome(result);
+  }
+
+  private toChannelOutcome(result: PromiseSettledResult<boolean>): ChannelOutcome {
+    if (result.status === 'rejected') {
+      return { status: ChannelOutcomeStatus.Failed, error: result.reason };
+    }
+
+    return result.value ? { status: ChannelOutcomeStatus.Delivered } : { status: ChannelOutcomeStatus.Skipped };
   }
 
   private async sendTelegramNotification(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<boolean> {
@@ -259,30 +432,34 @@ export class VehicleAlertNotifierService {
     }
 
     const telegramStart = Date.now();
-    await this.alertNotifierRegistry.notify(payload, userLanguage);
+    const wasSent = await this.alertNotifierRegistry.notify(payload, userLanguage);
     const telegramTime = Date.now() - telegramStart;
 
     if (telegramTime > VehicleAlertNotifierService.TELEGRAM_SLOW_THRESHOLD_MS) {
       this.logger.warn(`[TELEGRAM_SLOW][${payload.correlationId}] ${payload.type}: ${telegramTime}ms for user: ${payload.userId}`);
     }
 
-    return true;
+    return wasSent;
   }
 
-  private async handleNotificationFailure(alertEventId: string): Promise<void> {
+  private async handleNotificationFailure(payload: AlertNotifierPayload, deliveredChannels: NotificationChannel[]): Promise<void> {
     try {
-      const isPermanentlyFailed = await this.alertsService.markNotificationAttemptFailed(
-        alertEventId,
-        NOTIFICATION_SWEEP_MAX_ATTEMPTS
-      );
-
-      if (isPermanentlyFailed) {
-        this.logger.error(
-          `[NOTIFICATION_FAILED] Alert ${alertEventId} permanently failed after ${NOTIFICATION_SWEEP_MAX_ATTEMPTS} attempts`
-        );
-      }
+      const result = await this.alertsService.recordNotificationAttemptFailure(payload.alertEventId, deliveredChannels, notificationRetryPolicy);
+      this.logAttemptResult(payload, result);
     } catch (markingError) {
-      this.logger.error(`[NOTIFICATION_ERROR] Failed to mark notification attempt for alert ${alertEventId}:`, markingError);
+      this.logger.error(`[NOTIFICATION_ERROR] Failed to mark notification attempt for alert ${payload.alertEventId}: ${new CaughtError(markingError).describe()}`);
+    }
+  }
+
+  private logAttemptResult(payload: AlertNotifierPayload, result: NotificationAttemptResult): void {
+    const delivered = result.deliveredChannels.length > 0 ? result.deliveredChannels.join(',') : 'none';
+
+    if (result.outcome === NotificationAttemptOutcome.RetryScheduled) {
+      this.logger.warn(`[NOTIFICATION_RETRY_SCHEDULED] Alert ${payload.alertEventId} attempt ${result.attempts}/${NOTIFICATION_SWEEP_MAX_ATTEMPTS} failed, next attempt at ${result.nextAttemptAt?.toISOString()} (delivered=${delivered})`);
+    } else if (result.outcome === NotificationAttemptOutcome.PermanentlyFailed) {
+      this.logger.error(`[NOTIFICATION_FAILED] Alert ${payload.alertEventId} permanently failed after ${result.attempts} attempts (delivered=none)`);
+    } else if (result.outcome === NotificationAttemptOutcome.GaveUpPartiallyDelivered) {
+      this.logger.error(`[NOTIFICATION_FAILED] Alert ${payload.alertEventId} gave up on the remaining channel(s) after ${result.attempts} attempts (delivered=${delivered})`);
     }
   }
 

@@ -83,5 +83,6 @@
   "Sentry Mode was turned on.": "Le mode Sentinelle a été activé.",
   "Sentry alert": "Alerte Sentinelle",
   "Sentry alert_withVehicle": "Alerte Sentinelle - {{vehicleName}}",
-  "A Sentry event was detected.": "Un événement Sentinelle a été détecté."
+  "A Sentry event was detected.": "Un événement Sentinelle a été détecté.",
+  "Delayed alert: detected {{delay}} ago.": "Alerte retardée : détectée il y a {{delay}}."
 }

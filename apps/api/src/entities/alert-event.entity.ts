@@ -16,6 +16,11 @@ export enum AlertEventNotificationStatus {
   Failed = 'failed',
 }
 
+export enum NotificationChannel {
+  Expo = 'expo',
+  Telegram = 'telegram',
+}
+
 @Entity('alert_events')
 @Index(['userId', 'created_at'])
 @Index(['vin'])
@@ -44,6 +49,12 @@ export class AlertEvent {
 
   @Column({ type: 'int', default: 0 })
   notification_attempts!: number;
+
+  @Column({ type: 'text', array: true, default: () => "'{}'" })
+  notification_delivered_channels!: NotificationChannel[];
+
+  @Column({ type: 'timestamptz', nullable: true })
+  notification_next_attempt_at?: Date | null;
 
   @Column({ type: 'boolean', default: false })
   muted!: boolean;

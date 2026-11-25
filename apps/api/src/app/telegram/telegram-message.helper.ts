@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { Context } from 'telegraf';
 import { TelegramMessageOptions } from './telegram.types';
+import { CaughtError } from '../../common/utils/caught-error';
 
 const MINUTES_PER_HOUR = 60;
 export const MILLISECONDS_PER_MINUTE = 60_000;
@@ -41,7 +42,7 @@ export class TelegramMessageHelper {
       const telegramOptions = TelegramMessageHelper.buildOptions(options);
       await ctx.reply(message, Object.keys(telegramOptions).length > 1 ? telegramOptions : undefined);
     } catch (error) {
-      logger.warn(`⚠️ Could not send message to user (possibly blocked the bot): ${error}`, error);
+      logger.warn(`⚠️ Could not send message to user (possibly blocked the bot): ${new CaughtError(error).describe()}`);
     }
   }
 

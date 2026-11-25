@@ -99,7 +99,21 @@ describe('The TelegramBotUpdateService class', () => {
         expect(mockBotService.sendMessage).toHaveBeenCalledWith(
           fakeChatId,
           'botUpdateV1',
-          {}
+          {},
+          undefined
+        );
+      });
+
+      it('should forward the abort signal to the bot service', async () => {
+        const signal = AbortSignal.abort();
+
+        await service.ensureUserIsUpToDate(fakeUserId, fakeChatId, 'en', signal);
+
+        expect(mockBotService.sendMessage).toHaveBeenCalledWith(
+          fakeChatId,
+          'botUpdateV1',
+          {},
+          signal
         );
       });
 

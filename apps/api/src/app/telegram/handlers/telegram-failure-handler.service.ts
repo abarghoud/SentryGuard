@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ITelegramFailureHandler } from '../interfaces/telegram-failure-handler.interface';
 import { TelegramConfigService } from '../telegram-config.service';
+import { CaughtError } from '../../../common/utils/caught-error';
 
 @Injectable()
 export class TelegramFailureHandlerService implements ITelegramFailureHandler {
@@ -21,7 +22,7 @@ export class TelegramFailureHandlerService implements ITelegramFailureHandler {
   }
 
   public async handleFailure(error: Error, userId: string): Promise<void> {
-    this.logger.warn(`[TELEGRAM_BLOCKED] Bot blocked or user deactivated for user ${userId}, removing Telegram configuration`);
+    this.logger.warn(`[TELEGRAM_BLOCKED] Bot blocked or user deactivated for user ${userId}, removing Telegram configuration: ${new CaughtError(error).describe()}`);
 
     try {
       await this.telegramConfigService.removeTelegramConfig(userId);
