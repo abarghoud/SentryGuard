@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TelegramConfig } from '../../entities/telegram-config.entity';
+import { CaughtError } from '../../common/utils/caught-error';
 
 @Injectable()
 export class TelegramConfigService {
@@ -22,7 +23,7 @@ export class TelegramConfigService {
         this.logger.warn(`[TELEGRAM_CONFIG_NOT_FOUND] No Telegram configuration found for user: ${userId}`);
       }
     } catch (error) {
-      this.logger.error(`[TELEGRAM_CONFIG_ERROR] Failed to remove Telegram configuration for user ${userId}:`, error);
+      this.logger.error(`[TELEGRAM_CONFIG_ERROR] Failed to remove Telegram configuration for user ${userId}: ${new CaughtError(error).describe()}`);
       throw error;
     }
   }

@@ -83,5 +83,6 @@
   "Sentry Mode was turned on.": "Sentry Mode was turned on.",
   "Sentry alert": "Sentry alert",
   "Sentry alert_withVehicle": "Sentry alert - {{vehicleName}}",
-  "A Sentry event was detected.": "A Sentry event was detected."
+  "A Sentry event was detected.": "A Sentry event was detected.",
+  "Delayed alert: detected {{delay}} ago.": "Delayed alert: detected {{delay}} ago."
 }

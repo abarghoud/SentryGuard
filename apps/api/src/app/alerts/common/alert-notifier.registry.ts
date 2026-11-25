@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { TelegramService } from '../../telegram/telegram.service';
 import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
+import { TelegramAlertInfo } from '../../telegram/telegram.types';
 import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
+import { NotificationChannel } from '../enums/notification-channel.enum';
 
 export interface AlertNotifierPayload {
   alertEventId: string;
+  detectedAt: Date;
   userId: string;
   vin: string;
   vehicleDisplayName?: string | null;
@@ -12,12 +15,13 @@ export interface AlertNotifierPayload {
   severity: AlertEventSeverity;
   correlationId?: string;
   muted?: boolean;
+  deliveredChannels?: NotificationChannel[];
 }
 
 type TelegramNotifier = (
   payload: AlertNotifierPayload,
   userLanguage: 'en' | 'fr'
-) => Promise<void>;
+) => Promise<boolean>;
 
 @Injectable()
 export class AlertNotifierRegistry {
@@ -33,30 +37,31 @@ export class AlertNotifierRegistry {
     ]);
   }
 
-  public async notify(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<void> {
+  public async notify(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<boolean> {
     const notifier = this.notifiers.get(payload.type);
 
     if (!notifier) {
       throw new Error(`No notifier registered for alert type ${payload.type}`);
     }
 
-    await notifier(payload, userLanguage);
+    return notifier(payload, userLanguage);
   }
 
-  private buildAlertInfo(payload: AlertNotifierPayload): { vin: string; display_name?: string } {
+  private buildAlertInfo(payload: AlertNotifierPayload): TelegramAlertInfo {
     return {
+      detectedAt: payload.detectedAt,
       vin: payload.vin,
       display_name: payload.vehicleDisplayName ?? undefined,
     };
   }
 
-  private async notifySentry(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<void> {
+  private async notifySentry(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<boolean> {
     const keyboard = this.keyboardBuilder.buildSentryAlertKeyboard(payload.userId, userLanguage);
-    await this.telegramService.sendSentryAlert(payload.userId, this.buildAlertInfo(payload), userLanguage, keyboard, false);
+    return this.telegramService.sendSentryAlert(payload.userId, this.buildAlertInfo(payload), userLanguage, keyboard, false);
   }
 
-  private async notifyBreakIn(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<void> {
+  private async notifyBreakIn(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<boolean> {
     const keyboard = this.keyboardBuilder.buildBreakInAlertKeyboard(payload.userId, userLanguage);
-    await this.telegramService.sendBreakInAlert(payload.userId, this.buildAlertInfo(payload), userLanguage, keyboard, false);
+    return this.telegramService.sendBreakInAlert(payload.userId, this.buildAlertInfo(payload), userLanguage, keyboard, false);
   }
 }

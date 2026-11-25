@@ -3,31 +3,22 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { Repository } from 'typeorm';
 
-import { UserLanguageService } from '../../user/user-language.service';
 import { KafkaLogContextService } from '../../../common/services/kafka-log-context.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
 import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
-import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
+import { AlertEventType } from '../../../entities/alert-event.entity';
 import { AlertsService } from '../alerts.service';
 import { NotificationsService } from '../../notifications/notifications.service';
+import { NotificationLane } from '../../notifications/notification-lane.enum';
 import { NotificationQueueService } from '../../notifications/notification-queue.service';
-import { AlertNotifierPayload, AlertNotifierRegistry } from './alert-notifier.registry';
-import { VehicleAlertSoundResolverService } from './vehicle-alert-sound-resolver.service';
-import { AlertSound, DEFAULT_ALERT_SOUND } from '../enums/alert-sound.enum';
-import { NOTIFICATION_SWEEP_MAX_ATTEMPTS } from '../../../config/notification-sweep-cron.config';
-import { resolveVehicleLabel } from '../../../common/utils/vehicle-label.util';
-
-export interface AlertDispatchConfig {
-  telemetryMessage: TelemetryMessage;
-  alertName: string;
-  latencyLabel: string;
-  reactionDelayMs?: number;
-  severity: AlertEventSeverity;
-  type: AlertEventType;
-}
+import { AlertNotifierPayload } from './alert-notifier.registry';
+import { AlertDispatchConfig } from './alert-delivery.types';
+import { UserAlertNotificationService } from './user-alert-notification.service';
+import { CaughtError } from '../../../common/utils/caught-error';
 
 interface RecordedAlert {
   alertEventId: string;
+  detectedAt: Date;
   isMuted: boolean;
   userId: string;
 }
@@ -36,16 +27,13 @@ interface RecordedAlert {
 export class VehicleAlertNotifierService {
   private readonly logger = new Logger(VehicleAlertNotifierService.name);
   private static readonly DB_SLOW_THRESHOLD_MS = 100;
-  private static readonly TELEGRAM_SLOW_THRESHOLD_MS = 500;
 
   constructor(
-    private readonly userLanguageService: UserLanguageService,
     private readonly kafkaLogContextService: KafkaLogContextService,
     private readonly alertsService: AlertsService,
     private readonly notificationsService: NotificationsService,
     private readonly notificationQueueService: NotificationQueueService,
-    private readonly alertNotifierRegistry: AlertNotifierRegistry,
-    private readonly vehicleAlertSoundResolverService: VehicleAlertSoundResolverService,
+    private readonly userAlertNotificationService: UserAlertNotificationService,
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>
   ) {}
@@ -75,27 +63,34 @@ export class VehicleAlertNotifierService {
 
       return { userIds };
     } catch (error) {
-      this.logger.error(`Error in ${alertName}:`, error);
+      this.logger.error(`Error in ${alertName}: ${new CaughtError(error).describe()}`);
       throw error;
     }
   }
 
-  public enqueueNotification(payload: AlertNotifierPayload): boolean {
+  public enqueueNotification(payload: AlertNotifierPayload, lane = NotificationLane.Immediate): boolean {
     return this.notificationQueueService.enqueue(
       () => this.kafkaLogContextService.runWithContext(
         {
           vin: payload.vin,
           correlationId: payload.correlationId ?? `notification-${payload.vin}`,
         },
-        () => this.notifyUser(payload)
+        () => this.notify(payload, lane)
       ),
       {
         label: `${payload.type}:${payload.userId}`,
         vin: payload.vin,
         correlationId: payload.correlationId,
         alertEventId: payload.alertEventId,
+        lane,
       }
     );
+  }
+
+  private notify(payload: AlertNotifierPayload, lane: NotificationLane): Promise<void> {
+    return lane === NotificationLane.Retry
+      ? this.userAlertNotificationService.notify(payload)
+      : this.userAlertNotificationService.notifyFreshAlert(payload);
   }
 
   private async findVehiclesByVin(vin: string, correlationId?: string): Promise<Vehicle[]> {
@@ -141,6 +136,8 @@ export class VehicleAlertNotifierService {
     alertInfo: { vin: string; display_name?: string },
     config: AlertDispatchConfig
   ): Promise<RecordedAlert[]> {
+    const detectedAt = new Date();
+
     return Promise.all(
       userIds.map(async (userId) => {
         const isMuted = await this.resolveIsMuted(userId, config.type);
@@ -152,7 +149,7 @@ export class VehicleAlertNotifierService {
           alertInfo.display_name,
           isMuted
         );
-        return { alertEventId, isMuted, userId };
+        return { alertEventId, detectedAt, isMuted, userId };
       })
     );
   }
@@ -168,10 +165,11 @@ export class VehicleAlertNotifierService {
     alertName: string,
     config: AlertDispatchConfig
   ): void {
-    for (const { userId, alertEventId, isMuted } of recordedAlerts) {
+    for (const { userId, alertEventId, detectedAt, isMuted } of recordedAlerts) {
       this.enqueueNotification({
         alertEventId,
         correlationId,
+        detectedAt,
         muted: isMuted,
         severity: config.severity,
         type: config.type,
@@ -182,108 +180,6 @@ export class VehicleAlertNotifierService {
     }
 
     this.logger.log(`[${alertName}] Enqueued ${recordedAlerts.length} notification job(s)`);
-  }
-
-  private async notifyUser(payload: AlertNotifierPayload): Promise<void> {
-    try {
-      await this.executeUserNotification(payload);
-    } catch (error) {
-      this.logger.error(`[NOTIFICATION_ERROR] Failed to send ${payload.type} to user ${payload.userId} for VIN ${payload.vin}:`, error);
-      await this.handleNotificationFailure(payload.alertEventId);
-      throw error;
-    }
-  }
-
-  private async executeUserNotification(payload: AlertNotifierPayload): Promise<void> {
-    if (payload.muted) {
-      await this.handleMutedNotification(payload);
-      return;
-    }
-    await this.handleActiveNotification(payload);
-  }
-
-  private async handleMutedNotification(payload: AlertNotifierPayload): Promise<void> {
-    await this.alertsService.markNotificationSent(payload.alertEventId);
-    this.logger.log(`[${payload.type}] Alert suppressed for muted user ${payload.userId} (correlation: ${payload.correlationId})`);
-  }
-
-  private async handleActiveNotification(payload: AlertNotifierPayload): Promise<void> {
-    const userLanguage = await this.userLanguageService.getUserLanguage(payload.userId);
-    await this.deliverNotifications(payload, userLanguage);
-    await this.alertsService.markNotificationSent(payload.alertEventId);
-    this.logger.log(`[${payload.type}] Notified user ${payload.userId} for VIN ${payload.vin} (correlation: ${payload.correlationId})`);
-  }
-
-  private async resolveAlertSound(payload: AlertNotifierPayload): Promise<AlertSound> {
-    try {
-      return await this.vehicleAlertSoundResolverService.resolve(payload.userId, payload.vin, payload.type);
-    } catch (error) {
-      this.logger.warn(
-        `[ALERT_SOUND_FALLBACK] Could not read the alert sound for VIN ${payload.vin}, falling back to the default:`,
-        error
-      );
-      return DEFAULT_ALERT_SOUND;
-    }
-  }
-
-  private async sendPushNotification(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<boolean> {
-    return await this.notificationsService.sendPushAlert({
-      alertSound: await this.resolveAlertSound(payload),
-      correlationId: payload.correlationId,
-      severity: payload.severity,
-      type: payload.type,
-      userId: payload.userId,
-      userLanguage,
-      vehicleName: resolveVehicleLabel(payload.vehicleDisplayName, payload.vin),
-      vin: payload.vin,
-    });
-  }
-
-  private async deliverNotifications(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<void> {
-    const [pushResult, telegramResult] = await Promise.allSettled([
-      this.sendPushNotification(payload, userLanguage),
-      this.sendTelegramNotification(payload, userLanguage),
-    ]);
-
-    const pushSent = pushResult.status === 'fulfilled' && pushResult.value;
-    const telegramSent = telegramResult.status === 'fulfilled' && telegramResult.value;
-
-    if (!pushSent && !telegramSent && (pushResult.status === 'rejected' || telegramResult.status === 'rejected')) {
-      throw pushResult.status === 'rejected' ? pushResult.reason : (telegramResult as PromiseRejectedResult).reason;
-    }
-  }
-
-  private async sendTelegramNotification(payload: AlertNotifierPayload, userLanguage: 'en' | 'fr'): Promise<boolean> {
-    if (!(await this.notificationsService.shouldSendTelegram(payload.userId, payload.severity))) {
-      return false;
-    }
-
-    const telegramStart = Date.now();
-    await this.alertNotifierRegistry.notify(payload, userLanguage);
-    const telegramTime = Date.now() - telegramStart;
-
-    if (telegramTime > VehicleAlertNotifierService.TELEGRAM_SLOW_THRESHOLD_MS) {
-      this.logger.warn(`[TELEGRAM_SLOW][${payload.correlationId}] ${payload.type}: ${telegramTime}ms for user: ${payload.userId}`);
-    }
-
-    return true;
-  }
-
-  private async handleNotificationFailure(alertEventId: string): Promise<void> {
-    try {
-      const isPermanentlyFailed = await this.alertsService.markNotificationAttemptFailed(
-        alertEventId,
-        NOTIFICATION_SWEEP_MAX_ATTEMPTS
-      );
-
-      if (isPermanentlyFailed) {
-        this.logger.error(
-          `[NOTIFICATION_FAILED] Alert ${alertEventId} permanently failed after ${NOTIFICATION_SWEEP_MAX_ATTEMPTS} attempts`
-        );
-      }
-    } catch (markingError) {
-      this.logger.error(`[NOTIFICATION_ERROR] Failed to mark notification attempt for alert ${alertEventId}:`, markingError);
-    }
   }
 
   private logAlertLatency(

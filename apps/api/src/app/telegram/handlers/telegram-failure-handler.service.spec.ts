@@ -1,4 +1,6 @@
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { TelegramError } from 'telegraf';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { TelegramFailureHandlerService } from './telegram-failure-handler.service';
 import { TelegramConfigService } from '../telegram-config.service';
@@ -90,6 +92,23 @@ describe('The TelegramFailureHandlerService class', () => {
 
         expect(mockTelegramConfigService.removeTelegramConfig).toHaveBeenCalledWith(userId);
         expect(mockTelegramConfigService.removeTelegramConfig).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe('When Telegram reports that the bot was blocked', () => {
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it('should log the Telegram 403 description', async () => {
+        const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+        mockTelegramConfigService.removeTelegramConfig.mockResolvedValue(undefined);
+
+        await service.handleFailure(new TelegramError({ error_code: 403, description: 'Forbidden: bot was blocked by the user' }), userId);
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(/\[TELEGRAM_BLOCKED\].*code=403.*description="Forbidden: bot was blocked by the user"/)
+        );
       });
     });
 

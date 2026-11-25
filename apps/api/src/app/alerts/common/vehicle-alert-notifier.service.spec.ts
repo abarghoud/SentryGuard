@@ -3,18 +3,27 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { Repository } from 'typeorm';
-import { VehicleAlertNotifierService, AlertDispatchConfig } from './vehicle-alert-notifier.service';
+import { VehicleAlertNotifierService } from './vehicle-alert-notifier.service';
+import { UserAlertNotificationService } from './user-alert-notification.service';
+import { AlertChannelDeliveryService } from './alert-channel-delivery.service';
+import { AlertChannelDeliveryError } from './alert-channel-delivery.error';
+import { AlertDispatchConfig } from './alert-delivery.types';
 import { UserLanguageService } from '../../user/user-language.service';
 import { KafkaLogContextService } from '../../../common/services/kafka-log-context.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
 import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
 import { AlertsService } from '../alerts.service';
+import { AlertNotificationStateService } from '../alert-notification-state.service';
+import { NotificationAttemptOutcome } from '../enums/notification-attempt-outcome.enum';
+import { NotificationAttemptResult } from './notification-attempt.types';
 import { NotificationsService } from '../../notifications/notifications.service';
+import { NotificationLane } from '../../notifications/notification-lane.enum';
 import { NotificationQueueService } from '../../notifications/notification-queue.service';
 import { AlertNotifierRegistry } from './alert-notifier.registry';
 import { VehicleAlertSoundResolverService } from './vehicle-alert-sound-resolver.service';
 import { AlertSound, DEFAULT_ALERT_SOUND } from '../enums/alert-sound.enum';
 import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
+import { NotificationChannel } from '../enums/notification-channel.enum';
 
 describe('The VehicleAlertNotifierService class', () => {
   let service: VehicleAlertNotifierService;
@@ -23,6 +32,7 @@ describe('The VehicleAlertNotifierService class', () => {
   let mockKafkaLogContextService: MockProxy<KafkaLogContextService>;
   let mockVehicleRepository: MockProxy<Repository<Vehicle>>;
   let mockAlertsService: MockProxy<AlertsService>;
+  let mockAlertNotificationStateService: MockProxy<AlertNotificationStateService>;
   let mockNotificationsService: MockProxy<NotificationsService>;
   let mockNotificationQueueService: MockProxy<NotificationQueueService>;
   let mockAlertNotifierRegistry: MockProxy<AlertNotifierRegistry>;
@@ -34,9 +44,11 @@ describe('The VehicleAlertNotifierService class', () => {
     mockKafkaLogContextService = mock<KafkaLogContextService>();
     mockVehicleRepository = mock<Repository<Vehicle>>();
     mockAlertsService = mock<AlertsService>();
+    mockAlertNotificationStateService = mock<AlertNotificationStateService>();
     mockNotificationsService = mock<NotificationsService>();
     mockNotificationQueueService = mock<NotificationQueueService>();
     mockAlertNotifierRegistry = mock<AlertNotifierRegistry>();
+    mockAlertNotifierRegistry.notify.mockResolvedValue(true);
     mockVehicleAlertSoundResolverService = mock<VehicleAlertSoundResolverService>();
     mockVehicleAlertSoundResolverService.resolve.mockResolvedValue(AlertSound.SentrySiren);
     enqueuedTasks = [];
@@ -44,8 +56,13 @@ describe('The VehicleAlertNotifierService class', () => {
     mockNotificationsService.shouldSendTelegram.mockResolvedValue(true);
     mockNotificationsService.sendPushAlert.mockResolvedValue(true);
     mockAlertsService.record.mockImplementation(async (userId: string) => `alert-${userId}`);
-    mockAlertsService.markNotificationSent.mockResolvedValue(undefined);
-    mockAlertsService.markNotificationAttemptFailed.mockResolvedValue(false);
+    mockAlertNotificationStateService.markNotificationSent.mockResolvedValue(undefined);
+    mockAlertNotificationStateService.recordNotificationAttemptFailure.mockResolvedValue({
+      attempts: 1,
+      deliveredChannels: [],
+      nextAttemptAt: new Date('2026-11-18T22:12:00.000Z'),
+      outcome: NotificationAttemptOutcome.RetryScheduled,
+    });
     mockKafkaLogContextService.runWithContext.mockImplementation(
       (_context, callback) => callback()
     );
@@ -57,6 +74,9 @@ describe('The VehicleAlertNotifierService class', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         VehicleAlertNotifierService,
+        UserAlertNotificationService,
+        AlertChannelDeliveryService,
+        { provide: AlertNotificationStateService, useValue: mockAlertNotificationStateService },
         { provide: UserLanguageService, useValue: mockUserLanguageService },
         { provide: KafkaLogContextService, useValue: mockKafkaLogContextService },
         { provide: AlertsService, useValue: mockAlertsService },
@@ -151,7 +171,7 @@ describe('The VehicleAlertNotifierService class', () => {
       );
     });
 
-    it('should mark the notification as sent after a successful send', async () => {
+    it('should mark the notification as sent with the channels that delivered after a successful send', async () => {
       mockVehicleRepository.find.mockResolvedValue([
         { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
       ]);
@@ -160,51 +180,392 @@ describe('The VehicleAlertNotifierService class', () => {
       await service.dispatch(config);
       await executeEnqueuedTasks();
 
-      expect(mockAlertsService.markNotificationSent).toHaveBeenCalledWith('alert-user-1');
-      expect(mockAlertsService.markNotificationAttemptFailed).not.toHaveBeenCalled();
-    });
-
-    it('should mark the notification as sent when Telegram fails but push succeeds', async () => {
-      mockVehicleRepository.find.mockResolvedValue([
-        { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
+      expect(mockAlertNotificationStateService.markNotificationSent).toHaveBeenCalledWith('alert-user-1', [
+        NotificationChannel.Expo,
+        NotificationChannel.Telegram,
       ]);
-      mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
-      mockAlertNotifierRegistry.notify.mockRejectedValue(new Error('Telegram Error'));
-
-      await service.dispatch(config);
-      await executeEnqueuedTasks();
-
-      expect(mockAlertsService.markNotificationSent).toHaveBeenCalledWith('alert-user-1');
-      expect(mockAlertsService.markNotificationAttemptFailed).not.toHaveBeenCalled();
+      expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).not.toHaveBeenCalled();
     });
 
-    it('should mark the notification as sent when push fails but Telegram succeeds', async () => {
+    describe('When push succeeds but Telegram fails', () => {
+      let errorSpy: jest.SpyInstance;
+
+      beforeEach(async () => {
+        errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+        jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+        mockVehicleRepository.find.mockResolvedValue([{ userId: 'user-1', display_name: 'My Tesla' } as Vehicle]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+        mockAlertNotifierRegistry.notify.mockRejectedValue(Object.assign(new Error('request failed'), { code: 'ETIMEDOUT' }));
+
+        await service.dispatch(config);
+        await expect(executeEnqueuedTasks()).rejects.toThrow(AlertChannelDeliveryError);
+      });
+
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it('should not mark the alert as sent, so the Telegram copy is retried', () => {
+        expect(mockAlertNotificationStateService.markNotificationSent).not.toHaveBeenCalled();
+      });
+
+      it('should count a failed attempt that remembers Expo as delivered', () => {
+        expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).toHaveBeenCalledWith(
+          'alert-user-1',
+          [NotificationChannel.Expo],
+          { baseDelayMs: 60_000, maxAttempts: 12, maxDelayMs: 1_800_000 }
+        );
+      });
+
+      it('should log which channel failed and which one delivered', () => {
+        expect(errorSpy).toHaveBeenCalledWith(
+          '[ALERT_CHANNEL_FAILED][corr-123] user=user-1 alert=alert-user-1 failed=telegram ' +
+          'channels={expo:ok, telegram:ETIMEDOUT}'
+        );
+      });
+    });
+
+    describe('When both channels deliver but the database fails to record it', () => {
+      beforeEach(async () => {
+        jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+        jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+        mockVehicleRepository.find.mockResolvedValue([{ userId: 'user-1', display_name: 'My Tesla' } as Vehicle]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+        mockAlertNotificationStateService.markNotificationSent.mockRejectedValueOnce(new Error('connection terminated'));
+
+        await service.dispatch(config);
+        await expect(executeEnqueuedTasks()).rejects.toThrow(AlertChannelDeliveryError);
+      });
+
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it('should remember both channels as delivered so the retry sends nothing again', () => {
+        expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).toHaveBeenCalledWith(
+          'alert-user-1',
+          [NotificationChannel.Expo, NotificationChannel.Telegram],
+          expect.any(Object)
+        );
+      });
+    });
+
+    describe('When push fails but Telegram succeeds', () => {
+      beforeEach(async () => {
+        jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+        jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+        mockVehicleRepository.find.mockResolvedValue([{ userId: 'user-1', display_name: 'My Tesla' } as Vehicle]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+        mockNotificationsService.sendPushAlert.mockRejectedValue(new Error('Push Error'));
+
+        await service.dispatch(config);
+        await expect(executeEnqueuedTasks()).rejects.toThrow('Alert delivery failed on expo');
+      });
+
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it('should count a failed attempt that remembers Telegram as delivered', () => {
+        expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).toHaveBeenCalledWith(
+          'alert-user-1',
+          [NotificationChannel.Telegram],
+          expect.any(Object)
+        );
+        expect(mockAlertNotificationStateService.markNotificationSent).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('When the sweep retries an alert whose push was already delivered', () => {
+      let logSpy: jest.SpyInstance;
+
+      beforeEach(async () => {
+        logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+
+        service.enqueueNotification({
+          alertEventId: 'alert-1',
+          correlationId: 'sweep-alert-1',
+          deliveredChannels: [NotificationChannel.Expo],
+          detectedAt: new Date(Date.now() - 180_000),
+          severity: AlertEventSeverity.Critical,
+          type: AlertEventType.BreakIn,
+          userId: 'user-1',
+          vin: 'TEST_VIN_123',
+        }, NotificationLane.Retry);
+        await executeEnqueuedTasks();
+      });
+
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it('should not push the alert again', () => {
+        expect(mockNotificationsService.sendPushAlert).not.toHaveBeenCalled();
+      });
+
+      it('should resend only the Telegram copy', () => {
+        expect(mockAlertNotifierRegistry.notify).toHaveBeenCalledTimes(1);
+      });
+
+      it('should mark the alert as sent once Telegram delivers', () => {
+        expect(mockAlertNotificationStateService.markNotificationSent).toHaveBeenCalledWith('alert-1', [NotificationChannel.Telegram]);
+      });
+
+      it('should log the earlier delivery explicitly', () => {
+        expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('channels={expo:ok(earlier), telegram:ok}'));
+      });
+    });
+
+    describe('When the sweep retries an alert whose Telegram copy was already delivered and push fails again', () => {
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it('should not resend Telegram and only count the push failure', async () => {
+        jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+        mockNotificationsService.sendPushAlert.mockRejectedValue(new Error('Push Error'));
+
+        service.enqueueNotification({
+          alertEventId: 'alert-1',
+          deliveredChannels: [NotificationChannel.Telegram],
+          detectedAt: new Date(Date.now() - 180_000),
+          severity: AlertEventSeverity.Critical,
+          type: AlertEventType.BreakIn,
+          userId: 'user-1',
+          vin: 'TEST_VIN_123',
+        }, NotificationLane.Retry);
+        await expect(executeEnqueuedTasks()).rejects.toThrow('Alert delivery failed on expo');
+
+        expect(mockAlertNotifierRegistry.notify).not.toHaveBeenCalled();
+        expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).toHaveBeenCalledWith('alert-1', [], expect.any(Object));
+      });
+    });
+
+    describe('When recording the failed attempt', () => {
+      let errorSpy: jest.SpyInstance;
+      let warnSpy: jest.SpyInstance;
+
+      const runFailingNotification = async (result: NotificationAttemptResult): Promise<void> => {
+        mockAlertNotificationStateService.recordNotificationAttemptFailure.mockResolvedValue(result);
+        mockVehicleRepository.find.mockResolvedValue([{ userId: 'user-1', display_name: 'My Tesla' } as Vehicle]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+        mockAlertNotifierRegistry.notify.mockRejectedValue(new Error('Telegram Error'));
+
+        await service.dispatch(config);
+        await expect(executeEnqueuedTasks()).rejects.toThrow(AlertChannelDeliveryError);
+      };
+
+      beforeEach(() => {
+        errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+        warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      });
+
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it('should log the scheduled retry with its time and the delivered channels', async () => {
+        await runFailingNotification({
+          attempts: 2,
+          deliveredChannels: [NotificationChannel.Expo],
+          nextAttemptAt: new Date('2026-11-18T22:12:00.000Z'),
+          outcome: NotificationAttemptOutcome.RetryScheduled,
+        });
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          '[NOTIFICATION_RETRY_SCHEDULED] Alert alert-user-1 attempt 2/12 failed, next attempt at 2026-11-18T22:12:00.000Z ' +
+          '(delivered=expo)'
+        );
+      });
+
+      it('should log NOTIFICATION_FAILED when the remaining channel is given up', async () => {
+        await runFailingNotification({
+          attempts: 6,
+          deliveredChannels: [NotificationChannel.Expo],
+          nextAttemptAt: null,
+          outcome: NotificationAttemptOutcome.GaveUpPartiallyDelivered,
+        });
+
+        expect(errorSpy).toHaveBeenCalledWith(
+          '[NOTIFICATION_FAILED] Alert alert-user-1 gave up on the remaining channel(s) after 6 attempts (delivered=expo)'
+        );
+      });
+
+      it('should log NOTIFICATION_FAILED when no channel ever delivered', async () => {
+        await runFailingNotification({
+          attempts: 6,
+          deliveredChannels: [],
+          nextAttemptAt: null,
+          outcome: NotificationAttemptOutcome.PermanentlyFailed,
+        });
+
+        expect(errorSpy).toHaveBeenCalledWith(
+          '[NOTIFICATION_FAILED] Alert alert-user-1 permanently failed after 6 attempts (delivered=none)'
+        );
+      });
+    });
+
+    it('should count a failed attempt with no delivered channel when all attempted notification channels fail', async () => {
       mockVehicleRepository.find.mockResolvedValue([
         { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
       ]);
       mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
       mockNotificationsService.sendPushAlert.mockRejectedValue(new Error('Push Error'));
+      mockAlertNotifierRegistry.notify.mockRejectedValue(new Error('Telegram Error'));
 
       await service.dispatch(config);
-      await executeEnqueuedTasks();
+      await expect(executeEnqueuedTasks()).rejects.toThrow('Alert delivery failed on expo,telegram');
 
-      expect(mockAlertsService.markNotificationSent).toHaveBeenCalledWith('alert-user-1');
-      expect(mockAlertsService.markNotificationAttemptFailed).not.toHaveBeenCalled();
+      expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).toHaveBeenCalledWith('alert-user-1', [], expect.any(Object));
+      expect(mockAlertNotificationStateService.markNotificationSent).not.toHaveBeenCalled();
     });
 
-    it('should mark the attempt as failed when all attempted notification channels fail', async () => {
+    it('should not count Telegram as sent when the notifier reports a failed delivery', async () => {
       mockVehicleRepository.find.mockResolvedValue([
         { userId: 'user-1', display_name: 'My Tesla' } as Vehicle,
       ]);
       mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
       mockNotificationsService.sendPushAlert.mockRejectedValue(new Error('Push Error'));
-      mockAlertNotifierRegistry.notify.mockRejectedValue(new Error('Telegram Error'));
+      mockAlertNotifierRegistry.notify.mockResolvedValue(false);
 
       await service.dispatch(config);
-      await expect(executeEnqueuedTasks()).rejects.toThrow('Push Error');
+      await expect(executeEnqueuedTasks()).rejects.toThrow('Alert delivery failed on expo');
 
-      expect(mockAlertsService.markNotificationAttemptFailed).toHaveBeenCalledWith('alert-user-1', 3);
-      expect(mockAlertsService.markNotificationSent).not.toHaveBeenCalled();
+      expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).toHaveBeenCalledWith('alert-user-1', [], expect.any(Object));
+      expect(mockAlertNotificationStateService.markNotificationSent).not.toHaveBeenCalled();
+    });
+
+    describe('When no channel delivers the alert', () => {
+      let errorSpy: jest.SpyInstance;
+      let warnSpy: jest.SpyInstance;
+      let logSpy: jest.SpyInstance;
+      const expoUnavailableError = (): Error => Object.assign(new Error('Service Unavailable'), { status: 503 });
+
+      beforeEach(() => {
+        mockVehicleRepository.find.mockResolvedValue([{ userId: 'user-1', display_name: 'My Tesla' } as Vehicle]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+        mockNotificationsService.isMuted.mockResolvedValue(false);
+        errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+        warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+        logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+      });
+
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      const expectNotNotified = (): void => {
+        expect(mockAlertNotificationStateService.markNotificationSent).not.toHaveBeenCalled();
+        expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining('Notified user'));
+      };
+
+      describe('When Expo answers 503 and the user has no linked Telegram chat', () => {
+        beforeEach(async () => {
+          mockNotificationsService.sendPushAlert.mockRejectedValue(expoUnavailableError());
+          mockAlertNotifierRegistry.notify.mockResolvedValue(false);
+
+          await service.dispatch(config);
+          await expect(executeEnqueuedTasks()).rejects.toThrow('Alert delivery failed on expo');
+        });
+
+        it('should log ALERT_DELIVERY_FAILED with the reason of each channel', () => {
+          expect(errorSpy).toHaveBeenCalledWith(
+            '[ALERT_DELIVERY_FAILED][corr-123] user=user-1 alert=alert-user-1 failed=expo channels={expo:503, telegram:none}'
+          );
+        });
+
+        it('should not mark the alert as sent nor log it as notified', () => {
+          expectNotNotified();
+        });
+
+        it('should count a failed attempt so the sweep retries it, bounded by the max attempts', () => {
+          expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).toHaveBeenCalledWith('alert-user-1', [], {
+            baseDelayMs: 60_000,
+            maxAttempts: 12,
+            maxDelayMs: 1_800_000,
+          });
+        });
+      });
+
+      describe('When both channels fail', () => {
+        it('should log the reason of both channels', async () => {
+          mockNotificationsService.sendPushAlert.mockRejectedValue(expoUnavailableError());
+          mockAlertNotifierRegistry.notify.mockRejectedValue(Object.assign(new Error('request failed, reason: '), { code: 'ETIMEDOUT' }));
+
+          await service.dispatch(config);
+          await expect(executeEnqueuedTasks()).rejects.toThrow('Alert delivery failed on expo,telegram');
+
+          expect(errorSpy).toHaveBeenCalledWith(
+            '[ALERT_DELIVERY_FAILED][corr-123] user=user-1 alert=alert-user-1 failed=expo,telegram channels={expo:503, telegram:ETIMEDOUT}'
+          );
+          expectNotNotified();
+        });
+      });
+
+      describe('When the user has no reachable channel at all', () => {
+        beforeEach(async () => {
+          mockNotificationsService.sendPushAlert.mockResolvedValue(false);
+          mockAlertNotifierRegistry.notify.mockResolvedValue(false);
+
+          await service.dispatch(config);
+          await executeEnqueuedTasks();
+        });
+
+        it('should log ALERT_NO_CHANNEL as a warning', () => {
+          expect(warnSpy).toHaveBeenCalledWith(
+            expect.stringContaining('[ALERT_NO_CHANNEL][corr-123] user=user-1 type=break_in VIN TEST_VIN_123 channels={expo:none, telegram:none}')
+          );
+        });
+
+        it('should take the alert out of the sweep instead of retrying it forever', () => {
+          expect(mockAlertNotificationStateService.markNotificationUndeliverable).toHaveBeenCalledWith('alert-user-1');
+          expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).not.toHaveBeenCalled();
+        });
+
+        it('should not log ALERT_DELIVERY_FAILED', () => {
+          expect(errorSpy).not.toHaveBeenCalledWith(expect.stringContaining('[ALERT_DELIVERY_FAILED]'));
+        });
+
+        it('should not mark the alert as sent nor log it as notified', () => {
+          expectNotNotified();
+        });
+      });
+
+      describe('When Telegram is disabled and the user has no push device', () => {
+        it('should treat the alert as undeliverable', async () => {
+          mockNotificationsService.shouldSendTelegram.mockResolvedValue(false);
+          mockNotificationsService.sendPushAlert.mockResolvedValue(false);
+
+          await service.dispatch(config);
+          await executeEnqueuedTasks();
+
+          expect(mockAlertNotifierRegistry.notify).not.toHaveBeenCalled();
+          expect(mockAlertNotificationStateService.markNotificationUndeliverable).toHaveBeenCalledWith('alert-user-1');
+          expectNotNotified();
+        });
+      });
+
+      describe('When nothing was sent because the user muted alerts after the alert was recorded', () => {
+        beforeEach(async () => {
+          mockNotificationsService.isMuted.mockResolvedValue(true);
+          mockNotificationsService.sendPushAlert.mockResolvedValue(false);
+          mockAlertNotifierRegistry.notify.mockResolvedValue(false);
+
+          await service.dispatch(config);
+          await executeEnqueuedTasks();
+        });
+
+        it('should handle it as a muted alert', () => {
+          expect(mockAlertNotificationStateService.markNotificationSent).toHaveBeenCalledWith('alert-user-1');
+          expect(mockAlertNotificationStateService.markNotificationUndeliverable).not.toHaveBeenCalled();
+        });
+
+        it('should not log ALERT_NO_CHANNEL', () => {
+          expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('[ALERT_NO_CHANNEL]'));
+        });
+      });
     });
 
     it('should record alerts with muted true when a Sentry alert is dispatched for a muted user', async () => {
@@ -285,7 +646,7 @@ describe('The VehicleAlertNotifierService class', () => {
       await service.dispatch(sentryConfig);
       await executeEnqueuedTasks();
 
-      expect(mockAlertsService.markNotificationSent).toHaveBeenCalledWith('alert-user-1');
+      expect(mockAlertNotificationStateService.markNotificationSent).toHaveBeenCalledWith('alert-user-1');
       expect(mockNotificationsService.sendPushAlert).not.toHaveBeenCalled();
       expect(mockAlertNotifierRegistry.notify).not.toHaveBeenCalled();
       expect(mockUserLanguageService.getUserLanguage).not.toHaveBeenCalled();
@@ -351,6 +712,7 @@ describe('The VehicleAlertNotifierService class', () => {
         expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith({
           alertSound: AlertSound.SentrySiren,
           correlationId: 'corr-123',
+          detectedAt: expect.any(Date),
           severity: AlertEventSeverity.Critical,
           type: AlertEventType.BreakIn,
           userId: 'user-1',
@@ -361,6 +723,7 @@ describe('The VehicleAlertNotifierService class', () => {
         expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith({
           alertSound: AlertSound.SentrySiren,
           correlationId: 'corr-123',
+          detectedAt: expect.any(Date),
           severity: AlertEventSeverity.Critical,
           type: AlertEventType.BreakIn,
           userId: 'user-2',
@@ -368,6 +731,27 @@ describe('The VehicleAlertNotifierService class', () => {
           vehicleName: 'My Tesla',
           vin: 'TEST_VIN_123',
         });
+      });
+    });
+
+    describe('When the alert is recorded', () => {
+      let dispatchStartedAt: number;
+      let dispatchEndedAt: number;
+
+      beforeEach(async () => {
+        mockVehicleRepository.find.mockResolvedValue([{ userId: 'user-1', display_name: 'My Tesla' } as Vehicle]);
+        mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
+        dispatchStartedAt = Date.now();
+        await service.dispatch(config);
+        dispatchEndedAt = Date.now();
+        await executeEnqueuedTasks();
+      });
+
+      it('should date the push alert with the time the alert was recorded', () => {
+        const [{ detectedAt }] = mockNotificationsService.sendPushAlert.mock.calls[0];
+        const detectedAtMs = (detectedAt as Date).getTime();
+
+        expect(detectedAtMs >= dispatchStartedAt && detectedAtMs <= dispatchEndedAt).toBe(true);
       });
     });
 
@@ -408,6 +792,7 @@ describe('The VehicleAlertNotifierService class', () => {
         expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledWith({
           alertSound: AlertSound.SentrySiren,
           correlationId: 'corr-123',
+          detectedAt: expect.any(Date),
           severity: AlertEventSeverity.Critical,
           type: AlertEventType.BreakIn,
           userId: 'user-1',
@@ -454,7 +839,7 @@ describe('The VehicleAlertNotifierService class', () => {
         await service.dispatch(config);
         await executeEnqueuedTasks();
 
-        expect(mockAlertsService.markNotificationSent).toHaveBeenCalled();
+        expect(mockAlertNotificationStateService.markNotificationSent).toHaveBeenCalled();
       });
     });
 
@@ -525,6 +910,7 @@ describe('The VehicleAlertNotifierService class', () => {
     it('should enqueue a job carrying the alert event id', () => {
       service.enqueueNotification({
         alertEventId: 'alert-1',
+        detectedAt: new Date(),
         userId: 'user-1',
         vin: 'VIN-1',
         vehicleDisplayName: 'My Tesla',
@@ -541,7 +927,98 @@ describe('The VehicleAlertNotifierService class', () => {
           vin: 'VIN-1',
           correlationId: 'corr-1',
           alertEventId: 'alert-1',
+          lane: NotificationLane.Immediate,
         })
+      );
+    });
+
+    describe('When a fresh alert waited over a minute for its first attempt', () => {
+      const stalePayload = (): Parameters<VehicleAlertNotifierService['enqueueNotification']>[0] => ({
+        alertEventId: 'alert-1',
+        detectedAt: new Date(Date.now() - 61_000),
+        severity: AlertEventSeverity.Warning,
+        type: AlertEventType.Sentry,
+        userId: 'user-1',
+        vin: 'VIN-1',
+      });
+
+      describe('When this server gets the lease', () => {
+        beforeEach(async () => {
+          mockAlertNotificationStateService.leaseNotification.mockResolvedValue({ isLeased: true });
+          service.enqueueNotification(stalePayload());
+          await executeEnqueuedTasks();
+        });
+
+        it('should lease the alert as a first attempt before sending it', () => {
+          expect(mockAlertNotificationStateService.leaseNotification).toHaveBeenCalledWith('alert-1', 0, 300_000);
+        });
+
+        it('should send the alert', () => {
+          expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledTimes(1);
+        });
+      });
+
+      describe('When a retry on another server already took the alert', () => {
+        beforeEach(async () => {
+          mockAlertNotificationStateService.leaseNotification.mockResolvedValue({ isLeased: false });
+          service.enqueueNotification(stalePayload());
+          await executeEnqueuedTasks();
+        });
+
+        it('should not send the alert a second time', () => {
+          expect(mockNotificationsService.sendPushAlert).not.toHaveBeenCalled();
+          expect(mockAlertNotifierRegistry.notify).not.toHaveBeenCalled();
+        });
+
+        it('should not count a failed attempt', () => {
+          expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).not.toHaveBeenCalled();
+        });
+      });
+
+      describe('When the alert comes from the sweeper, which leased it already', () => {
+        it('should send it without leasing it again', async () => {
+          service.enqueueNotification(stalePayload(), NotificationLane.Retry);
+          await executeEnqueuedTasks();
+
+          expect(mockAlertNotificationStateService.leaseNotification).not.toHaveBeenCalled();
+          expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledTimes(1);
+        });
+      });
+    });
+
+    describe('When a fresh alert gets its first attempt right away', () => {
+      it('should send it without leasing it', async () => {
+        service.enqueueNotification({
+          alertEventId: 'alert-1',
+          detectedAt: new Date(),
+          severity: AlertEventSeverity.Warning,
+          type: AlertEventType.Sentry,
+          userId: 'user-1',
+          vin: 'VIN-1',
+        });
+        await executeEnqueuedTasks();
+
+        expect(mockAlertNotificationStateService.leaseNotification).not.toHaveBeenCalled();
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('should use the lane it is given', () => {
+      service.enqueueNotification(
+        {
+          alertEventId: 'alert-1',
+          detectedAt: new Date(),
+          severity: AlertEventSeverity.Warning,
+          type: AlertEventType.Sentry,
+          userId: 'user-1',
+          vin: 'VIN-1',
+        },
+        NotificationLane.Retry
+      );
+
+      expect(mockNotificationQueueService.enqueue).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.objectContaining({ lane: NotificationLane.Retry })
       );
     });
   });

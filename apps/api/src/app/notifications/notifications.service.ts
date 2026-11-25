@@ -7,53 +7,17 @@ import { PushDeviceToken } from '../../entities/push-device-token.entity';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
 import { AlertEventSeverity, AlertEventType } from '../../entities/alert-event.entity';
 import i18n from '../../i18n';
-import { NOTIFICATION_REQUEST_TIMEOUT_MS } from '../../config/notification-timeout.config';
-import { withTimeout } from '../../common/utils/with-timeout.util';
 import { AlertSound } from '../alerts/enums/alert-sound.enum';
-import { CounterMeasure } from '../alerts/enums/counter-measure.enum';
 import { describeCounterMeasures } from '../alerts/common/counter-measure-description.util';
-
-export interface PushAlertContext {
-  alertSound: AlertSound;
-  correlationId?: string;
-  severity: AlertEventSeverity;
-  type: AlertEventType;
-  userId: string;
-  userLanguage: 'en' | 'fr';
-  vehicleName?: string;
-  vin?: string;
-}
-
-export interface PushCounterMeasureContext {
-  counterMeasures: CounterMeasure[];
-  userId: string;
-  userLanguage: 'en' | 'fr';
-  vehicleName: string;
-  vin: string;
-}
-
-export interface PushDeliveryResult {
-  isDelivered: boolean;
-}
-
-export interface NotificationPreferencesDto {
-  critical_alerts_enabled: boolean;
-  critical_only: boolean;
-  muted_until: string | null;
-  push_enabled: boolean;
-  telegram_enabled: boolean;
-}
-
-interface ExpoPushResponse {
-  data?: {
-    details?: {
-      error?: string;
-    };
-    id?: string;
-    message?: string;
-    status?: string;
-  };
-}
+import { describeLateDelivery } from '../alerts/common/late-delivery-notice.util';
+import { ExpoPushClient } from './expo-push.client';
+import { ExpoPushError } from './expo-push.error';
+import {
+  NotificationPreferencesDto,
+  PushAlertContext,
+  PushCounterMeasureContext,
+  PushDeliveryResult,
+} from './notifications.types';
 
 interface PushAlertContent {
   body: string;
@@ -70,7 +34,8 @@ export class NotificationsService {
     @InjectRepository(PushDeviceToken)
     private readonly pushDeviceTokenRepository: Repository<PushDeviceToken>,
     @InjectRepository(TelegramConfig)
-    private readonly telegramConfigRepository: Repository<TelegramConfig>
+    private readonly telegramConfigRepository: Repository<TelegramConfig>,
+    private readonly expoPushClient: ExpoPushClient
   ) {}
 
   public async getPreferences(userId: string, token?: string): Promise<NotificationPreferencesDto> {
@@ -173,7 +138,7 @@ export class NotificationsService {
 
     await this.dispatchPushToDevices(
       eligibleDevices,
-      this.resolveAlertTexts(context.type, context.userLanguage, context.vehicleName),
+      this.resolveAlertTexts(context),
       context
     );
 
@@ -226,14 +191,16 @@ export class NotificationsService {
     }
   }
 
-  private resolveAlertTexts(type: AlertEventType, lng: 'en' | 'fr', vehicleName?: string): PushAlertContent {
+  private resolveAlertTexts({ detectedAt, type, userLanguage: lng, vehicleName }: PushAlertContext): PushAlertContent {
     const context = vehicleName ? 'withVehicle' : undefined;
     const [bodyKey, titleKey] = type === AlertEventType.BreakIn
       ? ['A break-in attempt was detected.', 'Intrusion alert']
       : ['A Sentry event was detected.', 'Sentry alert'];
+    const lateDeliveryNotice = describeLateDelivery(detectedAt, lng);
+    const body = i18n.t(bodyKey, { lng });
 
     return {
-      body: i18n.t(bodyKey, { lng }),
+      body: lateDeliveryNotice ? `${body}\n${lateDeliveryNotice}` : body,
       title: i18n.t(titleKey, { context, lng, vehicleName }),
     };
   }
@@ -323,28 +290,17 @@ export class NotificationsService {
     content: PushAlertContent,
     context: PushAlertContext
   ): Promise<void> {
-    const { correlationId } = context;
-
     try {
-      const pushStart = Date.now();
-      const response = await withTimeout(
-        (signal) => fetch('https://exp.host/--/api/v2/push/send', {
-          body: JSON.stringify(this.buildExpoPushBody(device, content, context)),
-          headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-          method: 'POST',
-          signal,
-        }),
-        NOTIFICATION_REQUEST_TIMEOUT_MS,
-        `Expo push request timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
-      );
-
-      const pushTime = Date.now() - pushStart;
-      this.logger.log(`[EXPO_PUSH_LATENCY][${correlationId || 'none'}] Push sent to device ${device.id} in ${pushTime}ms`);
-
-      await this.handleExpoPushResponse(device, response);
+      await this.expoPushClient.send(this.buildExpoPushBody(device, content, context), { correlationId: context.correlationId, deviceId: device.id });
     } catch (error) {
-      this.logger.error(`[NOTIFICATION_ERROR] Failed to send push notification: ${error instanceof Error ? error.message : 'unknown error'} (correlation: ${correlationId || 'none'})`);
+      await this.removeUnregisteredDevice(device, error);
       throw error;
+    }
+  }
+
+  private async removeUnregisteredDevice(device: PushDeviceToken, error: unknown): Promise<void> {
+    if (error instanceof ExpoPushError && error.isDeviceNotRegistered) {
+      await this.pushDeviceTokenRepository.delete({ id: device.id });
     }
   }
 
@@ -406,31 +362,5 @@ export class NotificationsService {
   private buildTeslaRedirectUrl(userId: string, userLanguage: 'en' | 'fr'): string {
     const baseUrl = process.env.TELEGRAM_WEBHOOK_BASE || 'http://localhost:3000';
     return `${baseUrl}/redirect/tesla-app?userId=${encodeURIComponent(userId)}&lang=${userLanguage}`;
-  }
-
-  private async handleExpoPushResponse(device: PushDeviceToken, response: Response): Promise<void> {
-    const result = await this.parseExpoPushResponse(response);
-
-    if (result.data?.details?.error === 'DeviceNotRegistered') {
-      await this.removePushDevice(device);
-    }
-
-    if (!response.ok || result.data?.status === 'error') {
-      const message = result.data?.message ?? response.statusText ?? 'Expo push rejected';
-      this.logger.warn(`[NOTIFICATION_ERROR] Expo push rejected token ${device.id}: ${message}`);
-      throw new Error(message);
-    }
-  }
-
-  private async parseExpoPushResponse(response: Response): Promise<ExpoPushResponse> {
-    try {
-      return (await response.json()) as ExpoPushResponse;
-    } catch {
-      return {};
-    }
-  }
-
-  private async removePushDevice(device: PushDeviceToken): Promise<void> {
-    await this.pushDeviceTokenRepository.delete({ id: device.id });
   }
 }

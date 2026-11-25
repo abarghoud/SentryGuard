@@ -1,7 +1,9 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TelegramService } from './telegram.service';
+import { TelegramMessageSender } from './telegram-message-sender.service';
 import { TelegramBotService } from './telegram-bot.service';
+import { TelegramWebhookRegistrationService } from './telegram-webhook-registration.service';
 import { TelegramController } from './telegram.controller';
 import { TelegramWebhookController } from './telegram-webhook.controller';
 import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.service';
@@ -14,6 +16,7 @@ import { TelegramConfigService } from './telegram-config.service';
 import { TelegramFailureHandlerService } from './handlers/telegram-failure-handler.service';
 import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import { RetryManager } from '../shared/retry-manager.service';
+import { DistributedLockService } from '../../common/services/distributed-lock.service';
 import { telegramRetryManager } from './telegram-retry-manager.token';
 import { TelegramConfig } from '../../entities/telegram-config.entity';
 import { User } from '../../entities/user.entity';
@@ -37,7 +40,10 @@ import { OffensiveResponseModule } from '../offensive-response/offensive-respons
   controllers: [TelegramController, TelegramWebhookController],
   providers: [
     TelegramService,
+    TelegramMessageSender,
     TelegramBotService,
+    TelegramWebhookRegistrationService,
+    DistributedLockService,
     TelegramKeyboardBuilderService,
     TelegramContextService,
     TelegramAccountLinkingService,

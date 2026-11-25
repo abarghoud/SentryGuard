@@ -390,7 +390,7 @@ await expect(act()).rejects.toThrow(expectedError);
 ### File Naming
 - **Lowercase with hyphens** for non-React files: `user-service.ts`, `auth-guard.ts`
 - **PascalCase for React components**: `UserProfile.tsx`, `LanguageSwitcher.tsx`
-- **File type suffixes** (before extension): `.controller.ts`, `.service.ts`, `.enum.ts`, `.requirements.ts`, `.test.ts`
+- **File type suffixes** (before extension): `.controller.ts`, `.service.ts`, `.enum.ts`, `.error.ts`, `.types.ts`, `.requirements.ts`, `.test.ts`
 - Files must be sufficiently explicit to understand their role without looking at folder structure
 
 ### Naming Conventions
@@ -424,11 +424,14 @@ await expect(act()).rejects.toThrow(expectedError);
   2. Internal libraries
   3. Local project files
 - **Named exports preferred** over default exports (except Next.js pages)
+- **One class, enum or error per file** - a file that holds a class exports that class and nothing else. An enum goes in its own `.enum.ts`, an error class in its own `.error.ts`, and interfaces used by more than one file in a `.types.ts`. Only `.types.ts`, `.util.ts` and `.config.ts` files may export several related items. A type used by a single file stays in that file, unexported
+  - Older files that break this rule are not a model: do not add another export to them
 - **Async/await** over direct Promise manipulation
 - **Ternary for React conditionals**: `{condition ? <Component /> : null}` not `{condition && <Component />}`
 
 ### Clean Code Principles
 - **Methods max 10 lines** - extract logic into private methods
+- **Classes max 200 lines, one responsibility** - short methods are not enough: a class that orchestrates must not also carry the retries, the HTTP transport, the persistence or the formatting. When a change (a bug fix included) would push a class past 200 lines or give it a second reason to change, the new behaviour goes in its own class, injected into the first, in the same change. A class already over the limit must not grow
 - **One level of abstraction** per method - don't mix high-level and low-level operations
 - **No side effects** - methods do exactly what their name says
 - **No parameter mutation** - return new values explicitly

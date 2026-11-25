@@ -1,3 +1,4 @@
+import { OperationTimeoutError } from './operation-timeout.error';
 import { withTimeout } from './with-timeout.util';
 
 describe('The withTimeout() function', () => {
@@ -30,5 +31,15 @@ describe('The withTimeout() function', () => {
 
     await rejection;
     expect(wasAborted).toBe(true);
+  });
+
+  it('should reject with an OperationTimeoutError so callers can tell a timeout from a network error', async () => {
+    const operation = jest.fn(() => new Promise<string>(() => undefined));
+
+    const result = withTimeout(operation, 1000, 'request timed out');
+    const rejection = expect(result).rejects.toBeInstanceOf(OperationTimeoutError);
+    await jest.advanceTimersByTimeAsync(1000);
+
+    await rejection;
   });
 });

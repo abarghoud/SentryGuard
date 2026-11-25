@@ -1,4 +1,5 @@
 import { mock, MockProxy } from 'jest-mock-extended';
+import { NotificationLane } from './notification-lane.enum';
 import { NotificationQueueService } from './notification-queue.service';
 import { TokenBucketRateLimiterService } from '../../common/services/token-bucket-rate-limiter.service';
 
@@ -75,6 +76,79 @@ describe('The NotificationQueueService class', () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
 
       expect(droppedTask).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('When retries fill their lane', () => {
+    let service: NotificationQueueService;
+    let freshAlertTask: jest.Mock;
+
+    beforeEach(async () => {
+      service = new NotificationQueueService(mockRateLimiter, 100, 1);
+      freshAlertTask = jest.fn().mockResolvedValue(undefined);
+      const hangingRetry = jest.fn().mockReturnValue(new Promise<void>(() => undefined));
+
+      service.enqueue(hangingRetry, { label: 'RETRY-1', lane: NotificationLane.Retry, vin: 'VIN-1' });
+      service.enqueue(hangingRetry, { label: 'RETRY-2', lane: NotificationLane.Retry, vin: 'VIN-2' });
+      service.enqueue(freshAlertTask, { label: 'FRESH', vin: 'VIN-3' });
+
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+
+    it('should still run a fresh alert right away', () => {
+      expect(freshAlertTask).toHaveBeenCalledTimes(1);
+    });
+
+    it('should leave the retry backlog minus the retries that are running or waiting', () => {
+      expect(service.countFreeRetrySlots(20)).toBe(18);
+    });
+
+    it('should leave no slot once the retry backlog is reached', () => {
+      expect(service.countFreeRetrySlots(2)).toBe(0);
+    });
+
+    it('should stop waiting for the retry lane after the timeout', async () => {
+      const startedAt = Date.now();
+
+      await service.waitForRetryLaneIdle(60);
+
+      expect(Date.now() - startedAt).toBeGreaterThanOrEqual(55);
+    });
+  });
+
+  describe('The countFreeRetrySlots() method', () => {
+    describe('When the whole queue is almost full', () => {
+      it('should not offer more slots than the queue can take', () => {
+        const service = new NotificationQueueService(mockRateLimiter, 3, 1);
+        const hangingTask = jest.fn().mockReturnValue(new Promise<void>(() => undefined));
+        service.enqueue(hangingTask, { label: 'FRESH-1', vin: 'VIN-1' });
+        service.enqueue(hangingTask, { label: 'FRESH-2', vin: 'VIN-2' });
+
+        expect(service.countFreeRetrySlots(20)).toBe(1);
+      });
+    });
+
+    describe('When the queue is shutting down', () => {
+      it('should offer no slot', async () => {
+        const service = new NotificationQueueService(mockRateLimiter, 100, 1);
+        await service.drain(10);
+
+        expect(service.countFreeRetrySlots(20)).toBe(0);
+      });
+    });
+  });
+
+  describe('The waitForRetryLaneIdle() method', () => {
+    describe('When the retries finish before the timeout', () => {
+      it('should resolve once the retry lane is empty', async () => {
+        const service = new NotificationQueueService(mockRateLimiter, 100, 1);
+        const retry = jest.fn().mockImplementation(() => new Promise<void>((resolve) => setTimeout(resolve, 30)));
+        service.enqueue(retry, { label: 'RETRY', lane: NotificationLane.Retry, vin: 'VIN-1' });
+
+        await service.waitForRetryLaneIdle(5_000);
+
+        expect(service.countFreeRetrySlots(20)).toBe(20);
+      });
     });
   });
 

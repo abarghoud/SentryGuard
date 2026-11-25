@@ -1,7 +1,10 @@
+import { Logger } from '@nestjs/common';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { Repository } from 'typeorm';
 
-import { NotificationsService, PushDeliveryResult } from './notifications.service';
+import { ExpoPushClient } from './expo-push.client';
+import { NotificationsService } from './notifications.service';
+import { PushDeliveryResult } from './notifications.types';
 import { NotificationPreferences } from '../../entities/notification-preferences.entity';
 import { PushDeviceToken } from '../../entities/push-device-token.entity';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
@@ -52,7 +55,8 @@ describe('The NotificationsService class', () => {
     service = new NotificationsService(
       mockPreferencesRepository,
       mockPushDeviceTokenRepository,
-      mockTelegramConfigRepository
+      mockTelegramConfigRepository,
+      new ExpoPushClient()
     );
   });
 
@@ -146,6 +150,43 @@ describe('The NotificationsService class', () => {
 
       it('should include the sound configured in preferences', () => {
         expect(lastPushPayload().sound).toBe('sentry_siren.wav');
+      });
+    });
+
+    describe('When a French user receives a break-in alert hours after it was detected', () => {
+      beforeEach(async () => {
+        const now = new Date('2026-11-20T00:26:00.000Z');
+        jest.useFakeTimers({ now });
+
+        await service.sendPushAlert({
+          alertSound: AlertSound.SentrySiren,
+          detectedAt: new Date(now.getTime() - (2 * 60 + 5) * 60_000),
+          severity: AlertEventSeverity.Critical,
+          type: AlertEventType.BreakIn,
+          userId: fakeUserId,
+          userLanguage: 'fr',
+        });
+      });
+
+      it('should say in the body how long ago the alert was detected', () => {
+        expect(lastPushPayload().body).toBe('Une tentative d’intrusion a été détectée.\nAlerte retardée : détectée il y a 2 h 5 min.');
+      });
+    });
+
+    describe('When an English user receives a Sentry alert right after it was detected', () => {
+      beforeEach(async () => {
+        await service.sendPushAlert({
+          alertSound: AlertSound.SentrySiren,
+          detectedAt: new Date(Date.now() - 30_000),
+          severity: AlertEventSeverity.Warning,
+          type: AlertEventType.Sentry,
+          userId: fakeUserId,
+          userLanguage: 'en',
+        });
+      });
+
+      it('should keep the usual body', () => {
+        expect(lastPushPayload().body).toBe('A Sentry event was detected.');
       });
     });
 
@@ -399,6 +440,182 @@ describe('The NotificationsService class', () => {
         await jest.advanceTimersByTimeAsync(10000);
 
         await rejection;
+      });
+    });
+
+    describe('When Expo is temporarily unavailable', () => {
+      const pushContext = {
+        alertSound: AlertSound.SentrySiren,
+        correlationId: 'corr-test',
+        severity: AlertEventSeverity.Critical,
+        type: AlertEventType.BreakIn,
+        userId: fakeUserId,
+        userLanguage: 'en' as const,
+      };
+      const buildExpoResponse = (status: number, body: object, headers: Record<string, string> = {}) => ({
+        headers: { get: (name: string) => headers[name.toLowerCase()] ?? null },
+        json: () => Promise.resolve(body),
+        ok: status >= 200 && status < 300,
+        status,
+        statusText: status === 503 ? 'Service Unavailable' : status === 429 ? 'Too Many Requests' : 'OK',
+      });
+      const unavailableResponse = () => buildExpoResponse(503, {});
+      const okResponse = () => buildExpoResponse(200, { data: { id: 'fake-ticket', status: 'ok' } });
+
+      beforeEach(() => {
+        jest.useFakeTimers();
+      });
+
+      describe('When the first attempt gets a 503 and the retry succeeds', () => {
+        let result: Promise<boolean>;
+
+        beforeEach(async () => {
+          fetchMock.mockResolvedValueOnce(unavailableResponse()).mockResolvedValueOnce(okResponse());
+          result = service.sendPushAlert(pushContext);
+          await jest.advanceTimersByTimeAsync(999);
+        });
+
+        it('should wait 1s before retrying', async () => {
+          expect(fetchMock).toHaveBeenCalledTimes(1);
+          await jest.advanceTimersByTimeAsync(1);
+          expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+
+        it('should report the push as delivered', async () => {
+          await jest.advanceTimersByTimeAsync(1);
+          await expect(result).resolves.toBe(true);
+        });
+      });
+
+      describe('When every attempt gets a 503', () => {
+        let rejection: Promise<void>;
+
+        beforeEach(async () => {
+          fetchMock.mockImplementation(() => Promise.resolve(unavailableResponse()));
+          rejection = expect(service.sendPushAlert(pushContext)).rejects.toMatchObject({ message: 'Service Unavailable', status: 503 });
+          await jest.advanceTimersByTimeAsync(1000);
+          await jest.advanceTimersByTimeAsync(3000);
+          await rejection;
+        });
+
+        it('should retry twice, after 1s then 3s, and stop', async () => {
+          await jest.advanceTimersByTimeAsync(10000);
+          expect(fetchMock).toHaveBeenCalledTimes(3);
+        });
+      });
+
+      describe('When Expo rate-limits the request with a Retry-After header', () => {
+        it('should wait for the Retry-After delay before retrying', async () => {
+          fetchMock.mockResolvedValueOnce(buildExpoResponse(429, {}, { 'retry-after': '2' })).mockResolvedValueOnce(okResponse());
+
+          const result = service.sendPushAlert(pushContext);
+          await jest.advanceTimersByTimeAsync(1999);
+          expect(fetchMock).toHaveBeenCalledTimes(1);
+
+          await jest.advanceTimersByTimeAsync(1);
+          await expect(result).resolves.toBe(true);
+          expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+      });
+
+      describe('When the connection is reset before Expo answers', () => {
+        it('should retry and deliver the push', async () => {
+          const networkError = Object.assign(new TypeError('fetch failed'), {
+            cause: Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }),
+          });
+          fetchMock.mockRejectedValueOnce(networkError).mockResolvedValueOnce(okResponse());
+
+          const result = service.sendPushAlert(pushContext);
+          await jest.advanceTimersByTimeAsync(1000);
+
+          await expect(result).resolves.toBe(true);
+          expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+      });
+
+      describe('When Expo rejects the request with a client error', () => {
+        it('should not retry', async () => {
+          fetchMock.mockResolvedValue(buildExpoResponse(400, { errors: [{ code: 'VALIDATION_ERROR', message: 'Invalid push token' }] }));
+
+          await expect(service.sendPushAlert(pushContext)).rejects.toThrow('Invalid push token');
+          expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+      });
+
+      describe('When the request times out', () => {
+        it('should not retry, to avoid notifying twice', async () => {
+          fetchMock.mockImplementation((_url: string, options: RequestInit) => new Promise<Response>((_, reject) => {
+            options.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+          }));
+
+          const rejection = expect(service.sendPushAlert(pushContext)).rejects.toThrow('ETIMEDOUT');
+          await jest.advanceTimersByTimeAsync(10000);
+          await rejection;
+          await jest.advanceTimersByTimeAsync(10000);
+
+          expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+      });
+
+      describe('When Expo answers 503 only after 9.6s each time', () => {
+        it('should keep the whole send within the 20s budget', async () => {
+          fetchMock.mockImplementation((_url: string, options: RequestInit) => new Promise((resolve, reject) => {
+            const timer = setTimeout(() => resolve(unavailableResponse()), 9_600);
+            options.signal?.addEventListener('abort', () => {
+              clearTimeout(timer);
+              reject(new Error('aborted'));
+            });
+          }));
+
+          const rejection = expect(service.sendPushAlert(pushContext)).rejects.toThrow('ETIMEDOUT');
+          await jest.advanceTimersByTimeAsync(20_000);
+          await rejection;
+
+          expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+      });
+
+      describe('When Expo answers 200 with a body that cannot be read', () => {
+        it('should count the push as delivered rather than send it twice', async () => {
+          fetchMock.mockResolvedValue({ json: () => Promise.reject(new SyntaxError('Unexpected end of JSON input')), ok: true, status: 200, statusText: 'OK' });
+
+          await expect(service.sendPushAlert(pushContext)).resolves.toBe(true);
+          expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+      });
+
+      describe('When Expo answers 200 with an error ticket and no ok ticket', () => {
+        it('should not count the push as delivered', async () => {
+          fetchMock.mockResolvedValue(buildExpoResponse(200, { data: { message: 'Message too big', status: 'error' } }));
+
+          await expect(service.sendPushAlert(pushContext)).rejects.toThrow('Message too big');
+          expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+      });
+
+      describe('When Expo answers with a list of tickets and one is ok', () => {
+        it('should count the push as delivered', async () => {
+          fetchMock.mockResolvedValue(buildExpoResponse(200, { data: [{ message: 'Error', status: 'error' }, { id: 'fake-ticket', status: 'ok' }] }));
+
+          await expect(service.sendPushAlert(pushContext)).resolves.toBe(true);
+        });
+      });
+
+      describe('When the push finally fails', () => {
+        afterEach(() => {
+          jest.restoreAllMocks();
+        });
+
+        it('should log the HTTP status of the failure', async () => {
+          const errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+          fetchMock.mockImplementation(() => Promise.resolve(unavailableResponse()));
+
+          const rejection = expect(service.sendPushAlert(pushContext)).rejects.toThrow('Service Unavailable');
+          await jest.advanceTimersByTimeAsync(4000);
+          await rejection;
+
+          expect(errorSpy).toHaveBeenCalledWith(expect.stringMatching(/\[NOTIFICATION_ERROR\] Failed to send push notification: .*status=503/));
+        });
       });
     });
 

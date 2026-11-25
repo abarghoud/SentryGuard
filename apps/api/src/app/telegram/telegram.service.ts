@@ -1,7 +1,6 @@
 import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { TelegramError } from 'telegraf';
 import i18n from '../../i18n';
-import { TelegramBotService } from './telegram-bot.service';
 import { TelegramMuteService } from './telegram-mute.service';
 import { TelegramContextService } from './telegram-context.service';
 import { TelegramBotUpdateService } from './telegram-bot-update.service';
@@ -9,28 +8,14 @@ import type { ITelegramFailureHandler } from './interfaces/telegram-failure-hand
 import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import { telegramRetryManager } from './telegram-retry-manager.token';
 import { RetryManager } from '../shared/retry-manager.service';
-import { NOTIFICATION_REQUEST_TIMEOUT_MS } from '../../config/notification-timeout.config';
-import { withTimeout } from '../../common/utils/with-timeout.util';
+import { CaughtError } from '../../common/utils/caught-error';
 import { resolveVehicleLabel } from '../../common/utils/vehicle-label.util';
 import { CounterMeasure } from '../alerts/enums/counter-measure.enum';
 import { describeCounterMeasures } from '../alerts/common/counter-measure-description.util';
-import { TelegramMessageOptions } from './telegram.types';
-
-export interface TelegramDeliveryResult {
-  isDelivered: boolean;
-}
-
-type TelegramKeyboard = {
-  inline_keyboard?: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
-  keyboard?: Array<Array<{ text: string }>>;
-  one_time_keyboard?: boolean;
-  resize_keyboard?: boolean;
-};
-
-enum TelegramSendAttempt {
-  Request = 'request',
-  Retry = 'retry',
-}
+import { describeLateDelivery } from '../alerts/common/late-delivery-notice.util';
+import { TelegramMessageSender } from './telegram-message-sender.service';
+import { TelegramSendAttempt } from './telegram-send-attempt.enum';
+import { TelegramAlertInfo, TelegramDeliveryResult, TelegramKeyboard } from './telegram.types';
 
 interface TelegramSendFailureContext {
   correlationPrefix: string;
@@ -45,17 +30,17 @@ export class TelegramService implements OnModuleDestroy {
   private readonly logger = new Logger(TelegramService.name);
 
   constructor(
-    private readonly telegramBotService: TelegramBotService,
     private readonly telegramMuteService: TelegramMuteService,
     private readonly telegramContextService: TelegramContextService,
     private readonly telegramBotUpdateService: TelegramBotUpdateService,
     @Inject(telegramFailureHandler) private readonly failureHandler: ITelegramFailureHandler,
     @Inject(telegramRetryManager) private readonly retryManager: RetryManager,
+    private readonly telegramMessageSender: TelegramMessageSender,
   ) { }
 
-  async sendSentryAlert(
+  public async sendSentryAlert(
     userId: string,
-    alertInfo: { vin: string, display_name?: string },
+    alertInfo: TelegramAlertInfo,
     userLanguage: 'en' | 'fr',
     keyboard?: TelegramKeyboard,
     shouldScheduleRetry = true,
@@ -79,31 +64,27 @@ export class TelegramService implements OnModuleDestroy {
     const options = keyboard ? { keyboard } : undefined;
 
     try {
-      await withTimeout(
-        () => this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage),
-        NOTIFICATION_REQUEST_TIMEOUT_MS,
-        `Telegram bot update request timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
-      );
+      await this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage);
 
       if (this.shouldSimulateMessage(alertInfo.vin)) {
         return await this.simulateMessage(userId, 'alert', alertInfo.vin);
       }
 
-      return await this.sendMessageWithTimeout(chatId, message, options);
+      return await this.telegramMessageSender.send(chatId, message, options);
     } catch (error) {
       return await this.handleSendFailure(error, {
         correlationPrefix: 'telegram-alert',
         messageType: 'sentry alert',
-        retrySend: () => this.sendMessageWithTimeout(chatId, message, options, TelegramSendAttempt.Retry),
+        retrySend: () => this.telegramMessageSender.send(chatId, message, options, TelegramSendAttempt.Retry),
         shouldScheduleRetry,
         userId,
       });
     }
   }
 
-  async sendBreakInAlert(
+  public async sendBreakInAlert(
     userId: string,
-    alertInfo: { vin: string, display_name?: string },
+    alertInfo: TelegramAlertInfo,
     userLanguage: 'en' | 'fr',
     keyboard?: TelegramKeyboard,
     shouldScheduleRetry = true,
@@ -127,22 +108,18 @@ export class TelegramService implements OnModuleDestroy {
     const options = keyboard ? { keyboard } : undefined;
 
     try {
-      await withTimeout(
-        () => this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage),
-        NOTIFICATION_REQUEST_TIMEOUT_MS,
-        `Telegram bot update request timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
-      );
+      await this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage);
 
       if (this.shouldSimulateMessage(alertInfo.vin)) {
         return await this.simulateMessage(userId, 'alert', alertInfo.vin);
       }
 
-      return await this.sendMessageWithTimeout(chatId, message, options);
+      return await this.telegramMessageSender.send(chatId, message, options);
     } catch (error) {
       return await this.handleSendFailure(error, {
         correlationPrefix: 'telegram-alert-breakin',
         messageType: 'break-in alert',
-        retrySend: () => this.sendMessageWithTimeout(chatId, message, options, TelegramSendAttempt.Retry),
+        retrySend: () => this.telegramMessageSender.send(chatId, message, options, TelegramSendAttempt.Retry),
         shouldScheduleRetry,
         userId,
       });
@@ -212,29 +189,16 @@ export class TelegramService implements OnModuleDestroy {
 
   private async sendCounterMeasureMessage(userId: string, chatId: string, message: string): Promise<boolean> {
     try {
-      return await this.sendMessageWithTimeout(chatId, message);
+      return await this.telegramMessageSender.send(chatId, message);
     } catch (error) {
       return await this.handleSendFailure(error, {
         correlationPrefix: 'telegram-counter-measure',
         messageType: 'counter-measure notice',
-        retrySend: () => this.sendMessageWithTimeout(chatId, message, undefined, TelegramSendAttempt.Retry),
+        retrySend: () => this.telegramMessageSender.send(chatId, message, undefined, TelegramSendAttempt.Retry),
         shouldScheduleRetry: true,
         userId,
       });
     }
-  }
-
-  private async sendMessageWithTimeout(
-    chatId: string,
-    message: string,
-    options?: TelegramMessageOptions,
-    attempt = TelegramSendAttempt.Request
-  ): Promise<boolean> {
-    return await withTimeout(
-      () => this.telegramBotService.sendMessage(chatId, message, options),
-      NOTIFICATION_REQUEST_TIMEOUT_MS,
-      `Telegram notification ${attempt} timed out after ${NOTIFICATION_REQUEST_TIMEOUT_MS}ms`
-    );
   }
 
   private async handleSendFailure(error: unknown, context: TelegramSendFailureContext): Promise<false> {
@@ -259,33 +223,42 @@ export class TelegramService implements OnModuleDestroy {
   }
 
   private logError(userId: string, messageType: string, error: unknown): void {
-    this.logger.error(`❌ Failed to send ${messageType} to user: ${userId}:`, error);
+    this.logger.error(`❌ Failed to send ${messageType} to user: ${userId}: ${new CaughtError(error).describe()}`);
   }
 
   private formatSentryAlertMessage(
-    { display_name, vin }: { vin: string, display_name?: string },
+    { detectedAt, display_name, vin }: TelegramAlertInfo,
     lng: 'en' | 'fr'
   ): string {
-    return `
+    const message = `
 🚨 <b>${i18n.t('TESLA SENTRY ALERT', { lng })}</b> 🚨
 
 🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${resolveVehicleLabel(display_name, vin)}
 
 <i>${i18n.t('Sentry Mode activated - Check your vehicle!', { lng })}</i>
     `.trim();
+
+    return this.appendLateDeliveryNotice(message, detectedAt, lng);
   }
 
   private formatBreakInAlertMessage(
-    { display_name, vin }: { vin: string, display_name?: string },
+    { detectedAt, display_name, vin }: TelegramAlertInfo,
     lng: 'en' | 'fr'
   ): string {
-    return `
+    const message = `
 🚨 <b>${i18n.t('TESLA BREAK-IN ALERT', { lng })}</b> 🚨
 
 🚗 <b>${i18n.t('Vehicle', { lng })}:</b> ${resolveVehicleLabel(display_name, vin)}
 
 <i>${i18n.t('Break-in attempt detected. Check your vehicle immediately!', { lng })}</i>
     `.trim();
+
+    return this.appendLateDeliveryNotice(message, detectedAt, lng);
+  }
+
+  private appendLateDeliveryNotice(message: string, detectedAt: Date | undefined, lng: 'en' | 'fr'): string {
+    const lateDeliveryNotice = describeLateDelivery(detectedAt, lng);
+    return lateDeliveryNotice ? `${message}\n\n⏱️ <b>${lateDeliveryNotice}</b>` : message;
   }
 
   private formatCounterMeasureMessage(

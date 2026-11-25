@@ -8,8 +8,11 @@ import { Logger as PinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
 import { validateSecrets } from './common/utils/crypto.util';
 import { validateTeslaProxyConfiguration } from './common/utils/tesla-proxy-agent.util';
+import { preferIpv4Resolution } from './common/utils/ipv4-network.util';
 
 async function bootstrap() {
+  preferIpv4Resolution();
+
   try {
     validateSecrets();
     validateTeslaProxyConfiguration();

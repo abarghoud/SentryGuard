@@ -12,6 +12,7 @@ import { TelegramKeyboardBuilderService } from './telegram-keyboard-builder.serv
 import { TelegramContextService } from './telegram-context.service';
 import { TelegramMessageOptions, CURRENT_BOT_UI_VERSION } from './telegram.types';
 import { TelegramMessageHelper } from './telegram-message.helper';
+import { CaughtError } from '../../common/utils/caught-error';
 
 @Injectable()
 export class TelegramAccountLinkingService implements OnModuleInit {
@@ -76,7 +77,7 @@ export class TelegramAccountLinkingService implements OnModuleInit {
 
       await this.linkAccountToChat(ctx, config, lng);
     } catch (error) {
-      this.logger.error('❌ Error while trying to handle link token:', error);
+      this.logger.error(`❌ Error while trying to handle link token: ${new CaughtError(error).describe()}`);
       await this.safeReply(ctx, '❌ An error occurred. Please try again later.');
     }
   }

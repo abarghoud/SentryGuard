@@ -1,6 +1,7 @@
 import { mock, MockProxy } from 'jest-mock-extended';
 import { NotificationsController } from './notifications.controller';
-import { NotificationsService, NotificationPreferencesDto } from './notifications.service';
+import { NotificationsService } from './notifications.service';
+import { NotificationPreferencesDto } from './notifications.types';
 import { User } from '../../entities/user.entity';
 
 describe('The NotificationsController class', () => {

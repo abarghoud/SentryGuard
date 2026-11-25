@@ -2,13 +2,8 @@ import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import pLimit from 'p-limit';
 import { TokenBucketRateLimiterService } from '../../common/services/token-bucket-rate-limiter.service';
-
-export interface NotificationJobContext {
-  label: string;
-  vin: string;
-  correlationId?: string;
-  alertEventId?: string;
-}
+import { NotificationLane } from './notification-lane.enum';
+import { NotificationJobContext } from './notification-queue.types';
 
 const DRAIN_POLL_INTERVAL_MS = 50;
 const STATS_LOG_INTERVAL_MS = 60_000;
@@ -17,6 +12,7 @@ const STATS_LOG_INTERVAL_MS = 60_000;
 export class NotificationQueueService implements OnModuleDestroy {
   private readonly logger = new Logger(NotificationQueueService.name);
   private readonly limit: ReturnType<typeof pLimit>;
+  private readonly retryLimit: ReturnType<typeof pLimit>;
   private readonly queuedAlertEventIds = new Map<string, number>();
   private isStopping = false;
   private processedCount = 0;
@@ -30,6 +26,7 @@ export class NotificationQueueService implements OnModuleDestroy {
     workerCount: number
   ) {
     this.limit = pLimit(workerCount);
+    this.retryLimit = pLimit(workerCount);
   }
 
   public enqueue(task: () => Promise<void>, context: NotificationJobContext): boolean {
@@ -51,7 +48,7 @@ export class NotificationQueueService implements OnModuleDestroy {
 
     this.trackAlertEventId(context);
 
-    void this.limit(() => this.executeTask(task, context))
+    void this.limiterFor(context)(() => this.executeTask(task, context))
       .catch((error: unknown) => {
         this.logger.error(
           `[NOTIFICATION_QUEUE] Unhandled error for ${context.label}:`,
@@ -69,6 +66,23 @@ export class NotificationQueueService implements OnModuleDestroy {
     return this.queuedAlertEventIds.has(alertEventId);
   }
 
+  public countFreeRetrySlots(maxRetryBacklog: number): number {
+    if (this.isStopping) {
+      return 0;
+    }
+
+    const freeQueueSlots = this.maxQueueSize - this.getQueuedJobCount();
+    return Math.max(Math.min(maxRetryBacklog - this.countRetryJobs(), freeQueueSlots), 0);
+  }
+
+  public async waitForRetryLaneIdle(timeoutMs: number): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+
+    while (this.countRetryJobs() > 0 && !this.isStopping && Date.now() < deadline) {
+      await this.sleep(Math.min(DRAIN_POLL_INTERVAL_MS, deadline - Date.now()));
+    }
+  }
+
   public async drain(timeoutMs: number): Promise<void> {
     this.isStopping = true;
 
@@ -80,7 +94,7 @@ export class NotificationQueueService implements OnModuleDestroy {
 
     if (this.getQueuedJobCount() > 0) {
       this.logger.warn(
-        `[NOTIFICATION_QUEUE] Drain timed out after ${timeoutMs}ms with ${this.limit.pendingCount} pending and ${this.limit.activeCount} active job(s)`
+        `[NOTIFICATION_QUEUE] Drain timed out after ${timeoutMs}ms with ${this.limit.pendingCount + this.retryLimit.pendingCount} pending and ${this.limit.activeCount + this.retryLimit.activeCount} active job(s)`
       );
       return;
     }
@@ -147,8 +161,16 @@ export class NotificationQueueService implements OnModuleDestroy {
     this.queuedAlertEventIds.set(context.alertEventId, currentCount - 1);
   }
 
+  private limiterFor(context: NotificationJobContext): ReturnType<typeof pLimit> {
+    return context.lane === NotificationLane.Retry ? this.retryLimit : this.limit;
+  }
+
+  private countRetryJobs(): number {
+    return this.retryLimit.pendingCount + this.retryLimit.activeCount;
+  }
+
   private getQueuedJobCount(): number {
-    return this.limit.pendingCount + this.limit.activeCount;
+    return this.limit.pendingCount + this.limit.activeCount + this.countRetryJobs();
   }
 
   private sleep(milliseconds: number): Promise<void> {

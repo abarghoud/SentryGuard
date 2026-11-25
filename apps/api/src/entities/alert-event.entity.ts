@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { NotificationChannel } from '../app/alerts/enums/notification-channel.enum';
 
 export enum AlertEventSeverity {
   Critical = 'critical',
@@ -44,6 +45,12 @@ export class AlertEvent {
 
   @Column({ type: 'int', default: 0 })
   notification_attempts!: number;
+
+  @Column({ type: 'text', array: true, default: () => "'{}'" })
+  notification_delivered_channels!: NotificationChannel[];
+
+  @Column({ type: 'timestamptz', nullable: true })
+  notification_next_attempt_at?: Date | null;
 
   @Column({ type: 'boolean', default: false })
   muted!: boolean;
