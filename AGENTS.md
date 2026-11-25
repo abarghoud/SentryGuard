@@ -183,8 +183,9 @@ Not Expo Router — uses `@react-navigation` (bottom tabs: Dashboard / Alerts / 
 ## Code Style
 
 - **No comments, ever** — not in source, tests, native modules, config or scripts, no JSDoc, no exception; context goes in names, tests, commits or the PR. Only machine directives a tool needs (`eslint-disable-next-line`, `@ts-expect-error`) are allowed, without explanation
-- **File naming**: kebab-case with suffix (`.service.ts`, `.controller.ts`, `.entity.ts`, `.enum.ts`, `.requirements.ts`, `.test.ts`); PascalCase for React components
+- **File naming**: kebab-case with suffix (`.service.ts`, `.controller.ts`, `.entity.ts`, `.enum.ts`, `.error.ts`, `.types.ts`, `.requirements.ts`, `.test.ts`); PascalCase for React components
 - **Named exports preferred** (except Next.js pages)
+- **One class, enum or error per file** — a class file exports only its class; enums in `.enum.ts`, errors in `.error.ts`, shared interfaces in `.types.ts`; only `.types.ts`, `.util.ts` and `.config.ts` files export several items. Do not add exports to older files that break this
 - **Explicit access modifiers** on all class members
 - **Strict TypeScript**: no `any`, prefer `unknown`; prefer enums over union types; interfaces over type aliases for objects
 - **Boolean prefixes**: `is`, `has`, `should`
@@ -194,6 +195,7 @@ Not Expo Router — uses `@react-navigation` (bottom tabs: Dashboard / Alerts / 
 - **Async/await** over raw Promises
 - **Composition over inheritance** — use DI, not extends
 - **Methods max 10 lines** — extract into private methods
+- **Classes max 200 lines, one responsibility** — when a change (a bug fix included) would exceed that or add a second responsibility (retries, transport, persistence, formatting), put it in its own injected class in the same change; a class already over the limit must not grow
 - **React**: ternary `{cond ? <X/> : null}` not `&&`; components are presentational only
 
 ## Commit Convention
