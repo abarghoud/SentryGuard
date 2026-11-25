@@ -6,7 +6,8 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { User } from '../../entities/user.entity';
 import { ThrottleOptions } from '../../config/throttle.config';
 import { MuteNotificationsDto } from './mute-notifications.dto';
-import { NotificationPreferencesDto, NotificationsService } from './notifications.service';
+import { NotificationsService } from './notifications.service';
+import { NotificationPreferencesDto } from './notifications.types';
 
 interface RegisterPushTokenBody {
   platform?: string;

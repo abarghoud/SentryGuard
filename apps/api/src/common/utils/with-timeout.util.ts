@@ -1,10 +1,4 @@
-export class OperationTimeoutError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'OperationTimeoutError';
-    Object.setPrototypeOf(this, new.target.prototype);
-  }
-}
+import { OperationTimeoutError } from './operation-timeout.error';
 
 export async function withTimeout<T>(
   operation: (signal: AbortSignal) => Promise<T>,

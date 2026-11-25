@@ -1,5 +1,6 @@
 import { mock, MockProxy } from 'jest-mock-extended';
-import { NotificationLane, NotificationQueueService } from './notification-queue.service';
+import { NotificationLane } from './notification-lane.enum';
+import { NotificationQueueService } from './notification-queue.service';
 import { TokenBucketRateLimiterService } from '../../common/services/token-bucket-rate-limiter.service';
 
 describe('The NotificationQueueService class', () => {

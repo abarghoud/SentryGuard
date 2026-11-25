@@ -2,7 +2,9 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { TelegramError } from 'telegraf';
-import { TelegramDeliveryResult, TelegramService } from './telegram.service';
+import { TelegramService } from './telegram.service';
+import { TelegramMessageSender } from './telegram-message-sender.service';
+import { TelegramDeliveryResult } from './telegram.types';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramMuteService } from './telegram-mute.service';
 import { TelegramContextService } from './telegram-context.service';
@@ -60,6 +62,7 @@ describe('The TelegramService class', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TelegramService,
+        TelegramMessageSender,
         { provide: TelegramBotService, useValue: mockTelegramBotService },
         { provide: TelegramMuteService, useValue: mockTelegramMuteService },
         { provide: TelegramContextService, useValue: mockTelegramContextService },

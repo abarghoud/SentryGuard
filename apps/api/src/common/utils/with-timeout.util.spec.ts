@@ -1,4 +1,5 @@
-import { OperationTimeoutError, withTimeout } from './with-timeout.util';
+import { OperationTimeoutError } from './operation-timeout.error';
+import { withTimeout } from './with-timeout.util';
 
 describe('The withTimeout() function', () => {
   beforeEach(() => {

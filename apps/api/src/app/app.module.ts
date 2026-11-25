@@ -16,6 +16,8 @@ import { VehicleBreakInDetectionSettingsService } from './alerts/break-in/vehicl
 import { CounterMeasureNotifierService } from './alerts/break-in/counter-measure-notifier.service';
 import { SentryModeStateTrackerService } from './offensive-response/sentry-mode-state-tracker.service';
 import { VehicleAlertNotifierService } from './alerts/common/vehicle-alert-notifier.service';
+import { UserAlertNotificationService } from './alerts/common/user-alert-notification.service';
+import { AlertChannelDeliveryService } from './alerts/common/alert-channel-delivery.service';
 import { VehicleAlertSoundResolverService } from './alerts/common/vehicle-alert-sound-resolver.service';
 import { OffensiveResponseModule } from './offensive-response/offensive-response.module';
 import { VehicleAlertSoundsModule } from './vehicle-alert-sounds/vehicle-alert-sounds.module';
@@ -119,6 +121,8 @@ const ociTransportStream = createOciTransportStream();
     NotificationSweeperService,
     TelemetryValidationService,
     VehicleAlertNotifierService,
+    UserAlertNotificationService,
+    AlertChannelDeliveryService,
     VehicleAlertSoundResolverService,
     SentryAlertHandlerService,
     BreakInAlertHandlerService,

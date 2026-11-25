@@ -1,22 +1,17 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Telegraf, Context, Telegram } from 'telegraf';
-import type { UserFromGetMe } from 'telegraf/types';
 import type { Request, Response } from 'express';
 import type { AbortSignal as TelegrafAbortSignal } from 'abort-controller';
 import { TelegramMessageOptions } from './telegram.types';
 import { TelegramMessageHelper } from './telegram-message.helper';
-import { TelegramWebhookRegistrationBusyError, TelegramWebhookRegistrationService } from './telegram-webhook-registration.service';
-import type { TelegramWebhookTarget } from './telegram-webhook-registration.service';
+import { TelegramWebhookRegistrationService } from './telegram-webhook-registration.service';
+import { TelegramWebhookTarget } from './telegram-webhook.types';
 import { createIpv4HttpsAgent } from '../../common/utils/ipv4-network.util';
 import { CaughtError } from '../../common/utils/caught-error';
-import { withTimeout } from '../../common/utils/with-timeout.util';
 
 const MAX_SHARED_SOCKETS = Infinity;
 const MIN_WEBHOOK_SECRET_PATH_LENGTH = 16;
 const MIN_WEBHOOK_SECRET_TOKEN_LENGTH = 24;
-const INITIALIZATION_REQUEST_TIMEOUT_MS = 10_000;
-const INITIAL_INITIALIZATION_RETRY_DELAY_MS = 1_000;
-const MAX_INITIALIZATION_RETRY_DELAY_MS = 60_000;
 
 @Injectable()
 export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
@@ -32,7 +27,6 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   private webhookCallback:
     | ReturnType<Telegraf<Context>['webhookCallback']>
     | null = null;
-  private isStopping = false;
 
   constructor(private readonly telegramWebhookRegistrationService: TelegramWebhookRegistrationService) {}
 
@@ -47,7 +41,6 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   }
 
   public onModuleDestroy(): void {
-    this.isStopping = true;
     if (this.bot && this.mode === 'polling') {
       try {
         this.bot.stop('SIGTERM');
@@ -169,7 +162,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.webhookCallback = bot.webhookCallback(target.path);
-    void this.initializeUntilReady(target);
+    void this.telegramWebhookRegistrationService.registerUntilReady(bot, target);
   }
 
   private resolveWebhookTarget(): TelegramWebhookTarget | null {
@@ -208,52 +201,6 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     }
 
     return true;
-  }
-
-  private async initializeUntilReady(target: TelegramWebhookTarget): Promise<void> {
-    for (let attempt = 0; !this.isStopping; attempt++) {
-      try {
-        await this.initializeWebhookBot(target);
-        return;
-      } catch (error) {
-        await this.waitBeforeInitializationRetry(error, attempt);
-      }
-    }
-  }
-
-  private async initializeWebhookBot(target: TelegramWebhookTarget): Promise<void> {
-    if (!this.bot) {
-      return;
-    }
-
-    this.bot.botInfo ??= await this.fetchBotInfo(this.bot.telegram);
-    await this.telegramWebhookRegistrationService.registerOnce(this.bot.telegram, target);
-    this.logger.log('✅ Telegram bot initialized in webhook mode');
-  }
-
-  private fetchBotInfo(telegram: Telegram): Promise<UserFromGetMe> {
-    return withTimeout(
-      (signal) => telegram.callApi('getMe', {}, { signal: signal as TelegrafAbortSignal }),
-      INITIALIZATION_REQUEST_TIMEOUT_MS,
-      `Telegram getMe timed out after ${INITIALIZATION_REQUEST_TIMEOUT_MS}ms`
-    );
-  }
-
-  private async waitBeforeInitializationRetry(error: unknown, attempt: number): Promise<void> {
-    const backoffMs = Math.min(INITIAL_INITIALIZATION_RETRY_DELAY_MS * 2 ** attempt, MAX_INITIALIZATION_RETRY_DELAY_MS);
-    const delayMs = new CaughtError(error).retryAfterMs() ?? backoffMs;
-
-    this.logInitializationRetry(error, delayMs);
-    await new Promise((resolve) => setTimeout(resolve, delayMs).unref());
-  }
-
-  private logInitializationRetry(error: unknown, delayMs: number): void {
-    if (error instanceof TelegramWebhookRegistrationBusyError) {
-      this.logger.log(`[TELEGRAM_WEBHOOK] Another instance is registering the webhook, registering again in ${delayMs}ms`);
-      return;
-    }
-
-    this.logger.error(`❌ Telegram bot initialization error, retrying in ${delayMs}ms: ${new CaughtError(error).describe()}`);
   }
 
   private getWebhookPath(secretPath: string): string {

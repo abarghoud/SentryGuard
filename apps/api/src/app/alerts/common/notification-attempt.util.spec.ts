@@ -1,12 +1,7 @@
 import { AlertEventNotificationStatus, NotificationChannel } from '../../../entities/alert-event.entity';
 import { AlertNotificationState } from '../interfaces/alert-notification-repository.requirements';
-import {
-  computeRetryDelayMs,
-  mergeDeliveredChannels,
-  toFailedAttemptState,
-  toSentState,
-  toUndeliverableState,
-} from './notification-attempt.util';
+import { toFailedAttemptState, toSentState, toUndeliverableState } from './notification-attempt.util';
+import { NotificationRetryPolicy } from './notification-attempt.types';
 import {
   NOTIFICATION_RETRY_BASE_DELAY_MS,
   NOTIFICATION_RETRY_MAX_DELAY_MS,
@@ -22,19 +17,21 @@ const pendingState = (overrides: Partial<AlertNotificationState> = {}): AlertNot
   status: AlertEventNotificationStatus.Pending,
   ...overrides,
 });
+const retryDelayAfterFailure = (attempts: number, retryPolicy: NotificationRetryPolicy): number =>
+  (toFailedAttemptState(pendingState({ attempts }), [], retryPolicy, now).nextAttemptAt as Date).getTime() - now.getTime();
 
-describe('The computeRetryDelayMs() function', () => {
+describe('The toFailedAttemptState() function', () => {
   describe('When computing the delay after each failed attempt', () => {
     it('should double from the base delay and cap at the maximum delay', () => {
-      expect([1, 2, 3, 4, 5].map((failedAttempts) => computeRetryDelayMs(failedAttempts, policy))).toStrictEqual([
+      expect([0, 1, 2, 3, 4].map((attempts) => retryDelayAfterFailure(attempts, policy))).toStrictEqual([
         60_000, 120_000, 240_000, 480_000, 900_000,
       ]);
     });
   });
 
   describe('When the attempt count is huge', () => {
-    it('should still return the maximum delay', () => {
-      expect(computeRetryDelayMs(10_000, policy)).toBe(900_000);
+    it('should still schedule the maximum delay', () => {
+      expect(retryDelayAfterFailure(9_999, { ...policy, maxAttempts: 20_000 })).toBe(900_000);
     });
   });
 
@@ -45,26 +42,14 @@ describe('The computeRetryDelayMs() function', () => {
         maxAttempts: NOTIFICATION_SWEEP_MAX_ATTEMPTS,
         maxDelayMs: NOTIFICATION_RETRY_MAX_DELAY_MS,
       };
-      const failedAttempts = Array.from({ length: defaultPolicy.maxAttempts - 1 }, (_, index) => index + 1);
+      const previousAttempts = Array.from({ length: defaultPolicy.maxAttempts - 1 }, (_, index) => index);
 
-      const retryWindowMs = failedAttempts.reduce((total, attempt) => total + computeRetryDelayMs(attempt, defaultPolicy), 0);
+      const retryWindowMs = previousAttempts.reduce((total, attempts) => total + retryDelayAfterFailure(attempts, defaultPolicy), 0);
 
       expect(retryWindowMs).toBeGreaterThanOrEqual(3 * 60 * 60 * 1000);
     });
   });
-});
 
-describe('The mergeDeliveredChannels() function', () => {
-  describe('When channels overlap', () => {
-    it('should return each channel once, sorted', () => {
-      expect(
-        mergeDeliveredChannels([NotificationChannel.Telegram], [NotificationChannel.Expo, NotificationChannel.Telegram])
-      ).toStrictEqual([NotificationChannel.Expo, NotificationChannel.Telegram]);
-    });
-  });
-});
-
-describe('The toFailedAttemptState() function', () => {
   describe('When attempts remain', () => {
     it('should increment the attempt, merge the channels and schedule the backoff', () => {
       expect(toFailedAttemptState(pendingState({ attempts: 1 }), [NotificationChannel.Expo], policy, now)).toStrictEqual({
@@ -105,6 +90,14 @@ describe('The toSentState() function', () => {
         nextAttemptAt: null,
         status: AlertEventNotificationStatus.Sent,
       });
+    });
+  });
+
+  describe('When the channels overlap', () => {
+    it('should list each channel once, sorted', () => {
+      expect(
+        toSentState(pendingState({ deliveredChannels: [NotificationChannel.Telegram] }), [NotificationChannel.Expo, NotificationChannel.Telegram]).deliveredChannels
+      ).toStrictEqual([NotificationChannel.Expo, NotificationChannel.Telegram]);
     });
   });
 });

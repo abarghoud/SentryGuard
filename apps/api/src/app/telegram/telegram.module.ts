@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TelegramService } from './telegram.service';
+import { TelegramMessageSender } from './telegram-message-sender.service';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramWebhookRegistrationService } from './telegram-webhook-registration.service';
 import { TelegramController } from './telegram.controller';
@@ -39,6 +40,7 @@ import { OffensiveResponseModule } from '../offensive-response/offensive-respons
   controllers: [TelegramController, TelegramWebhookController],
   providers: [
     TelegramService,
+    TelegramMessageSender,
     TelegramBotService,
     TelegramWebhookRegistrationService,
     DistributedLockService,

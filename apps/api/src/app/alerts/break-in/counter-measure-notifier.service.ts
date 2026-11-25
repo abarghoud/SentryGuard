@@ -5,8 +5,10 @@ import { AlertEventSeverity } from '../../../entities/alert-event.entity';
 import { Vehicle } from '../../../entities/vehicle.entity';
 import { resolveVehicleLabel } from '../../../common/utils/vehicle-label.util';
 import { NotificationQueueService } from '../../notifications/notification-queue.service';
-import { NotificationsService, PushDeliveryResult } from '../../notifications/notifications.service';
-import { TelegramDeliveryResult, TelegramService } from '../../telegram/telegram.service';
+import { NotificationsService } from '../../notifications/notifications.service';
+import { PushDeliveryResult } from '../../notifications/notifications.types';
+import { TelegramService } from '../../telegram/telegram.service';
+import { TelegramDeliveryResult } from '../../telegram/telegram.types';
 import { UserLanguageService } from '../../user/user-language.service';
 import { CounterMeasure } from '../enums/counter-measure.enum';
 

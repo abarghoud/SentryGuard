@@ -1,15 +1,16 @@
 import { mock, MockProxy } from 'jest-mock-extended';
 import { NotificationSweeperService } from './notification-sweeper.service';
-import { AlertsService } from '../alerts/alerts.service';
+import { AlertNotificationStateService } from '../alerts/alert-notification-state.service';
 import { DistributedLockService } from '../../common/services/distributed-lock.service';
-import { NotificationLane, NotificationQueueService } from './notification-queue.service';
+import { NotificationLane } from './notification-lane.enum';
+import { NotificationQueueService } from './notification-queue.service';
 import { VehicleAlertNotifierService } from '../alerts/common/vehicle-alert-notifier.service';
 import { AlertEvent, AlertEventSeverity, AlertEventType, NotificationChannel } from '../../entities/alert-event.entity';
 
 describe('The NotificationSweeperService class', () => {
   let service: NotificationSweeperService;
 
-  let mockAlertsService: MockProxy<AlertsService>;
+  let mockAlertNotificationStateService: MockProxy<AlertNotificationStateService>;
   let mockDistributedLockService: MockProxy<DistributedLockService>;
   let mockNotificationQueueService: MockProxy<NotificationQueueService>;
   let mockVehicleAlertNotifierService: MockProxy<VehicleAlertNotifierService>;
@@ -31,12 +32,12 @@ describe('The NotificationSweeperService class', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockAlertsService = mock<AlertsService>();
+    mockAlertNotificationStateService = mock<AlertNotificationStateService>();
     mockDistributedLockService = mock<DistributedLockService>();
     mockNotificationQueueService = mock<NotificationQueueService>();
     mockVehicleAlertNotifierService = mock<VehicleAlertNotifierService>();
     mockVehicleAlertNotifierService.enqueueNotification.mockReturnValue(true);
-    mockAlertsService.leaseNotificationForRetry.mockResolvedValue({ isLeased: true });
+    mockAlertNotificationStateService.leaseNotificationForRetry.mockResolvedValue({ isLeased: true });
     mockNotificationQueueService.countRetryJobs.mockReturnValue(0);
 
     mockDistributedLockService.withLock.mockImplementation(async (_key: number, task: () => Promise<void>) => {
@@ -46,7 +47,7 @@ describe('The NotificationSweeperService class', () => {
     });
 
     service = new NotificationSweeperService(
-      mockAlertsService,
+      mockAlertNotificationStateService,
       mockDistributedLockService,
       mockNotificationQueueService,
       mockVehicleAlertNotifierService
@@ -55,7 +56,7 @@ describe('The NotificationSweeperService class', () => {
 
   describe('The sweep() method', () => {
     it('should run the sweep under a distributed lock', async () => {
-      mockAlertsService.findNotificationsDueForSweep.mockResolvedValue([]);
+      mockAlertNotificationStateService.findNotificationsDueForSweep.mockResolvedValue([]);
 
       await service.sweep();
 
@@ -69,12 +70,12 @@ describe('The NotificationSweeperService class', () => {
 
       await service.sweep();
 
-      expect(mockAlertsService.findNotificationsDueForSweep).not.toHaveBeenCalled();
+      expect(mockAlertNotificationStateService.findNotificationsDueForSweep).not.toHaveBeenCalled();
     });
 
     describe('When stale pending notifications exist', () => {
       beforeEach(() => {
-        mockAlertsService.findNotificationsDueForSweep.mockResolvedValue([
+        mockAlertNotificationStateService.findNotificationsDueForSweep.mockResolvedValue([
           buildPendingAlert('alert-1'),
           buildPendingAlert('alert-2'),
         ]);
@@ -83,7 +84,7 @@ describe('The NotificationSweeperService class', () => {
       it('should query pending alerts older than the threshold', async () => {
         await service.sweep();
 
-        expect(mockAlertsService.findNotificationsDueForSweep).toHaveBeenCalledWith(expect.any(Date), 500);
+        expect(mockAlertNotificationStateService.findNotificationsDueForSweep).toHaveBeenCalledWith(expect.any(Date), 500);
       });
 
       it('should re-enqueue each stale notification', async () => {
@@ -103,7 +104,7 @@ describe('The NotificationSweeperService class', () => {
       });
 
       it('should pass the channels that already delivered so only the failed ones are resent', async () => {
-        mockAlertsService.findNotificationsDueForSweep.mockResolvedValue([
+        mockAlertNotificationStateService.findNotificationsDueForSweep.mockResolvedValue([
           { ...buildPendingAlert('alert-3'), notification_delivered_channels: [NotificationChannel.Expo] } as AlertEvent,
         ]);
 
@@ -124,11 +125,11 @@ describe('The NotificationSweeperService class', () => {
       it('should lease each alert for five minutes before queuing it', async () => {
         await service.sweep();
 
-        expect(mockAlertsService.leaseNotificationForRetry).toHaveBeenCalledWith('alert-1', 0, 300_000);
+        expect(mockAlertNotificationStateService.leaseNotificationForRetry).toHaveBeenCalledWith('alert-1', 0, 300_000);
       });
 
       it('should not queue an alert that another server leased first', async () => {
-        mockAlertsService.leaseNotificationForRetry.mockImplementation(async (alertEventId: string) => ({ isLeased: alertEventId !== 'alert-1' }));
+        mockAlertNotificationStateService.leaseNotificationForRetry.mockImplementation(async (alertEventId: string) => ({ isLeased: alertEventId !== 'alert-1' }));
 
         await service.sweep();
 
@@ -151,12 +152,12 @@ describe('The NotificationSweeperService class', () => {
 
         await service.sweep();
 
-        expect(mockAlertsService.leaseNotificationForRetry).not.toHaveBeenCalled();
+        expect(mockAlertNotificationStateService.leaseNotificationForRetry).not.toHaveBeenCalled();
       });
 
       it('should date the notification with the time the alert was recorded', async () => {
         const recordedAt = new Date('2026-11-19T21:20:00.000Z');
-        mockAlertsService.findNotificationsDueForSweep.mockResolvedValue([
+        mockAlertNotificationStateService.findNotificationsDueForSweep.mockResolvedValue([
           { ...buildPendingAlert('alert-4'), created_at: recordedAt } as AlertEvent,
         ]);
 

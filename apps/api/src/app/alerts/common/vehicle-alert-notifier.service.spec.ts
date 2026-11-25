@@ -3,14 +3,22 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { Repository } from 'typeorm';
-import { VehicleAlertNotifierService, AlertDispatchConfig, AlertChannelDeliveryError } from './vehicle-alert-notifier.service';
+import { VehicleAlertNotifierService } from './vehicle-alert-notifier.service';
+import { UserAlertNotificationService } from './user-alert-notification.service';
+import { AlertChannelDeliveryService } from './alert-channel-delivery.service';
+import { AlertChannelDeliveryError } from './alert-channel-delivery.error';
+import { AlertDispatchConfig } from './alert-delivery.types';
 import { UserLanguageService } from '../../user/user-language.service';
 import { KafkaLogContextService } from '../../../common/services/kafka-log-context.service';
 import { Vehicle } from '../../../entities/vehicle.entity';
 import { TelemetryMessage } from '../../telemetry/models/telemetry-message.model';
-import { AlertsService, NotificationAttemptOutcome, NotificationAttemptResult } from '../alerts.service';
+import { AlertsService } from '../alerts.service';
+import { AlertNotificationStateService } from '../alert-notification-state.service';
+import { NotificationAttemptOutcome } from '../enums/notification-attempt-outcome.enum';
+import { NotificationAttemptResult } from './notification-attempt.types';
 import { NotificationsService } from '../../notifications/notifications.service';
-import { NotificationLane, NotificationQueueService } from '../../notifications/notification-queue.service';
+import { NotificationLane } from '../../notifications/notification-lane.enum';
+import { NotificationQueueService } from '../../notifications/notification-queue.service';
 import { AlertNotifierRegistry } from './alert-notifier.registry';
 import { VehicleAlertSoundResolverService } from './vehicle-alert-sound-resolver.service';
 import { AlertSound, DEFAULT_ALERT_SOUND } from '../enums/alert-sound.enum';
@@ -23,6 +31,7 @@ describe('The VehicleAlertNotifierService class', () => {
   let mockKafkaLogContextService: MockProxy<KafkaLogContextService>;
   let mockVehicleRepository: MockProxy<Repository<Vehicle>>;
   let mockAlertsService: MockProxy<AlertsService>;
+  let mockAlertNotificationStateService: MockProxy<AlertNotificationStateService>;
   let mockNotificationsService: MockProxy<NotificationsService>;
   let mockNotificationQueueService: MockProxy<NotificationQueueService>;
   let mockAlertNotifierRegistry: MockProxy<AlertNotifierRegistry>;
@@ -34,6 +43,7 @@ describe('The VehicleAlertNotifierService class', () => {
     mockKafkaLogContextService = mock<KafkaLogContextService>();
     mockVehicleRepository = mock<Repository<Vehicle>>();
     mockAlertsService = mock<AlertsService>();
+    mockAlertNotificationStateService = mock<AlertNotificationStateService>();
     mockNotificationsService = mock<NotificationsService>();
     mockNotificationQueueService = mock<NotificationQueueService>();
     mockAlertNotifierRegistry = mock<AlertNotifierRegistry>();
@@ -45,8 +55,8 @@ describe('The VehicleAlertNotifierService class', () => {
     mockNotificationsService.shouldSendTelegram.mockResolvedValue(true);
     mockNotificationsService.sendPushAlert.mockResolvedValue(true);
     mockAlertsService.record.mockImplementation(async (userId: string) => `alert-${userId}`);
-    mockAlertsService.markNotificationSent.mockResolvedValue(undefined);
-    mockAlertsService.recordNotificationAttemptFailure.mockResolvedValue({
+    mockAlertNotificationStateService.markNotificationSent.mockResolvedValue(undefined);
+    mockAlertNotificationStateService.recordNotificationAttemptFailure.mockResolvedValue({
       attempts: 1,
       deliveredChannels: [],
       nextAttemptAt: new Date('2026-11-18T22:12:00.000Z'),
@@ -63,6 +73,9 @@ describe('The VehicleAlertNotifierService class', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         VehicleAlertNotifierService,
+        UserAlertNotificationService,
+        AlertChannelDeliveryService,
+        { provide: AlertNotificationStateService, useValue: mockAlertNotificationStateService },
         { provide: UserLanguageService, useValue: mockUserLanguageService },
         { provide: KafkaLogContextService, useValue: mockKafkaLogContextService },
         { provide: AlertsService, useValue: mockAlertsService },
@@ -166,11 +179,11 @@ describe('The VehicleAlertNotifierService class', () => {
       await service.dispatch(config);
       await executeEnqueuedTasks();
 
-      expect(mockAlertsService.markNotificationSent).toHaveBeenCalledWith('alert-user-1', [
+      expect(mockAlertNotificationStateService.markNotificationSent).toHaveBeenCalledWith('alert-user-1', [
         NotificationChannel.Expo,
         NotificationChannel.Telegram,
       ]);
-      expect(mockAlertsService.recordNotificationAttemptFailure).not.toHaveBeenCalled();
+      expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).not.toHaveBeenCalled();
     });
 
     describe('When push succeeds but Telegram fails', () => {
@@ -192,11 +205,11 @@ describe('The VehicleAlertNotifierService class', () => {
       });
 
       it('should not mark the alert as sent, so the Telegram copy is retried', () => {
-        expect(mockAlertsService.markNotificationSent).not.toHaveBeenCalled();
+        expect(mockAlertNotificationStateService.markNotificationSent).not.toHaveBeenCalled();
       });
 
       it('should count a failed attempt that remembers Expo as delivered', () => {
-        expect(mockAlertsService.recordNotificationAttemptFailure).toHaveBeenCalledWith(
+        expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).toHaveBeenCalledWith(
           'alert-user-1',
           [NotificationChannel.Expo],
           { baseDelayMs: 60_000, maxAttempts: 12, maxDelayMs: 1_800_000 }
@@ -217,7 +230,7 @@ describe('The VehicleAlertNotifierService class', () => {
         jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
         mockVehicleRepository.find.mockResolvedValue([{ userId: 'user-1', display_name: 'My Tesla' } as Vehicle]);
         mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
-        mockAlertsService.markNotificationSent.mockRejectedValueOnce(new Error('connection terminated'));
+        mockAlertNotificationStateService.markNotificationSent.mockRejectedValueOnce(new Error('connection terminated'));
 
         await service.dispatch(config);
         await expect(executeEnqueuedTasks()).rejects.toThrow(AlertChannelDeliveryError);
@@ -228,7 +241,7 @@ describe('The VehicleAlertNotifierService class', () => {
       });
 
       it('should remember both channels as delivered so the retry sends nothing again', () => {
-        expect(mockAlertsService.recordNotificationAttemptFailure).toHaveBeenCalledWith(
+        expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).toHaveBeenCalledWith(
           'alert-user-1',
           [NotificationChannel.Expo, NotificationChannel.Telegram],
           expect.any(Object)
@@ -253,12 +266,12 @@ describe('The VehicleAlertNotifierService class', () => {
       });
 
       it('should count a failed attempt that remembers Telegram as delivered', () => {
-        expect(mockAlertsService.recordNotificationAttemptFailure).toHaveBeenCalledWith(
+        expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).toHaveBeenCalledWith(
           'alert-user-1',
           [NotificationChannel.Telegram],
           expect.any(Object)
         );
-        expect(mockAlertsService.markNotificationSent).not.toHaveBeenCalled();
+        expect(mockAlertNotificationStateService.markNotificationSent).not.toHaveBeenCalled();
       });
     });
 
@@ -294,7 +307,7 @@ describe('The VehicleAlertNotifierService class', () => {
       });
 
       it('should mark the alert as sent once Telegram delivers', () => {
-        expect(mockAlertsService.markNotificationSent).toHaveBeenCalledWith('alert-1', [NotificationChannel.Telegram]);
+        expect(mockAlertNotificationStateService.markNotificationSent).toHaveBeenCalledWith('alert-1', [NotificationChannel.Telegram]);
       });
 
       it('should log the earlier delivery explicitly', () => {
@@ -323,7 +336,7 @@ describe('The VehicleAlertNotifierService class', () => {
         await expect(executeEnqueuedTasks()).rejects.toThrow('Alert delivery failed on expo');
 
         expect(mockAlertNotifierRegistry.notify).not.toHaveBeenCalled();
-        expect(mockAlertsService.recordNotificationAttemptFailure).toHaveBeenCalledWith('alert-1', [], expect.any(Object));
+        expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).toHaveBeenCalledWith('alert-1', [], expect.any(Object));
       });
     });
 
@@ -332,7 +345,7 @@ describe('The VehicleAlertNotifierService class', () => {
       let warnSpy: jest.SpyInstance;
 
       const runFailingNotification = async (result: NotificationAttemptResult): Promise<void> => {
-        mockAlertsService.recordNotificationAttemptFailure.mockResolvedValue(result);
+        mockAlertNotificationStateService.recordNotificationAttemptFailure.mockResolvedValue(result);
         mockVehicleRepository.find.mockResolvedValue([{ userId: 'user-1', display_name: 'My Tesla' } as Vehicle]);
         mockUserLanguageService.getUserLanguage.mockResolvedValue('en');
         mockAlertNotifierRegistry.notify.mockRejectedValue(new Error('Telegram Error'));
@@ -402,8 +415,8 @@ describe('The VehicleAlertNotifierService class', () => {
       await service.dispatch(config);
       await expect(executeEnqueuedTasks()).rejects.toThrow('Alert delivery failed on expo,telegram');
 
-      expect(mockAlertsService.recordNotificationAttemptFailure).toHaveBeenCalledWith('alert-user-1', [], expect.any(Object));
-      expect(mockAlertsService.markNotificationSent).not.toHaveBeenCalled();
+      expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).toHaveBeenCalledWith('alert-user-1', [], expect.any(Object));
+      expect(mockAlertNotificationStateService.markNotificationSent).not.toHaveBeenCalled();
     });
 
     it('should not count Telegram as sent when the notifier reports a failed delivery', async () => {
@@ -417,8 +430,8 @@ describe('The VehicleAlertNotifierService class', () => {
       await service.dispatch(config);
       await expect(executeEnqueuedTasks()).rejects.toThrow('Alert delivery failed on expo');
 
-      expect(mockAlertsService.recordNotificationAttemptFailure).toHaveBeenCalledWith('alert-user-1', [], expect.any(Object));
-      expect(mockAlertsService.markNotificationSent).not.toHaveBeenCalled();
+      expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).toHaveBeenCalledWith('alert-user-1', [], expect.any(Object));
+      expect(mockAlertNotificationStateService.markNotificationSent).not.toHaveBeenCalled();
     });
 
     describe('When no channel delivers the alert', () => {
@@ -441,7 +454,7 @@ describe('The VehicleAlertNotifierService class', () => {
       });
 
       const expectNotNotified = (): void => {
-        expect(mockAlertsService.markNotificationSent).not.toHaveBeenCalled();
+        expect(mockAlertNotificationStateService.markNotificationSent).not.toHaveBeenCalled();
         expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining('Notified user'));
       };
 
@@ -465,7 +478,7 @@ describe('The VehicleAlertNotifierService class', () => {
         });
 
         it('should count a failed attempt so the sweep retries it, bounded by the max attempts', () => {
-          expect(mockAlertsService.recordNotificationAttemptFailure).toHaveBeenCalledWith('alert-user-1', [], {
+          expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).toHaveBeenCalledWith('alert-user-1', [], {
             baseDelayMs: 60_000,
             maxAttempts: 12,
             maxDelayMs: 1_800_000,
@@ -504,8 +517,8 @@ describe('The VehicleAlertNotifierService class', () => {
         });
 
         it('should take the alert out of the sweep instead of retrying it forever', () => {
-          expect(mockAlertsService.markNotificationUndeliverable).toHaveBeenCalledWith('alert-user-1');
-          expect(mockAlertsService.recordNotificationAttemptFailure).not.toHaveBeenCalled();
+          expect(mockAlertNotificationStateService.markNotificationUndeliverable).toHaveBeenCalledWith('alert-user-1');
+          expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).not.toHaveBeenCalled();
         });
 
         it('should not log ALERT_DELIVERY_FAILED', () => {
@@ -526,7 +539,7 @@ describe('The VehicleAlertNotifierService class', () => {
           await executeEnqueuedTasks();
 
           expect(mockAlertNotifierRegistry.notify).not.toHaveBeenCalled();
-          expect(mockAlertsService.markNotificationUndeliverable).toHaveBeenCalledWith('alert-user-1');
+          expect(mockAlertNotificationStateService.markNotificationUndeliverable).toHaveBeenCalledWith('alert-user-1');
           expectNotNotified();
         });
       });
@@ -542,8 +555,8 @@ describe('The VehicleAlertNotifierService class', () => {
         });
 
         it('should handle it as a muted alert', () => {
-          expect(mockAlertsService.markNotificationSent).toHaveBeenCalledWith('alert-user-1');
-          expect(mockAlertsService.markNotificationUndeliverable).not.toHaveBeenCalled();
+          expect(mockAlertNotificationStateService.markNotificationSent).toHaveBeenCalledWith('alert-user-1');
+          expect(mockAlertNotificationStateService.markNotificationUndeliverable).not.toHaveBeenCalled();
         });
 
         it('should not log ALERT_NO_CHANNEL', () => {
@@ -630,7 +643,7 @@ describe('The VehicleAlertNotifierService class', () => {
       await service.dispatch(sentryConfig);
       await executeEnqueuedTasks();
 
-      expect(mockAlertsService.markNotificationSent).toHaveBeenCalledWith('alert-user-1');
+      expect(mockAlertNotificationStateService.markNotificationSent).toHaveBeenCalledWith('alert-user-1');
       expect(mockNotificationsService.sendPushAlert).not.toHaveBeenCalled();
       expect(mockAlertNotifierRegistry.notify).not.toHaveBeenCalled();
       expect(mockUserLanguageService.getUserLanguage).not.toHaveBeenCalled();
@@ -823,7 +836,7 @@ describe('The VehicleAlertNotifierService class', () => {
         await service.dispatch(config);
         await executeEnqueuedTasks();
 
-        expect(mockAlertsService.markNotificationSent).toHaveBeenCalled();
+        expect(mockAlertNotificationStateService.markNotificationSent).toHaveBeenCalled();
       });
     });
 

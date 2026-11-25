@@ -17,3 +17,7 @@ export interface TelegramMessageOptions {
   keyboard?: TelegramKeyboard;
   parse_mode?: 'HTML' | 'Markdown' | 'MarkdownV2';
 }
+
+export interface TelegramDeliveryResult {
+  isDelivered: boolean;
+}

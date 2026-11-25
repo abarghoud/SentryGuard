@@ -7,84 +7,17 @@ import { PushDeviceToken } from '../../entities/push-device-token.entity';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
 import { AlertEventSeverity, AlertEventType } from '../../entities/alert-event.entity';
 import i18n from '../../i18n';
-import { NOTIFICATION_REQUEST_TIMEOUT_MS } from '../../config/notification-timeout.config';
-import { OperationTimeoutError, withTimeout } from '../../common/utils/with-timeout.util';
-import { CaughtError } from '../../common/utils/caught-error';
 import { AlertSound } from '../alerts/enums/alert-sound.enum';
-import { CounterMeasure } from '../alerts/enums/counter-measure.enum';
 import { describeCounterMeasures } from '../alerts/common/counter-measure-description.util';
 import { describeLateDelivery } from '../alerts/common/late-delivery-notice.util';
-
-export interface PushAlertContext {
-  alertSound: AlertSound;
-  correlationId?: string;
-  detectedAt?: Date;
-  severity: AlertEventSeverity;
-  type: AlertEventType;
-  userId: string;
-  userLanguage: 'en' | 'fr';
-  vehicleName?: string;
-  vin?: string;
-}
-
-export interface PushCounterMeasureContext {
-  counterMeasures: CounterMeasure[];
-  userId: string;
-  userLanguage: 'en' | 'fr';
-  vehicleName: string;
-  vin: string;
-}
-
-export interface PushDeliveryResult {
-  isDelivered: boolean;
-}
-
-export interface NotificationPreferencesDto {
-  critical_alerts_enabled: boolean;
-  critical_only: boolean;
-  muted_until: string | null;
-  push_enabled: boolean;
-  telegram_enabled: boolean;
-}
-
-interface ExpoPushTicket {
-  details?: {
-    error?: string;
-  };
-  id?: string;
-  message?: string;
-  status?: string;
-}
-
-interface ExpoPushResponse {
-  data?: ExpoPushTicket | ExpoPushTicket[];
-  errors?: Array<{ code?: string; message?: string }>;
-}
-
-export class ExpoPushError extends Error {
-  constructor(
-    message: string,
-    public readonly status?: number,
-    public readonly retryAfterMs?: number
-  ) {
-    super(message);
-    this.name = 'ExpoPushError';
-    Object.setPrototypeOf(this, new.target.prototype);
-  }
-}
-
-const EXPO_RETRY_DELAYS_MS = [1_000, 3_000];
-const EXPO_RETRY_BUDGET_MS = 2 * NOTIFICATION_REQUEST_TIMEOUT_MS;
-const EXPO_MIN_ATTEMPT_BUDGET_MS = 2_000;
-const RATE_LIMIT_STATUS_CODE = 429;
-const SERVER_ERROR_STATUS_CODE = 500;
-
-interface ExpoPushAttempt {
-  correlationId?: string;
-  deviceId: string;
-  retryIndex: number;
-  startedAt: number;
-}
+import { ExpoPushClient } from './expo-push.client';
+import { ExpoPushError } from './expo-push.error';
+import {
+  NotificationPreferencesDto,
+  PushAlertContext,
+  PushCounterMeasureContext,
+  PushDeliveryResult,
+} from './notifications.types';
 
 interface PushAlertContent {
   body: string;
@@ -101,7 +34,8 @@ export class NotificationsService {
     @InjectRepository(PushDeviceToken)
     private readonly pushDeviceTokenRepository: Repository<PushDeviceToken>,
     @InjectRepository(TelegramConfig)
-    private readonly telegramConfigRepository: Repository<TelegramConfig>
+    private readonly telegramConfigRepository: Repository<TelegramConfig>,
+    private readonly expoPushClient: ExpoPushClient
   ) {}
 
   public async getPreferences(userId: string, token?: string): Promise<NotificationPreferencesDto> {
@@ -356,84 +290,18 @@ export class NotificationsService {
     content: PushAlertContent,
     context: PushAlertContext
   ): Promise<void> {
-    const startedAt = Date.now();
-
-    for (let retryIndex = 0; ; retryIndex++) {
-      try {
-        await this.attemptExpoPush(device, content, context, startedAt);
-        return;
-      } catch (error) {
-        await this.waitForExpoRetryOrRethrow(error, { correlationId: context.correlationId, deviceId: device.id, retryIndex, startedAt });
-      }
-    }
-  }
-
-  private async waitForExpoRetryOrRethrow(error: unknown, attempt: ExpoPushAttempt): Promise<void> {
-    const correlationId = attempt.correlationId || 'none';
-    const delayMs = this.resolveExpoRetryDelay(error, attempt.retryIndex, attempt.startedAt);
-
-    if (delayMs === null) {
-      this.logger.error(`[NOTIFICATION_ERROR] Failed to send push notification: ${new CaughtError(error).describe()} (correlation: ${correlationId})`);
+    try {
+      await this.expoPushClient.send(this.buildExpoPushBody(device, content, context), { correlationId: context.correlationId, deviceId: device.id });
+    } catch (error) {
+      await this.removeUnregisteredDevice(device, error);
       throw error;
     }
-
-    this.logger.warn(`[EXPO_PUSH_RETRY][${correlationId}] Retrying push to device ${attempt.deviceId} in ${delayMs}ms (retry ${attempt.retryIndex + 1}/${EXPO_RETRY_DELAYS_MS.length}): ${new CaughtError(error).describe()}`);
-    await this.delay(delayMs);
   }
 
-  private async attemptExpoPush(
-    device: PushDeviceToken,
-    content: PushAlertContent,
-    context: PushAlertContext,
-    startedAt: number
-  ): Promise<void> {
-    const pushStart = Date.now();
-    const attemptTimeoutMs = Math.max(Math.min(NOTIFICATION_REQUEST_TIMEOUT_MS, startedAt + EXPO_RETRY_BUDGET_MS - pushStart), 1);
-    const response = await withTimeout(
-      (signal) => this.postExpoPush(this.buildExpoPushBody(device, content, context), signal),
-      attemptTimeoutMs,
-      `Expo push request timed out after ${attemptTimeoutMs}ms`
-    );
-
-    this.logger.log(`[EXPO_PUSH_LATENCY][${context.correlationId || 'none'}] Push sent to device ${device.id} in ${Date.now() - pushStart}ms`);
-    await this.handleExpoPushResponse(device, response);
-  }
-
-  private async postExpoPush(body: unknown, signal: AbortSignal): Promise<Response> {
-    return fetch('https://exp.host/--/api/v2/push/send', {
-      body: JSON.stringify(body),
-      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-      method: 'POST',
-      signal,
-    });
-  }
-
-  private resolveExpoRetryDelay(error: unknown, retryIndex: number, startedAt: number): number | null {
-    if (retryIndex >= EXPO_RETRY_DELAYS_MS.length || !this.isRetryableExpoError(error)) {
-      return null;
+  private async removeUnregisteredDevice(device: PushDeviceToken, error: unknown): Promise<void> {
+    if (error instanceof ExpoPushError && error.isDeviceNotRegistered) {
+      await this.pushDeviceTokenRepository.delete({ id: device.id });
     }
-
-    const retryAfterMs = error instanceof ExpoPushError ? error.retryAfterMs ?? 0 : 0;
-    const delayMs = Math.max(EXPO_RETRY_DELAYS_MS[retryIndex], retryAfterMs);
-    const elapsedMs = Date.now() - startedAt;
-
-    return elapsedMs + delayMs + EXPO_MIN_ATTEMPT_BUDGET_MS > EXPO_RETRY_BUDGET_MS ? null : delayMs;
-  }
-
-  private isRetryableExpoError(error: unknown): boolean {
-    if (error instanceof OperationTimeoutError) {
-      return false;
-    }
-
-    if (error instanceof ExpoPushError) {
-      return error.status === RATE_LIMIT_STATUS_CODE || (error.status !== undefined && error.status >= SERVER_ERROR_STATUS_CODE);
-    }
-
-    return new CaughtError(error).isTransientNetwork();
-  }
-
-  private delay(milliseconds: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, milliseconds));
   }
 
   private buildExpoPushBody(device: PushDeviceToken, content: PushAlertContent, context: PushAlertContext): object {
@@ -494,56 +362,5 @@ export class NotificationsService {
   private buildTeslaRedirectUrl(userId: string, userLanguage: 'en' | 'fr'): string {
     const baseUrl = process.env.TELEGRAM_WEBHOOK_BASE || 'http://localhost:3000';
     return `${baseUrl}/redirect/tesla-app?userId=${encodeURIComponent(userId)}&lang=${userLanguage}`;
-  }
-
-  private async handleExpoPushResponse(device: PushDeviceToken, response: Response): Promise<void> {
-    const result = await this.parseExpoPushResponse(response);
-    const tickets = this.extractExpoTickets(result);
-
-    if (tickets.some((ticket) => ticket.details?.error === 'DeviceNotRegistered')) {
-      await this.removePushDevice(device);
-    }
-
-    if (!response.ok || !tickets.some((ticket) => ticket.status === 'ok')) {
-      this.rejectExpoPush(device, response, this.resolveExpoRejectionMessage(response, result, tickets));
-    }
-  }
-
-  private resolveExpoRejectionMessage(response: Response, result: ExpoPushResponse, tickets: ExpoPushTicket[]): string {
-    return (
-      tickets.find((ticket) => ticket.message)?.message ??
-      result.errors?.find((error) => error.message)?.message ??
-      (response.statusText || 'Expo push rejected')
-    );
-  }
-
-  private rejectExpoPush(device: PushDeviceToken, response: Response, message: string): never {
-    this.logger.warn(`[NOTIFICATION_ERROR] Expo push rejected token ${device.id}: ${message} (status: ${response.status ?? 'unknown'})`);
-    throw new ExpoPushError(message, response.status, this.parseRetryAfterMs(response));
-  }
-
-  private extractExpoTickets(result: ExpoPushResponse): ExpoPushTicket[] {
-    if (!result.data) {
-      return [];
-    }
-
-    return Array.isArray(result.data) ? result.data : [result.data];
-  }
-
-  private parseRetryAfterMs(response: Response): number | undefined {
-    const retryAfterSeconds = Number(response.headers?.get?.('retry-after'));
-    return Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0 ? retryAfterSeconds * 1000 : undefined;
-  }
-
-  private async parseExpoPushResponse(response: Response): Promise<ExpoPushResponse> {
-    try {
-      return (await response.json()) as ExpoPushResponse;
-    } catch {
-      return {};
-    }
-  }
-
-  private async removePushDevice(device: PushDeviceToken): Promise<void> {
-    await this.pushDeviceTokenRepository.delete({ id: device.id });
   }
 }

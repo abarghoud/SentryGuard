@@ -2,19 +2,8 @@ import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import pLimit from 'p-limit';
 import { TokenBucketRateLimiterService } from '../../common/services/token-bucket-rate-limiter.service';
-
-export enum NotificationLane {
-  Immediate = 'immediate',
-  Retry = 'retry',
-}
-
-export interface NotificationJobContext {
-  label: string;
-  vin: string;
-  correlationId?: string;
-  alertEventId?: string;
-  lane?: NotificationLane;
-}
+import { NotificationLane } from './notification-lane.enum';
+import { NotificationJobContext } from './notification-queue.types';
 
 const DRAIN_POLL_INTERVAL_MS = 50;
 const STATS_LOG_INTERVAL_MS = 60_000;

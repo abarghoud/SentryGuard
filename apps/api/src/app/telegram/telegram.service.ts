@@ -1,7 +1,6 @@
 import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { TelegramError } from 'telegraf';
 import i18n from '../../i18n';
-import { TelegramBotService } from './telegram-bot.service';
 import { TelegramMuteService } from './telegram-mute.service';
 import { TelegramContextService } from './telegram-context.service';
 import { TelegramBotUpdateService } from './telegram-bot-update.service';
@@ -9,29 +8,16 @@ import type { ITelegramFailureHandler } from './interfaces/telegram-failure-hand
 import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import { telegramRetryManager } from './telegram-retry-manager.token';
 import { RetryManager } from '../shared/retry-manager.service';
-import { OperationTimeoutError, withTimeout } from '../../common/utils/with-timeout.util';
+import { withTimeout } from '../../common/utils/with-timeout.util';
 import { CaughtError } from '../../common/utils/caught-error';
 import { resolveVehicleLabel } from '../../common/utils/vehicle-label.util';
 import { CounterMeasure } from '../alerts/enums/counter-measure.enum';
 import { describeCounterMeasures } from '../alerts/common/counter-measure-description.util';
 import { describeLateDelivery } from '../alerts/common/late-delivery-notice.util';
-import { TelegramAlertInfo, TelegramMessageOptions } from './telegram.types';
-
-export interface TelegramDeliveryResult {
-  isDelivered: boolean;
-}
-
-type TelegramKeyboard = {
-  inline_keyboard?: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
-  keyboard?: Array<Array<{ text: string }>>;
-  one_time_keyboard?: boolean;
-  resize_keyboard?: boolean;
-};
-
-enum TelegramSendAttempt {
-  Request = 'request',
-  Retry = 'retry',
-}
+import { TELEGRAM_REQUEST_TIMEOUT_MS } from '../../config/telegram-request-timeout.config';
+import { TelegramMessageSender } from './telegram-message-sender.service';
+import { TelegramSendAttempt } from './telegram-send-attempt.enum';
+import { TelegramAlertInfo, TelegramDeliveryResult, TelegramKeyboard } from './telegram.types';
 
 interface TelegramSendFailureContext {
   correlationPrefix: string;
@@ -41,43 +27,17 @@ interface TelegramSendFailureContext {
   userId: string;
 }
 
-interface TelegramSendRequest {
-  attempt: TelegramSendAttempt;
-  chatId: string;
-  message: string;
-  options?: TelegramMessageOptions;
-}
-
-interface TelegramSendState {
-  deadline: number;
-  hasRetriedStalledConnection: boolean;
-  retryIndex: number;
-}
-
-interface ImmediateRetryDecision {
-  delayMs: number;
-  isStalledConnection: boolean;
-}
-
-const ATTEMPT_TIMEOUT_MS = 5_000;
-const SEND_BUDGET_MS = 11_000;
-const IMMEDIATE_RETRY_DELAYS_MS = [300, 1_000];
-const MIN_ATTEMPT_BUDGET_MS = 1_000;
-const STALLED_CONNECTION_ERROR_CODES = new Set(['ECONNRESET', 'EPIPE', 'ETIMEDOUT']);
-const RATE_LIMIT_STATUS_CODE = 429;
-const SERVER_ERROR_STATUS_CODE = 500;
-
 @Injectable()
 export class TelegramService implements OnModuleDestroy {
   private readonly logger = new Logger(TelegramService.name);
 
   constructor(
-    private readonly telegramBotService: TelegramBotService,
     private readonly telegramMuteService: TelegramMuteService,
     private readonly telegramContextService: TelegramContextService,
     private readonly telegramBotUpdateService: TelegramBotUpdateService,
     @Inject(telegramFailureHandler) private readonly failureHandler: ITelegramFailureHandler,
     @Inject(telegramRetryManager) private readonly retryManager: RetryManager,
+    private readonly telegramMessageSender: TelegramMessageSender,
   ) { }
 
   public async sendSentryAlert(
@@ -108,20 +68,20 @@ export class TelegramService implements OnModuleDestroy {
     try {
       await withTimeout(
         (signal) => this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage, signal),
-        ATTEMPT_TIMEOUT_MS,
-        `Telegram bot update request timed out after ${ATTEMPT_TIMEOUT_MS}ms`
+        TELEGRAM_REQUEST_TIMEOUT_MS,
+        `Telegram bot update request timed out after ${TELEGRAM_REQUEST_TIMEOUT_MS}ms`
       );
 
       if (this.shouldSimulateMessage(alertInfo.vin)) {
         return await this.simulateMessage(userId, 'alert', alertInfo.vin);
       }
 
-      return await this.sendMessageWithTimeout(chatId, message, options);
+      return await this.telegramMessageSender.send(chatId, message, options);
     } catch (error) {
       return await this.handleSendFailure(error, {
         correlationPrefix: 'telegram-alert',
         messageType: 'sentry alert',
-        retrySend: () => this.sendMessageWithTimeout(chatId, message, options, TelegramSendAttempt.Retry),
+        retrySend: () => this.telegramMessageSender.send(chatId, message, options, TelegramSendAttempt.Retry),
         shouldScheduleRetry,
         userId,
       });
@@ -156,20 +116,20 @@ export class TelegramService implements OnModuleDestroy {
     try {
       await withTimeout(
         (signal) => this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage, signal),
-        ATTEMPT_TIMEOUT_MS,
-        `Telegram bot update request timed out after ${ATTEMPT_TIMEOUT_MS}ms`
+        TELEGRAM_REQUEST_TIMEOUT_MS,
+        `Telegram bot update request timed out after ${TELEGRAM_REQUEST_TIMEOUT_MS}ms`
       );
 
       if (this.shouldSimulateMessage(alertInfo.vin)) {
         return await this.simulateMessage(userId, 'alert', alertInfo.vin);
       }
 
-      return await this.sendMessageWithTimeout(chatId, message, options);
+      return await this.telegramMessageSender.send(chatId, message, options);
     } catch (error) {
       return await this.handleSendFailure(error, {
         correlationPrefix: 'telegram-alert-breakin',
         messageType: 'break-in alert',
-        retrySend: () => this.sendMessageWithTimeout(chatId, message, options, TelegramSendAttempt.Retry),
+        retrySend: () => this.telegramMessageSender.send(chatId, message, options, TelegramSendAttempt.Retry),
         shouldScheduleRetry,
         userId,
       });
@@ -239,120 +199,16 @@ export class TelegramService implements OnModuleDestroy {
 
   private async sendCounterMeasureMessage(userId: string, chatId: string, message: string): Promise<boolean> {
     try {
-      return await this.sendMessageWithTimeout(chatId, message);
+      return await this.telegramMessageSender.send(chatId, message);
     } catch (error) {
       return await this.handleSendFailure(error, {
         correlationPrefix: 'telegram-counter-measure',
         messageType: 'counter-measure notice',
-        retrySend: () => this.sendMessageWithTimeout(chatId, message, undefined, TelegramSendAttempt.Retry),
+        retrySend: () => this.telegramMessageSender.send(chatId, message, undefined, TelegramSendAttempt.Retry),
         shouldScheduleRetry: true,
         userId,
       });
     }
-  }
-
-  private async sendMessageWithTimeout(
-    chatId: string,
-    message: string,
-    options?: TelegramMessageOptions,
-    attempt = TelegramSendAttempt.Request
-  ): Promise<boolean> {
-    return this.sendWithImmediateRetries(
-      { attempt, chatId, message, options },
-      { deadline: Date.now() + SEND_BUDGET_MS, hasRetriedStalledConnection: false, retryIndex: 0 }
-    );
-  }
-
-  private async sendWithImmediateRetries(request: TelegramSendRequest, state: TelegramSendState): Promise<boolean> {
-    try {
-      return await this.attemptTelegramSend(request, state);
-    } catch (error) {
-      const decision = this.resolveImmediateRetry(error, state);
-      if (decision === null) {
-        throw error;
-      }
-      await this.waitForImmediateRetry(request.chatId, state.retryIndex, decision, error);
-      return this.sendWithImmediateRetries(request, this.toNextSendState(state, decision));
-    }
-  }
-
-  private attemptTelegramSend(request: TelegramSendRequest, state: TelegramSendState): Promise<boolean> {
-    const attemptTimeoutMs = Math.max(Math.min(ATTEMPT_TIMEOUT_MS, state.deadline - Date.now()), 1);
-    const useFreshConnection = state.retryIndex > 0;
-
-    return withTimeout(
-      (signal) => this.telegramBotService.sendMessage(request.chatId, request.message, request.options, signal, useFreshConnection),
-      attemptTimeoutMs,
-      `Telegram notification ${request.attempt} timed out after ${attemptTimeoutMs}ms`
-    );
-  }
-
-  private toNextSendState(state: TelegramSendState, decision: ImmediateRetryDecision): TelegramSendState {
-    return {
-      deadline: state.deadline,
-      hasRetriedStalledConnection: state.hasRetriedStalledConnection || decision.isStalledConnection,
-      retryIndex: state.retryIndex + 1,
-    };
-  }
-
-  private async waitForImmediateRetry(chatId: string, retryIndex: number, decision: ImmediateRetryDecision, error: unknown): Promise<void> {
-    this.logger.warn(
-      `[TELEGRAM_IMMEDIATE_RETRY] Retrying send to chat_id ${chatId} on a fresh connection in ${decision.delayMs}ms ` +
-      `(retry ${retryIndex + 1}/${IMMEDIATE_RETRY_DELAYS_MS.length}): ${new CaughtError(error).describe()}` +
-      (decision.isStalledConnection ? ' (possible duplicate)' : '')
-    );
-
-    if (decision.delayMs > 0) {
-      await this.delay(decision.delayMs);
-    }
-  }
-
-  private resolveImmediateRetry(error: unknown, state: TelegramSendState): ImmediateRetryDecision | null {
-    const isStalledConnection = this.isStalledConnectionError(error);
-    const delayMs = this.resolveImmediateRetryDelay(error, isStalledConnection, state);
-
-    if (delayMs === null || Date.now() + delayMs + MIN_ATTEMPT_BUDGET_MS > state.deadline) {
-      return null;
-    }
-
-    return { delayMs, isStalledConnection };
-  }
-
-  private resolveImmediateRetryDelay(error: unknown, isStalledConnection: boolean, state: TelegramSendState): number | null {
-    if (state.retryIndex >= IMMEDIATE_RETRY_DELAYS_MS.length) {
-      return null;
-    }
-
-    if (isStalledConnection) {
-      return state.hasRetriedStalledConnection ? null : 0;
-    }
-
-    return this.resolveRetryDelayForError(error, IMMEDIATE_RETRY_DELAYS_MS[state.retryIndex]);
-  }
-
-  private isStalledConnectionError(error: unknown): boolean {
-    if (error instanceof OperationTimeoutError) {
-      return true;
-    }
-
-    return new CaughtError(error).codes().some((code) => STALLED_CONNECTION_ERROR_CODES.has(code));
-  }
-
-  private resolveRetryDelayForError(error: unknown, backoffMs: number): number | null {
-    if (error instanceof TelegramError) {
-      if (error.code === RATE_LIMIT_STATUS_CODE) {
-        const retryAfterSeconds = error.parameters?.retry_after;
-        return typeof retryAfterSeconds === 'number' ? retryAfterSeconds * 1000 : null;
-      }
-
-      return error.code >= SERVER_ERROR_STATUS_CODE ? backoffMs : null;
-    }
-
-    return new CaughtError(error).isTransientNetwork() ? backoffMs : null;
-  }
-
-  private delay(milliseconds: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, milliseconds));
   }
 
   private async handleSendFailure(error: unknown, context: TelegramSendFailureContext): Promise<false> {

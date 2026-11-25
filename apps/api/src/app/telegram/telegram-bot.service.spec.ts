@@ -1,11 +1,11 @@
 import * as https from 'https';
 import { Telegraf, Telegram } from 'telegraf';
 import { TelegramBotService } from './telegram-bot.service';
-import { TelegramWebhookRegistrationBusyError, TelegramWebhookRegistrationService } from './telegram-webhook-registration.service';
+import { TelegramWebhookRegistrationService } from './telegram-webhook-registration.service';
 
 const freshCallApi = jest.fn();
-const registerOnce = jest.fn();
-const webhookRegistration = { registerOnce } as unknown as TelegramWebhookRegistrationService;
+const registerUntilReady = jest.fn();
+const webhookRegistration = { registerUntilReady } as unknown as TelegramWebhookRegistrationService;
 
 jest.mock('telegraf', () => ({
   Telegraf: jest.fn().mockImplementation(() => ({ telegram: {} })),
@@ -32,7 +32,7 @@ describe('The TelegramBotService class', () => {
     jest.mocked(Telegraf).mockClear();
     jest.mocked(Telegram).mockClear();
     freshCallApi.mockReset();
-    registerOnce.mockReset();
+    registerUntilReady.mockReset();
   });
 
   describe('The onModuleInit() method', () => {
@@ -62,32 +62,29 @@ describe('The TelegramBotService class', () => {
     const fakeSecretPath = 'fake-secret-path-0123456789';
     const fakeSecretToken = 'fake-secret-token-0123456789abcdef';
     let callApi: jest.Mock;
-    let telegram: { callApi: jest.Mock };
+    let bot: { botInfo?: { username: string }; telegram: { callApi: jest.Mock }; webhookCallback: jest.Mock };
     let service: TelegramBotService;
 
     beforeEach(() => {
-      jest.useFakeTimers();
       process.env.TELEGRAM_WEBHOOK_BASE = 'https://api.example.test/';
       process.env.TELEGRAM_WEBHOOK_SECRET_PATH = fakeSecretPath;
       process.env.TELEGRAM_WEBHOOK_SECRET_TOKEN = fakeSecretToken;
-      callApi = jest.fn().mockResolvedValue({ username: 'FakeBot' });
-      telegram = { callApi };
-      jest.mocked(Telegraf).mockImplementationOnce(() => ({ telegram, webhookCallback: jest.fn() }) as never);
+      callApi = jest.fn();
+      bot = { telegram: { callApi }, webhookCallback: jest.fn() };
+      jest.mocked(Telegraf).mockImplementationOnce(() => bot as never);
       service = new TelegramBotService(webhookRegistration);
     });
 
-    afterEach(() => {
-      jest.useRealTimers();
-    });
-
-    describe('When Telegram answers right away', () => {
+    describe('When the module starts', () => {
       beforeEach(async () => {
+        registerUntilReady.mockImplementation(async (registeredBot: typeof bot) => {
+          registeredBot.botInfo = { username: 'FakeBot' };
+        });
         await service.onModuleInit();
-        await jest.advanceTimersByTimeAsync(0);
       });
 
-      it('should register the webhook once through the single-instance registration', () => {
-        expect(registerOnce).toHaveBeenCalledWith(telegram, {
+      it('should register the webhook through the single-instance registration', () => {
+        expect(registerUntilReady).toHaveBeenCalledWith(bot, {
           path: `/telegram/webhook/${fakeSecretPath}`,
           secretToken: fakeSecretToken,
           url: `https://api.example.test/telegram/webhook/${fakeSecretPath}`,
@@ -98,80 +95,16 @@ describe('The TelegramBotService class', () => {
         expect(callApi).not.toHaveBeenCalledWith('setWebhook', expect.anything(), expect.anything());
       });
 
-      it('should reuse the bot info from getMe for the username', async () => {
+      it('should reuse the bot info from the registration for the username', async () => {
         expect(await service.getBotUsername()).toBe('FakeBot');
       });
     });
 
     describe('When Telegram never answers', () => {
       it('should not block the module start-up', async () => {
-        callApi.mockReturnValue(new Promise(() => undefined));
+        registerUntilReady.mockReturnValue(new Promise(() => undefined));
 
         await expect(service.onModuleInit()).resolves.toBeUndefined();
-      });
-    });
-
-    describe('When Telegram rate-limits the initialization with retry_after', () => {
-      beforeEach(async () => {
-        const { TelegramError } = jest.requireActual('telegraf');
-        callApi.mockRejectedValueOnce(new TelegramError({ error_code: 429, description: 'Too Many Requests: retry after 1', parameters: { retry_after: 1 } }));
-        await service.onModuleInit();
-      });
-
-      it('should not retry before retry_after has elapsed', async () => {
-        await jest.advanceTimersByTimeAsync(999);
-
-        expect(registerOnce).not.toHaveBeenCalled();
-      });
-
-      it('should complete the initialization once retry_after has elapsed', async () => {
-        await jest.advanceTimersByTimeAsync(1000);
-
-        expect(registerOnce).toHaveBeenCalledTimes(1);
-      });
-    });
-
-    describe('When the initialization keeps failing without retry_after', () => {
-      beforeEach(async () => {
-        registerOnce.mockRejectedValueOnce(new Error('read ECONNRESET')).mockRejectedValueOnce(new Error('read ECONNRESET'));
-        await service.onModuleInit();
-      });
-
-      it('should back off exponentially between attempts', async () => {
-        await jest.advanceTimersByTimeAsync(2999);
-
-        expect(registerOnce).toHaveBeenCalledTimes(2);
-      });
-
-      it('should stop retrying once the initialization succeeds', async () => {
-        await jest.advanceTimersByTimeAsync(60_000);
-
-        expect(registerOnce).toHaveBeenCalledTimes(3);
-      });
-    });
-
-    describe('When another instance is registering the webhook', () => {
-      beforeEach(async () => {
-        registerOnce.mockRejectedValueOnce(new TelegramWebhookRegistrationBusyError());
-        await service.onModuleInit();
-      });
-
-      it('should register again itself once the other instance is done', async () => {
-        await jest.advanceTimersByTimeAsync(1000);
-
-        expect(registerOnce).toHaveBeenCalledTimes(2);
-      });
-    });
-
-    describe('When the module is destroyed while the initialization is failing', () => {
-      it('should stop retrying', async () => {
-        registerOnce.mockRejectedValue(new Error('read ECONNRESET'));
-        await service.onModuleInit();
-
-        service.onModuleDestroy();
-        await jest.advanceTimersByTimeAsync(60_000);
-
-        expect(registerOnce).toHaveBeenCalledTimes(1);
       });
     });
   });

@@ -2,7 +2,9 @@ import { Logger } from '@nestjs/common';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { Repository } from 'typeorm';
 
-import { NotificationsService, PushDeliveryResult } from './notifications.service';
+import { ExpoPushClient } from './expo-push.client';
+import { NotificationsService } from './notifications.service';
+import { PushDeliveryResult } from './notifications.types';
 import { NotificationPreferences } from '../../entities/notification-preferences.entity';
 import { PushDeviceToken } from '../../entities/push-device-token.entity';
 import { TelegramConfig, TelegramLinkStatus } from '../../entities/telegram-config.entity';
@@ -53,7 +55,8 @@ describe('The NotificationsService class', () => {
     service = new NotificationsService(
       mockPreferencesRepository,
       mockPushDeviceTokenRepository,
-      mockTelegramConfigRepository
+      mockTelegramConfigRepository,
+      new ExpoPushClient()
     );
   });
 

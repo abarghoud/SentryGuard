@@ -1,19 +1,14 @@
 import { AlertEventNotificationStatus, NotificationChannel } from '../../../entities/alert-event.entity';
 import { AlertNotificationState } from '../interfaces/alert-notification-repository.requirements';
+import { NotificationRetryPolicy } from './notification-attempt.types';
 
 const maxBackoffExponent = 30;
 
-export interface NotificationRetryPolicy {
-  baseDelayMs: number;
-  maxAttempts: number;
-  maxDelayMs: number;
-}
-
-export function computeRetryDelayMs(failedAttempts: number, policy: NotificationRetryPolicy): number {
+function computeRetryDelayMs(failedAttempts: number, policy: NotificationRetryPolicy): number {
   return Math.min(policy.baseDelayMs * 2 ** Math.min(failedAttempts - 1, maxBackoffExponent), policy.maxDelayMs);
 }
 
-export function mergeDeliveredChannels(current: NotificationChannel[], added: NotificationChannel[]): NotificationChannel[] {
+function mergeDeliveredChannels(current: NotificationChannel[], added: NotificationChannel[]): NotificationChannel[] {
   return [...new Set([...current, ...added])].sort();
 }
 

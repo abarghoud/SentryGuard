@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 
-import { AlertsService } from '../alerts/alerts.service';
+import { AlertNotificationStateService } from '../alerts/alert-notification-state.service';
 import { DistributedLockService } from '../../common/services/distributed-lock.service';
-import { NotificationLane, NotificationQueueService } from './notification-queue.service';
+import { NotificationLane } from './notification-lane.enum';
+import { NotificationQueueService } from './notification-queue.service';
 import { VehicleAlertNotifierService } from '../alerts/common/vehicle-alert-notifier.service';
 import { AlertEvent } from '../../entities/alert-event.entity';
 import {
@@ -28,7 +29,7 @@ export class NotificationSweeperService {
   private readonly logger = new Logger(NotificationSweeperService.name);
 
   constructor(
-    private readonly alertsService: AlertsService,
+    private readonly alertNotificationStateService: AlertNotificationStateService,
     private readonly distributedLockService: DistributedLockService,
     private readonly notificationQueueService: NotificationQueueService,
     private readonly vehicleAlertNotifierService: VehicleAlertNotifierService,
@@ -48,7 +49,7 @@ export class NotificationSweeperService {
 
   private async executeSweep(): Promise<void> {
     const cutoff = new Date(Date.now() - NOTIFICATION_SWEEP_PENDING_THRESHOLD_MS);
-    const pendingAlerts = await this.alertsService.findNotificationsDueForSweep(cutoff, NOTIFICATION_SWEEP_BATCH_SIZE);
+    const pendingAlerts = await this.alertNotificationStateService.findNotificationsDueForSweep(cutoff, NOTIFICATION_SWEEP_BATCH_SIZE);
     const counts: Record<SweepOutcome, number> = { deferred: 0, dropped: 0, inQueue: 0, leasedElsewhere: 0, reEnqueued: 0 };
     let availableSlots = NOTIFICATION_SWEEP_MAX_RETRY_BACKLOG - this.notificationQueueService.countRetryJobs();
 
@@ -70,7 +71,7 @@ export class NotificationSweeperService {
       return SweepOutcome.Deferred;
     }
 
-    const { isLeased } = await this.alertsService.leaseNotificationForRetry(alert.id, alert.notification_attempts, NOTIFICATION_SWEEP_LEASE_MS);
+    const { isLeased } = await this.alertNotificationStateService.leaseNotificationForRetry(alert.id, alert.notification_attempts, NOTIFICATION_SWEEP_LEASE_MS);
     if (!isLeased) {
       return SweepOutcome.LeasedElsewhere;
     }

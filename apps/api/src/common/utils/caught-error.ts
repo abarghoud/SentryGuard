@@ -1,4 +1,4 @@
-import { OperationTimeoutError } from './with-timeout.util';
+import { OperationTimeoutError } from './operation-timeout.error';
 
 const TRANSIENT_NETWORK_ERROR_CODES = new Set([
   'EAI_AGAIN',

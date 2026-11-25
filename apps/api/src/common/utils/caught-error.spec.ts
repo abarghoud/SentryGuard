@@ -1,6 +1,6 @@
 import { TelegramError } from 'telegraf';
 import { CaughtError } from './caught-error';
-import { OperationTimeoutError } from './with-timeout.util';
+import { OperationTimeoutError } from './operation-timeout.error';
 
 class FakeFetchError extends Error {
   constructor(message: string, public readonly code: string, public readonly type = 'system') {
