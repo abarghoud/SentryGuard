@@ -3,6 +3,7 @@ import { mock, MockProxy } from 'jest-mock-extended';
 import { Repository } from 'typeorm';
 
 import { ExpoPushClient } from './expo-push.client';
+import { NotificationPreferencesRepository } from './notification-preferences.repository';
 import { NotificationsService } from './notifications.service';
 import { PushDeliveryResult } from './notifications.types';
 import { NotificationPreferences } from '../../entities/notification-preferences.entity';
@@ -56,7 +57,8 @@ describe('The NotificationsService class', () => {
       mockPreferencesRepository,
       mockPushDeviceTokenRepository,
       mockTelegramConfigRepository,
-      new ExpoPushClient()
+      new ExpoPushClient(),
+      new NotificationPreferencesRepository(mockPreferencesRepository)
     );
   });
 

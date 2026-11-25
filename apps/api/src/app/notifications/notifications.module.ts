@@ -6,12 +6,13 @@ import { PushDeviceToken } from '../../entities/push-device-token.entity';
 import { TelegramConfig } from '../../entities/telegram-config.entity';
 import { NotificationsController } from './notifications.controller';
 import { ExpoPushClient } from './expo-push.client';
+import { NotificationPreferencesRepository } from './notification-preferences.repository';
 import { NotificationsService } from './notifications.service';
 
 @Module({
   controllers: [NotificationsController],
   exports: [NotificationsService],
   imports: [TypeOrmModule.forFeature([NotificationPreferences, PushDeviceToken, TelegramConfig])],
-  providers: [ExpoPushClient, NotificationsService],
+  providers: [ExpoPushClient, NotificationPreferencesRepository, NotificationsService],
 })
 export class NotificationsModule {}

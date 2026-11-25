@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { KafkaLogContextService } from '../../../common/services/kafka-log-context.service';
 import { AlertEventSeverity } from '../../../entities/alert-event.entity';
 import { Vehicle } from '../../../entities/vehicle.entity';
+import { CaughtError } from '../../../common/utils/caught-error';
 import { resolveVehicleLabel } from '../../../common/utils/vehicle-label.util';
 import { NotificationQueueService } from '../../notifications/notification-queue.service';
 import { NotificationsService } from '../../notifications/notifications.service';
@@ -62,7 +63,7 @@ export class CounterMeasureNotifierService {
     const failedChannels = this.listChannels(results, result => result.status === 'rejected');
 
     if (failedChannels.length > 0) {
-      this.logger.warn(`[COUNTER_MEASURE_NOTICE] Failed to notify ${subject} over ${failedChannels.join(', ')}`);
+      this.logger.warn(`[COUNTER_MEASURE_NOTICE] Failed to notify ${subject} over ${failedChannels.join(', ')}: ${this.describeFailures(results)}`);
     }
 
     if (deliveredChannels.length > 0) {
@@ -70,6 +71,13 @@ export class CounterMeasureNotifierService {
     } else if (failedChannels.length === 0) {
       this.logger.log(`[COUNTER_MEASURE_NOTICE] No channel delivered the notice to ${subject}`);
     }
+  }
+
+  private describeFailures(results: Record<string, ChannelOutcome>): string {
+    return Object.entries(results)
+      .filter(([, result]) => result.status === 'rejected')
+      .map(([channel, result]) => `${channel}=[${new CaughtError((result as PromiseRejectedResult).reason).describe()}]`)
+      .join(', ');
   }
 
   private listChannels(
