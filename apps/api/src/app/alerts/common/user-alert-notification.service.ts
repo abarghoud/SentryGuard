@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { NotificationChannel } from '../../../entities/alert-event.entity';
+import { NotificationChannel } from '../enums/notification-channel.enum';
 import { CaughtError } from '../../../common/utils/caught-error';
 import {
   NOTIFICATION_RETRY_BASE_DELAY_MS,

@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { NotificationChannel } from '../app/alerts/enums/notification-channel.enum';
 
 export enum AlertEventSeverity {
   Critical = 'critical',
@@ -14,11 +15,6 @@ export enum AlertEventNotificationStatus {
   Pending = 'pending',
   Sent = 'sent',
   Failed = 'failed',
-}
-
-export enum NotificationChannel {
-  Expo = 'expo',
-  Telegram = 'telegram',
 }
 
 @Entity('alert_events')

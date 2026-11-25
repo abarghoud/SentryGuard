@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { TelegramService } from '../../telegram/telegram.service';
 import { TelegramKeyboardBuilderService } from '../../telegram/telegram-keyboard-builder.service';
 import { TelegramAlertInfo } from '../../telegram/telegram.types';
-import { AlertEventSeverity, AlertEventType, NotificationChannel } from '../../../entities/alert-event.entity';
+import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
+import { NotificationChannel } from '../enums/notification-channel.enum';
 
 export interface AlertNotifierPayload {
   alertEventId: string;

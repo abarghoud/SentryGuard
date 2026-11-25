@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { NotificationChannel } from '../../../entities/alert-event.entity';
+import { NotificationChannel } from '../enums/notification-channel.enum';
 import { resolveVehicleLabel } from '../../../common/utils/vehicle-label.util';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { AlertSound, DEFAULT_ALERT_SOUND } from '../enums/alert-sound.enum';

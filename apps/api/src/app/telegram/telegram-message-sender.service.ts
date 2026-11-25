@@ -67,10 +67,10 @@ export class TelegramMessageSender {
 
   private attemptSend(request: TelegramSendRequest, state: TelegramSendState): Promise<boolean> {
     const attemptTimeoutMs = Math.max(Math.min(TELEGRAM_REQUEST_TIMEOUT_MS, state.deadline - Date.now()), 1);
-    const useFreshConnection = state.retryIndex > 0;
+    const shouldUseFreshConnection = state.retryIndex > 0;
 
     return withTimeout(
-      (signal) => this.telegramBotService.sendMessage(request.chatId, request.message, request.options, signal, useFreshConnection),
+      (signal) => this.telegramBotService.sendMessage(request.chatId, request.message, request.options, signal, shouldUseFreshConnection),
       attemptTimeoutMs,
       `Telegram notification ${request.attempt} timed out after ${attemptTimeoutMs}ms`
     );

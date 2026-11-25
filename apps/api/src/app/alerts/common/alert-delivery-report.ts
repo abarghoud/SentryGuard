@@ -1,4 +1,4 @@
-import { NotificationChannel } from '../../../entities/alert-event.entity';
+import { NotificationChannel } from '../enums/notification-channel.enum';
 import { CaughtError } from '../../../common/utils/caught-error';
 import { ChannelOutcome, DeliveryOutcomes } from './alert-delivery.types';
 import { ChannelOutcomeStatus } from './channel-outcome-status.enum';

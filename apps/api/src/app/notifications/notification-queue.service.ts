@@ -66,8 +66,21 @@ export class NotificationQueueService implements OnModuleDestroy {
     return this.queuedAlertEventIds.has(alertEventId);
   }
 
-  public countRetryJobs(): number {
-    return this.retryLimit.pendingCount + this.retryLimit.activeCount;
+  public countFreeRetrySlots(maxRetryBacklog: number): number {
+    if (this.isStopping) {
+      return 0;
+    }
+
+    const freeQueueSlots = this.maxQueueSize - this.getQueuedJobCount();
+    return Math.max(Math.min(maxRetryBacklog - this.countRetryJobs(), freeQueueSlots), 0);
+  }
+
+  public async waitForRetryLaneIdle(timeoutMs: number): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+
+    while (this.countRetryJobs() > 0 && !this.isStopping && Date.now() < deadline) {
+      await this.sleep(Math.min(DRAIN_POLL_INTERVAL_MS, deadline - Date.now()));
+    }
   }
 
   public async drain(timeoutMs: number): Promise<void> {
@@ -150,6 +163,10 @@ export class NotificationQueueService implements OnModuleDestroy {
 
   private limiterFor(context: NotificationJobContext): ReturnType<typeof pLimit> {
     return context.lane === NotificationLane.Retry ? this.retryLimit : this.limit;
+  }
+
+  private countRetryJobs(): number {
+    return this.retryLimit.pendingCount + this.retryLimit.activeCount;
   }
 
   private getQueuedJobCount(): number {

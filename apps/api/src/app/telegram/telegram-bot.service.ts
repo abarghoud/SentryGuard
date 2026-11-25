@@ -103,7 +103,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     message: string,
     options?: TelegramMessageOptions,
     signal?: AbortSignal,
-    useFreshConnection = false
+    shouldUseFreshConnection = false
   ): Promise<boolean> {
     if (!this.bot || !this.botToken) {
       this.logger.warn('⚠️ Telegram bot not initialized');
@@ -112,8 +112,8 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
 
     const payload = { chat_id: chatId, text: message, ...TelegramMessageHelper.buildOptions(options) };
     const callOptions = { signal: signal as TelegrafAbortSignal | undefined };
-    await (useFreshConnection ? this.sendOverFreshConnection(payload, callOptions) : this.bot.telegram.callApi('sendMessage', payload, callOptions));
-    this.logger.log(`📱 Message sent to chat_id: ${chatId}${useFreshConnection ? ' (fresh connection)' : ''}`);
+    await (shouldUseFreshConnection ? this.sendOverFreshConnection(payload, callOptions) : this.bot.telegram.callApi('sendMessage', payload, callOptions));
+    this.logger.log(`📱 Message sent to chat_id: ${chatId}${shouldUseFreshConnection ? ' (fresh connection)' : ''}`);
     return true;
   }
 

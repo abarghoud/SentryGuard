@@ -1,4 +1,5 @@
-import { AlertEventNotificationStatus, NotificationChannel } from '../../../entities/alert-event.entity';
+import { AlertEventNotificationStatus } from '../../../entities/alert-event.entity';
+import { NotificationChannel } from '../enums/notification-channel.enum';
 import { AlertNotificationState } from '../interfaces/alert-notification-repository.requirements';
 import { toFailedAttemptState, toSentState, toUndeliverableState } from './notification-attempt.util';
 import { NotificationRetryPolicy } from './notification-attempt.types';

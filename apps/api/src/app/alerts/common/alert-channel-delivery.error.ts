@@ -1,4 +1,4 @@
-import { NotificationChannel } from '../../../entities/alert-event.entity';
+import { NotificationChannel } from '../enums/notification-channel.enum';
 
 export class AlertChannelDeliveryError extends Error {
   constructor(

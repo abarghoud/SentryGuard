@@ -5,6 +5,7 @@ import { CaughtError } from '../../common/utils/caught-error';
 import { OperationTimeoutError } from '../../common/utils/operation-timeout.error';
 import { withTimeout } from '../../common/utils/with-timeout.util';
 import { ExpoPushError } from './expo-push.error';
+import { ExpoPushRecipient } from './expo-push.types';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 const EXPO_RETRY_DELAYS_MS = [1_000, 3_000];
@@ -25,11 +26,6 @@ interface ExpoPushTicket {
 interface ExpoPushResponse {
   data?: ExpoPushTicket | ExpoPushTicket[];
   errors?: Array<{ code?: string; message?: string }>;
-}
-
-export interface ExpoPushRecipient {
-  correlationId?: string;
-  deviceId: string;
 }
 
 interface ExpoPushAttempt {
@@ -122,9 +118,15 @@ export class ExpoPushClient {
     const result = await this.parseResponse(response);
     const tickets = this.extractTickets(result);
 
-    if (!response.ok || !tickets.some((ticket) => ticket.status === 'ok')) {
+    if (!response.ok || this.hasRejection(result, tickets)) {
       this.reject(recipient, response, this.resolveRejectionMessage(response, result, tickets), this.hasUnregisteredDevice(tickets));
     }
+  }
+
+  private hasRejection(result: ExpoPushResponse, tickets: ExpoPushTicket[]): boolean {
+    const isAccepted = tickets.some((ticket) => ticket.status === 'ok');
+    const hasError = tickets.some((ticket) => ticket.status === 'error') || (result.errors ?? []).length > 0;
+    return !isAccepted && hasError;
   }
 
   private hasUnregisteredDevice(tickets: ExpoPushTicket[]): boolean {

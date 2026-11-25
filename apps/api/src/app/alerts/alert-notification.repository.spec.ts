@@ -1,7 +1,8 @@
 import { IsNull, LessThan, LessThanOrEqual, Or, Repository } from 'typeorm';
 import { mock, MockProxy } from 'jest-mock-extended';
 
-import { AlertEvent, AlertEventNotificationStatus, NotificationChannel } from '../../entities/alert-event.entity';
+import { AlertEvent, AlertEventNotificationStatus } from '../../entities/alert-event.entity';
+import { NotificationChannel } from './enums/notification-channel.enum';
 import { AlertNotificationRepository } from './alert-notification.repository';
 import { AlertNotificationState } from './interfaces/alert-notification-repository.requirements';
 

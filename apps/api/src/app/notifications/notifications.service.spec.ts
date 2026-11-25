@@ -575,7 +575,16 @@ describe('The NotificationsService class', () => {
         });
       });
 
-      describe('When Expo answers 200 without any ok ticket', () => {
+      describe('When Expo answers 200 with a body that cannot be read', () => {
+        it('should count the push as delivered rather than send it twice', async () => {
+          fetchMock.mockResolvedValue({ json: () => Promise.reject(new SyntaxError('Unexpected end of JSON input')), ok: true, status: 200, statusText: 'OK' });
+
+          await expect(service.sendPushAlert(pushContext)).resolves.toBe(true);
+          expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+      });
+
+      describe('When Expo answers 200 with an error ticket and no ok ticket', () => {
         it('should not count the push as delivered', async () => {
           fetchMock.mockResolvedValue(buildExpoResponse(200, { data: { message: 'Message too big', status: 'error' } }));
 

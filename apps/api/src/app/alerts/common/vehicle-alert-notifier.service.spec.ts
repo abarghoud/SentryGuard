@@ -22,7 +22,8 @@ import { NotificationQueueService } from '../../notifications/notification-queue
 import { AlertNotifierRegistry } from './alert-notifier.registry';
 import { VehicleAlertSoundResolverService } from './vehicle-alert-sound-resolver.service';
 import { AlertSound, DEFAULT_ALERT_SOUND } from '../enums/alert-sound.enum';
-import { AlertEventSeverity, AlertEventType, NotificationChannel } from '../../../entities/alert-event.entity';
+import { AlertEventSeverity, AlertEventType } from '../../../entities/alert-event.entity';
+import { NotificationChannel } from '../enums/notification-channel.enum';
 
 describe('The VehicleAlertNotifierService class', () => {
   let service: VehicleAlertNotifierService;

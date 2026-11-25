@@ -1,6 +1,7 @@
 import { mock, MockProxy } from 'jest-mock-extended';
 
-import { AlertEvent, AlertEventNotificationStatus, NotificationChannel } from '../../entities/alert-event.entity';
+import { AlertEvent, AlertEventNotificationStatus } from '../../entities/alert-event.entity';
+import { NotificationChannel } from './enums/notification-channel.enum';
 import { AlertNotificationStateService } from './alert-notification-state.service';
 import { NotificationAttemptOutcome } from './enums/notification-attempt-outcome.enum';
 import { NotificationAttemptResult } from './common/notification-attempt.types';

@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 
-import { AlertEvent, AlertEventNotificationStatus, NotificationChannel } from '../../entities/alert-event.entity';
+import { AlertEvent, AlertEventNotificationStatus } from '../../entities/alert-event.entity';
+import { NotificationChannel } from './enums/notification-channel.enum';
 import type {
   AlertNotificationRepositoryRequirements,
   AlertNotificationState,

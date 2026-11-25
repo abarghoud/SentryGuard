@@ -5,7 +5,8 @@ import { DistributedLockService } from '../../common/services/distributed-lock.s
 import { NotificationLane } from './notification-lane.enum';
 import { NotificationQueueService } from './notification-queue.service';
 import { VehicleAlertNotifierService } from '../alerts/common/vehicle-alert-notifier.service';
-import { AlertEvent, AlertEventSeverity, AlertEventType, NotificationChannel } from '../../entities/alert-event.entity';
+import { AlertEvent, AlertEventSeverity, AlertEventType } from '../../entities/alert-event.entity';
+import { NotificationChannel } from '../alerts/enums/notification-channel.enum';
 
 describe('The NotificationSweeperService class', () => {
   let service: NotificationSweeperService;
@@ -38,7 +39,8 @@ describe('The NotificationSweeperService class', () => {
     mockVehicleAlertNotifierService = mock<VehicleAlertNotifierService>();
     mockVehicleAlertNotifierService.enqueueNotification.mockReturnValue(true);
     mockAlertNotificationStateService.leaseNotificationForRetry.mockResolvedValue({ isLeased: true });
-    mockNotificationQueueService.countRetryJobs.mockReturnValue(0);
+    mockNotificationQueueService.countFreeRetrySlots.mockReturnValue(20);
+    mockNotificationQueueService.waitForRetryLaneIdle.mockResolvedValue(undefined);
 
     mockDistributedLockService.withLock.mockImplementation(async (_key: number, task: () => Promise<void>) => {
       lockTask = task;
@@ -139,20 +141,32 @@ describe('The NotificationSweeperService class', () => {
         );
       });
 
-      it('should leave alerts for the next sweep once the retry lane is full', async () => {
-        mockNotificationQueueService.countRetryJobs.mockReturnValue(19);
-
+      it('should ask the queue for the free slots of a 20-retry backlog', async () => {
         await service.sweep();
 
-        expect(mockVehicleAlertNotifierService.enqueueNotification).toHaveBeenCalledTimes(1);
+        expect(mockNotificationQueueService.countFreeRetrySlots).toHaveBeenCalledWith(20);
       });
 
-      it('should not lease the alerts it leaves for the next sweep', async () => {
-        mockNotificationQueueService.countRetryJobs.mockReturnValue(20);
+      it('should not lease the alerts it leaves for later', async () => {
+        mockNotificationQueueService.countFreeRetrySlots.mockReturnValue(0);
 
         await service.sweep();
 
         expect(mockAlertNotificationStateService.leaseNotificationForRetry).not.toHaveBeenCalled();
+      });
+
+      it('should stop leasing once the queue refuses a retry', async () => {
+        mockVehicleAlertNotifierService.enqueueNotification.mockReturnValue(false);
+
+        await service.sweep();
+
+        expect(mockAlertNotificationStateService.leaseNotificationForRetry).toHaveBeenCalledTimes(1);
+      });
+
+      it('should not sweep again when no alert was left for later', async () => {
+        await service.sweep();
+
+        expect(mockNotificationQueueService.waitForRetryLaneIdle).not.toHaveBeenCalled();
       });
 
       it('should date the notification with the time the alert was recorded', async () => {
@@ -179,6 +193,50 @@ describe('The NotificationSweeperService class', () => {
           expect.objectContaining({ alertEventId: 'alert-2' }),
           NotificationLane.Retry
         );
+      });
+    });
+
+    describe('When the retry lane has room for one alert at a time', () => {
+      beforeEach(() => {
+        mockNotificationQueueService.countFreeRetrySlots.mockReturnValue(1);
+        mockAlertNotificationStateService.findNotificationsDueForSweep
+          .mockResolvedValueOnce([buildPendingAlert('alert-1'), buildPendingAlert('alert-2')])
+          .mockResolvedValueOnce([buildPendingAlert('alert-2')]);
+      });
+
+      it('should wait for the retry lane to empty, then retry the alert it had left', async () => {
+        await service.sweep();
+
+        expect(mockVehicleAlertNotifierService.enqueueNotification.mock.calls.map(([payload]) => payload.alertEventId)).toStrictEqual(['alert-1', 'alert-2']);
+      });
+
+      it('should wait no longer than the 45 s budget of a sweep', async () => {
+        await service.sweep();
+
+        const [timeoutMs] = mockNotificationQueueService.waitForRetryLaneIdle.mock.calls[0];
+        expect(timeoutMs).toBeGreaterThan(44_000);
+        expect(timeoutMs).toBeLessThanOrEqual(45_000);
+      });
+    });
+
+    describe('When the sweep budget runs out while retries are still running', () => {
+      beforeEach(() => {
+        jest.useFakeTimers();
+        mockNotificationQueueService.countFreeRetrySlots.mockReturnValue(1);
+        mockAlertNotificationStateService.findNotificationsDueForSweep.mockResolvedValue([buildPendingAlert('alert-1'), buildPendingAlert('alert-2')]);
+        mockNotificationQueueService.waitForRetryLaneIdle.mockImplementation(async (timeoutMs: number) => {
+          jest.setSystemTime(Date.now() + timeoutMs);
+        });
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      it('should leave the remaining alerts for the next sweep', async () => {
+        await service.sweep();
+
+        expect(mockVehicleAlertNotifierService.enqueueNotification).toHaveBeenCalledTimes(1);
       });
     });
   });

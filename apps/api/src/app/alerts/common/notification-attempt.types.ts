@@ -1,4 +1,4 @@
-import { NotificationChannel } from '../../../entities/alert-event.entity';
+import { NotificationChannel } from '../enums/notification-channel.enum';
 import { NotificationAttemptOutcome } from '../enums/notification-attempt-outcome.enum';
 
 export interface NotificationAttemptResult {

@@ -7,19 +7,12 @@ import { DistributedLockService } from '../../common/services/distributed-lock.s
 import { CaughtError } from '../../common/utils/caught-error';
 import { withTimeout } from '../../common/utils/with-timeout.util';
 import { SchedulerLockKey } from '../../config/scheduler-lock-key.config';
+import { TelegramWebhookRegistrationBusyError } from './telegram-webhook-registration-busy.error';
 import { TelegramWebhookTarget } from './telegram-webhook.types';
 
 const REGISTRATION_REQUEST_TIMEOUT_MS = 10_000;
 const INITIAL_RETRY_DELAY_MS = 1_000;
 const MAX_RETRY_DELAY_MS = 60_000;
-
-class TelegramWebhookRegistrationBusyError extends Error {
-  constructor() {
-    super('Another instance is registering the Telegram webhook');
-    this.name = 'TelegramWebhookRegistrationBusyError';
-    Object.setPrototypeOf(this, new.target.prototype);
-  }
-}
 
 @Injectable()
 export class TelegramWebhookRegistrationService implements OnModuleDestroy {
