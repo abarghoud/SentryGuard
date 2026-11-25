@@ -103,7 +103,7 @@ export class NotificationSweeperService {
   }
 
   private async leaseAndEnqueue(alert: AlertEvent): Promise<SweepOutcome> {
-    const { isLeased } = await this.alertNotificationStateService.leaseNotificationForRetry(alert.id, alert.notification_attempts, NOTIFICATION_SWEEP_LEASE_MS);
+    const { isLeased } = await this.alertNotificationStateService.leaseNotification(alert.id, alert.notification_attempts, NOTIFICATION_SWEEP_LEASE_MS);
     if (!isLeased) {
       return SweepOutcome.LeasedElsewhere;
     }

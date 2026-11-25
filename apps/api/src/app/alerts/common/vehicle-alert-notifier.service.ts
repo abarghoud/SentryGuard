@@ -75,7 +75,7 @@ export class VehicleAlertNotifierService {
           vin: payload.vin,
           correlationId: payload.correlationId ?? `notification-${payload.vin}`,
         },
-        () => this.userAlertNotificationService.notify(payload)
+        () => this.notify(payload, lane)
       ),
       {
         label: `${payload.type}:${payload.userId}`,
@@ -85,6 +85,12 @@ export class VehicleAlertNotifierService {
         lane,
       }
     );
+  }
+
+  private notify(payload: AlertNotifierPayload, lane: NotificationLane): Promise<void> {
+    return lane === NotificationLane.Retry
+      ? this.userAlertNotificationService.notify(payload)
+      : this.userAlertNotificationService.notifyFreshAlert(payload);
   }
 
   private async findVehiclesByVin(vin: string, correlationId?: string): Promise<Vehicle[]> {

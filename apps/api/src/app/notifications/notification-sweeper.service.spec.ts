@@ -38,7 +38,7 @@ describe('The NotificationSweeperService class', () => {
     mockNotificationQueueService = mock<NotificationQueueService>();
     mockVehicleAlertNotifierService = mock<VehicleAlertNotifierService>();
     mockVehicleAlertNotifierService.enqueueNotification.mockReturnValue(true);
-    mockAlertNotificationStateService.leaseNotificationForRetry.mockResolvedValue({ isLeased: true });
+    mockAlertNotificationStateService.leaseNotification.mockResolvedValue({ isLeased: true });
     mockNotificationQueueService.countFreeRetrySlots.mockReturnValue(20);
     mockNotificationQueueService.waitForRetryLaneIdle.mockResolvedValue(undefined);
 
@@ -127,11 +127,11 @@ describe('The NotificationSweeperService class', () => {
       it('should lease each alert for five minutes before queuing it', async () => {
         await service.sweep();
 
-        expect(mockAlertNotificationStateService.leaseNotificationForRetry).toHaveBeenCalledWith('alert-1', 0, 300_000);
+        expect(mockAlertNotificationStateService.leaseNotification).toHaveBeenCalledWith('alert-1', 0, 300_000);
       });
 
       it('should not queue an alert that another server leased first', async () => {
-        mockAlertNotificationStateService.leaseNotificationForRetry.mockImplementation(async (alertEventId: string) => ({ isLeased: alertEventId !== 'alert-1' }));
+        mockAlertNotificationStateService.leaseNotification.mockImplementation(async (alertEventId: string) => ({ isLeased: alertEventId !== 'alert-1' }));
 
         await service.sweep();
 
@@ -152,7 +152,7 @@ describe('The NotificationSweeperService class', () => {
 
         await service.sweep();
 
-        expect(mockAlertNotificationStateService.leaseNotificationForRetry).not.toHaveBeenCalled();
+        expect(mockAlertNotificationStateService.leaseNotification).not.toHaveBeenCalled();
       });
 
       it('should stop leasing once the queue refuses a retry', async () => {
@@ -160,7 +160,7 @@ describe('The NotificationSweeperService class', () => {
 
         await service.sweep();
 
-        expect(mockAlertNotificationStateService.leaseNotificationForRetry).toHaveBeenCalledTimes(1);
+        expect(mockAlertNotificationStateService.leaseNotification).toHaveBeenCalledTimes(1);
       });
 
       it('should not sweep again when no alert was left for later', async () => {

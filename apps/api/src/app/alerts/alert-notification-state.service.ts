@@ -43,7 +43,7 @@ export class AlertNotificationStateService {
     return this.alertNotificationRepository.findDueForSweep(neverAttemptedCreatedBefore, now, limit);
   }
 
-  public async leaseNotificationForRetry(alertEventId: string, expectedAttempts: number, leaseMs: number): Promise<{ isLeased: boolean }> {
+  public async leaseNotification(alertEventId: string, expectedAttempts: number, leaseMs: number): Promise<{ isLeased: boolean }> {
     const now = new Date();
     const isLeased = await this.alertNotificationRepository.leaseDueNotification(
       alertEventId,

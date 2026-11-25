@@ -5,7 +5,9 @@ import { CaughtError } from '../../../common/utils/caught-error';
 import {
   NOTIFICATION_RETRY_BASE_DELAY_MS,
   NOTIFICATION_RETRY_MAX_DELAY_MS,
+  NOTIFICATION_SWEEP_LEASE_MS,
   NOTIFICATION_SWEEP_MAX_ATTEMPTS,
+  NOTIFICATION_SWEEP_PENDING_THRESHOLD_MS,
 } from '../../../config/notification-sweep-cron.config';
 import { UserLanguageService } from '../../user/user-language.service';
 import { NotificationsService } from '../../notifications/notifications.service';
@@ -23,6 +25,8 @@ const notificationRetryPolicy: NotificationRetryPolicy = {
   maxDelayMs: NOTIFICATION_RETRY_MAX_DELAY_MS,
 };
 
+const firstAttemptLeaseAgeMs = NOTIFICATION_SWEEP_PENDING_THRESHOLD_MS / 2;
+
 @Injectable()
 export class UserAlertNotificationService {
   private readonly logger = new Logger(UserAlertNotificationService.name);
@@ -33,6 +37,15 @@ export class UserAlertNotificationService {
     private readonly notificationsService: NotificationsService,
     private readonly alertChannelDeliveryService: AlertChannelDeliveryService
   ) {}
+
+  public async notifyFreshAlert(payload: AlertNotifierPayload): Promise<void> {
+    if (await this.isTakenOverByRetry(payload)) {
+      this.logger.warn(`[NOTIFICATION_TAKEN_OVER] Alert ${payload.alertEventId} waited too long for its first attempt and a retry already handles it, skipping (correlation: ${payload.correlationId})`);
+      return;
+    }
+
+    await this.notify(payload);
+  }
 
   public async notify(payload: AlertNotifierPayload): Promise<void> {
     try {
@@ -45,6 +58,15 @@ export class UserAlertNotificationService {
       await this.handleNotificationFailure(payload, isChannelFailure ? error.deliveredChannels : []);
       throw error;
     }
+  }
+
+  private async isTakenOverByRetry(payload: AlertNotifierPayload): Promise<boolean> {
+    if (Date.now() - payload.detectedAt.getTime() < firstAttemptLeaseAgeMs) {
+      return false;
+    }
+
+    const { isLeased } = await this.alertNotificationStateService.leaseNotification(payload.alertEventId, 0, NOTIFICATION_SWEEP_LEASE_MS);
+    return !isLeased;
   }
 
   private logUnexpectedNotificationError(payload: AlertNotifierPayload, error: unknown): void {

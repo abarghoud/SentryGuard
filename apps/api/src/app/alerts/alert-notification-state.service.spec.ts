@@ -200,14 +200,14 @@ describe('The AlertNotificationStateService class', () => {
     });
   });
 
-  describe('The leaseNotificationForRetry() method', () => {
+  describe('The leaseNotification() method', () => {
     const now = new Date('2026-11-19T21:30:00.000Z');
     let result: { isLeased: boolean };
 
     beforeEach(async () => {
       jest.useFakeTimers({ now });
       mockAlertNotificationRepository.leaseDueNotification.mockResolvedValue(true);
-      result = await service.leaseNotificationForRetry(fakeAlertId, 3, 300_000);
+      result = await service.leaseNotification(fakeAlertId, 3, 300_000);
     });
 
     afterEach(() => {

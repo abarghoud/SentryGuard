@@ -8,13 +8,11 @@ import type { ITelegramFailureHandler } from './interfaces/telegram-failure-hand
 import { telegramFailureHandler } from './interfaces/telegram-failure-handler.interface';
 import { telegramRetryManager } from './telegram-retry-manager.token';
 import { RetryManager } from '../shared/retry-manager.service';
-import { withTimeout } from '../../common/utils/with-timeout.util';
 import { CaughtError } from '../../common/utils/caught-error';
 import { resolveVehicleLabel } from '../../common/utils/vehicle-label.util';
 import { CounterMeasure } from '../alerts/enums/counter-measure.enum';
 import { describeCounterMeasures } from '../alerts/common/counter-measure-description.util';
 import { describeLateDelivery } from '../alerts/common/late-delivery-notice.util';
-import { TELEGRAM_REQUEST_TIMEOUT_MS } from '../../config/telegram-request-timeout.config';
 import { TelegramMessageSender } from './telegram-message-sender.service';
 import { TelegramSendAttempt } from './telegram-send-attempt.enum';
 import { TelegramAlertInfo, TelegramDeliveryResult, TelegramKeyboard } from './telegram.types';
@@ -66,11 +64,7 @@ export class TelegramService implements OnModuleDestroy {
     const options = keyboard ? { keyboard } : undefined;
 
     try {
-      await withTimeout(
-        (signal) => this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage, signal),
-        TELEGRAM_REQUEST_TIMEOUT_MS,
-        `Telegram bot update request timed out after ${TELEGRAM_REQUEST_TIMEOUT_MS}ms`
-      );
+      await this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage);
 
       if (this.shouldSimulateMessage(alertInfo.vin)) {
         return await this.simulateMessage(userId, 'alert', alertInfo.vin);
@@ -114,11 +108,7 @@ export class TelegramService implements OnModuleDestroy {
     const options = keyboard ? { keyboard } : undefined;
 
     try {
-      await withTimeout(
-        (signal) => this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage, signal),
-        TELEGRAM_REQUEST_TIMEOUT_MS,
-        `Telegram bot update request timed out after ${TELEGRAM_REQUEST_TIMEOUT_MS}ms`
-      );
+      await this.telegramBotUpdateService.ensureUserIsUpToDate(userId, chatId, userLanguage);
 
       if (this.shouldSimulateMessage(alertInfo.vin)) {
         return await this.simulateMessage(userId, 'alert', alertInfo.vin);

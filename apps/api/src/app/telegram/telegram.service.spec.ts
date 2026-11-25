@@ -144,12 +144,7 @@ describe('The TelegramService class', () => {
       it('should call ensureUserIsUpToDate before sending', async () => {
         await service.sendSentryAlert(fakeUserId, alertInfo, 'en');
 
-        expect(mockTelegramBotUpdateService.ensureUserIsUpToDate).toHaveBeenCalledWith(
-          fakeUserId,
-          fakeChatId,
-          'en',
-          expect.any(AbortSignal)
-        );
+        expect(mockTelegramBotUpdateService.ensureUserIsUpToDate).toHaveBeenCalledWith(fakeUserId, fakeChatId, 'en');
       });
     });
 

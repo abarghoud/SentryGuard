@@ -287,11 +287,12 @@ describe('The VehicleAlertNotifierService class', () => {
           alertEventId: 'alert-1',
           correlationId: 'sweep-alert-1',
           deliveredChannels: [NotificationChannel.Expo],
+          detectedAt: new Date(Date.now() - 180_000),
           severity: AlertEventSeverity.Critical,
           type: AlertEventType.BreakIn,
           userId: 'user-1',
           vin: 'TEST_VIN_123',
-        });
+        }, NotificationLane.Retry);
         await executeEnqueuedTasks();
       });
 
@@ -329,11 +330,12 @@ describe('The VehicleAlertNotifierService class', () => {
         service.enqueueNotification({
           alertEventId: 'alert-1',
           deliveredChannels: [NotificationChannel.Telegram],
+          detectedAt: new Date(Date.now() - 180_000),
           severity: AlertEventSeverity.Critical,
           type: AlertEventType.BreakIn,
           userId: 'user-1',
           vin: 'TEST_VIN_123',
-        });
+        }, NotificationLane.Retry);
         await expect(executeEnqueuedTasks()).rejects.toThrow('Alert delivery failed on expo');
 
         expect(mockAlertNotifierRegistry.notify).not.toHaveBeenCalled();
@@ -928,6 +930,77 @@ describe('The VehicleAlertNotifierService class', () => {
           lane: NotificationLane.Immediate,
         })
       );
+    });
+
+    describe('When a fresh alert waited over a minute for its first attempt', () => {
+      const stalePayload = (): Parameters<VehicleAlertNotifierService['enqueueNotification']>[0] => ({
+        alertEventId: 'alert-1',
+        detectedAt: new Date(Date.now() - 61_000),
+        severity: AlertEventSeverity.Warning,
+        type: AlertEventType.Sentry,
+        userId: 'user-1',
+        vin: 'VIN-1',
+      });
+
+      describe('When this server gets the lease', () => {
+        beforeEach(async () => {
+          mockAlertNotificationStateService.leaseNotification.mockResolvedValue({ isLeased: true });
+          service.enqueueNotification(stalePayload());
+          await executeEnqueuedTasks();
+        });
+
+        it('should lease the alert as a first attempt before sending it', () => {
+          expect(mockAlertNotificationStateService.leaseNotification).toHaveBeenCalledWith('alert-1', 0, 300_000);
+        });
+
+        it('should send the alert', () => {
+          expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledTimes(1);
+        });
+      });
+
+      describe('When a retry on another server already took the alert', () => {
+        beforeEach(async () => {
+          mockAlertNotificationStateService.leaseNotification.mockResolvedValue({ isLeased: false });
+          service.enqueueNotification(stalePayload());
+          await executeEnqueuedTasks();
+        });
+
+        it('should not send the alert a second time', () => {
+          expect(mockNotificationsService.sendPushAlert).not.toHaveBeenCalled();
+          expect(mockAlertNotifierRegistry.notify).not.toHaveBeenCalled();
+        });
+
+        it('should not count a failed attempt', () => {
+          expect(mockAlertNotificationStateService.recordNotificationAttemptFailure).not.toHaveBeenCalled();
+        });
+      });
+
+      describe('When the alert comes from the sweeper, which leased it already', () => {
+        it('should send it without leasing it again', async () => {
+          service.enqueueNotification(stalePayload(), NotificationLane.Retry);
+          await executeEnqueuedTasks();
+
+          expect(mockAlertNotificationStateService.leaseNotification).not.toHaveBeenCalled();
+          expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledTimes(1);
+        });
+      });
+    });
+
+    describe('When a fresh alert gets its first attempt right away', () => {
+      it('should send it without leasing it', async () => {
+        service.enqueueNotification({
+          alertEventId: 'alert-1',
+          detectedAt: new Date(),
+          severity: AlertEventSeverity.Warning,
+          type: AlertEventType.Sentry,
+          userId: 'user-1',
+          vin: 'VIN-1',
+        });
+        await executeEnqueuedTasks();
+
+        expect(mockAlertNotificationStateService.leaseNotification).not.toHaveBeenCalled();
+        expect(mockNotificationsService.sendPushAlert).toHaveBeenCalledTimes(1);
+      });
     });
 
     it('should use the lane it is given', () => {
