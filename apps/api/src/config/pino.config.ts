@@ -11,6 +11,16 @@ interface RequestWithFrameworkProperties {
   remoteAddress?: string;
 }
 
+const telegramWebhookPathPattern = /^(\/telegram\/webhook\/)[^/?#]+/;
+
+function redactWebhookSecretPath(url: string | undefined): string | undefined {
+  return url?.replace(telegramWebhookPathPattern, '$1<redacted>');
+}
+
+function isTelegramWebhookRequest(url: string | undefined): boolean {
+  return url !== undefined && telegramWebhookPathPattern.test(url);
+}
+
 export function createOciTransportStream(): OciTransportStream | null {
   const ociConfig = getOciLoggingConfig();
 
@@ -80,9 +90,9 @@ export function getPinoConfig(ociTransportStream: OciTransportStream | null): Pa
         return {
           id: reqWithFramework.id,
           method: req.method,
-          url: req.url,
+          url: redactWebhookSecretPath(req.url),
           query: reqWithFramework.query,
-          params: reqWithFramework.params,
+          params: isTelegramWebhookRequest(req.url) ? undefined : reqWithFramework.params,
           remoteAddress: req.headers['cf-connecting-ip'] || reqWithFramework.remoteAddress,
           userAgent: req.headers['user-agent'],
         };

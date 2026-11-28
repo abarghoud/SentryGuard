@@ -932,6 +932,45 @@ describe('The VehicleAlertNotifierService class', () => {
       );
     });
 
+    describe('When the push is delivered while Telegram is still pending', () => {
+      const freshPayload = (): Parameters<VehicleAlertNotifierService['enqueueNotification']>[0] => ({
+        alertEventId: 'alert-1',
+        detectedAt: new Date(),
+        severity: AlertEventSeverity.Warning,
+        type: AlertEventType.Sentry,
+        userId: 'user-1',
+        vin: 'VIN-1',
+      });
+
+      it('should record the push delivery at once, so a restart does not send it again', async () => {
+        mockAlertNotifierRegistry.notify.mockReturnValue(new Promise<boolean>(() => undefined));
+        service.enqueueNotification(freshPayload());
+
+        void executeEnqueuedTasks();
+        await new Promise((resolve) => setImmediate(resolve));
+
+        expect(mockAlertNotificationStateService.recordChannelDelivered).toHaveBeenCalledWith('alert-1', NotificationChannel.Expo);
+      });
+
+      it('should not record a channel that failed', async () => {
+        mockAlertNotifierRegistry.notify.mockRejectedValue(new Error('Telegram Error'));
+        service.enqueueNotification(freshPayload());
+
+        await executeEnqueuedTasks().catch(() => undefined);
+
+        expect(mockAlertNotificationStateService.recordChannelDelivered).not.toHaveBeenCalledWith('alert-1', NotificationChannel.Telegram);
+      });
+
+      it('should still close the alert when the early record fails', async () => {
+        mockAlertNotificationStateService.recordChannelDelivered.mockRejectedValue(new Error('connection terminated'));
+        service.enqueueNotification(freshPayload());
+
+        await executeEnqueuedTasks();
+
+        expect(mockAlertNotificationStateService.markNotificationSent).toHaveBeenCalledWith('alert-1', [NotificationChannel.Expo, NotificationChannel.Telegram]);
+      });
+    });
+
     describe('When a fresh alert waited over a minute for its first attempt', () => {
       const stalePayload = (): Parameters<VehicleAlertNotifierService['enqueueNotification']>[0] => ({
         alertEventId: 'alert-1',

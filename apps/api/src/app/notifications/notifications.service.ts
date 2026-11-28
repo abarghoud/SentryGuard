@@ -12,6 +12,7 @@ import { describeCounterMeasures } from '../alerts/common/counter-measure-descri
 import { describeLateDelivery } from '../alerts/common/late-delivery-notice.util';
 import { ExpoPushClient } from './expo-push.client';
 import { ExpoPushError } from './expo-push.error';
+import { NotificationPreferencesRepository } from './notification-preferences.repository';
 import {
   NotificationPreferencesDto,
   PushAlertContext,
@@ -35,11 +36,12 @@ export class NotificationsService {
     private readonly pushDeviceTokenRepository: Repository<PushDeviceToken>,
     @InjectRepository(TelegramConfig)
     private readonly telegramConfigRepository: Repository<TelegramConfig>,
-    private readonly expoPushClient: ExpoPushClient
+    private readonly expoPushClient: ExpoPushClient,
+    private readonly notificationPreferencesRepository: NotificationPreferencesRepository
   ) {}
 
   public async getPreferences(userId: string, token?: string): Promise<NotificationPreferencesDto> {
-    const preferences = await this.findOrCreatePreferences(userId);
+    const preferences = await this.notificationPreferencesRepository.findOrCreate(userId);
     const device = token ? await this.findPushDevice(userId, token) : null;
     return this.toDto(preferences, device);
   }
@@ -49,7 +51,7 @@ export class NotificationsService {
     preferences: Partial<NotificationPreferencesDto>,
     token?: string
   ): Promise<NotificationPreferencesDto> {
-    const currentPreferences = await this.findOrCreatePreferences(userId);
+    const currentPreferences = await this.notificationPreferencesRepository.findOrCreate(userId);
     Object.assign(currentPreferences, this.pickGlobalPreferenceUpdates(preferences));
     await this.preferencesRepository.save(currentPreferences);
 
@@ -86,12 +88,12 @@ export class NotificationsService {
   }
 
   public async shouldSendTelegram(userId: string, _severity: AlertEventSeverity): Promise<boolean> {
-    const preferences = await this.findOrCreatePreferences(userId);
+    const preferences = await this.notificationPreferencesRepository.findOrCreate(userId);
     return preferences.telegram_enabled;
   }
 
   public async mute(userId: string, minutes: number): Promise<Date> {
-    const preferences = await this.findOrCreatePreferences(userId);
+    const preferences = await this.notificationPreferencesRepository.findOrCreate(userId);
     const mutedUntil = new Date(Date.now() + minutes * 60 * 1000);
     preferences.muted_until = mutedUntil;
     await this.preferencesRepository.save(preferences);
@@ -101,7 +103,7 @@ export class NotificationsService {
   }
 
   public async unmute(userId: string): Promise<void> {
-    const preferences = await this.findOrCreatePreferences(userId);
+    const preferences = await this.notificationPreferencesRepository.findOrCreate(userId);
     preferences.muted_until = null;
     await this.preferencesRepository.save(preferences);
     await this.telegramConfigRepository.update({ userId }, { muted_until: null });
@@ -210,15 +212,6 @@ export class NotificationsService {
       body: describeCounterMeasures(counterMeasures, userLanguage),
       title: i18n.t('Response triggered', { context: 'withVehicle', lng: userLanguage, vehicleName }),
     };
-  }
-
-  private async findOrCreatePreferences(userId: string): Promise<NotificationPreferences> {
-    const preferences = await this.preferencesRepository.findOne({ where: { userId } });
-    if (preferences) {
-      return preferences;
-    }
-
-    return await this.preferencesRepository.save(this.preferencesRepository.create({ userId }));
   }
 
   private async findPushDevice(userId: string, token: string): Promise<PushDeviceToken | null> {

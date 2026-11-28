@@ -176,7 +176,7 @@ describe('The CounterMeasureNotifierService class', () => {
       it('should log the failed channel', async () => {
         await act();
 
-        expect(loggerWarnSpy).toHaveBeenCalledWith(`[COUNTER_MEASURE_NOTICE] Failed to notify user user-1 for VIN ${fakeVin} over push`);
+        expect(loggerWarnSpy).toHaveBeenCalledWith(`[COUNTER_MEASURE_NOTICE] Failed to notify user user-1 for VIN ${fakeVin} over push: push=[Error: Expo push rejected]`);
       });
 
       it('should still notify the other users', async () => {

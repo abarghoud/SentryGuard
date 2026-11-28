@@ -26,6 +26,10 @@ export class AlertNotificationStateService {
     await this.transitionPendingNotification(alertEventId, (current) => toSentState(current, deliveredChannels));
   }
 
+  public async recordChannelDelivered(alertEventId: string, channel: NotificationChannel): Promise<void> {
+    await this.alertNotificationRepository.addDeliveredChannel(alertEventId, channel);
+  }
+
   public async markNotificationUndeliverable(alertEventId: string): Promise<void> {
     await this.transitionPendingNotification(alertEventId, toUndeliverableState);
   }

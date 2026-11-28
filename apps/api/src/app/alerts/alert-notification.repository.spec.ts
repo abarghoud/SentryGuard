@@ -16,6 +16,35 @@ describe('The AlertNotificationRepository class', () => {
     repository = new AlertNotificationRepository(alertEventRepository);
   });
 
+  describe('The addDeliveredChannel() method', () => {
+    describe('When a channel has just delivered an alert', () => {
+      const queryBuilder = { execute: jest.fn(), set: jest.fn(), setParameter: jest.fn(), update: jest.fn(), where: jest.fn() };
+
+      beforeEach(async () => {
+        Object.values(queryBuilder).forEach((step) => step.mockReturnValue(queryBuilder));
+        alertEventRepository.createQueryBuilder.mockReturnValue(queryBuilder as never);
+        await repository.addDeliveredChannel(fakeAlertId, NotificationChannel.Expo);
+      });
+
+      it('should add the channel in one statement, without listing it twice', () => {
+        const [{ notification_delivered_channels: expression }] = queryBuilder.set.mock.calls[0];
+
+        expect(expression()).toBe('array_append(array_remove("notification_delivered_channels", :channel), :channel)');
+      });
+
+      it('should only touch the alert while it is still pending', () => {
+        expect(queryBuilder.where).toHaveBeenCalledWith('id = :alertEventId AND notification_status = :status', {
+          alertEventId: fakeAlertId,
+          status: AlertEventNotificationStatus.Pending,
+        });
+      });
+
+      it('should pass the channel as a parameter', () => {
+        expect(queryBuilder.setParameter).toHaveBeenCalledWith('channel', NotificationChannel.Expo);
+      });
+    });
+  });
+
   describe('The findDueForSweep() method', () => {
     describe('When searching for alerts the sweep must send', () => {
       const cutoff = new Date('2026-08-14T10:00:00Z');
